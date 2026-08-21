@@ -1,0 +1,3510 @@
+{
+  "id": "54c91ff9-71ae-49a1-beb4-8bcd5f36af5e",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.anggaran_pengajuan": {
+      "name": "anggaran_pengajuan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fase": {
+          "name": "fase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nominal_diajukan": {
+          "name": "nominal_diajukan",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_dokumen_url": {
+          "name": "file_dokumen_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_pengajuan": {
+          "name": "tanggal_pengajuan",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'diajukan'"
+        },
+        "catatan_penilaian": {
+          "name": "catatan_penilaian",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "anggaran_tim_idx": {
+          "name": "anggaran_tim_idx",
+          "columns": [
+            {
+              "expression": "tim_inovator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "anggaran_pengajuan_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "anggaran_pengajuan_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "anggaran_pengajuan",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.anggota_tim": {
+      "name": "anggota_tim",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jabatan": {
+          "name": "jabatan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_kerja": {
+          "name": "unit_kerja",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "komitmen_dukungan": {
+          "name": "komitmen_dukungan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "anggota_tim_inovator_idx": {
+          "name": "anggota_tim_inovator_idx",
+          "columns": [
+            {
+              "expression": "tim_inovator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "anggota_tim_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "anggota_tim_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "anggota_tim",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.app_settings": {
+      "name": "app_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "app_settings_key_unique": {
+          "name": "app_settings_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_logs": {
+      "name": "audit_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity": {
+          "name": "entity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.charter": {
+      "name": "charter",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_mission": {
+          "name": "project_mission",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_early_adopters": {
+          "name": "customer_early_adopters",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "context_area_bantuan": {
+          "name": "context_area_bantuan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem_worth_solving": {
+          "name": "problem_worth_solving",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hmw": {
+          "name": "hmw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "opportunity_statement": {
+          "name": "opportunity_statement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "business_opportunity": {
+          "name": "business_opportunity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "solusi_awal": {
+          "name": "solusi_awal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "desirability_hypothesis": {
+          "name": "desirability_hypothesis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feasibility_hypothesis": {
+          "name": "feasibility_hypothesis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "viability_hypothesis": {
+          "name": "viability_hypothesis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link_proposal": {
+          "name": "link_proposal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ritme_kerja": {
+          "name": "ritme_kerja",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pacing_monitoring": {
+          "name": "pacing_monitoring",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kebutuhan_dukungan": {
+          "name": "kebutuhan_dukungan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "risiko_awal": {
+          "name": "risiko_awal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disusun": {
+          "name": "ttd_disusun",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_diperiksa": {
+          "name": "ttd_diperiksa",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disetujui": {
+          "name": "ttd_disetujui",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "charter_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "charter_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "charter",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "charter_tim_inovator_id_unique": {
+          "name": "charter_tim_inovator_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tim_inovator_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_testing_feedback_responden": {
+      "name": "customer_testing_feedback_responden",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responden_profil": {
+          "name": "responden_profil",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "usability_skor_feedback": {
+          "name": "usability_skor_feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "functionality_skor_feedback": {
+          "name": "functionality_skor_feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "solvability_skor_feedback": {
+          "name": "solvability_skor_feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payability_skor_feedback": {
+          "name": "payability_skor_feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "others": {
+          "name": "others",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority_insight_action": {
+          "name": "priority_insight_action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_testing_feedback_responden_report_id_customer_validation_report_id_fk": {
+          "name": "customer_testing_feedback_responden_report_id_customer_validation_report_id_fk",
+          "tableFrom": "customer_testing_feedback_responden",
+          "tableTo": "customer_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_validation_dimensi_feedback": {
+      "name": "customer_validation_dimensi_feedback",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dimensi": {
+          "name": "dimensi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_yang_dikumpulkan": {
+          "name": "evidence_yang_dikumpulkan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_validation_dimensi_feedback_plan_id_customer_validation_plan_id_fk": {
+          "name": "customer_validation_dimensi_feedback_plan_id_customer_validation_plan_id_fk",
+          "tableFrom": "customer_validation_dimensi_feedback",
+          "tableTo": "customer_validation_plan",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_validation_plan": {
+      "name": "customer_validation_plan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_mission": {
+          "name": "project_mission",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_dan_context": {
+          "name": "customer_dan_context",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem_hypothesis": {
+          "name": "problem_hypothesis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hmw": {
+          "name": "hmw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "solution_hypothesis": {
+          "name": "solution_hypothesis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prototype_type": {
+          "name": "prototype_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fitur_alur_diuji": {
+          "name": "fitur_alur_diuji",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "skenario_user_testing": {
+          "name": "skenario_user_testing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instrumen_validasi": {
+          "name": "instrumen_validasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_dukung": {
+          "name": "data_dukung",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "target_early_adopters": {
+          "name": "target_early_adopters",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kriteria_seleksi": {
+          "name": "kriteria_seleksi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jumlah_target_responden": {
+          "name": "jumlah_target_responden",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 10
+        },
+        "lokasi_channel_testing": {
+          "name": "lokasi_channel_testing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metode_rekrutmen": {
+          "name": "metode_rekrutmen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "etika_persetujuan_data": {
+          "name": "etika_persetujuan_data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disusun": {
+          "name": "ttd_disusun",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_diperiksa": {
+          "name": "ttd_diperiksa",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disetujui": {
+          "name": "ttd_disetujui",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_validation_plan_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "customer_validation_plan_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "customer_validation_plan",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "customer_validation_plan_tim_inovator_id_unique": {
+          "name": "customer_validation_plan_tim_inovator_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tim_inovator_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_validation_report": {
+      "name": "customer_validation_report",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "validated_solution": {
+          "name": "validated_solution",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value_proposition": {
+          "name": "value_proposition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fitur_kunci_1": {
+          "name": "fitur_kunci_1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fitur_kunci_2": {
+          "name": "fitur_kunci_2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fitur_kunci_3": {
+          "name": "fitur_kunci_3",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "flow_solusi": {
+          "name": "flow_solusi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prototype_solusi_link": {
+          "name": "prototype_solusi_link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mekanisme_user_testing": {
+          "name": "mekanisme_user_testing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jumlah_responden_aktual": {
+          "name": "jumlah_responden_aktual",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profil_responden_aktual": {
+          "name": "profil_responden_aktual",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_lokasi_testing": {
+          "name": "tanggal_lokasi_testing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kesimpulan": {
+          "name": "kesimpulan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ketercapaian_psf": {
+          "name": "ketercapaian_psf",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keputusan": {
+          "name": "keputusan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "catatan_mvp_planning": {
+          "name": "catatan_mvp_planning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bukti_pendukung": {
+          "name": "bukti_pendukung",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "ttd_disusun": {
+          "name": "ttd_disusun",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_diperiksa": {
+          "name": "ttd_diperiksa",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disetujui": {
+          "name": "ttd_disetujui",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_validation_report_plan_id_customer_validation_plan_id_fk": {
+          "name": "customer_validation_report_plan_id_customer_validation_plan_id_fk",
+          "tableFrom": "customer_validation_report",
+          "tableTo": "customer_validation_plan",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "customer_validation_report_plan_id_unique": {
+          "name": "customer_validation_report_plan_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "plan_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_validation_temuan_kualitatif": {
+      "name": "customer_validation_temuan_kualitatif",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kategori": {
+          "name": "kategori",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pertanyaan_kunci": {
+          "name": "pertanyaan_kunci",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "temuan_utama": {
+          "name": "temuan_utama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_validation_temuan_kualitatif_report_id_customer_validation_report_id_fk": {
+          "name": "customer_validation_temuan_kualitatif_report_id_customer_validation_report_id_fk",
+          "tableFrom": "customer_validation_temuan_kualitatif",
+          "tableTo": "customer_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dfv_rekapitulasi": {
+      "name": "dfv_rekapitulasi",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kategori_dfv": {
+          "name": "kategori_dfv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rata_rata_ketercapaian": {
+          "name": "rata_rata_ketercapaian",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "threshold": {
+          "name": "threshold",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 70
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'lolos'"
+        },
+        "catatan_keputusan": {
+          "name": "catatan_keputusan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dfv_rekapitulasi_report_id_market_validation_report_id_fk": {
+          "name": "dfv_rekapitulasi_report_id_market_validation_report_id_fk",
+          "tableFrom": "dfv_rekapitulasi",
+          "tableTo": "market_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.dossier_pia_archive": {
+      "name": "dossier_pia_archive",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposal_id_asli": {
+          "name": "proposal_id_asli",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "season_asli": {
+          "name": "season_asli",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "snapshot_data": {
+          "name": "snapshot_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dossier_pia_archive_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "dossier_pia_archive_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "dossier_pia_archive",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "dossier_pia_archive_tim_inovator_id_unique": {
+          "name": "dossier_pia_archive_tim_inovator_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tim_inovator_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.durasi_log": {
+      "name": "durasi_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "durasi_lama": {
+          "name": "durasi_lama",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "durasi_baru": {
+          "name": "durasi_baru",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alasan": {
+          "name": "alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "diubah_oleh": {
+          "name": "diubah_oleh",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_perubahan": {
+          "name": "tanggal_perubahan",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "durasi_log_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "durasi_log_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "durasi_log",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.forum_manajemen_inovasi": {
+      "name": "forum_manajemen_inovasi",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "keputusan_akhir": {
+          "name": "keputusan_akhir",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "catatan_notulensi": {
+          "name": "catatan_notulensi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "diinput_oleh": {
+          "name": "diinput_oleh",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_input": {
+          "name": "tanggal_input",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "forum_manajemen_inovasi_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "forum_manajemen_inovasi_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "forum_manajemen_inovasi",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hasil_validasi_metrik": {
+      "name": "hasil_validasi_metrik",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fase": {
+          "name": "fase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'customer_validation'"
+        },
+        "validasi": {
+          "name": "validasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metrik": {
+          "name": "metrik",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target": {
+          "name": "target",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hasil_aktual": {
+          "name": "hasil_aktual",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interpretasi": {
+          "name": "interpretasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "learning": {
+          "name": "learning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enhancement": {
+          "name": "enhancement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "persen_tercapai": {
+          "name": "persen_tercapai",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kanban_card": {
+      "name": "kanban_card",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "judul": {
+          "name": "judul",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deskripsi": {
+          "name": "deskripsi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sprint_number": {
+          "name": "sprint_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tahap": {
+          "name": "tahap",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'umum'"
+        },
+        "status_kolom": {
+          "name": "status_kolom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'To Do'"
+        },
+        "owner_anggota_id": {
+          "name": "owner_anggota_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_mulai": {
+          "name": "tanggal_mulai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_selesai": {
+          "name": "tanggal_selesai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acceptance_criteria": {
+          "name": "acceptance_criteria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dependency_risiko": {
+          "name": "dependency_risiko",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "urutan": {
+          "name": "urutan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "kanban_card_tim_idx": {
+          "name": "kanban_card_tim_idx",
+          "columns": [
+            {
+              "expression": "tim_inovator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "kanban_card_tahap_idx": {
+          "name": "kanban_card_tahap_idx",
+          "columns": [
+            {
+              "expression": "tahap",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kanban_card_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "kanban_card_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "kanban_card",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kanban_card_owner_anggota_id_anggota_tim_id_fk": {
+          "name": "kanban_card_owner_anggota_id_anggota_tim_id_fk",
+          "tableFrom": "kanban_card",
+          "tableTo": "anggota_tim",
+          "columnsFrom": [
+            "owner_anggota_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kanban_column": {
+      "name": "kanban_column",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_kolom": {
+          "name": "nama_kolom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "urutan": {
+          "name": "urutan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "kanban_column_tim_idx": {
+          "name": "kanban_column_tim_idx",
+          "columns": [
+            {
+              "expression": "tim_inovator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kanban_column_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "kanban_column_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "kanban_column",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.lpj": {
+      "name": "lpj",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "anggaran_pengajuan_id": {
+          "name": "anggaran_pengajuan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_dokumen_url": {
+          "name": "file_dokumen_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bukti_elektronik_url": {
+          "name": "bukti_elektronik_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_kegiatan_selesai": {
+          "name": "tanggal_kegiatan_selesai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tanggal_kirim": {
+          "name": "tanggal_kirim",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "batas_kirim": {
+          "name": "batas_kirim",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'dikirim'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "lpj_anggaran_pengajuan_id_anggaran_pengajuan_id_fk": {
+          "name": "lpj_anggaran_pengajuan_id_anggaran_pengajuan_id_fk",
+          "tableFrom": "lpj",
+          "tableTo": "anggaran_pengajuan",
+          "columnsFrom": [
+            "anggaran_pengajuan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "lpj_anggaran_pengajuan_id_unique": {
+          "name": "lpj_anggaran_pengajuan_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "anggaran_pengajuan_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.market_validation_plan": {
+      "name": "market_validation_plan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hasil_customer_validation_ringkasan": {
+          "name": "hasil_customer_validation_ringkasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deskripsi_mvp": {
+          "name": "deskripsi_mvp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mvp_version": {
+          "name": "mvp_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'v1.0'"
+        },
+        "fitur_mvp_dirilis": {
+          "name": "fitur_mvp_dirilis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channel_release": {
+          "name": "channel_release",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periode_release_mulai": {
+          "name": "periode_release_mulai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periode_release_selesai": {
+          "name": "periode_release_selesai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deskripsi_proses_mvp": {
+          "name": "deskripsi_proses_mvp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_dukung_mvp": {
+          "name": "data_dukung_mvp",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "target_early_adopters": {
+          "name": "target_early_adopters",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lokasi_pilot": {
+          "name": "lokasi_pilot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "daftar_early_adopters": {
+          "name": "daftar_early_adopters",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jumlah_target_pengguna": {
+          "name": "jumlah_target_pengguna",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batasan_scope_mvp": {
+          "name": "batasan_scope_mvp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disusun": {
+          "name": "ttd_disusun",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_diperiksa": {
+          "name": "ttd_diperiksa",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disetujui": {
+          "name": "ttd_disetujui",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "market_validation_plan_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "market_validation_plan_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "market_validation_plan",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "market_validation_plan_tim_inovator_id_unique": {
+          "name": "market_validation_plan_tim_inovator_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tim_inovator_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.market_validation_report": {
+      "name": "market_validation_report",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mvp_version_dilaporkan": {
+          "name": "mvp_version_dilaporkan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periode_rilis_mulai": {
+          "name": "periode_rilis_mulai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "periode_rilis_selesai": {
+          "name": "periode_rilis_selesai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lokasi_channel_rilis": {
+          "name": "lokasi_channel_rilis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jumlah_early_adopters_aktual": {
+          "name": "jumlah_early_adopters_aktual",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ringkasan_aktivitas_rilis": {
+          "name": "ringkasan_aktivitas_rilis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kendala_utama": {
+          "name": "kendala_utama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "perubahan_dari_plan": {
+          "name": "perubahan_dari_plan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kesimpulan_pmf": {
+          "name": "kesimpulan_pmf",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keputusan_go_nogo": {
+          "name": "keputusan_go_nogo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rekomendasi_iterasi": {
+          "name": "rekomendasi_iterasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rencana_mvp_berikutnya": {
+          "name": "rencana_mvp_berikutnya",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rekomendasi_promotor_sponsor": {
+          "name": "rekomendasi_promotor_sponsor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bukti_pendukung": {
+          "name": "bukti_pendukung",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "ttd_disusun": {
+          "name": "ttd_disusun",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_diperiksa": {
+          "name": "ttd_diperiksa",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ttd_disetujui": {
+          "name": "ttd_disetujui",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "market_validation_report_plan_id_market_validation_plan_id_fk": {
+          "name": "market_validation_report_plan_id_market_validation_plan_id_fk",
+          "tableFrom": "market_validation_report",
+          "tableTo": "market_validation_plan",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "market_validation_report_plan_id_unique": {
+          "name": "market_validation_report_plan_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "plan_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mv_release_log": {
+      "name": "mv_release_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "aktivitas": {
+          "name": "aktivitas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "output": {
+          "name": "output",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_evidence": {
+          "name": "data_evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pic": {
+          "name": "pic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "catatan": {
+          "name": "catatan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mv_release_log_report_id_market_validation_report_id_fk": {
+          "name": "mv_release_log_report_id_market_validation_report_id_fk",
+          "tableFrom": "mv_release_log",
+          "tableTo": "market_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mv_sprint_retrospective": {
+      "name": "mv_sprint_retrospective",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_number": {
+          "name": "sprint_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "continue": {
+          "name": "continue",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stop": {
+          "name": "stop",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start": {
+          "name": "start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_target_sprint": {
+          "name": "owner_target_sprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mv_sprint_retrospective_report_id_market_validation_report_id_fk": {
+          "name": "mv_sprint_retrospective_report_id_market_validation_report_id_fk",
+          "tableFrom": "mv_sprint_retrospective",
+          "tableTo": "market_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mv_sprint_review_backlog": {
+      "name": "mv_sprint_review_backlog",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_number": {
+          "name": "sprint_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "backlog_diverifikasi": {
+          "name": "backlog_diverifikasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'done'"
+        },
+        "backlog_dimodifikasi": {
+          "name": "backlog_dimodifikasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modification": {
+          "name": "modification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "backlog_baru": {
+          "name": "backlog_baru",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_next_sprint": {
+          "name": "owner_next_sprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mv_sprint_review_backlog_report_id_market_validation_report_id_fk": {
+          "name": "mv_sprint_review_backlog_report_id_market_validation_report_id_fk",
+          "tableFrom": "mv_sprint_review_backlog",
+          "tableTo": "market_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mv_sprint_review_outcome": {
+      "name": "mv_sprint_review_outcome",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "report_id": {
+          "name": "report_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sprint_number": {
+          "name": "sprint_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "demo": {
+          "name": "demo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feedback": {
+          "name": "feedback",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "learning": {
+          "name": "learning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "questions": {
+          "name": "questions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mv_sprint_review_outcome_report_id_market_validation_report_id_fk": {
+          "name": "mv_sprint_review_outcome_report_id_market_validation_report_id_fk",
+          "tableFrom": "mv_sprint_review_outcome",
+          "tableTo": "market_validation_report",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mvp_mapping_fitur": {
+      "name": "mvp_mapping_fitur",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "solusi_tervalidasi": {
+          "name": "solusi_tervalidasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fitur_solusi": {
+          "name": "fitur_solusi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "benefit": {
+          "name": "benefit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fitur_mvp_status": {
+          "name": "fitur_mvp_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'dirilis'"
+        },
+        "acceptance_criteria_evidence": {
+          "name": "acceptance_criteria_evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mvp_mapping_fitur_plan_id_market_validation_plan_id_fk": {
+          "name": "mvp_mapping_fitur_plan_id_market_validation_plan_id_fk",
+          "tableFrom": "mvp_mapping_fitur",
+          "tableTo": "market_validation_plan",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mvp_resources_needed": {
+      "name": "mvp_resources_needed",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jenis_resource": {
+          "name": "jenis_resource",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kebutuhan_spesifik": {
+          "name": "kebutuhan_spesifik",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_sumber": {
+          "name": "owner_sumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_ketersediaan": {
+          "name": "status_ketersediaan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gap_tindak_lanjut": {
+          "name": "gap_tindak_lanjut",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mvp_resources_needed_plan_id_market_validation_plan_id_fk": {
+          "name": "mvp_resources_needed_plan_id_market_validation_plan_id_fk",
+          "tableFrom": "mvp_resources_needed",
+          "tableTo": "market_validation_plan",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.penghargaan": {
+      "name": "penghargaan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kategori": {
+          "name": "kategori",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jenis_hadiah": {
+          "name": "jenis_hadiah",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "komposisi_anggota_final": {
+          "name": "komposisi_anggota_final",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "penghargaan_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "penghargaan_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "penghargaan",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.permissions": {
+      "name": "permissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kode_permission": {
+          "name": "kode_permission",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modul": {
+          "name": "modul",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deskripsi": {
+          "name": "deskripsi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "permissions_kode_permission_unique": {
+          "name": "permissions_kode_permission_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "kode_permission"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rencana_validasi_metrik": {
+      "name": "rencana_validasi_metrik",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fase": {
+          "name": "fase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'customer_validation'"
+        },
+        "validasi": {
+          "name": "validasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metrik": {
+          "name": "metrik",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_ukuran": {
+          "name": "unit_ukuran",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kriteria_kesuksesan": {
+          "name": "kriteria_kesuksesan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cara_pengukuran": {
+          "name": "cara_pengukuran",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "catatan": {
+          "name": "catatan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline": {
+          "name": "baseline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target": {
+          "name": "target",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "threshold": {
+          "name": "threshold",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pic": {
+          "name": "pic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.role_permissions": {
+      "name": "role_permissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permission_id": {
+          "name": "permission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "diizinkan": {
+          "name": "diizinkan",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "role_permission_unique": {
+          "name": "role_permission_unique",
+          "columns": [
+            {
+              "expression": "role_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "permission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "role_permissions_role_id_roles_id_fk": {
+          "name": "role_permissions_role_id_roles_id_fk",
+          "tableFrom": "role_permissions",
+          "tableTo": "roles",
+          "columnsFrom": [
+            "role_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "role_permissions_permission_id_permissions_id_fk": {
+          "name": "role_permissions_permission_id_permissions_id_fk",
+          "tableFrom": "role_permissions",
+          "tableTo": "permissions",
+          "columnsFrom": [
+            "permission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.roles": {
+      "name": "roles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kode_role": {
+          "name": "kode_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_role": {
+          "name": "nama_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deskripsi": {
+          "name": "deskripsi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'per_tim'"
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "roles_kode_role_unique": {
+          "name": "roles_kode_role_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "kode_role"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tim_inovator": {
+      "name": "tim_inovator",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nama_proyek_inovasi": {
+          "name": "nama_proyek_inovasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kategori_pia": {
+          "name": "kategori_pia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "klasifikasi_inovasi": {
+          "name": "klasifikasi_inovasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'aktif'"
+        },
+        "tanggal_mulai": {
+          "name": "tanggal_mulai",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "durasi_bulan": {
+          "name": "durasi_bulan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "tanggal_berakhir": {
+          "name": "tanggal_berakhir",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id_asli": {
+          "name": "proposal_id_asli",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "season_asli": {
+          "name": "season_asli",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'Season 12 - 2026'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_role_tim": {
+      "name": "user_role_tim",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role_id": {
+          "name": "role_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tim_inovator_id": {
+          "name": "tim_inovator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_role_tim_unique": {
+          "name": "user_role_tim_unique",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "role_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tim_inovator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "user_role_tim_user_idx": {
+          "name": "user_role_tim_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "user_role_tim_tim_idx": {
+          "name": "user_role_tim_tim_idx",
+          "columns": [
+            {
+              "expression": "tim_inovator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_role_tim_user_id_users_id_fk": {
+          "name": "user_role_tim_user_id_users_id_fk",
+          "tableFrom": "user_role_tim",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_role_tim_role_id_roles_id_fk": {
+          "name": "user_role_tim_role_id_roles_id_fk",
+          "tableFrom": "user_role_tim",
+          "tableTo": "roles",
+          "columnsFrom": [
+            "role_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_role_tim_tim_inovator_id_tim_inovator_id_fk": {
+          "name": "user_role_tim_tim_inovator_id_tim_inovator_id_fk",
+          "tableFrom": "user_role_tim",
+          "tableTo": "tim_inovator",
+          "columnsFrom": [
+            "tim_inovator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_aktif": {
+          "name": "status_aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
