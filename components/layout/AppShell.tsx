@@ -1,8 +1,13 @@
 import { Navbar } from "./Navbar";
 import { getCurrentUser } from "@/lib/auth/rbac";
+import { redirect } from "next/navigation";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/login');
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
