@@ -95,6 +95,16 @@ export async function getDossierDetail(proposalIdOrTimId: string) {
     return null;
   }
 
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(proposalIdOrTimId);
+
+  const whereClause = isUuid
+    ? or(
+        eq(dossierPiaArchive.id, proposalIdOrTimId),
+        eq(dossierPiaArchive.timInovatorId, proposalIdOrTimId),
+        eq(dossierPiaArchive.proposalIdAsli, proposalIdOrTimId)
+      )
+    : eq(dossierPiaArchive.proposalIdAsli, proposalIdOrTimId);
+
   // Find by proposalIdAsli or timInovatorId
   const [record] = await db
     .select({
@@ -110,12 +120,7 @@ export async function getDossierDetail(proposalIdOrTimId: string) {
     })
     .from(dossierPiaArchive)
     .leftJoin(timInovator, eq(dossierPiaArchive.timInovatorId, timInovator.id))
-    .where(
-      or(
-        eq(dossierPiaArchive.proposalIdAsli, proposalIdOrTimId),
-        eq(dossierPiaArchive.timInovatorId, proposalIdOrTimId)
-      )
-    )
+    .where(whereClause)
     .limit(1);
 
   if (!record) return null;

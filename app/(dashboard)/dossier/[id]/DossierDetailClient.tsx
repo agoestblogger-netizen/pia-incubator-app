@@ -23,6 +23,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+function formatDateSafe(dateStr?: string | null, options?: Intl.DateTimeFormatOptions) {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('id-ID', options || { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return '-';
+  }
+}
+
 export function DossierDetailClient({ dossier }: { dossier: any }) {
   const [activeTab, setActiveTab] = useState<'submisi' | 'kurasi' | 'juri' | 'lampiran'>('submisi');
 
@@ -31,9 +42,9 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
   const pengusul = dataSubmisi.pengusul || {};
   const formDetail = dataSubmisi.form_detail || {};
   const statusAkhir = snap.status_akhir || {};
-  const riwayatKurasi: any[] = snap.riwayat_kurasi || [];
-  const riwayatJuri: any[] = snap.riwayat_penilaian_juri || [];
-  const daftarLampiran: string[] = snap.daftar_lampiran || [];
+  const riwayatKurasi: any[] = Array.isArray(snap.riwayat_kurasi) ? snap.riwayat_kurasi : [];
+  const riwayatJuri: any[] = Array.isArray(snap.riwayat_penilaian_juri) ? snap.riwayat_penilaian_juri : [];
+  const daftarLampiran: string[] = Array.isArray(snap.daftar_lampiran) ? snap.daftar_lampiran : [];
   const lampiranUrls: Record<string, string> = snap.lampiran_urls || {};
 
   return (
@@ -269,13 +280,7 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
                 <div>
                   <span className="text-gray-400 block text-[10px] uppercase font-bold">Tanggal Submit</span>
                   <span className="text-gray-800 font-mono">
-                    {dataSubmisi.tanggal_submit
-                      ? new Date(dataSubmisi.tanggal_submit).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })
-                      : '-'}
+                    {formatDateSafe(dataSubmisi.tanggal_submit, { day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
                 </div>
               </CardContent>
@@ -327,11 +332,7 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
                           </span>
                         </div>
                         <span className="text-[11px] text-gray-400 font-mono">
-                          {new Date(k.tanggal).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                          {formatDateSafe(k.tanggal)}
                         </span>
                       </div>
 
@@ -387,11 +388,7 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
                           </span>
                         </div>
                         <span className="text-[11px] text-gray-400 font-mono">
-                          {new Date(j.tanggal).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                          {formatDateSafe(j.tanggal)}
                         </span>
                       </div>
 
