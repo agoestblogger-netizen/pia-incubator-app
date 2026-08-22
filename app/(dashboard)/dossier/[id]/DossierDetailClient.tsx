@@ -47,6 +47,27 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
   const daftarLampiran: string[] = Array.isArray(snap.daftar_lampiran) ? snap.daftar_lampiran : [];
   const lampiranUrls: Record<string, string> = snap.lampiran_urls || {};
 
+  // Dynamically determine jury section title & description based on stages in data
+  const juriStages = Array.from(new Set(riwayatJuri.map((j) => j.tahap).filter(Boolean)));
+  const hasRegional = juriStages.some((s) => s.toLowerCase().includes('regional'));
+  const hasGrandFinal = juriStages.some((s) => s.toLowerCase().includes('grand final'));
+
+  let juriSectionTitle = 'Riwayat Penilaian Dewan Juri & Sponsor';
+  let juriSectionDescription = 'Skor, umpan balik kualitatif, dan rekomendasi dewan juri serta sponsor.';
+
+  if (hasRegional && hasGrandFinal) {
+    juriSectionTitle = 'Riwayat Penilaian Regional & Grand Final';
+    juriSectionDescription = 'Skor, umpan balik kualitatif, dan rekomendasi dewan juri Regional serta sponsor Grand Final.';
+  } else if (hasGrandFinal) {
+    juriSectionTitle = 'Riwayat Penilaian Grand Final';
+    juriSectionDescription = 'Skor, umpan balik kualitatif, dan rekomendasi dewan juri & sponsor Grand Final.';
+  } else if (hasRegional) {
+    juriSectionTitle = 'Riwayat Penilaian Regional Final';
+    juriSectionDescription = 'Skor, umpan balik kualitatif, dan rekomendasi dewan juri Regional Final.';
+  } else if (juriStages.length > 0) {
+    juriSectionTitle = `Riwayat Penilaian ${juriStages.join(' & ')}`;
+  }
+
   return (
     <div className="space-y-6">
       {/* Back link */}
@@ -363,10 +384,10 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
           <CardHeader className="pb-3 border-b border-gray-100">
             <CardTitle className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Award className="h-4 w-4 text-[#0F5132]" />
-              Riwayat Penilaian Regional & Grand Final
+              {juriSectionTitle}
             </CardTitle>
             <CardDescription className="text-xs text-gray-500">
-              Skor, umpan balik kualitatif, dan rekomendasi dewan juri serta sponsor.
+              {juriSectionDescription}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
