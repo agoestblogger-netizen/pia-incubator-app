@@ -2,12 +2,13 @@
 
 import { db } from "@/lib/db";
 import { charter, roles, userRoleTim, anggotaTim, users } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 
 export type RoleAssignmentItem = {
+  id?: string; // local temporary id for UI list keys
   roleCode: 'sponsor' | 'promotor' | 'project_owner' | 'inisiator' | 'co_creator' | 'coach' | 'sme';
   userId: string | null;
   userName?: string;
@@ -92,15 +93,33 @@ export async function saveCharterAction(
     }
 
     // 2. Process Role & Accountability Assignments if provided
-    if (Array.isArray(roleAssignments) && roleAssignments.length > 0) {
+    if (Array.isArray(roleAssignments)) {
       const allRoles = await db.select().from(roles);
       const roleMap = new Map(allRoles.map((r) => [r.kodeRole, r]));
 
-      for (const item of roleAssignments) {
-        const targetRole = roleMap.get(item.roleCode);
+      // List of supported standard roles
+      const standardRoleCodes: RoleAssignmentItem['roleCode'][] = [
+        'sponsor',
+        'promotor',
+        'project_owner',
+        'inisiator',
+        'co_creator',
+        'coach',
+        'sme',
+      ];
+
+      const allActiveUserIds = new Set<string>();
+
+      for (const roleCode of standardRoleCodes) {
+        const targetRole = roleMap.get(roleCode);
         if (!targetRole) continue;
 
-        // A. Remove existing user_role_tim for this (timInovatorId, roleId)
+        // Find all submitted items for this specific roleCode
+        const submittedItems = roleAssignments.filter(
+          (r) => r.roleCode === roleCode && r.userId
+        );
+
+        // Delete all existing user_role_tim assignments for this (timId, roleId)
         await db
           .delete(userRoleTim)
           .where(
@@ -110,9 +129,11 @@ export async function saveCharterAction(
             )
           );
 
-        // B. If a user is assigned
-        if (item.userId) {
-          // Verify user in db
+        // Insert new assignments and upsert anggota_tim for each submitted person
+        for (const item of submittedItems) {
+          if (!item.userId) continue;
+          allActiveUserIds.add(item.userId);
+
           const [assignedUser] = await db
             .select()
             .from(users)
@@ -130,7 +151,7 @@ export async function saveCharterAction(
               })
               .onConflictDoNothing();
 
-            // Upsert anggota_tim record
+            // Upsert anggota_tim
             const [existingAnggota] = await db
               .select()
               .from(anggotaTim)
@@ -164,6 +185,18 @@ export async function saveCharterAction(
               });
             }
           }
+        }
+      }
+
+      // Clean up anggota_tim rows for users who are no longer assigned to ANY role in this team
+      const existingTeamAnggota = await db
+        .select()
+        .from(anggotaTim)
+        .where(eq(anggotaTim.timInovatorId, timId));
+
+      for (const ang of existingTeamAnggota) {
+        if (ang.userId && !allActiveUserIds.has(ang.userId)) {
+          await db.delete(anggotaTim).where(eq(anggotaTim.id, ang.id));
         }
       }
     }

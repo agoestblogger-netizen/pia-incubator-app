@@ -7,23 +7,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UserSelectCombobox, SelectedUser } from "@/components/user/UserSelectCombobox";
-import { Save, CheckCircle2, Users, Shield, Award, UserCheck, Sparkles, Building2, Briefcase } from "lucide-react";
+import {
+  Save,
+  CheckCircle2,
+  Users,
+  UserPlus,
+  Trash2,
+  Plus,
+  UserCheck,
+  Building2,
+  Briefcase,
+} from "lucide-react";
 
-interface RoleRowConfig {
+interface RoleConfig {
   roleCode: RoleAssignmentItem['roleCode'];
   title: string;
   badge: string;
   badgeColor: string;
   accountability: string;
+  isMulti: boolean;
 }
 
-const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
+const ROLES_CONFIG: RoleConfig[] = [
   {
     roleCode: 'sponsor',
     title: 'Sponsor',
     badge: 'Mandat & Budget',
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
     accountability: 'Memberikan mandat strategis, persetujuan alokasi anggaran, dan proteksi politis inisiatif.',
+    isMulti: false,
   },
   {
     roleCode: 'promotor',
@@ -31,6 +43,7 @@ const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
     badge: 'Adopsi & Jaringan',
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
     accountability: 'Mendorong adopsi lintas unit kerja, membuka akses jaringan internal, dan mengawal integrasi solusi.',
+    isMulti: false,
   },
   {
     roleCode: 'project_owner',
@@ -38,6 +51,7 @@ const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
     badge: 'Lead Eksekusi',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     accountability: 'Memimpin eksekusi harian, mengelola backlog sprint, dan bertanggung jawab atas deliverable & timeline.',
+    isMulti: false,
   },
   {
     roleCode: 'inisiator',
@@ -45,6 +59,7 @@ const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
     badge: 'Visi Inovasi',
     badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
     accountability: 'Pemilik gagasan awal, menjaga orisinalitas visi dan esensi problem-solution fit selama inkubasi.',
+    isMulti: true,
   },
   {
     roleCode: 'co_creator',
@@ -52,6 +67,7 @@ const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
     badge: 'Tim Inti',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
     accountability: 'Anggota tim inti yang mengeksekusi pengembangan teknis, user testing, dan pengujian lapangan.',
+    isMulti: true,
   },
   {
     roleCode: 'coach',
@@ -59,6 +75,7 @@ const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
     badge: 'Fasilitator & Metodologi',
     badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     accountability: 'Memandu penerapan metodologi inovasi, pacing monitoring 2-mingguan, dan problem solving tim.',
+    isMulti: false,
   },
   {
     roleCode: 'sme',
@@ -66,6 +83,7 @@ const DEFAULT_ROLE_ROWS: RoleRowConfig[] = [
     badge: 'Domain Expert',
     badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
     accountability: 'Memberikan keahlian domain spesifik (IT Architecture, Legal/Compliance, Finance, Risk, Operasional).',
+    isMulti: true,
   },
 ];
 
@@ -102,19 +120,39 @@ export function CharterFormClient({
   const anggotaList = initialRolesData?.anggotaTim || [];
 
   const [roleAssignments, setRoleAssignments] = useState<RoleAssignmentItem[]>(() => {
-    return DEFAULT_ROLE_ROWS.map((row) => {
-      const existingAssign = assignmentsList.find((a: any) => a.roleCode === row.roleCode);
-      const existingAnggota = existingAssign ? anggotaList.find((ang: any) => ang.userId === existingAssign.userId) : null;
+    const items: RoleAssignmentItem[] = [];
 
-      return {
-        roleCode: row.roleCode,
-        userId: existingAssign?.userId || null,
-        userName: existingAssign?.userName || "",
-        userEmail: existingAssign?.userEmail || "",
-        jabatan: existingAnggota?.jabatan || "",
-        unitKerja: existingAnggota?.unitKerja || "",
-      };
-    });
+    for (const config of ROLES_CONFIG) {
+      const matched = assignmentsList.filter((a: any) => a.roleCode === config.roleCode);
+
+      if (matched.length > 0) {
+        matched.forEach((assign: any, idx: number) => {
+          const anggota = anggotaList.find((ang: any) => ang.userId === assign.userId);
+          items.push({
+            id: `init-${config.roleCode}-${idx}-${assign.userId}`,
+            roleCode: config.roleCode,
+            userId: assign.userId,
+            userName: assign.userName || "",
+            userEmail: assign.userEmail || "",
+            jabatan: anggota?.jabatan || "",
+            unitKerja: anggota?.unitKerja || "",
+          });
+        });
+      } else {
+        // Render 1 empty row ready to be filled
+        items.push({
+          id: `empty-${config.roleCode}-${Math.random().toString(36).substring(2, 7)}`,
+          roleCode: config.roleCode,
+          userId: null,
+          userName: "",
+          userEmail: "",
+          jabatan: "",
+          unitKerja: "",
+        });
+      }
+    }
+
+    return items;
   });
 
   const [saving, setSaving] = useState(false);
@@ -124,33 +162,55 @@ export function CharterFormClient({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleRoleUserChange = (roleCode: RoleAssignmentItem['roleCode'], user: SelectedUser | null) => {
+  // Helper to add person to multi-person role
+  const handleAddPerson = (roleCode: RoleAssignmentItem['roleCode']) => {
+    const newItem: RoleAssignmentItem = {
+      id: `new-${roleCode}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      roleCode,
+      userId: null,
+      userName: "",
+      userEmail: "",
+      jabatan: "",
+      unitKerja: "",
+    };
+    setRoleAssignments((prev) => [...prev, newItem]);
+  };
+
+  // Helper to remove a person entry
+  const handleRemovePerson = (id?: string) => {
+    if (!id) return;
+    setRoleAssignments((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Helper to update person's user selection
+  const handlePersonUserChange = (id: string, user: SelectedUser | null) => {
     setRoleAssignments((prev) =>
-      prev.map((r) => {
-        if (r.roleCode === roleCode) {
+      prev.map((item) => {
+        if (item.id === id) {
           return {
-            ...r,
+            ...item,
             userId: user ? user.id : null,
-            userName: user ? user.nama : '',
-            userEmail: user ? user.email : '',
+            userName: user ? user.nama : "",
+            userEmail: user ? user.email : "",
           };
         }
-        return r;
+        return item;
       })
     );
   };
 
-  const handleRoleDetailChange = (
-    roleCode: RoleAssignmentItem['roleCode'],
+  // Helper to update person's jabatan or unitKerja
+  const handlePersonDetailChange = (
+    id: string,
     field: 'jabatan' | 'unitKerja',
     value: string
   ) => {
     setRoleAssignments((prev) =>
-      prev.map((r) => {
-        if (r.roleCode === roleCode) {
-          return { ...r, [field]: value };
+      prev.map((item) => {
+        if (item.id === id) {
+          return { ...item, [field]: value };
         }
-        return r;
+        return item;
       })
     );
   };
@@ -162,7 +222,10 @@ export function CharterFormClient({
 
     const res = await saveCharterAction(timId, formData, roleAssignments);
     if (res.success) {
-      setStatusMsg({ type: "success", text: "Innovation Charter & Struktur Akuntabilitas Tim berhasil disimpan!" });
+      setStatusMsg({
+        type: "success",
+        text: "Innovation Charter & Struktur Akuntabilitas Tim berhasil disimpan!",
+      });
     } else {
       setStatusMsg({ type: "error", text: res.error || "Gagal menyimpan Charter." });
     }
@@ -185,7 +248,7 @@ export function CharterFormClient({
       )}
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* BAGIAN 0: STRUKTUR ROLE & AKUNTABILITAS TIM (TERHUBUNG KE AKUN USER) */}
+      {/* BAGIAN 0: STRUKTUR ROLE & AKUNTABILITAS TIM (MULTI-PERSON SUPPORT) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
         <CardHeader className="bg-gradient-to-r from-gray-50 via-white to-gray-50/50 border-b border-gray-100 pb-4">
@@ -196,7 +259,7 @@ export function CharterFormClient({
                 Struktur Role & Akuntabilitas Tim
               </CardTitle>
               <CardDescription className="text-xs text-gray-500 mt-1">
-                Pilih atau buat akun pengguna untuk setiap peran kunci. Pengguna yang terdaftar otomatis mendapat hak akses ke workspace tim ini.
+                Pilih atau buat akun pengguna untuk setiap peran tim. Role Inisiator, Co-creators, dan SME mendukung banyak orang (multi-person).
               </CardDescription>
             </div>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F5132]/10 text-[#0F5132] text-xs font-bold border border-[#0F5132]/20">
@@ -215,64 +278,147 @@ export function CharterFormClient({
                   <th className="p-3.5 min-w-[280px]">Nama / Akun User (Searchable)</th>
                   <th className="p-3.5 min-w-[180px]">Jabatan Organisasi</th>
                   <th className="p-3.5 min-w-[180px]">Unit Kerja / Divisi</th>
+                  <th className="p-3.5 w-12 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {DEFAULT_ROLE_ROWS.map((row) => {
-                  const currentAssign = roleAssignments.find((r) => r.roleCode === row.roleCode);
-                  const selectedUser = currentAssign?.userId
-                    ? {
-                        id: currentAssign.userId,
-                        nama: currentAssign.userName || '',
-                        email: currentAssign.userEmail || '',
-                      }
-                    : null;
+                {ROLES_CONFIG.map((config) => {
+                  const roleItems = roleAssignments.filter(
+                    (item) => item.roleCode === config.roleCode
+                  );
 
                   return (
-                    <tr key={row.roleCode} className="hover:bg-gray-50/60 transition-colors">
-                      {/* Role & Accountability */}
+                    <tr key={config.roleCode} className="hover:bg-gray-50/40 transition-colors">
+                      {/* Role & Accountability Info Header */}
                       <td className="p-3.5 align-top">
                         <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900 text-xs">{row.title}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${row.badgeColor}`}>
-                              {row.badge}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-bold text-gray-900 text-xs">{config.title}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${config.badgeColor}`}>
+                              {config.badge}
                             </span>
                           </div>
                           <p className="text-[11px] text-gray-500 leading-relaxed">
-                            {row.accountability}
+                            {config.accountability}
                           </p>
+                          {config.isMulti ? (
+                            <span className="inline-block text-[10px] text-[#0F5132] font-semibold bg-[#0F5132]/5 px-2 py-0.5 rounded-md border border-[#0F5132]/20">
+                              * Multi-orang ({roleItems.length} Orang)
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[10px] text-gray-400">
+                              * 1 Orang (Lead)
+                            </span>
+                          )}
                         </div>
                       </td>
 
-                      {/* Searchable User Combobox */}
-                      <td className="p-3.5 align-top">
-                        <UserSelectCombobox
-                          value={currentAssign?.userId || null}
-                          selectedUserData={selectedUser}
-                          onChange={(user) => handleRoleUserChange(row.roleCode, user)}
-                          placeholder={`Pilih akun untuk ${row.title}...`}
-                        />
-                      </td>
+                      {/* Inputs Column: Single row or Multi-Person Stack */}
+                      <td colSpan={4} className="p-0 align-top">
+                        <div className="divide-y divide-gray-100">
+                          {roleItems.length === 0 ? (
+                            <div className="p-3 text-center text-gray-400 italic text-xs">
+                              Belum ada orang ditugaskan.
+                            </div>
+                          ) : (
+                            roleItems.map((item, index) => {
+                              const selectedUser = item.userId
+                                ? {
+                                    id: item.userId,
+                                    nama: item.userName || "",
+                                    email: item.userEmail || "",
+                                  }
+                                : null;
 
-                      {/* Jabatan */}
-                      <td className="p-3.5 align-top">
-                        <Input
-                          placeholder="Contoh: Dept Head Digital"
-                          value={currentAssign?.jabatan || ''}
-                          onChange={(e) => handleRoleDetailChange(row.roleCode, 'jabatan', e.target.value)}
-                          className="h-9 text-xs border-gray-200 bg-white"
-                        />
-                      </td>
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="grid grid-cols-[minmax(280px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_48px] items-center p-3 gap-2"
+                                >
+                                  {/* User Combobox */}
+                                  <div>
+                                    <UserSelectCombobox
+                                      value={item.userId || null}
+                                      selectedUserData={selectedUser}
+                                      onChange={(user) =>
+                                        handlePersonUserChange(item.id!, user)
+                                      }
+                                      placeholder={`Pilih akun untuk ${config.title}${
+                                        config.isMulti ? ` #${index + 1}` : ""
+                                      }...`}
+                                    />
+                                  </div>
 
-                      {/* Unit Kerja */}
-                      <td className="p-3.5 align-top">
-                        <Input
-                          placeholder="Contoh: Divisi TI"
-                          value={currentAssign?.unitKerja || ''}
-                          onChange={(e) => handleRoleDetailChange(row.roleCode, 'unitKerja', e.target.value)}
-                          className="h-9 text-xs border-gray-200 bg-white"
-                        />
+                                  {/* Jabatan */}
+                                  <div>
+                                    <Input
+                                      placeholder="Contoh: Dept Head Digital"
+                                      value={item.jabatan || ""}
+                                      onChange={(e) =>
+                                        handlePersonDetailChange(
+                                          item.id!,
+                                          "jabatan",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="h-9 text-xs border-gray-200 bg-white"
+                                    />
+                                  </div>
+
+                                  {/* Unit Kerja */}
+                                  <div>
+                                    <Input
+                                      placeholder="Contoh: Divisi TI"
+                                      value={item.unitKerja || ""}
+                                      onChange={(e) =>
+                                        handlePersonDetailChange(
+                                          item.id!,
+                                          "unitKerja",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="h-9 text-xs border-gray-200 bg-white"
+                                    />
+                                  </div>
+
+                                  {/* Delete Person Button (Active if multi or if user wants to clear) */}
+                                  <div className="text-center">
+                                    {config.isMulti ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleRemovePerson(item.id)}
+                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                                        title="Hapus orang ini dari peran"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    ) : (
+                                      <span className="text-gray-300 text-xs">—</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+
+                          {/* + Tambah Orang button for multi-person roles */}
+                          {config.isMulti && (
+                            <div className="p-2.5 bg-gray-50/60 flex items-center justify-start">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddPerson(config.roleCode)}
+                                className="h-8 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                <span>+ Tambah {config.title}</span>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
