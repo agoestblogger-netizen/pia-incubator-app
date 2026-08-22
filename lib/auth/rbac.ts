@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { users, roles, permissions, rolePermissions, userRoleTim } from '../db/schema';
+import { users, roles, permissions, rolePermissions, userRoleTim, timInovator } from '../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { createClient } from '../supabase/server';
 
@@ -10,7 +10,7 @@ export type UserProfile = {
   statusAktif: boolean;
   avatarUrl: string | null;
   globalRoles: string[];
-  timRoles: { timId: string; roleCode: string; roleName: string }[];
+  timRoles: { timId: string; roleCode: string; roleName: string; timNama?: string; timKategori?: string }[];
 };
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
@@ -40,9 +40,12 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
         roleCode: roles.kodeRole,
         roleName: roles.namaRole,
         timId: userRoleTim.timInovatorId,
+        timNama: timInovator.namaProyekInovasi,
+        timKategori: timInovator.kategoriPia,
       })
       .from(userRoleTim)
       .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
+      .leftJoin(timInovator, eq(userRoleTim.timInovatorId, timInovator.id))
       .where(eq(userRoleTim.userId, dbUser.id));
 
     const globalRoles = assignments
@@ -55,6 +58,8 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
         timId: a.timId!,
         roleCode: a.roleCode,
         roleName: a.roleName,
+        timNama: a.timNama || undefined,
+        timKategori: a.timKategori || undefined,
       }));
 
     return {
