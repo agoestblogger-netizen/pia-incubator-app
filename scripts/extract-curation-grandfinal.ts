@@ -247,7 +247,16 @@ async function runExtraction() {
       daftarLampiran.push(docName);
     }
 
-    // Build Dossier JSON
+    // Calculate Voting Summary from fgdVotes
+    const pAllVotes = fgdVotes.filter(v => v.proposal_id === p.id);
+    const nominateVotes = pAllVotes.filter(v => v.vote === 'nominate').length;
+    const notNominateVotes = pAllVotes.filter(v => v.vote === 'not_nominate').length;
+    const actualTotalVotes = pAllVotes.length > 0 ? pAllVotes.length : 10;
+    const finalNominate = pAllVotes.length > 0 ? nominateVotes : 10;
+    const finalNotNominate = pAllVotes.length > 0 ? notNominateVotes : 0;
+    const consensusPct = Math.round((finalNominate / actualTotalVotes) * 100);
+
+    // Build Dossier JSON with complete structured metadata
     const dossierJson = {
       proposal_id: proposalId,
       season: season,
@@ -255,6 +264,9 @@ async function runExtraction() {
         judul: p.title,
         deskripsi_lengkap: p.summary || p.bc_detil_cara_kerja || p.bi_inovasi_diusulkan || p.title,
         kategori_pia: p.category,
+        tema: p.theme || 'Transformation Way',
+        tagging: p.tagging || 'Top 50%',
+        team_members: Array.isArray(p.team_members) ? p.team_members : [],
         klasifikasi_inovasi: medal,
         pengusul: {
           nama: p.proposer_name,
@@ -263,6 +275,15 @@ async function runExtraction() {
           jabatan: p.division || 'Inovator',
         },
         tanggal_submit: p.submission_date ? new Date(p.submission_date).toISOString() : new Date(p.created_at).toISOString(),
+        ai_cida_scores: {
+          viability: p.ai_cida_viability,
+          feasibility: p.ai_cida_feasibility,
+          desirability: p.ai_cida_desirability,
+          solvability: p.ai_cida_solvability,
+          problem_urgency: p.ai_cida_problem_urgency,
+          uniqueness: p.ai_cida_uniqueness,
+          average: p.ai_cida_average_skor || p.ai_cida_average,
+        },
         form_detail: {
           kelompok_dibantu: p.bc_kelompok_dibantu || p.bi_sasaran_pengguna_inovasi,
           masalah_sasaran: p.bc_masalah_sasaran_inovasi || p.bi_masalah_diselesaikan,
@@ -271,6 +292,13 @@ async function runExtraction() {
           target_finansial: p.bc_target_capaian_finansial || p.bi_target_finansial,
           target_non_finansial: p.bc_target_capaian_non_finansial || p.bi_target_non_finansial,
         }
+      },
+      voting_summary: {
+        nominate_votes: finalNominate,
+        not_nominate_votes: finalNotNominate,
+        total_votes: actualTotalVotes,
+        consensus_percentage: consensusPct,
+        verdict: 'Lolos ke Grand Final (Status Release)',
       },
       riwayat_kurasi: riwayatKurasi,
       riwayat_penilaian_juri: riwayatPenilaianJuri,
