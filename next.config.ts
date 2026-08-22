@@ -4,8 +4,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     "@supabase/supabase-js",
     "@supabase/ssr",
-    "postgres",
-    "drizzle-orm",
   ],
 };
 
