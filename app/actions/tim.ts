@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { timInovator, anggotaTim, durasiLog, kanbanColumn } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
+import { logAudit } from "@/lib/db/audit";
 
 export async function getTimInovatorList() {
   return await db.select().from(timInovator).orderBy(desc(timInovator.createdAt));
@@ -25,6 +27,19 @@ export async function createTimInovatorAction(formData: {
   anggota: { nama: string; jabatan: string; unitKerja: string; komitmenDukungan?: string }[];
 }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'tim.manage');
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk mendaftarkan tim inovator baru.',
+      };
+    }
+
     const tanggalMulai = new Date();
     const tanggalBerakhir = new Date();
     tanggalBerakhir.setMonth(tanggalBerakhir.getMonth() + formData.durasiBulan);
@@ -63,6 +78,19 @@ export async function createTimInovatorAction(formData: {
       }))
     );
 
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'TIM_CREATE',
+      entity: 'tim_inovator',
+      entityId: tim.id,
+      details: {
+        namaProyekInovasi: tim.namaProyekInovasi,
+        kategoriPia: tim.kategoriPia,
+        durasiBulan: tim.durasiBulan,
+      },
+    });
+
     revalidatePath('/dashboard');
     return { success: true, data: tim };
   } catch (error: any) {
@@ -74,9 +102,22 @@ export async function updateDurasiTimAction(
   timId: string,
   durasiBaru: number,
   alasan: string,
-  diubahOleh: string
+  diubahOleh?: string
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'tim.edit', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk mengubah durasi inkubasi tim ini.',
+      };
+    }
+
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
     if (!tim) return { success: false, error: 'Tim tidak ditemukan.' };
 
@@ -95,7 +136,16 @@ export async function updateDurasiTimAction(
       durasiLama,
       durasiBaru,
       alasan,
-      diubahOleh,
+      diubahOleh: diubahOleh || user.nama,
+    });
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'TIM_DURASI_UPDATE',
+      entity: 'tim_inovator',
+      entityId: timId,
+      details: { durasiLama, durasiBaru, alasan },
     });
 
     revalidatePath('/dashboard');

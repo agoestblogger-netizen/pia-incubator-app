@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { roles, permissions, rolePermissions, users, userRoleTim } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
+import { logAudit } from "@/lib/db/audit";
 
 export async function getRbacMatrixData() {
   const allRoles = await db.select().from(roles);
@@ -35,6 +37,19 @@ export async function getRbacMatrixData() {
 
 export async function toggleRolePermissionAction(roleId: string, permissionId: string, allowed: boolean) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'user.manage');
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Khusus Admin Innovation Center yang dapat mengubah hak akses role.',
+      };
+    }
+
     const [existing] = await db
       .select()
       .from(rolePermissions)
@@ -53,6 +68,15 @@ export async function toggleRolePermissionAction(roleId: string, permissionId: s
         diizinkan: allowed,
       });
     }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'ROLE_PERMISSION_TOGGLE',
+      entity: 'role_permissions',
+      entityId: `${roleId}_${permissionId}`,
+      details: { roleId, permissionId, allowed },
+    });
 
     revalidatePath('/admin/roles');
     return { success: true };

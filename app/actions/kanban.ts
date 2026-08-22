@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { kanbanCard, kanbanColumn } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
+import { logAudit } from "@/lib/db/audit";
 
 export async function getKanbanData(timId: string) {
   const columns = await db
@@ -23,6 +25,19 @@ export async function getKanbanData(timId: string) {
 
 export async function createKanbanCardAction(timId: string, cardData: Partial<typeof kanbanCard.$inferInsert>) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'kanban.edit', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk menambah kartu di Kanban board tim ini.',
+      };
+    }
+
     const [card] = await db.insert(kanbanCard).values({
       timInovatorId: timId,
       judul: cardData.judul || 'Kartu Baru',
@@ -38,6 +53,15 @@ export async function createKanbanCardAction(timId: string, cardData: Partial<ty
       urutan: cardData.urutan || 0,
     }).returning();
 
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'KANBAN_CARD_CREATE',
+      entity: 'kanban_card',
+      entityId: card.id,
+      details: { timId, judul: card.judul, statusKolom: card.statusKolom, tahap: card.tahap },
+    });
+
     revalidatePath(`/tim/${timId}/kanban`);
     return { success: true, data: card };
   } catch (error: any) {
@@ -52,11 +76,33 @@ export async function updateKanbanCardStatusAction(
   newUrutan: number
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'kanban.edit', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk memindahkan kartu di Kanban board tim ini.',
+      };
+    }
+
     await db.update(kanbanCard).set({
       statusKolom: newStatusKolom,
       urutan: newUrutan,
       updatedAt: new Date(),
     }).where(eq(kanbanCard.id, cardId));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'KANBAN_CARD_MOVE',
+      entity: 'kanban_card',
+      entityId: cardId,
+      details: { timId, newStatusKolom, newUrutan },
+    });
 
     revalidatePath(`/tim/${timId}/kanban`);
     return { success: true };

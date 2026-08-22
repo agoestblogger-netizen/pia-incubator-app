@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { customerValidationPlan, customerValidationReport, rencanaValidasiMetrik, hasilValidasiMetrik } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
+import { logAudit } from "@/lib/db/audit";
 
 export async function getCustomerValidationData(timId: string) {
   const [plan] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
@@ -25,7 +27,21 @@ export async function getCustomerValidationData(timId: string) {
 
 export async function saveCustomerValidationPlanAction(timId: string, values: Partial<typeof customerValidationPlan.$inferInsert>) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'cust_val.edit', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk mengedit Customer Validation Plan tim ini.',
+      };
+    }
+
     const [existing] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
+    let planId = existing?.id;
 
     if (existing) {
       await db.update(customerValidationPlan).set({
@@ -33,11 +49,21 @@ export async function saveCustomerValidationPlanAction(timId: string, values: Pa
         updatedAt: new Date(),
       }).where(eq(customerValidationPlan.id, existing.id));
     } else {
-      await db.insert(customerValidationPlan).values({
+      const [inserted] = await db.insert(customerValidationPlan).values({
         timInovatorId: timId,
         ...values,
-      });
+      }).returning();
+      planId = inserted.id;
     }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'CUST_VAL_PLAN_SAVE',
+      entity: 'customer_validation_plan',
+      entityId: planId,
+      details: { timId, prototypeType: values.prototypeType },
+    });
 
     revalidatePath(`/tim/${timId}/customer-validation`);
     return { success: true };
@@ -48,7 +74,21 @@ export async function saveCustomerValidationPlanAction(timId: string, values: Pa
 
 export async function saveCustomerValidationReportAction(planId: string, timId: string, values: Partial<typeof customerValidationReport.$inferInsert>) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'cust_val.edit', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk mengedit Customer Validation Report tim ini.',
+      };
+    }
+
     const [existing] = await db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, planId)).limit(1);
+    let reportId = existing?.id;
 
     if (existing) {
       await db.update(customerValidationReport).set({
@@ -56,11 +96,21 @@ export async function saveCustomerValidationReportAction(planId: string, timId: 
         updatedAt: new Date(),
       }).where(eq(customerValidationReport.id, existing.id));
     } else {
-      await db.insert(customerValidationReport).values({
+      const [inserted] = await db.insert(customerValidationReport).values({
         planId,
         ...values,
-      });
+      }).returning();
+      reportId = inserted.id;
     }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'CUST_VAL_REPORT_SAVE',
+      entity: 'customer_validation_report',
+      entityId: reportId,
+      details: { timId, planId, ketercapaianPsf: values.ketercapaianPsf, keputusan: values.keputusan },
+    });
 
     revalidatePath(`/tim/${timId}/customer-validation`);
     return { success: true };
