@@ -1,3 +1,11 @@
+// Polyfill Node.js globals for Edge Runtime if accessed by transitive dependencies
+if (typeof (globalThis as any).__dirname === 'undefined') {
+  (globalThis as any).__dirname = '';
+}
+if (typeof (globalThis as any).__filename === 'undefined') {
+  (globalThis as any).__filename = '';
+}
+
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 

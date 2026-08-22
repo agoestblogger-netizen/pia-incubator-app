@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "@supabase/supabase-js",
+    "@supabase/ssr",
+    "postgres",
+    "drizzle-orm",
+  ],
 };
 
 export default nextConfig;
