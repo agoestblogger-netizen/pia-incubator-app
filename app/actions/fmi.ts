@@ -64,3 +64,58 @@ export async function saveFmiNotulensiAction(timId: string, data: {
     return { success: false, error: error.message || 'Gagal menyimpan notulensi FMI.' };
   }
 }
+
+export async function savePenghargaanAction(timId: string, data: {
+  kategori: string; // 'inovasi_terimplementasi' | 'inovasi_siap_implementasi'
+  jenisHadiah: string;
+  komposisiAnggotaFinal?: any[];
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'fmi.manage', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Khusus Admin Innovation Center yang dapat mencatat penghargaan inovasi.',
+      };
+    }
+
+    const [existing] = await db.select().from(penghargaan).where(eq(penghargaan.timInovatorId, timId)).limit(1);
+    let penghargaanId = existing?.id;
+
+    if (existing) {
+      await db.update(penghargaan).set({
+        kategori: data.kategori,
+        jenisHadiah: data.jenisHadiah,
+        komposisiAnggotaFinal: data.komposisiAnggotaFinal || [],
+        updatedAt: new Date(),
+      }).where(eq(penghargaan.id, existing.id));
+    } else {
+      const [inserted] = await db.insert(penghargaan).values({
+        timInovatorId: timId,
+        kategori: data.kategori,
+        jenisHadiah: data.jenisHadiah,
+        komposisiAnggotaFinal: data.komposisiAnggotaFinal || [],
+      }).returning();
+      penghargaanId = inserted.id;
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'PENGHARGAAN_SAVE',
+      entity: 'penghargaan',
+      entityId: penghargaanId,
+      details: { timId, kategori: data.kategori, jenisHadiah: data.jenisHadiah },
+    });
+
+    revalidatePath(`/tim/${timId}/governance`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menyimpan data penghargaan.' };
+  }
+}
