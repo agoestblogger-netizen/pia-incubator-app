@@ -48,6 +48,30 @@ export function Navbar({
           </Link>
         </div>
 
+        {/* Navigation Links */}
+        <nav className="hidden md:flex items-center gap-1">
+          <Link
+            href="/dashboard"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link
+            href="/dossier"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            Dossier Arsip
+          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin/import"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#E6CA65] hover:bg-white/10 transition-colors"
+            >
+              Import Calon Peserta
+            </Link>
+          )}
+        </nav>
+
         {/* User Profile & Actions */}
         <div className="flex items-center gap-3">
           {isAdmin && (

@@ -111,12 +111,16 @@ const DEFAULT_PERMISSIONS = [
 
   // Dossier Arsip PIA
   { kodePermission: 'dossier.view', modul: 'dossier', deskripsi: 'Melihat arsip proposal asli PIA' },
+
+  // Import Calon Peserta
+  { kodePermission: 'import.execute', modul: 'tim_inovator', deskripsi: 'Mengimpor calon peserta dari PIA Curation' },
 ];
 
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   admin_ic: [
     'user.manage', 'user.view',
     'tim.manage', 'tim.edit', 'tim.view',
+    'import.execute',
     'charter.manage', 'charter.edit', 'charter.view',
     'kanban.manage', 'kanban.edit', 'kanban.comment', 'kanban.view',
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
