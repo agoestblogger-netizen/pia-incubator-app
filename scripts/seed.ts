@@ -285,23 +285,10 @@ async function main() {
     }
   }
 
-  // 4. Seed Sample Innovator Team
-  console.log('\n4. Seeding Sample Innovator Team...');
-  let sampleTeam = (await db.select().from(timInovator).limit(1))[0];
-  if (!sampleTeam) {
-    const [newTeam] = await db.insert(timInovator).values({
-      namaProyekInovasi: 'Gadai Tabungan Emas Digital AI',
-      kategoriPia: 'PUSAT',
-      klasifikasiInovasi: 'Platinum',
-      status: 'aktif',
-      durasiBulan: 3,
-      seasonAsli: 'Season 12 - 2026',
-    }).returning();
-    sampleTeam = newTeam;
-    console.log(`  + Tim Inovator created: ${sampleTeam.namaProyekInovasi} (ID: ${sampleTeam.id})`);
-  } else {
-    console.log(`  = Tim Inovator exists: ${sampleTeam.namaProyekInovasi} (ID: ${sampleTeam.id})`);
-  }
+  // 4. Check Existing Teams
+  console.log('\n4. Checking Teams in database...');
+  const existingTeams = await db.select().from(timInovator);
+  console.log(`  * Total existing teams in database: ${existingTeams.length}`);
 
   // 5. Seed Users into Supabase Auth & Database
   console.log('\n5. Seeding Users to Supabase Auth & Database...');
@@ -378,50 +365,27 @@ async function main() {
       console.log(`  = DB user exists: ${u.nama}`);
     }
 
-    // Link Role & Team
-    const targetRoleId = roleMap.get(u.roleKode);
-    if (targetRoleId) {
-      const timId = u.isGlobal ? null : sampleTeam.id;
+    // Link Global Role
+    if (u.isGlobal) {
+      const targetRoleId = roleMap.get(u.roleKode);
+      if (targetRoleId) {
+        const [existingMapping] = await db.select().from(userRoleTim).where(
+          and(
+            eq(userRoleTim.userId, authUserId),
+            eq(userRoleTim.roleId, targetRoleId)
+          )
+        ).limit(1);
 
-      // Check existing mapping
-      const existingMappings = await db.select().from(userRoleTim).where(
-        and(
-          eq(userRoleTim.userId, authUserId),
-          eq(userRoleTim.roleId, targetRoleId)
-        )
-      );
-
-      const hasExactMapping = existingMappings.some(m => m.timInovatorId === timId);
-
-      if (!hasExactMapping) {
-        await db.insert(userRoleTim).values({
-          userId: authUserId,
-          roleId: targetRoleId,
-          timInovatorId: timId,
-        });
-        console.log(`  + Assigned role ${u.roleKode} to ${u.email} (Team: ${timId ? sampleTeam.namaProyekInovasi : 'Global'})`);
-      } else {
-        console.log(`  = Role mapping exists: ${u.roleKode} for ${u.email}`);
-      }
-    }
-
-    // If team member, add to anggotaTim table for easy display
-    if (!u.isGlobal && u.jabatan && u.unitKerja) {
-      const [existingAnggota] = await db.select().from(anggotaTim).where(
-        and(
-          eq(anggotaTim.timInovatorId, sampleTeam.id),
-          eq(anggotaTim.nama, u.nama)
-        )
-      ).limit(1);
-
-      if (!existingAnggota) {
-        await db.insert(anggotaTim).values({
-          timInovatorId: sampleTeam.id,
-          nama: u.nama,
-          jabatan: u.jabatan,
-          unitKerja: u.unitKerja,
-        });
-        console.log(`  + Anggota Tim added: ${u.nama}`);
+        if (!existingMapping) {
+          await db.insert(userRoleTim).values({
+            userId: authUserId,
+            roleId: targetRoleId,
+            timInovatorId: null,
+          });
+          console.log(`  + Assigned global role ${u.roleKode} to ${u.email}`);
+        } else {
+          console.log(`  = Global role mapping exists: ${u.roleKode} for ${u.email}`);
+        }
       }
     }
   }
