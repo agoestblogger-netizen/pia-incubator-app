@@ -34,6 +34,7 @@ export const timInovator = pgTable('tim_inovator', {
 export const anggotaTim = pgTable('anggota_tim', {
   id: uuid('id').primaryKey().defaultRandom(),
   timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   nama: text('nama').notNull(),
   jabatan: text('jabatan').notNull(),
   unitKerja: text('unit_kerja').notNull(),
@@ -42,6 +43,7 @@ export const anggotaTim = pgTable('anggota_tim', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('anggota_tim_inovator_idx').on(t.timInovatorId),
+  index('anggota_tim_user_idx').on(t.userId),
 ]);
 
 export const durasiLog = pgTable('durasi_log', {

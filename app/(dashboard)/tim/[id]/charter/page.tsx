@@ -1,5 +1,5 @@
 import { getTimInovatorById } from "@/app/actions/tim";
-import { getCharterByTimId } from "@/app/actions/charter";
+import { getCharterByTimId, getCharterRolesData } from "@/app/actions/charter";
 import { notFound } from "next/navigation";
 import { TimNavTabs } from "@/components/layout/TimNavTabs";
 import { CharterFormClient } from "./CharterFormClient";
@@ -15,7 +15,10 @@ export default async function CharterPage({
   const tim = await getTimInovatorById(resolvedParams.id);
   if (!tim) return notFound();
 
-  const initialData = await getCharterByTimId(tim.id);
+  const [initialData, rolesData] = await Promise.all([
+    getCharterByTimId(tim.id),
+    getCharterRolesData(tim.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -30,7 +33,12 @@ export default async function CharterPage({
 
       <TimNavTabs timId={tim.id} />
 
-      <CharterFormClient timId={tim.id} initialData={initialData} />
+      <CharterFormClient
+        timId={tim.id}
+        initialData={initialData}
+        initialRolesData={rolesData}
+      />
     </div>
   );
 }
+
