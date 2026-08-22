@@ -1,5 +1,12 @@
 import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth/rbac';
 
-export default function RootPage() {
-  redirect('/dashboard');
+export const dynamic = 'force-dynamic';
+
+export default async function RootPage() {
+  const user = await getCurrentUser();
+  if (user) {
+    redirect('/dashboard');
+  }
+  redirect('/login');
 }
