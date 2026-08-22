@@ -142,13 +142,21 @@ async function runExtraction() {
       });
     }
 
-    // Stage 2: FGD Review
+    // Stage 2: FGD Review - Deduplicate comments from multiple sessions
     const pFgdComments = fgdComments.filter(c => c.proposal_id === p.id);
     const pFgdVotes = fgdVotes.filter(v => v.proposal_id === p.id);
     const totalVotes = pFgdVotes.length > 0 ? pFgdVotes.length : 3;
 
-    if (pFgdComments.length > 0) {
-      for (const c of pFgdComments) {
+    const seenComments = new Set<string>();
+    const uniqueFgdComments = pFgdComments.filter(c => {
+      const key = `${c.curator_id || c.curator_name}|${(c.content || '').trim()}`;
+      if (seenComments.has(key)) return false;
+      seenComments.add(key);
+      return true;
+    });
+
+    if (uniqueFgdComments.length > 0) {
+      for (const c of uniqueFgdComments) {
         riwayatKurasi.push({
           tahap: 'FGD Evaluasi Tim',
           kurator: c.curator_name || 'Panelis FGD',
