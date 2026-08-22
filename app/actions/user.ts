@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { users, roles, userRoleTim, timInovator } from '@/lib/db/schema';
-import { eq, ilike, or, desc } from 'drizzle-orm';
+import { users, roles, userRoleTim, timInovator, auditLogs, anggotaTim } from '@/lib/db/schema';
+import { eq, ilike, or, desc, count } from 'drizzle-orm';
 import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/db/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function getUsersListAction() {
   const currentUser = await getCurrentUser();
-  if (!currentUser || !(await hasPermission(currentUser, 'user.view')) && !(await hasPermission(currentUser, 'user.manage'))) {
+  if (!currentUser || (!(await hasPermission(currentUser, 'user.view')) && !(await hasPermission(currentUser, 'user.manage')))) {
     return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin mengelola user.' };
   }
 
@@ -72,7 +72,7 @@ export async function searchUsersAction(query: string = '') {
 
   try {
     const trimmed = query.trim();
-    let queryBuilder = db.select({
+    const queryBuilder = db.select({
       id: users.id,
       nama: users.nama,
       email: users.email,
@@ -210,6 +210,237 @@ export async function createUserAction(data: {
     return {
       success: false,
       error: error.message || 'Terjadi kesalahan saat membuat user baru.',
+    };
+  }
+}
+
+export async function updateUserNameAction(userId: string, nama: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || !(await hasPermission(currentUser, 'user.manage'))) {
+    return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin mengedit data user.' };
+  }
+
+  const trimmedNama = (nama || '').trim();
+  if (!trimmedNama) {
+    return { success: false, error: 'Nama lengkap tidak boleh kosong.' };
+  }
+
+  try {
+    const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!targetUser) {
+      return { success: false, error: 'User tidak ditemukan.' };
+    }
+
+    // Update in users table
+    const [updated] = await db
+      .update(users)
+      .set({
+        nama: trimmedNama,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    // Update Supabase Auth metadata
+    try {
+      const supabaseAdmin = createAdminClient();
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          name: trimmedNama,
+          full_name: trimmedNama,
+        },
+      });
+    } catch (e: any) {
+      console.warn('Supabase Auth metadata update warning:', e.message);
+    }
+
+    await logAudit({
+      userId: currentUser.id,
+      userName: currentUser.nama,
+      action: 'USER_UPDATE_NAME',
+      entity: 'users',
+      entityId: userId,
+      details: {
+        userId,
+        namaLama: targetUser.nama,
+        namaBaru: trimmedNama,
+      },
+    });
+
+    revalidatePath('/admin/roles');
+    return { success: true, user: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal memperbarui nama user.' };
+  }
+}
+
+export async function resetUserPasswordAction(userId: string, newPassword: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || !(await hasPermission(currentUser, 'user.manage'))) {
+    return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin me-reset password user.' };
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: 'Password baru minimal 6 karakter.' };
+  }
+
+  try {
+    const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!targetUser) {
+      return { success: false, error: 'User tidak ditemukan.' };
+    }
+
+    const supabaseAdmin = createAdminClient();
+    const { error: resetError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+
+    if (resetError) {
+      return { success: false, error: `Gagal me-reset password di auth: ${resetError.message}` };
+    }
+
+    await logAudit({
+      userId: currentUser.id,
+      userName: currentUser.nama,
+      action: 'USER_RESET_PASSWORD',
+      entity: 'users',
+      entityId: userId,
+      details: {
+        userId,
+        email: targetUser.email,
+        nama: targetUser.nama,
+      },
+    });
+
+    revalidatePath('/admin/roles');
+    return { success: true, message: `Password untuk ${targetUser.nama} berhasil di-reset.` };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal me-reset password.' };
+  }
+}
+
+export async function checkUserReferencesAction(userId: string) {
+  try {
+    const [auditCountRes] = await db.select({ count: count() }).from(auditLogs).where(eq(auditLogs.userId, userId));
+    const [anggotaCountRes] = await db.select({ count: count() }).from(anggotaTim).where(eq(anggotaTim.userId, userId));
+    const [roleCountRes] = await db.select({ count: count() }).from(userRoleTim).where(eq(userRoleTim.userId, userId));
+
+    const auditCount = Number(auditCountRes?.count || 0);
+    const anggotaCount = Number(anggotaCountRes?.count || 0);
+    const roleCount = Number(roleCountRes?.count || 0);
+    const totalRefs = auditCount + anggotaCount + roleCount;
+
+    return {
+      success: true,
+      hasReferences: totalRefs > 0,
+      references: {
+        auditLogs: auditCount,
+        anggotaTim: anggotaCount,
+        userRoleTim: roleCount,
+        total: totalRefs,
+      },
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message, hasReferences: true };
+  }
+}
+
+export async function deleteUserSmartAction(userId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || !(await hasPermission(currentUser, 'user.manage'))) {
+    return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin menghapus user.' };
+  }
+
+  try {
+    const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!targetUser) {
+      return { success: false, error: 'User tidak ditemukan.' };
+    }
+
+    // Check references in audit_logs, anggota_tim, user_role_tim
+    const [auditCountRes] = await db.select({ count: count() }).from(auditLogs).where(eq(auditLogs.userId, userId));
+    const [anggotaCountRes] = await db.select({ count: count() }).from(anggotaTim).where(eq(anggotaTim.userId, userId));
+    const [roleCountRes] = await db.select({ count: count() }).from(userRoleTim).where(eq(userRoleTim.userId, userId));
+
+    const auditCount = Number(auditCountRes?.count || 0);
+    const anggotaCount = Number(anggotaCountRes?.count || 0);
+    const roleCount = Number(roleCountRes?.count || 0);
+    const totalRefs = auditCount + anggotaCount + roleCount;
+
+    if (totalRefs > 0) {
+      // User has references: fallback to soft deactivate
+      await db
+        .update(users)
+        .set({
+          statusAktif: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+
+      await logAudit({
+        userId: currentUser.id,
+        userName: currentUser.nama,
+        action: 'USER_SOFT_DELETE_FALLBACK',
+        entity: 'users',
+        entityId: userId,
+        details: {
+          targetUserId: userId,
+          nama: targetUser.nama,
+          email: targetUser.email,
+          reason: 'User memiliki riwayat aktivitas/tim, otomatis dinonaktifkan.',
+          references: {
+            auditLogs: auditCount,
+            anggotaTim: anggotaCount,
+            userRoleTim: roleCount,
+          },
+        },
+      });
+
+      revalidatePath('/admin/roles');
+      return {
+        success: true,
+        mode: 'soft_deleted' as const,
+        message: `User ${targetUser.nama} sudah memiliki riwayat aktivitas di sistem (${totalRefs} referensi terkait), sehingga tidak dapat dihapus permanen. Akun otomatis dinonaktifkan sebagai gantinya.`,
+      };
+    }
+
+    // No references: safe to HARD DELETE
+    // Log audit log entry BEFORE hard deleting user
+    await logAudit({
+      userId: currentUser.id,
+      userName: currentUser.nama,
+      action: 'USER_HARD_DELETE',
+      entity: 'users',
+      entityId: userId,
+      details: {
+        deletedUserId: userId,
+        nama: targetUser.nama,
+        email: targetUser.email,
+        actionType: 'HARD_DELETE_PERMANENT',
+      },
+    });
+
+    // Delete from public.users table
+    await db.delete(users).where(eq(users.id, userId));
+
+    // Delete from Supabase Auth
+    try {
+      const supabaseAdmin = createAdminClient();
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+    } catch (authDelErr: any) {
+      console.warn('Supabase Auth deleteUser warning:', authDelErr.message);
+    }
+
+    revalidatePath('/admin/roles');
+    return {
+      success: true,
+      mode: 'hard_deleted' as const,
+      message: `User ${targetUser.nama} (${targetUser.email}) berhasil dihapus permanen dari sistem.`,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Terjadi kesalahan saat menghapus user.',
     };
   }
 }

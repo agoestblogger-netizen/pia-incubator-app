@@ -6,7 +6,14 @@ import {
   assignUserRoleTimAction,
   removeUserRoleTimAction,
 } from "@/app/actions/admin-roles";
-import { createUserAction, toggleUserStatusAction } from "@/app/actions/user";
+import {
+  createUserAction,
+  updateUserNameAction,
+  resetUserPasswordAction,
+  deleteUserSmartAction,
+  toggleUserStatusAction,
+  checkUserReferencesAction,
+} from "@/app/actions/user";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +36,9 @@ import {
   Loader2,
   Power,
   Layers,
+  Edit,
+  AlertTriangle,
+  Lock,
 } from "lucide-react";
 
 export function RolesClient({ initialData }: { initialData: any }) {
@@ -42,11 +52,13 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [selectedTimId, setSelectedTimId] = useState("");
   const [savingAssign, setSavingAssign] = useState(false);
-  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
   // State for User Management
   const [usersList, setUsersList] = useState<any[]>(initialData.users || []);
   const [searchUserQuery, setSearchUserQuery] = useState("");
+
+  // Create User State
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [newNama, setNewNama] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -54,6 +66,25 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [newConfirmPassword, setNewConfirmPassword] = useState("password123");
   const [creatingUser, setCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
+
+  // Edit User State
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editNama, setEditNama] = useState("");
+  const [savingEditName, setSavingEditName] = useState(false);
+  const [editNameMsg, setEditNameMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Reset Password State in Edit Modal
+  const [resetPasswordVal, setResetPasswordVal] = useState("");
+  const [resetConfirmPasswordVal, setResetConfirmPasswordVal] = useState("");
+  const [savingResetPassword, setSavingResetPassword] = useState(false);
+  const [resetPasswordMsg, setResetPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Delete User State
+  const [deletingUser, setDeletingUser] = useState<any | null>(null);
+  const [deletingLoading, setDeletingLoading] = useState(false);
+  const [userRefInfo, setUserRefInfo] = useState<any | null>(null);
+  const [checkingRefs, setCheckingRefs] = useState(false);
+
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const roles = initialData.roles || [];
@@ -171,6 +202,95 @@ export function RolesClient({ initialData }: { initialData: any }) {
     setCreatingUser(false);
   };
 
+  // Edit User Handlers
+  const handleOpenEdit = (user: any) => {
+    setEditingUser(user);
+    setEditNama(user.nama || "");
+    setEditNameMsg(null);
+    setResetPasswordVal("");
+    setResetConfirmPasswordVal("");
+    setResetPasswordMsg(null);
+  };
+
+  const handleSaveEditName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setSavingEditName(true);
+    setEditNameMsg(null);
+
+    const res = await updateUserNameAction(editingUser.id, editNama);
+    if (res.success && res.user) {
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === editingUser.id ? { ...u, nama: res.user.nama } : u))
+      );
+      setEditingUser((prev: any) => ({ ...prev, nama: res.user.nama }));
+      setEditNameMsg({ type: "success", text: "Nama pengguna berhasil diperbarui!" });
+    } else {
+      setEditNameMsg({ type: "error", text: res.error || "Gagal memperbarui nama." });
+    }
+    setSavingEditName(false);
+  };
+
+  const handleSaveResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setResetPasswordMsg(null);
+
+    if (resetPasswordVal.length < 6) {
+      setResetPasswordMsg({ type: "error", text: "Password baru minimal 6 karakter." });
+      return;
+    }
+    if (resetPasswordVal !== resetConfirmPasswordVal) {
+      setResetPasswordMsg({ type: "error", text: "Konfirmasi password tidak cocok." });
+      return;
+    }
+
+    setSavingResetPassword(true);
+    const res = await resetUserPasswordAction(editingUser.id, resetPasswordVal);
+    if (res.success) {
+      setResetPasswordMsg({ type: "success", text: "Password berhasil di-reset!" });
+      setResetPasswordVal("");
+      setResetConfirmPasswordVal("");
+    } else {
+      setResetPasswordMsg({ type: "error", text: res.error || "Gagal me-reset password." });
+    }
+    setSavingResetPassword(false);
+  };
+
+  // Delete User Smart Action
+  const handleOpenDelete = async (user: any) => {
+    setDeletingUser(user);
+    setUserRefInfo(null);
+    setCheckingRefs(true);
+    const refRes = await checkUserReferencesAction(user.id);
+    if (refRes.success) {
+      setUserRefInfo(refRes);
+    }
+    setCheckingRefs(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setDeletingLoading(true);
+
+    const res = await deleteUserSmartAction(deletingUser.id);
+    if (res.success) {
+      if (res.mode === "hard_deleted") {
+        setUsersList((prev) => prev.filter((u) => u.id !== deletingUser.id));
+        setMsg({ type: "success", text: res.message || "User berhasil dihapus permanen." });
+      } else {
+        setUsersList((prev) =>
+          prev.map((u) => (u.id === deletingUser.id ? { ...u, statusAktif: false } : u))
+        );
+        setMsg({ type: "info", text: res.message || "User berhasil dinonaktifkan." });
+      }
+      setDeletingUser(null);
+    } else {
+      alert(res.error || "Gagal memproses penghapusan user.");
+    }
+    setDeletingLoading(false);
+  };
+
   const handleToggleUserStatus = async (user: any) => {
     const nextStatus = !user.statusAktif;
     setTogglingUserId(user.id);
@@ -203,6 +323,8 @@ export function RolesClient({ initialData }: { initialData: any }) {
           className={`p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs ${
             msg.type === "success"
               ? "bg-green-50 border border-green-200 text-green-800"
+              : msg.type === "info"
+              ? "bg-amber-50 border border-amber-200 text-amber-800"
               : "bg-red-50 border border-red-200 text-red-800"
           }`}
         >
@@ -522,26 +644,53 @@ export function RolesClient({ initialData }: { initialData: any }) {
                             </span>
                           </td>
 
-                          {/* Action Button: Toggle Active/Inactive */}
+                          {/* Action Buttons: Edit, Toggle Active/Inactive, and Delete */}
                           <td className="p-3.5 text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={togglingUserId === u.id}
-                              onClick={() => handleToggleUserStatus(u)}
-                              className={`h-8 text-xs font-semibold gap-1.5 ${
-                                u.statusAktif
-                                  ? "text-red-700 border-red-200 hover:bg-red-50"
-                                  : "text-green-700 border-green-200 hover:bg-green-50"
-                              }`}
-                            >
-                              {togglingUserId === u.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Power className="h-3 w-3" />
-                              )}
-                              <span>{u.statusAktif ? "Nonaktifkan" : "Aktifkan"}</span>
-                            </Button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Edit Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenEdit(u)}
+                                className="h-8 text-xs font-semibold gap-1 text-gray-700 hover:text-[#0F5132] hover:border-[#0F5132]/40"
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                                <span>Edit</span>
+                              </Button>
+
+                              {/* Toggle Status Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={togglingUserId === u.id}
+                                onClick={() => handleToggleUserStatus(u)}
+                                className={`h-8 text-xs font-semibold gap-1 ${
+                                  u.statusAktif
+                                    ? "text-amber-700 border-amber-200 hover:bg-amber-50"
+                                    : "text-green-700 border-green-200 hover:bg-green-50"
+                                }`}
+                                title={u.statusAktif ? "Nonaktifkan Akses User" : "Aktifkan Akses User"}
+                              >
+                                {togglingUserId === u.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Power className="h-3 w-3" />
+                                )}
+                                <span>{u.statusAktif ? "Nonaktifkan" : "Aktifkan"}</span>
+                              </Button>
+
+                              {/* Delete Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenDelete(u)}
+                                className="h-8 text-xs font-semibold gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                title="Hapus User (Smart Delete)"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Hapus</span>
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -553,6 +702,252 @@ export function RolesClient({ initialData }: { initialData: any }) {
           </Card>
         </div>
       )}
+
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {/* MODAL DIALOG: EDIT USER & RESET PASSWORD */}
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 space-y-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Edit className="h-5 w-5 text-[#0F5132]" />
+              Edit Data & Reset Password Pengguna
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Perbarui nama profil atau setel ulang password login untuk akun ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingUser && (
+            <div className="space-y-6 divide-y divide-gray-100">
+              {/* Bagian 1: Update Profil & Nama */}
+              <form onSubmit={handleSaveEditName} className="space-y-4 pt-1">
+                <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                  <Users className="h-4 w-4 text-[#0F5132]" />
+                  Informasi Profil Pengguna
+                </h4>
+
+                {editNameMsg && (
+                  <div
+                    className={`p-3 rounded-lg text-xs font-semibold border ${
+                      editNameMsg.type === "success"
+                        ? "bg-green-50 border-green-200 text-green-800"
+                        : "bg-red-50 border-red-200 text-red-800"
+                    }`}
+                  >
+                    {editNameMsg.text}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500">Email Korporat (Identitas Login)</label>
+                  <Input
+                    disabled
+                    value={editingUser.email}
+                    className="h-9 text-xs bg-gray-100 text-gray-600 font-mono cursor-not-allowed"
+                  />
+                  <span className="text-[10px] text-gray-400 block">* Email terikat sebagai identitas login dan tidak dapat diubah.</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700">Nama Lengkap</label>
+                  <Input
+                    required
+                    value={editNama}
+                    onChange={(e) => setEditNama(e.target.value)}
+                    className="h-9 text-xs"
+                    placeholder="Nama Lengkap"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={savingEditName}
+                    size="sm"
+                    className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5"
+                  >
+                    {savingEditName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    Simpan Perubahan Nama
+                  </Button>
+                </div>
+              </form>
+
+              {/* Bagian 2: Reset Password */}
+              <form onSubmit={handleSaveResetPassword} className="space-y-4 pt-4">
+                <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                  <Lock className="h-4 w-4 text-[#0F5132]" />
+                  Reset Password Akun
+                </h4>
+
+                {resetPasswordMsg && (
+                  <div
+                    className={`p-3 rounded-lg text-xs font-semibold border ${
+                      resetPasswordMsg.type === "success"
+                        ? "bg-green-50 border-green-200 text-green-800"
+                        : "bg-red-50 border-red-200 text-red-800"
+                    }`}
+                  >
+                    {resetPasswordMsg.text}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                      <KeyRound className="h-3 w-3 text-gray-400" />
+                      Password Baru
+                    </label>
+                    <Input
+                      required
+                      type="password"
+                      placeholder="Minimal 6 karakter"
+                      value={resetPasswordVal}
+                      onChange={(e) => setResetPasswordVal(e.target.value)}
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">Konfirmasi Password</label>
+                    <Input
+                      required
+                      type="password"
+                      placeholder="Ketik ulang password"
+                      value={resetConfirmPasswordVal}
+                      onChange={(e) => setResetConfirmPasswordVal(e.target.value)}
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={savingResetPassword}
+                    size="sm"
+                    variant="outline"
+                    className="border-[#0F5132] text-[#0F5132] hover:bg-[#0F5132]/10 text-xs font-bold gap-1.5"
+                  >
+                    {savingResetPassword ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <KeyRound className="h-3.5 w-3.5" />
+                    )}
+                    Setel Ulang Password
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2 border-t border-gray-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditingUser(null)}
+              className="text-xs"
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {/* MODAL DIALOG: HAPUS USER (SMART DELETE) */}
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      <Dialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Konfirmasi Penghapusan User
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Sistem akan memverifikasi riwayat aktivitas dan keterhubungan tim sebelum eksekusi.
+            </DialogDescription>
+          </DialogHeader>
+
+          {deletingUser && (
+            <div className="space-y-4 py-2 text-xs">
+              <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-1">
+                <div className="font-bold text-gray-900">{deletingUser.nama}</div>
+                <div className="text-gray-500 font-mono text-[11px]">{deletingUser.email}</div>
+              </div>
+
+              {checkingRefs ? (
+                <div className="py-4 text-center text-gray-400 flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#0F5132]" />
+                  <span>Memeriksa riwayat keterhubungan...</span>
+                </div>
+              ) : userRefInfo?.hasReferences ? (
+                <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-2">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <ShieldAlert className="h-4 w-4 text-amber-700" />
+                    <span>Terdeteksi Riwayat Aktivitas ({userRefInfo.references.total} Entri)</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    User ini sudah pernah terhubung ke riwayat tim / penugasan role / log aktivitas audit. Demi menjaga integritas data, user ini <strong>TIDAK akan dihapus permanen</strong>, melainkan <strong>otomatis dinonaktifkan</strong> sehingga tidak dapat login kembali.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-red-50 rounded-xl border border-red-200 text-red-900 space-y-2">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <Trash2 className="h-4 w-4 text-red-700" />
+                    <span>Hapus Permanen Akun (Belum Ada Aktivitas)</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    User ini belum pernah terhubung ke aktivitas tim manapun. Akun akan <strong>dihapus permanen</strong> dari database dan autentikasi. Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={deletingLoading}
+              onClick={() => setDeletingUser(null)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={deletingLoading || checkingRefs}
+              onClick={handleConfirmDelete}
+              size="sm"
+              className={`${
+                userRefInfo?.hasReferences
+                  ? "bg-amber-600 hover:bg-amber-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"
+              } text-xs font-bold gap-1.5`}
+            >
+              {deletingLoading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Memproses...
+                </>
+              ) : userRefInfo?.hasReferences ? (
+                <>
+                  <Power className="h-3.5 w-3.5" />
+                  Konfirmasi Nonaktifkan
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Hapus Permanen
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* MODAL DIALOG: TAMBAH USER BARU */}
