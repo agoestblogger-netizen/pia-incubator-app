@@ -44,6 +44,14 @@ function formatDateSafe(dateStr?: string | null, options?: Intl.DateTimeFormatOp
   }
 }
 
+function formatDocTitle(fileName: string): string {
+  if (fileName.startsWith('pitch-deck')) return 'Pitch Deck Utama';
+  if (fileName.startsWith('dokumen-pendukung-1')) return 'Dokumen Pendukung #1';
+  if (fileName.startsWith('dokumen-pendukung-2')) return 'Dokumen Pendukung #2';
+  if (fileName.startsWith('surat-orisinalitas')) return 'Surat Orisinalitas';
+  return fileName;
+}
+
 export function DossierDetailClient({ dossier }: { dossier: any }) {
   const [activeTab, setActiveTab] = useState<'submisi' | 'diskusi' | 'juri' | 'dokumen'>('submisi');
   const [selectedDocIndex, setSelectedDocIndex] = useState<number>(0);
@@ -564,7 +572,7 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <span>{fileName}</span>
+                  <span>{formatDocTitle(fileName)}</span>
                   {selectedDocIndex === idx && <Check className="h-3 w-3" />}
                 </button>
               ))}

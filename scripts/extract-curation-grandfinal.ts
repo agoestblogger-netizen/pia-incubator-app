@@ -223,23 +223,62 @@ async function runExtraction() {
       });
     }
 
-    // Collect attachments
+    // Collect attachments from ALL sources
     const daftarLampiran: string[] = [];
     const propLampiranFolder = lampiranFolder.folder(proposalId)!;
+    const downloadedUrls = new Set<string>();
 
-    // Try downloading link_resubmit_proposal
+    // 1. Main Pitch Deck / Resubmission Document
     if (p.link_resubmit_proposal && p.link_resubmit_proposal.startsWith('http')) {
       const fileName = `pitch-deck-${proposalId}.pdf`;
-      console.log(`Downloading attachment for ${proposalId} from ${p.link_resubmit_proposal}...`);
+      console.log(`Downloading main pitch deck for ${proposalId}...`);
       const fileBuf = await fetchFile(p.link_resubmit_proposal);
       if (fileBuf) {
         propLampiranFolder.file(fileName, fileBuf);
         daftarLampiran.push(fileName);
+        downloadedUrls.add(p.link_resubmit_proposal);
         console.log(`  + Downloaded ${fileName} (${fileBuf.length} bytes)`);
       }
     }
 
-    // If no attachment downloaded, generate a structured dossier brief
+    // 2. Additional Supporting Documents from cached_resubmit_pdf_urls
+    if (Array.isArray(p.cached_resubmit_pdf_urls) && p.cached_resubmit_pdf_urls.length > 0) {
+      let suppIdx = 1;
+      for (const item of p.cached_resubmit_pdf_urls) {
+        const fileUrl = item.blobUrl || item.originalUrl;
+        if (fileUrl && fileUrl.startsWith('http') && !downloadedUrls.has(fileUrl)) {
+          const isMain = item.title?.toLowerCase().includes('resubmission utama') || item.title?.toLowerCase().includes('pitch deck');
+          const fileName = isMain && !daftarLampiran.some(f => f.startsWith('pitch-deck'))
+            ? `pitch-deck-${proposalId}.pdf`
+            : `dokumen-pendukung-${suppIdx}-${proposalId}.pdf`;
+          
+          console.log(`Downloading supporting document [${item.title}] for ${proposalId}...`);
+          const fileBuf = await fetchFile(fileUrl);
+          if (fileBuf) {
+            propLampiranFolder.file(fileName, fileBuf);
+            daftarLampiran.push(fileName);
+            downloadedUrls.add(fileUrl);
+            suppIdx++;
+            console.log(`  + Downloaded ${fileName} (${fileBuf.length} bytes)`);
+          }
+        }
+      }
+    }
+
+    // 3. Surat Pernyataan Orisinalitas
+    if (p.link_surat_orisinalitas && p.link_surat_orisinalitas.startsWith('http') && !downloadedUrls.has(p.link_surat_orisinalitas)) {
+      const fileName = `surat-orisinalitas-${proposalId}.pdf`;
+      console.log(`Downloading surat orisinalitas for ${proposalId}...`);
+      const fileBuf = await fetchFile(p.link_surat_orisinalitas);
+      if (fileBuf) {
+        propLampiranFolder.file(fileName, fileBuf);
+        daftarLampiran.push(fileName);
+        downloadedUrls.add(p.link_surat_orisinalitas);
+        console.log(`  + Downloaded ${fileName} (${fileBuf.length} bytes)`);
+      }
+    }
+
+    // If no attachment downloaded at all, generate a structured fallback
     if (daftarLampiran.length === 0) {
       const docName = `dokumen-proposal-${proposalId}.txt`;
       const docContent = `PROPOSAL DOSSIER PIA SEASON 12\nID: ${proposalId}\nJudul: ${p.title}\nPengusul: ${p.proposer_name} (${p.proposer_email})\nKategori: ${p.category}\nTanggal Submit: ${p.submission_date}\n\nRingkasan Inovasi:\n${p.summary || p.bc_masalah_sasaran_inovasi || p.bi_inovasi_diusulkan || 'Dokumen resmi submisi PIA'}`;
