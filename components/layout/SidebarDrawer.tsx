@@ -11,6 +11,7 @@ import {
   Users,
   ShieldCheck,
   UploadCloud,
+  Trash2,
   PlusCircle,
   LogOut,
   Sparkles,
@@ -244,6 +245,18 @@ export function SidebarDrawer({ user }: { user?: UserProfile | null }) {
                 >
                   <ShieldCheck className={`h-4 w-4 ${isActive('/admin/roles') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
                   <span>Kelola User & Role (RBAC)</span>
+                </Link>
+
+                <Link
+                  href="/admin/reset"
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                    isActive('/admin/reset')
+                      ? 'bg-red-50 text-red-700 font-bold border border-red-200 shadow-xs'
+                      : 'text-gray-700 hover:bg-red-50/50 hover:text-red-700'
+                  }`}
+                >
+                  <Trash2 className={`h-4 w-4 ${isActive('/admin/reset') ? 'text-red-600' : 'text-gray-400'}`} />
+                  <span>Reset Data</span>
                 </Link>
               </div>
             </>

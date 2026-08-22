@@ -114,6 +114,9 @@ const DEFAULT_PERMISSIONS = [
 
   // Import Calon Peserta
   { kodePermission: 'import.execute', modul: 'tim_inovator', deskripsi: 'Mengimpor calon peserta dari PIA Curation' },
+
+  // Reset Data System
+  { kodePermission: 'system.reset_data', modul: 'system', deskripsi: 'Mereset data tim dan modul inkubasi' },
 ];
 
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
@@ -121,6 +124,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'user.manage', 'user.view',
     'tim.manage', 'tim.edit', 'tim.view',
     'import.execute',
+    'system.reset_data',
     'charter.manage', 'charter.edit', 'charter.view',
     'kanban.manage', 'kanban.edit', 'kanban.comment', 'kanban.view',
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
