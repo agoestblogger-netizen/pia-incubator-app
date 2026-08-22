@@ -1,6 +1,12 @@
+import 'dotenv/config';
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env.production.local' });
+
 import { db } from '../lib/db';
-import { roles, permissions, rolePermissions } from '../lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { roles, permissions, rolePermissions, users, timInovator, userRoleTim, anggotaTim } from '../lib/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { createClient } from '@supabase/supabase-js';
 
 // 8 Default Roles
 const DEFAULT_ROLES = [
@@ -107,7 +113,6 @@ const DEFAULT_PERMISSIONS = [
   { kodePermission: 'dossier.view', modul: 'dossier', deskripsi: 'Melihat arsip proposal asli PIA' },
 ];
 
-// Default Matrix Access: Role -> List of Allowed Permission Codes
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   admin_ic: [
     'user.manage', 'user.view',
@@ -172,33 +177,80 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   ],
 };
 
+// Seed Users Definition
+const SAMPLE_USERS = [
+  {
+    email: 'admin.ic@pegadaian.co.id',
+    password: 'Password123!',
+    nama: 'Admin Innovation Center',
+    roleKode: 'admin_ic',
+    isGlobal: true,
+  },
+  {
+    email: 'project.owner@pegadaian.co.id',
+    password: 'Password123!',
+    nama: 'Budi Santoso (Project Owner)',
+    roleKode: 'project_owner',
+    isGlobal: false,
+    jabatan: 'Head of Product Development',
+    unitKerja: 'Divisi Inovasi & Transformasi Digital',
+  },
+  {
+    email: 'inisiator@pegadaian.co.id',
+    password: 'Password123!',
+    nama: 'Siti Rahmawati (Inisiator)',
+    roleKode: 'inisiator',
+    isGlobal: false,
+    jabatan: 'Senior Business Analyst',
+    unitKerja: 'Divisi Bisnis Emas',
+  },
+  {
+    email: 'sme.reviewer@pegadaian.co.id',
+    password: 'Password123!',
+    nama: 'Dr. Hendra Gunawan (Collaborator / SME)',
+    roleKode: 'sme',
+    isGlobal: false,
+    jabatan: 'Principal Enterprise Architect',
+    unitKerja: 'Divisi IT Architecture & Security',
+  },
+  {
+    email: 'coach@pegadaian.co.id',
+    password: 'Password123!',
+    nama: 'Dewi Lestari (Innovation Coach)',
+    roleKode: 'coach',
+    isGlobal: false,
+    jabatan: 'Lead Innovation Facilitator',
+    unitKerja: 'Innovation Center',
+  },
+];
+
 async function main() {
-  console.log('--- SEEDING ROLES & PERMISSIONS ---');
+  console.log('=== SEEDING PIA INCUBATOR SYSTEM ===\n');
 
   // 1. Seed Roles
-  console.log('Seeding 8 default roles...');
+  console.log('1. Seeding 8 default roles...');
   for (const r of DEFAULT_ROLES) {
     const [existing] = await db.select().from(roles).where(eq(roles.kodeRole, r.kodeRole)).limit(1);
     if (!existing) {
       await db.insert(roles).values(r);
-      console.log(`+ Role created: ${r.namaRole} (${r.kodeRole})`);
+      console.log(`  + Role created: ${r.namaRole} (${r.kodeRole})`);
     } else {
-      console.log(`= Role exists: ${r.namaRole}`);
+      console.log(`  = Role exists: ${r.namaRole}`);
     }
   }
 
   // 2. Seed Permissions
-  console.log('\nSeeding permissions...');
+  console.log('\n2. Seeding permissions...');
   for (const p of DEFAULT_PERMISSIONS) {
     const [existing] = await db.select().from(permissions).where(eq(permissions.kodePermission, p.kodePermission)).limit(1);
     if (!existing) {
       await db.insert(permissions).values(p);
-      console.log(`+ Permission created: ${p.kodePermission}`);
+      console.log(`  + Permission created: ${p.kodePermission}`);
     }
   }
 
   // 3. Seed Role Permissions Matrix
-  console.log('\nSeeding role permissions matrix...');
+  console.log('\n3. Seeding role permissions matrix...');
   const allRoles = await db.select().from(roles);
   const allPermissions = await db.select().from(permissions);
 
@@ -225,7 +277,150 @@ async function main() {
     }
   }
 
-  console.log('\n✅ Seeding roles & permissions selesai!');
+  // 4. Seed Sample Innovator Team
+  console.log('\n4. Seeding Sample Innovator Team...');
+  let sampleTeam = (await db.select().from(timInovator).limit(1))[0];
+  if (!sampleTeam) {
+    const [newTeam] = await db.insert(timInovator).values({
+      namaProyekInovasi: 'Gadai Tabungan Emas Digital AI',
+      kategoriPia: 'PUSAT',
+      klasifikasiInovasi: 'Platinum',
+      status: 'aktif',
+      durasiBulan: 3,
+      seasonAsli: 'Season 12 - 2026',
+    }).returning();
+    sampleTeam = newTeam;
+    console.log(`  + Tim Inovator created: ${sampleTeam.namaProyekInovasi} (ID: ${sampleTeam.id})`);
+  } else {
+    console.log(`  = Tim Inovator exists: ${sampleTeam.namaProyekInovasi} (ID: ${sampleTeam.id})`);
+  }
+
+  // 5. Seed Users into Supabase Auth & Database
+  console.log('\n5. Seeding Users to Supabase Auth & Database...');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseSecretKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set in .env.local');
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  for (const u of SAMPLE_USERS) {
+    let authUserId: string | null = null;
+
+    // Check if user exists in Supabase Auth
+    const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) {
+      console.error(`  x Error listing users: ${listError.message}`);
+    }
+
+    const existingAuthUser = listData?.users.find(user => user.email === u.email);
+
+    if (existingAuthUser) {
+      authUserId = existingAuthUser.id;
+      // Update password to ensure it's synced
+      await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        password: u.password,
+        email_confirm: true,
+        user_metadata: { nama: u.nama },
+      });
+      console.log(`  = Auth user exists (updated password): ${u.email}`);
+    } else {
+      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: u.email,
+        password: u.password,
+        email_confirm: true,
+        user_metadata: { nama: u.nama },
+      });
+
+      if (createError) {
+        console.error(`  x Failed creating auth user ${u.email}:`, createError.message);
+        continue;
+      }
+      authUserId = createData.user.id;
+      console.log(`  + Auth user created: ${u.email}`);
+    }
+
+    if (!authUserId) continue;
+
+    // Upsert into users table
+    const [existingDbUser] = await db.select().from(users).where(eq(users.id, authUserId)).limit(1);
+    if (!existingDbUser) {
+      // Also check if email exists with different ID
+      const [emailUser] = await db.select().from(users).where(eq(users.email, u.email)).limit(1);
+      if (emailUser) {
+        await db.delete(users).where(eq(users.email, u.email));
+      }
+
+      await db.insert(users).values({
+        id: authUserId,
+        email: u.email,
+        nama: u.nama,
+        statusAktif: true,
+      });
+      console.log(`  + DB user created: ${u.nama}`);
+    } else {
+      await db.update(users).set({ nama: u.nama, statusAktif: true }).where(eq(users.id, authUserId));
+      console.log(`  = DB user exists: ${u.nama}`);
+    }
+
+    // Link Role & Team
+    const targetRoleId = roleMap.get(u.roleKode);
+    if (targetRoleId) {
+      const timId = u.isGlobal ? null : sampleTeam.id;
+
+      // Check existing mapping
+      const existingMappings = await db.select().from(userRoleTim).where(
+        and(
+          eq(userRoleTim.userId, authUserId),
+          eq(userRoleTim.roleId, targetRoleId)
+        )
+      );
+
+      const hasExactMapping = existingMappings.some(m => m.timInovatorId === timId);
+
+      if (!hasExactMapping) {
+        await db.insert(userRoleTim).values({
+          userId: authUserId,
+          roleId: targetRoleId,
+          timInovatorId: timId,
+        });
+        console.log(`  + Assigned role ${u.roleKode} to ${u.email} (Team: ${timId ? sampleTeam.namaProyekInovasi : 'Global'})`);
+      } else {
+        console.log(`  = Role mapping exists: ${u.roleKode} for ${u.email}`);
+      }
+    }
+
+    // If team member, add to anggotaTim table for easy display
+    if (!u.isGlobal && u.jabatan && u.unitKerja) {
+      const [existingAnggota] = await db.select().from(anggotaTim).where(
+        and(
+          eq(anggotaTim.timInovatorId, sampleTeam.id),
+          eq(anggotaTim.nama, u.nama)
+        )
+      ).limit(1);
+
+      if (!existingAnggota) {
+        await db.insert(anggotaTim).values({
+          timInovatorId: sampleTeam.id,
+          nama: u.nama,
+          jabatan: u.jabatan,
+          unitKerja: u.unitKerja,
+        });
+        console.log(`  + Anggota Tim added: ${u.nama}`);
+      }
+    }
+  }
+
+  console.log('\n========================================');
+  console.log('✅ ALL SEEDING & USER CREATION COMPLETED!');
+  console.log('========================================');
 }
 
 main().then(() => process.exit(0)).catch(e => { console.error('Seed error:', e); process.exit(1); });
