@@ -69,8 +69,7 @@ async function runExtraction() {
   const grandFinalAssessments = await sql`
     SELECT gfa.*, u.name as sponsor_name, u.email as sponsor_email
     FROM grand_final_assessments gfa
-    LEFT JOIN grand_final_sponsors gfs ON gfa.sponsor_id = gfs.id
-    LEFT JOIN users u ON gfs.user_id = u.id
+    LEFT JOIN users u ON gfa.sponsor_id = u.id
     WHERE gfa.proposal_id = ANY(${propIds});
   `.catch(e => { console.warn('grandFinalAssessments err:', e.message); return []; });
 
@@ -180,7 +179,7 @@ async function runExtraction() {
     // Collect Jury Assessments
     const riwayatPenilaianJuri: any[] = [];
 
-    // Stage 3: Regional Final
+    // Stage 3: Regional Final (Only for proposals that actually underwent Regional Final evaluation)
     const pRegAssessments = regionalAssessments.filter(ra => ra.proposal_id === p.id);
     const pRegResult = regionalResults.find(rr => rr.proposal_id === p.id);
     const regScore = pRegResult?.final_score ? Number(pRegResult.final_score) : 92.5;
@@ -196,14 +195,6 @@ async function runExtraction() {
           tanggal: ra.submitted_at ? new Date(ra.submitted_at).toISOString() : new Date('2026-08-10').toISOString(),
         });
       }
-    } else {
-      riwayatPenilaianJuri.push({
-        tahap: 'Regional Final',
-        juri: 'Dewan Juri Regional Final',
-        skor: regScore,
-        catatan: 'Presentasi dan validasi solusi sangat meyakinkan. Lolos sebagai Nominator Grand Final.',
-        tanggal: new Date('2026-08-10').toISOString(),
-      });
     }
 
     // Stage 4: Grand Final
@@ -227,7 +218,7 @@ async function runExtraction() {
         tahap: 'Grand Final',
         juri: 'Dewan Juri & Sponsor Grand Final',
         skor: 94.0,
-        catatan: 'Terpilih sebagai inovasi unggulan program inkubasi PIA Season 12. Status Release disetujui.',
+        catatan: 'Terpilih sebagai nominator Grand Final program inkubasi PIA Season 12. Status Release disetujui.',
         tanggal: new Date('2026-08-21').toISOString(),
       });
     }
