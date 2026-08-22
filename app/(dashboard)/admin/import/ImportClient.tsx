@@ -2,19 +2,37 @@
 
 import { useState, useRef } from 'react';
 import JSZip from 'jszip';
-import { checkDuplicateProposals, type PreviewProposalItem } from '@/app/actions/import-peserta';
+import {
+  checkDuplicateProposals,
+  saveImportedProposal,
+  finalizeImportAuditLog,
+  type PreviewProposalItem,
+} from '@/app/actions/import-peserta';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, FileArchive, CheckCircle2, AlertTriangle, XCircle, ArrowRight, RefreshCw, FileText, Check, ShieldAlert } from 'lucide-react';
+import {
+  UploadCloud,
+  FileArchive,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  ArrowRight,
+  RefreshCw,
+  FileText,
+  Check,
+  ShieldAlert,
+} from 'lucide-react';
 import Link from 'next/link';
 
 export function ImportClient() {
   const [file, setFile] = useState<File | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingConfirm, setLoadingConfirm] = useState(false);
+  const [progressText, setProgressText] = useState<string>('');
+  const [progressPercent, setProgressPercent] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  
+
   const [items, setItems] = useState<PreviewProposalItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [overrideIds, setOverrideIds] = useState<Set<string>>(new Set());
@@ -67,7 +85,7 @@ export function ImportClient() {
     setLoadingPreview(true);
 
     try {
-      // 1. Parse ZIP directly in the browser memory
+      // Parse ZIP directly in the browser memory
       const zip = await JSZip.loadAsync(selectedFile);
 
       // Check ringkasan.csv
@@ -80,7 +98,7 @@ export function ImportClient() {
       }
 
       const csvText = await csvFile.async('text');
-      const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+      const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
       if (lines.length <= 1) {
         setErrorMsg('File ringkasan.csv kosong atau hanya berisi header.');
         setItems([]);
@@ -88,7 +106,7 @@ export function ImportClient() {
         return;
       }
 
-      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().trim());
       const propIdIdx = headers.indexOf('proposal_id');
       const seasonIdx = headers.indexOf('season');
       const namaProyekIdx = headers.indexOf('nama_proyek');
@@ -143,7 +161,7 @@ export function ImportClient() {
       const initialSelected = new Set<string>();
       const initialOverride = new Set<string>();
 
-      previewItems.forEach(item => {
+      previewItems.forEach((item) => {
         if (duplicateMap[item.proposal_id]) {
           item.is_duplicate = true;
           item.existing_tim_id = duplicateMap[item.proposal_id];
@@ -190,7 +208,7 @@ export function ImportClient() {
     if (selectedIds.size === items.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(items.map(i => i.proposal_id)));
+      setSelectedIds(new Set(items.map((i) => i.proposal_id)));
     }
   };
 
@@ -200,33 +218,134 @@ export function ImportClient() {
     setLoadingConfirm(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+    setProgressPercent(0);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('selectedProposalIds', JSON.stringify(Array.from(selectedIds)));
-      formData.append('overrideProposalIds', JSON.stringify(Array.from(overrideIds)));
+      const zip = await JSZip.loadAsync(file);
+      const selectedList = items.filter((i) => selectedIds.has(i.proposal_id));
+      const total = selectedList.length;
 
-      const response = await fetch('/api/admin/import', {
-        method: 'POST',
-        body: formData,
+      let importedCount = 0;
+      let skippedCount = 0;
+      const importedIds: string[] = [];
+
+      for (let i = 0; i < total; i++) {
+        const item = selectedList[i];
+        const propId = item.proposal_id;
+        const isOverride = overrideIds.has(propId);
+
+        setProgressText(`Mengimpor [${i + 1}/${total}]: ${item.nama_proyek}...`);
+        setProgressPercent(Math.round(((i + 0.2) / total) * 100));
+
+        // 1. Read dossier JSON from ZIP
+        const dossierFile = zip.file(`dossier/${propId}.json`);
+        let dossierData: any = null;
+        if (dossierFile) {
+          try {
+            const text = await dossierFile.async('text');
+            dossierData = JSON.parse(text);
+          } catch {
+            dossierData = null;
+          }
+        }
+
+        // 2. Upload attachments if any
+        const lampiranUrls: Record<string, string> = {};
+        const lampiranPrefix = `lampiran/${propId}/`;
+
+        const attachmentEntries: { relPath: string; entry: JSZip.JSZipObject }[] = [];
+        zip.forEach((relPath, entry) => {
+          if (!entry.dir && relPath.startsWith(lampiranPrefix)) {
+            attachmentEntries.push({ relPath, entry });
+          }
+        });
+
+        for (const { relPath, entry } of attachmentEntries) {
+          const fileName = pathBasename(relPath);
+          const blob = await entry.async('blob');
+
+          const uploadFormData = new FormData();
+          uploadFormData.append('proposalId', propId);
+          uploadFormData.append('fileName', fileName);
+          uploadFormData.append('file', blob, fileName);
+
+          const uploadRes = await fetch('/api/admin/import/upload-file', {
+            method: 'POST',
+            body: uploadFormData,
+          });
+
+          // Safe response handling
+          if (!uploadRes.ok) {
+            let errorDetail = `Status HTTP ${uploadRes.status}`;
+            try {
+              const errJson = await uploadRes.json();
+              if (errJson?.message) errorDetail = errJson.message;
+            } catch {
+              const errText = await uploadRes.text().catch(() => '');
+              if (errText) errorDetail = errText.slice(0, 100);
+            }
+            console.warn(`Gagal mengunggah lampiran ${fileName}:`, errorDetail);
+          } else {
+            try {
+              const uploadJson = await uploadRes.json();
+              if (uploadJson.success && uploadJson.publicUrl) {
+                lampiranUrls[fileName] = uploadJson.publicUrl;
+              }
+            } catch (err: any) {
+              console.warn('Gagal membaca JSON respons upload:', err.message);
+            }
+          }
+        }
+
+        setProgressPercent(Math.round(((i + 0.8) / total) * 100));
+
+        // 3. Save proposal record & dossier to database
+        const saveRes = await saveImportedProposal({
+          proposalId: propId,
+          season: item.season,
+          namaProyek: item.nama_proyek,
+          kategoriPia: item.kategori_pia,
+          klasifikasiInovasi: dossierData?.status_akhir?.peringkat_medali || 'Platinum',
+          pengusul: {
+            nama: item.nama_pengusul,
+            email: item.email_pengusul,
+            jabatan: dossierData?.data_submisi?.pengusul?.jabatan || 'Inisiator',
+            unit_kerja: dossierData?.data_submisi?.pengusul?.unit_kerja || 'PT Pegadaian',
+          },
+          dossierData,
+          lampiranUrls,
+          override: isOverride,
+        });
+
+        if (saveRes.action === 'skipped') {
+          skippedCount++;
+        } else {
+          importedCount++;
+          importedIds.push(propId);
+        }
+
+        setProgressPercent(Math.round(((i + 1) / total) * 100));
+      }
+
+      // 4. Record single audit log
+      await finalizeImportAuditLog({
+        totalSelected: total,
+        importedCount,
+        skippedCount,
+        proposalIds: importedIds,
       });
 
-      const res = await response.json();
       setLoadingConfirm(false);
-
-      if (!res.success) {
-        setErrorMsg(res.message || 'Gagal memproses import data.');
-      } else {
-        setSuccessMsg(res.message);
-        setImportResult({
-          imported: res.importedCount,
-          skipped: res.skippedCount,
-        });
-      }
+      setProgressText('');
+      setSuccessMsg(
+        `Proses import selesai: ${importedCount} tim calon peserta berhasil diproses ke database & storage, ${skippedCount} di-skip.`
+      );
+      setImportResult({ imported: importedCount, skipped: skippedCount });
     } catch (err: any) {
+      console.error('Import processing error:', err);
       setLoadingConfirm(false);
-      setErrorMsg(`Terjadi kesalahan saat mengunggah: ${err.message}`);
+      setProgressText('');
+      setErrorMsg(`Terjadi kesalahan saat memproses import: ${err.message}`);
     }
   };
 
@@ -301,6 +420,27 @@ export function ImportClient() {
         </CardContent>
       </Card>
 
+      {/* Progress Bar while Importing */}
+      {loadingConfirm && (
+        <Card className="border border-green-200 bg-green-50/50 p-4 shadow-sm animate-in fade-in duration-200">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-green-900">
+              <span className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin text-[#0F5132]" />
+                {progressText || 'Memproses upload data...'}
+              </span>
+              <span className="font-mono text-sm">{progressPercent}%</span>
+            </div>
+            <div className="w-full bg-green-200 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-[#0F5132] h-2.5 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Error & Success Messages */}
       {errorMsg && (
         <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-3 text-sm text-red-800 shadow-sm">
@@ -355,6 +495,7 @@ export function ImportClient() {
                   variant="outline"
                   size="sm"
                   onClick={toggleSelectAll}
+                  disabled={loadingConfirm}
                   className="text-xs h-8"
                 >
                   {selectedIds.size === items.length ? 'Batal Pilih Semua' : 'Pilih Semua'}

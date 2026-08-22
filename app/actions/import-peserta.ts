@@ -2,7 +2,7 @@
 
 import JSZip from 'jszip';
 import { db } from '@/lib/db';
-import { timInovator, anggotaTim, dossierPiaArchive } from '@/lib/db/schema';
+import { timInovator, anggotaTim, dossierPiaArchive, auditLogs } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -31,6 +31,119 @@ export interface PreviewResult {
   items: PreviewProposalItem[];
   totalRows: number;
   duplicateCount: number;
+}
+
+export interface SaveProposalPayload {
+  proposalId: string;
+  season: string;
+  namaProyek: string;
+  kategoriPia: string;
+  klasifikasiInovasi: string;
+  pengusul: {
+    nama?: string;
+    email?: string;
+    jabatan?: string;
+    unit_kerja?: string;
+  };
+  dossierData: any;
+  lampiranUrls: Record<string, string>;
+  override: boolean;
+}
+
+export async function saveImportedProposal(payload: SaveProposalPayload): Promise<{ success: boolean; message?: string; teamId?: string; action: 'created' | 'updated' | 'skipped' }> {
+  const user = await getCurrentUser();
+  if (!user || !(await hasPermission(user, 'import.execute'))) {
+    return { success: false, message: 'Akses ditolak.', action: 'skipped' };
+  }
+
+  const { proposalId, season, namaProyek, kategoriPia, klasifikasiInovasi, pengusul, dossierData, lampiranUrls, override } = payload;
+
+  const [existingTeam] = await db.select().from(timInovator).where(eq(timInovator.proposalIdAsli, proposalId)).limit(1);
+
+  if (existingTeam && !override) {
+    return { success: true, message: 'Tim sudah ada (dilewati).', teamId: existingTeam.id, action: 'skipped' };
+  }
+
+  const finalSnapshot = {
+    ...(dossierData || {}),
+    proposal_id: proposalId,
+    season: season,
+    lampiran_urls: lampiranUrls || {},
+  };
+
+  let teamId: string;
+
+  if (existingTeam && override) {
+    teamId = existingTeam.id;
+    await db.update(timInovator).set({
+      namaProyekInovasi: namaProyek,
+      kategoriPia: kategoriPia,
+      klasifikasiInovasi: klasifikasiInovasi || 'Platinum',
+      updatedAt: new Date(),
+    }).where(eq(timInovator.id, teamId));
+
+    await db.insert(dossierPiaArchive).values({
+      timInovatorId: teamId,
+      proposalIdAsli: proposalId,
+      seasonAsli: season,
+      snapshotData: finalSnapshot,
+      updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: [dossierPiaArchive.timInovatorId],
+      set: {
+        snapshotData: finalSnapshot,
+        updatedAt: new Date(),
+      }
+    });
+
+    return { success: true, teamId, action: 'updated' };
+  } else {
+    const [newTeam] = await db.insert(timInovator).values({
+      namaProyekInovasi: namaProyek,
+      kategoriPia: kategoriPia,
+      klasifikasiInovasi: klasifikasiInovasi || 'Platinum',
+      status: 'calon_peserta',
+      durasiBulan: 3,
+      proposalIdAsli: proposalId,
+      seasonAsli: season,
+    }).returning();
+
+    teamId = newTeam.id;
+
+    await db.insert(anggotaTim).values({
+      timInovatorId: teamId,
+      nama: pengusul?.nama || 'Inisiator Proyek',
+      jabatan: pengusul?.jabatan || 'Inisiator',
+      unitKerja: pengusul?.unit_kerja || 'PT Pegadaian',
+      komitmenDukungan: 'Inisiator Inovasi',
+    });
+
+    await db.insert(dossierPiaArchive).values({
+      timInovatorId: teamId,
+      proposalIdAsli: proposalId,
+      seasonAsli: season,
+      snapshotData: finalSnapshot,
+    });
+
+    return { success: true, teamId, action: 'created' };
+  }
+}
+
+export async function finalizeImportAuditLog(summary: { totalSelected: number; importedCount: number; skippedCount: number; proposalIds: string[] }) {
+  const user = await getCurrentUser();
+  if (!user || !(await hasPermission(user, 'import.execute'))) return;
+
+  await db.insert(auditLogs).values({
+    userId: user.id,
+    userName: user.nama,
+    action: 'IMPORT_CALON_PESERTA',
+    entity: 'TIM_INOVATOR',
+    details: {
+      ...summary,
+      performedBy: `${user.nama} (${user.email})`,
+      timestamp: new Date().toISOString(),
+    },
+  });
 }
 
 export async function checkDuplicateProposals(proposalIds: string[]): Promise<Record<string, string>> {
