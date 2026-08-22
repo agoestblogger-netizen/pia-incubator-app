@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { previewImportZip, confirmImportPeserta, type PreviewProposalItem } from '@/app/actions/import-peserta';
+import JSZip from 'jszip';
+import { checkDuplicateProposals, type PreviewProposalItem } from '@/app/actions/import-peserta';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileArchive, CheckCircle2, AlertTriangle, XCircle, ArrowRight, RefreshCw, FileText, Check, ShieldAlert } from 'lucide-react';
@@ -21,6 +22,35 @@ export function ImportClient() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const parseCsvLine = (line: string) => {
+    const result: string[] = [];
+    let current = '';
+    let insideQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (insideQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const pathBasename = (fullPath: string) => {
+    const parts = fullPath.split('/');
+    return parts[parts.length - 1];
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -36,33 +66,103 @@ export function ImportClient() {
     setImportResult(null);
     setLoadingPreview(true);
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+    try {
+      // 1. Parse ZIP directly in the browser memory
+      const zip = await JSZip.loadAsync(selectedFile);
 
-    const res = await previewImportZip(formData);
-    setLoadingPreview(false);
+      // Check ringkasan.csv
+      const csvFile = zip.file('ringkasan.csv');
+      if (!csvFile) {
+        setErrorMsg('Format ZIP tidak valid: file "ringkasan.csv" tidak ditemukan di root ZIP.');
+        setItems([]);
+        setLoadingPreview(false);
+        return;
+      }
 
-    if (!res.success) {
-      setErrorMsg(res.message || 'Gagal memproses preview ZIP.');
-      setItems([]);
-    } else {
-      setItems(res.items);
-      // By default select all non-duplicate items
+      const csvText = await csvFile.async('text');
+      const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length <= 1) {
+        setErrorMsg('File ringkasan.csv kosong atau hanya berisi header.');
+        setItems([]);
+        setLoadingPreview(false);
+        return;
+      }
+
+      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+      const propIdIdx = headers.indexOf('proposal_id');
+      const seasonIdx = headers.indexOf('season');
+      const namaProyekIdx = headers.indexOf('nama_proyek');
+      const pengusulIdx = headers.indexOf('nama_pengusul');
+      const emailIdx = headers.indexOf('email_pengusul');
+      const kategoriIdx = headers.indexOf('kategori_pia');
+      const skorAiIdx = headers.indexOf('skor_ai');
+      const voteIdx = headers.indexOf('vote_nominasi');
+      const tglReleaseIdx = headers.indexOf('tanggal_release');
+      const dossierFileIdx = headers.indexOf('dossier_file');
+
+      const previewItems: PreviewProposalItem[] = [];
+      const proposalIds: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i]);
+        if (cols.length < 3) continue;
+
+        const propId = cols[propIdIdx] || cols[0];
+        const dossierPath = cols[dossierFileIdx] || `dossier/${propId}.json`;
+        const hasDossier = !!zip.file(dossierPath);
+
+        const lampiranPrefix = `lampiran/${propId}/`;
+        const lampiranFiles: string[] = [];
+        zip.forEach((relPath, zipEntry) => {
+          if (!zipEntry.dir && relPath.startsWith(lampiranPrefix)) {
+            lampiranFiles.push(pathBasename(relPath));
+          }
+        });
+
+        proposalIds.push(propId);
+        previewItems.push({
+          proposal_id: propId,
+          season: cols[seasonIdx] || 'Season 12 - 2026',
+          nama_proyek: cols[namaProyekIdx] || cols[2] || 'Tanpa Judul',
+          nama_pengusul: cols[pengusulIdx] || cols[3] || 'Anonim',
+          email_pengusul: cols[emailIdx] || cols[4] || '',
+          kategori_pia: cols[kategoriIdx] || cols[5] || 'PUSAT',
+          skor_ai: cols[skorAiIdx] || cols[6] || '-',
+          vote_nominasi: cols[voteIdx] || cols[7] || '0',
+          tanggal_release: cols[tglReleaseIdx] || cols[8] || new Date().toISOString(),
+          dossier_file: dossierPath,
+          has_dossier_json: hasDossier,
+          has_lampiran: lampiranFiles.length > 0,
+          lampiran_files: lampiranFiles,
+          is_duplicate: false,
+        });
+      }
+
+      // Check duplicates against server
+      const duplicateMap = await checkDuplicateProposals(proposalIds);
       const initialSelected = new Set<string>();
       const initialOverride = new Set<string>();
 
-      res.items.forEach(item => {
-        if (!item.is_duplicate) {
-          initialSelected.add(item.proposal_id);
-        } else {
-          // If duplicate, can still select if desired
+      previewItems.forEach(item => {
+        if (duplicateMap[item.proposal_id]) {
+          item.is_duplicate = true;
+          item.existing_tim_id = duplicateMap[item.proposal_id];
           initialSelected.add(item.proposal_id);
           initialOverride.add(item.proposal_id);
+        } else {
+          initialSelected.add(item.proposal_id);
         }
       });
 
+      setItems(previewItems);
       setSelectedIds(initialSelected);
       setOverrideIds(initialOverride);
+      setLoadingPreview(false);
+    } catch (err: any) {
+      console.error('Error reading ZIP:', err);
+      setErrorMsg(`Gagal membaca file ZIP: ${err.message}`);
+      setItems([]);
+      setLoadingPreview(false);
     }
   };
 
@@ -101,25 +201,32 @@ export function ImportClient() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('selectedProposalIds', JSON.stringify(Array.from(selectedIds)));
+      formData.append('overrideProposalIds', JSON.stringify(Array.from(overrideIds)));
 
-    const res = await confirmImportPeserta(
-      formData,
-      Array.from(selectedIds),
-      Array.from(overrideIds)
-    );
-
-    setLoadingConfirm(false);
-
-    if (!res.success) {
-      setErrorMsg(res.message);
-    } else {
-      setSuccessMsg(res.message);
-      setImportResult({
-        imported: res.importedCount,
-        skipped: res.skippedCount,
+      const response = await fetch('/api/admin/import', {
+        method: 'POST',
+        body: formData,
       });
+
+      const res = await response.json();
+      setLoadingConfirm(false);
+
+      if (!res.success) {
+        setErrorMsg(res.message || 'Gagal memproses import data.');
+      } else {
+        setSuccessMsg(res.message);
+        setImportResult({
+          imported: res.importedCount,
+          skipped: res.skippedCount,
+        });
+      }
+    } catch (err: any) {
+      setLoadingConfirm(false);
+      setErrorMsg(`Terjadi kesalahan saat mengunggah: ${err.message}`);
     }
   };
 

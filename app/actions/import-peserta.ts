@@ -33,6 +33,20 @@ export interface PreviewResult {
   duplicateCount: number;
 }
 
+export async function checkDuplicateProposals(proposalIds: string[]): Promise<Record<string, string>> {
+  if (!proposalIds || proposalIds.length === 0) return {};
+  const existingTeams = await db.select({
+    id: timInovator.id,
+    proposalIdAsli: timInovator.proposalIdAsli,
+  }).from(timInovator).where(inArray(timInovator.proposalIdAsli, proposalIds));
+
+  const map: Record<string, string> = {};
+  for (const t of existingTeams) {
+    if (t.proposalIdAsli) map[t.proposalIdAsli] = t.id;
+  }
+  return map;
+}
+
 export async function previewImportZip(formData: FormData): Promise<PreviewResult> {
   const user = await getCurrentUser();
   if (!user || !(await hasPermission(user, 'import.execute'))) {
