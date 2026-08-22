@@ -14,57 +14,62 @@ export type UserProfile = {
 };
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || !user.email) return null;
+    if (!user || !user.email) return null;
 
-  // Find or create user in public.users table
-  let [dbUser] = await db.select().from(users).where(eq(users.email, user.email)).limit(1);
+    // Find or create user in public.users table
+    let [dbUser] = await db.select().from(users).where(eq(users.email, user.email)).limit(1);
 
-  if (!dbUser) {
-    const fullName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0];
-    [dbUser] = await db.insert(users).values({
-      id: user.id,
-      nama: fullName,
-      email: user.email,
-      statusAktif: true,
-      avatarUrl: user.user_metadata?.avatar_url || null,
-    }).returning();
+    if (!dbUser) {
+      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0];
+      [dbUser] = await db.insert(users).values({
+        id: user.id,
+        nama: fullName,
+        email: user.email,
+        statusAktif: true,
+        avatarUrl: user.user_metadata?.avatar_url || null,
+      }).returning();
+    }
+
+    // Fetch assigned roles
+    const assignments = await db
+      .select({
+        roleCode: roles.kodeRole,
+        roleName: roles.namaRole,
+        timId: userRoleTim.timInovatorId,
+      })
+      .from(userRoleTim)
+      .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
+      .where(eq(userRoleTim.userId, dbUser.id));
+
+    const globalRoles = assignments
+      .filter(a => !a.timId)
+      .map(a => a.roleCode);
+
+    const timRoles = assignments
+      .filter(a => a.timId !== null)
+      .map(a => ({
+        timId: a.timId!,
+        roleCode: a.roleCode,
+        roleName: a.roleName,
+      }));
+
+    return {
+      id: dbUser.id,
+      nama: dbUser.nama,
+      email: dbUser.email,
+      statusAktif: dbUser.statusAktif,
+      avatarUrl: dbUser.avatarUrl,
+      globalRoles,
+      timRoles,
+    };
+  } catch (error) {
+    console.error('getCurrentUser error:', error);
+    return null;
   }
-
-  // Fetch assigned roles
-  const assignments = await db
-    .select({
-      roleCode: roles.kodeRole,
-      roleName: roles.namaRole,
-      timId: userRoleTim.timInovatorId,
-    })
-    .from(userRoleTim)
-    .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
-    .where(eq(userRoleTim.userId, dbUser.id));
-
-  const globalRoles = assignments
-    .filter(a => !a.timId)
-    .map(a => a.roleCode);
-
-  const timRoles = assignments
-    .filter(a => a.timId !== null)
-    .map(a => ({
-      timId: a.timId!,
-      roleCode: a.roleCode,
-      roleName: a.roleName,
-    }));
-
-  return {
-    id: dbUser.id,
-    nama: dbUser.nama,
-    email: dbUser.email,
-    statusAktif: dbUser.statusAktif,
-    avatarUrl: dbUser.avatarUrl,
-    globalRoles,
-    timRoles,
-  };
 }
 
 export async function hasPermission(
