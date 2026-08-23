@@ -34,7 +34,7 @@ import {
   userRoleTim,
   auditLogs,
 } from '@/lib/db/schema';
-import { inArray, eq, sql, isNotNull } from 'drizzle-orm';
+import { inArray, eq, sql, isNotNull, and } from 'drizzle-orm';
 import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
 
 export interface ResetCountSummary {
@@ -142,7 +142,15 @@ export async function getResetPreview(params: {
   if (targetTeamIds.length > 0) {
     if (sections.includes('tim_profil') || params.mode === 'total') {
       counts.timCount = targetTeamIds.length;
-      const roleTim = await db.select().from(userRoleTim).where(inArray(userRoleTim.timInovatorId, targetTeamIds));
+      const roleTim = await db
+        .select()
+        .from(userRoleTim)
+        .where(
+          and(
+            isNotNull(userRoleTim.timInovatorId),
+            inArray(userRoleTim.timInovatorId, targetTeamIds)
+          )
+        );
       counts.roleTimCount = roleTim.length;
     }
 
@@ -337,9 +345,17 @@ export async function executeResetData(params: ResetParams): Promise<{
       deletedCounts.charterCount = charterRes.length;
     }
 
-    // 8. Tim Inovator & Profil (Complete removal of team entity & members)
+    // 8. Tim Inovator & Profil (Complete removal of team entity & members - NEVER touch global roles where timInovatorId is NULL)
     if (sections.includes('tim_profil') || params.mode === 'total') {
-      const roleTimRes = await db.delete(userRoleTim).where(inArray(userRoleTim.timInovatorId, targetTeamIds)).returning();
+      const roleTimRes = await db
+        .delete(userRoleTim)
+        .where(
+          and(
+            isNotNull(userRoleTim.timInovatorId),
+            inArray(userRoleTim.timInovatorId, targetTeamIds)
+          )
+        )
+        .returning();
       deletedCounts.roleTimCount = roleTimRes.length;
 
       await db.delete(durasiLog).where(inArray(durasiLog.timInovatorId, targetTeamIds));
