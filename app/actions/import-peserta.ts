@@ -84,6 +84,28 @@ function formatPegadaianEmail(name: string): string {
   return `${parts[0]}.${parts[parts.length - 1]}@pegadaian.co.id`;
 }
 
+function findZipFile(zip: JSZip, targetPath: string): JSZip.JSZipObject | null {
+  let f = zip.file(targetPath);
+  if (f) return f;
+
+  const cleanTarget = targetPath.toLowerCase().replace(/^\.?\//, '');
+  const fileName = targetPath.split('/').pop()?.toLowerCase();
+
+  for (const [relPath, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue;
+    const cleanRel = relPath.toLowerCase().replace(/^\.?\//, '');
+    if (cleanRel === cleanTarget || cleanRel.endsWith(`/${cleanTarget}`)) {
+      return entry;
+    }
+    if (fileName && (cleanRel === fileName || cleanRel.endsWith(`/${fileName}`))) {
+      if (cleanRel.includes('dossier')) {
+        return entry;
+      }
+    }
+  }
+  return null;
+}
+
 export async function saveImportedProposal(payload: SaveProposalPayload): Promise<{
   success: boolean;
   message?: string;
@@ -98,9 +120,12 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
 
   const { proposalId, season, namaProyek, kategoriPia, klasifikasiInovasi, pengusul, dossierData, lampiranUrls, override } = payload;
 
+  console.log(`[saveImportedProposal] Processing Proposal ID: ${proposalId} - ${namaProyek}`);
+
   const [existingTeam] = await db.select().from(timInovator).where(eq(timInovator.proposalIdAsli, proposalId)).limit(1);
 
   if (existingTeam && !override) {
+    console.log(`[saveImportedProposal] Team ${proposalId} already exists, skipping.`);
     return { success: true, message: 'Tim sudah ada (dilewati).', teamId: existingTeam.id, action: 'skipped', createdAccounts: [] };
   }
 
@@ -206,7 +231,12 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
   const [existingPengusulAnggota] = await db
     .select()
     .from(anggotaTim)
-    .where(eq(anggotaTim.timInovatorId, teamId))
+    .where(
+      and(
+        eq(anggotaTim.timInovatorId, teamId),
+        eq(anggotaTim.nama, pengusulNama || 'Inisiator Proyek')
+      )
+    )
     .limit(1);
 
   if (existingPengusulAnggota) {
@@ -234,8 +264,11 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
 
   // B. team_members -> Co-creators
   const rawMembers = submisi.team_members || dossierData?.team_members || submisi.anggota_tim || [];
+  console.log(`[saveImportedProposal] Team ${proposalId} - rawMembers count: ${Array.isArray(rawMembers) ? rawMembers.length : 0}`, rawMembers);
+
   if (Array.isArray(rawMembers) && coCreatorRole) {
-    for (const m of rawMembers) {
+    for (let mIdx = 0; mIdx < rawMembers.length; mIdx++) {
+      const m = rawMembers[mIdx];
       let mNama = '';
       let mEmail = '';
       let mJabatan = 'Co-creator';
@@ -250,6 +283,8 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
         mJabatan = cleanText(m.jabatan || 'Co-creator');
         mUnit = cleanText(m.unit_kerja || m.unitKerja || 'PT Pegadaian');
       }
+
+      console.log(`[saveImportedProposal] Member [${mIdx + 1}/${rawMembers.length}]:`, { mNama, mEmail, mJabatan, mUnit });
 
       if (mNama && mEmail) {
         const mUserRes = await ensureUserAccount(mNama, mEmail);
@@ -309,6 +344,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     }
   }
 
+  console.log(`[saveImportedProposal] Finished ${proposalId}. Total accounts created: ${createdAccounts.length}`);
   return { success: true, teamId, action, createdAccounts };
 }
 
@@ -359,7 +395,7 @@ export async function previewImportZip(formData: FormData): Promise<PreviewResul
     const zip = await JSZip.loadAsync(arrayBuffer);
 
     // 1. Check ringkasan.csv
-    const csvFile = zip.file('ringkasan.csv');
+    const csvFile = findZipFile(zip, 'ringkasan.csv');
     if (!csvFile) {
       return { success: false, message: 'Format ZIP tidak valid: file "ringkasan.csv" tidak ditemukan di root ZIP.', items: [], totalRows: 0, duplicateCount: 0 };
     }
@@ -415,12 +451,13 @@ export async function previewImportZip(formData: FormData): Promise<PreviewResul
 
       const propId = cols[propIdIdx] || cols[0];
       const dossierPath = cols[dossierFileIdx] || `dossier/${propId}.json`;
-      const hasDossier = !!zip.file(dossierPath);
+      const dossierEntry = findZipFile(zip, dossierPath);
+      const hasDossier = !!dossierEntry;
 
-      const lampiranPrefix = `lampiran/${propId}/`;
+      const lampiranPrefix = `lampiran/${propId}/`.toLowerCase();
       const lampiranFiles: string[] = [];
       zip.forEach((relPath, zipEntry) => {
-        if (!zipEntry.dir && relPath.startsWith(lampiranPrefix)) {
+        if (!zipEntry.dir && relPath.toLowerCase().includes(lampiranPrefix)) {
           lampiranFiles.push(pathBasename(relPath));
         }
       });
@@ -518,7 +555,7 @@ export async function confirmImportPeserta(
     const allCreatedAccounts: CreatedAccountSummaryItem[] = [];
 
     for (const proposalId of selectedSet) {
-      const dossierFile = zip.file(`dossier/${proposalId}.json`);
+      const dossierFile = findZipFile(zip, `dossier/${proposalId}.json`);
       let dossierData: any = null;
       if (dossierFile) {
         const text = await dossierFile.async('text');
@@ -536,11 +573,11 @@ export async function confirmImportPeserta(
       const pengusul = dossierData?.data_submisi?.pengusul || {};
 
       const lampiranUrls: Record<string, string> = {};
-      const lampiranPrefix = `lampiran/${proposalId}/`;
+      const lampiranPrefix = `lampiran/${proposalId}/`.toLowerCase();
 
       const uploadPromises: Promise<void>[] = [];
       zip.forEach((relPath, zipEntry) => {
-        if (!zipEntry.dir && relPath.startsWith(lampiranPrefix)) {
+        if (!zipEntry.dir && relPath.toLowerCase().includes(lampiranPrefix)) {
           const fileName = pathBasename(relPath);
           const storagePath = `${proposalId}/${fileName}`;
 

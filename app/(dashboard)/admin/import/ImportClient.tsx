@@ -81,6 +81,28 @@ export function ImportClient() {
     return parts[parts.length - 1];
   };
 
+  const findZipFile = (zip: JSZip, targetPath: string): JSZip.JSZipObject | null => {
+    let f = zip.file(targetPath);
+    if (f) return f;
+
+    const cleanTarget = targetPath.toLowerCase().replace(/^\.?\//, '');
+    const fileName = targetPath.split('/').pop()?.toLowerCase();
+
+    for (const [relPath, entry] of Object.entries(zip.files)) {
+      if (entry.dir) continue;
+      const cleanRel = relPath.toLowerCase().replace(/^\.?\//, '');
+      if (cleanRel === cleanTarget || cleanRel.endsWith(`/${cleanTarget}`)) {
+        return entry;
+      }
+      if (fileName && (cleanRel === fileName || cleanRel.endsWith(`/${fileName}`))) {
+        if (cleanRel.includes('dossier')) {
+          return entry;
+        }
+      }
+    }
+    return null;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -102,7 +124,7 @@ export function ImportClient() {
       const zip = await JSZip.loadAsync(selectedFile);
 
       // Check ringkasan.csv
-      const csvFile = zip.file('ringkasan.csv');
+      const csvFile = findZipFile(zip, 'ringkasan.csv');
       if (!csvFile) {
         setErrorMsg('Format ZIP tidak valid: file "ringkasan.csv" tidak ditemukan di root ZIP.');
         setItems([]);
@@ -140,12 +162,13 @@ export function ImportClient() {
 
         const propId = cols[propIdIdx] || cols[0];
         const dossierPath = cols[dossierFileIdx] || `dossier/${propId}.json`;
-        const hasDossier = !!zip.file(dossierPath);
+        const dossierEntry = findZipFile(zip, dossierPath);
+        const hasDossier = !!dossierEntry;
 
-        const lampiranPrefix = `lampiran/${propId}/`;
+        const lampiranPrefix = `lampiran/${propId}/`.toLowerCase();
         const lampiranFiles: string[] = [];
         zip.forEach((relPath, zipEntry) => {
-          if (!zipEntry.dir && relPath.startsWith(lampiranPrefix)) {
+          if (!zipEntry.dir && relPath.toLowerCase().includes(lampiranPrefix)) {
             lampiranFiles.push(pathBasename(relPath));
           }
         });
@@ -252,8 +275,8 @@ export function ImportClient() {
         setProgressText(`Mengimpor [${i + 1}/${total}]: ${item.nama_proyek}...`);
         setProgressPercent(Math.round(((i + 0.2) / total) * 100));
 
-        // 1. Read dossier JSON from ZIP
-        const dossierFile = zip.file(`dossier/${propId}.json`);
+        // 1. Read dossier JSON from ZIP with fallback
+        const dossierFile = findZipFile(zip, item.dossier_file || `dossier/${propId}.json`);
         let dossierData: any = null;
         if (dossierFile) {
           try {
