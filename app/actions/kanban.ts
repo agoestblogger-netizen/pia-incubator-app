@@ -50,6 +50,7 @@ export async function createKanbanCardAction(
         statusKolom: cardData.statusKolom || "To Do",
         tahap: cardData.tahap || "umum",
         sprintNumber: cardData.sprintNumber !== undefined ? cardData.sprintNumber : null,
+        ownerAnggotaId: cardData.ownerAnggotaId || null,
         label: cardData.label,
         tanggalMulai: cardData.tanggalMulai ? new Date(cardData.tanggalMulai) : null,
         tanggalSelesai: cardData.tanggalSelesai ? new Date(cardData.tanggalSelesai) : null,
@@ -74,6 +75,7 @@ export async function createKanbanCardAction(
       },
     });
 
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/kanban`);
     return { success: true, data: card };
   } catch (error: any) {
@@ -126,6 +128,7 @@ export async function updateKanbanCardStatusAction(
       details: { timId, newStatusKolom, newUrutan, newSprintNumber },
     });
 
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/kanban`);
     return { success: true };
   } catch (error: any) {
@@ -169,9 +172,109 @@ export async function updateKanbanCardSprintAction(
       details: { timId, newSprintNumber },
     });
 
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/kanban`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal mengubah sprint kartu." };
+  }
+}
+
+export async function updateKanbanCardFullAction(
+  timId: string,
+  cardId: string,
+  cardData: Partial<typeof kanbanCard.$inferInsert>
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk mengedit kartu di Kanban board tim ini.",
+      };
+    }
+
+    const updatePayload: any = {
+      updatedAt: new Date(),
+    };
+
+    if (cardData.judul !== undefined) updatePayload.judul = cardData.judul;
+    if (cardData.deskripsi !== undefined) updatePayload.deskripsi = cardData.deskripsi;
+    if (cardData.statusKolom !== undefined) updatePayload.statusKolom = cardData.statusKolom;
+    if (cardData.tahap !== undefined) updatePayload.tahap = cardData.tahap;
+    if (cardData.sprintNumber !== undefined) updatePayload.sprintNumber = cardData.sprintNumber;
+    if (cardData.ownerAnggotaId !== undefined) updatePayload.ownerAnggotaId = cardData.ownerAnggotaId;
+    if (cardData.label !== undefined) updatePayload.label = cardData.label;
+    if (cardData.tanggalMulai !== undefined) {
+      updatePayload.tanggalMulai = cardData.tanggalMulai ? new Date(cardData.tanggalMulai) : null;
+    }
+    if (cardData.tanggalSelesai !== undefined) {
+      updatePayload.tanggalSelesai = cardData.tanggalSelesai ? new Date(cardData.tanggalSelesai) : null;
+    }
+    if (cardData.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardData.acceptanceCriteria;
+    if (cardData.dependencyRisiko !== undefined) updatePayload.dependencyRisiko = cardData.dependencyRisiko;
+
+    const [updated] = await db
+      .update(kanbanCard)
+      .set(updatePayload)
+      .where(eq(kanbanCard.id, cardId))
+      .returning();
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "KANBAN_CARD_UPDATE",
+      entity: "kanban_card",
+      entityId: cardId,
+      details: { timId, judul: updated?.judul, statusKolom: updated?.statusKolom },
+    });
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal mengupdate kartu." };
+  }
+}
+
+export async function deleteKanbanCardAction(timId: string, cardId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk menghapus kartu di Kanban board tim ini.",
+      };
+    }
+
+    const [deleted] = await db
+      .delete(kanbanCard)
+      .where(eq(kanbanCard.id, cardId))
+      .returning();
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "KANBAN_CARD_DELETE",
+      entity: "kanban_card",
+      entityId: cardId,
+      details: { timId, judul: deleted?.judul },
+    });
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menghapus kartu." };
   }
 }

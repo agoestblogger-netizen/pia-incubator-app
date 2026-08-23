@@ -5,6 +5,8 @@ import {
   createKanbanCardAction,
   updateKanbanCardStatusAction,
   updateKanbanCardSprintAction,
+  updateKanbanCardFullAction,
+  deleteKanbanCardAction,
 } from "@/app/actions/kanban";
 import {
   startSprintAction,
@@ -39,6 +41,9 @@ import {
   Sparkles,
   Inbox,
   Loader2,
+  Trash2,
+  User,
+  ExternalLink,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
 
@@ -66,7 +71,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Card Component (Sortable) with Overdue Visualization
+// Card Component (Sortable) with Overdue Visualization & Modal Click
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SortableCard({
@@ -75,12 +80,14 @@ function SortableCard({
   sprints,
   onMoveCard,
   onAssignSprint,
+  onSelectCard,
 }: {
   card: any;
   columns: any[];
   sprints: any[];
   onMoveCard: (cardId: string, newCol: string) => void;
   onAssignSprint: (cardId: string, sprintNum: number | null) => void;
+  onSelectCard: (card: any) => void;
 }) {
   const {
     attributes,
@@ -132,7 +139,10 @@ function SortableCard({
     >
       {/* Top Tag & Drag handle */}
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div
+          onClick={() => onSelectCard(card)}
+          className="flex flex-wrap items-center gap-1.5 cursor-pointer"
+        >
           {card.label && (
             <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0F5132]/10 text-[#0F5132]">
               {card.label}
@@ -156,11 +166,14 @@ function SortableCard({
         </div>
       </div>
 
-      {/* Card Body */}
-      <div {...listeners} className="cursor-grab active:cursor-grabbing space-y-1.5 touch-none">
+      {/* Card Body - Click to open full detail modal */}
+      <div
+        onClick={() => onSelectCard(card)}
+        className="cursor-pointer space-y-1.5 group-hover:text-[#0F5132]"
+      >
         <h4
-          className={`text-xs font-bold leading-tight ${
-            isOverdue ? "text-red-950" : "text-gray-900"
+          className={`text-xs font-bold leading-tight transition-colors ${
+            isOverdue ? "text-red-950" : "text-gray-900 group-hover:text-[#0F5132]"
           }`}
         >
           {card.judul}
@@ -177,7 +190,8 @@ function SortableCard({
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 mt-2 border-t border-gray-100 text-[10px] text-gray-400">
         {card.tanggalSelesai ? (
           <span
-            className={`flex items-center gap-1 font-mono ${
+            onClick={() => onSelectCard(card)}
+            className={`flex items-center gap-1 font-mono cursor-pointer ${
               isOverdue ? "text-red-700 font-bold" : "text-gray-500"
             }`}
           >
@@ -185,7 +199,7 @@ function SortableCard({
             {formatDateIndo(card.tanggalSelesai)}
           </span>
         ) : (
-          <span>-</span>
+          <span onClick={() => onSelectCard(card)} className="cursor-pointer">-</span>
         )}
 
         <div className="flex items-center gap-1">
@@ -268,6 +282,7 @@ function KanbanColumnDroppable({
   onAddCard,
   onMoveCard,
   onAssignSprint,
+  onSelectCard,
 }: {
   columnId: string;
   columnTitle: string;
@@ -278,6 +293,7 @@ function KanbanColumnDroppable({
   onAddCard: (colName: string) => void;
   onMoveCard: (cardId: string, newCol: string) => void;
   onAssignSprint: (cardId: string, sprintNum: number | null) => void;
+  onSelectCard: (card: any) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -342,6 +358,7 @@ function KanbanColumnDroppable({
               sprints={sprints}
               onMoveCard={onMoveCard}
               onAssignSprint={onAssignSprint}
+              onSelectCard={onSelectCard}
             />
           ))}
 
@@ -425,6 +442,22 @@ export function KanbanClient({
   const [targetSprintCount, setTargetSprintCount] = useState(sprints.length);
   const [sprintCountReason, setSprintCountReason] = useState("");
 
+  // Card Detail Modal State
+  const [selectedCardForDetail, setSelectedCardForDetail] = useState<any | null>(null);
+  const [detailJudul, setDetailJudul] = useState("");
+  const [detailDeskripsi, setDetailDeskripsi] = useState("");
+  const [detailTahap, setDetailTahap] = useState("umum");
+  const [detailSprintNumber, setDetailSprintNumber] = useState<number | null>(null);
+  const [detailStatusKolom, setDetailStatusKolom] = useState("To Do");
+  const [detailOwnerAnggotaId, setDetailOwnerAnggotaId] = useState<string | null>(null);
+  const [detailLabel, setDetailLabel] = useState("");
+  const [detailTanggalMulai, setDetailTanggalMulai] = useState("");
+  const [detailTanggalSelesai, setDetailTanggalSelesai] = useState("");
+  const [detailAcceptanceCriteria, setDetailAcceptanceCriteria] = useState("");
+  const [detailDependencyRisiko, setDetailDependencyRisiko] = useState("");
+  const [savingDetailCard, setSavingDetailCard] = useState(false);
+  const [deletingCard, setDeletingCard] = useState(false);
+
   // New Card Form State
   const [judul, setJudul] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
@@ -482,6 +515,77 @@ export function KanbanClient({
     if (!currentSprintObj) return [];
     return activeSprintCards.filter((c) => c.statusKolom !== "Done");
   }, [activeSprintCards, currentSprintObj]);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Card Detail Handlers
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const handleOpenCardDetail = (card: any) => {
+    setSelectedCardForDetail(card);
+    setDetailJudul(card.judul || "");
+    setDetailDeskripsi(card.deskripsi || "");
+    setDetailTahap(card.tahap || "umum");
+    setDetailSprintNumber(card.sprintNumber !== undefined ? card.sprintNumber : null);
+    setDetailStatusKolom(card.statusKolom || "To Do");
+    setDetailOwnerAnggotaId(card.ownerAnggotaId || null);
+    setDetailLabel(card.label || "");
+    setDetailTanggalMulai(
+      card.tanggalMulai ? new Date(card.tanggalMulai).toISOString().split("T")[0] : ""
+    );
+    setDetailTanggalSelesai(
+      card.tanggalSelesai ? new Date(card.tanggalSelesai).toISOString().split("T")[0] : ""
+    );
+    setDetailAcceptanceCriteria(card.acceptanceCriteria || "");
+    setDetailDependencyRisiko(card.dependencyRisiko || "");
+  };
+
+  const handleSaveCardDetail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCardForDetail) return;
+    setSavingDetailCard(true);
+    setErrorMessage(null);
+
+    const payload = {
+      judul: detailJudul,
+      deskripsi: detailDeskripsi,
+      tahap: detailTahap,
+      sprintNumber: detailSprintNumber,
+      statusKolom: detailStatusKolom,
+      ownerAnggotaId: detailOwnerAnggotaId,
+      label: detailLabel,
+      tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
+      tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
+      acceptanceCriteria: detailAcceptanceCriteria,
+      dependencyRisiko: detailDependencyRisiko,
+    };
+
+    const res = await updateKanbanCardFullAction(timId, selectedCardForDetail.id, payload);
+    if (res.success && res.data) {
+      setCards((prev) =>
+        prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
+      );
+      setSelectedCardForDetail(null);
+    } else {
+      setErrorMessage(res.error || "Gagal menyimpan perubahan kartu.");
+    }
+    setSavingDetailCard(false);
+  };
+
+  const handleDeleteCard = async () => {
+    if (!selectedCardForDetail) return;
+    if (!confirm(`Hapus kartu "${selectedCardForDetail.judul}" secara permanen?`)) return;
+    setDeletingCard(true);
+    setErrorMessage(null);
+
+    const res = await deleteKanbanCardAction(timId, selectedCardForDetail.id);
+    if (res.success) {
+      setCards((prev) => prev.filter((c) => c.id !== selectedCardForDetail.id));
+      setSelectedCardForDetail(null);
+    } else {
+      setErrorMessage(res.error || "Gagal menghapus kartu.");
+    }
+    setDeletingCard(false);
+  };
 
   // ───────────────────────────────────────────────────────────────────────────
   // Card Actions
@@ -992,6 +1096,7 @@ export function KanbanClient({
                 }}
                 onMoveCard={handleMoveCardDropdown}
                 onAssignSprint={handleAssignSprint}
+                onSelectCard={handleOpenCardDetail}
               />
 
               {/* 2-5. Kolom Kerja Sprint (To Do, In Progress, Review, Done) */}
@@ -1018,6 +1123,7 @@ export function KanbanClient({
                     }}
                     onMoveCard={handleMoveCardDropdown}
                     onAssignSprint={handleAssignSprint}
+                    onSelectCard={handleOpenCardDetail}
                   />
                 );
               })}
@@ -1087,10 +1193,11 @@ export function KanbanClient({
                 return (
                   <div
                     key={c.id}
-                    className={`p-4 rounded-xl border transition-all ${
+                    onClick={() => handleOpenCardDetail(c)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer ${
                       isOverdue
-                        ? "border-red-300 bg-red-50/30"
-                        : "border-gray-100 bg-gray-50/60"
+                        ? "border-red-300 bg-red-50/30 hover:border-red-400"
+                        : "border-gray-100 bg-gray-50/60 hover:border-[#0F5132]/60"
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
@@ -1158,7 +1265,265 @@ export function KanbanClient({
         </div>
       )}
 
-      {/* Modal / Dialog Tambah Kartu */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      {/* Modal / Dialog Detail Kartu Lengkap (View & Edit) */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      <Dialog
+        open={Boolean(selectedCardForDetail)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCardForDetail(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-2 pr-4">
+              <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <KanbanIcon className="h-4 w-4 text-[#0F5132]" />
+                Detail & Sunting Kartu Task
+              </DialogTitle>
+              {selectedCardForDetail?.sprintNumber ? (
+                <Badge variant="secondary" className="text-[10px]">
+                  Sprint {selectedCardForDetail.sprintNumber}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] text-slate-500">
+                  📦 Backlog
+                </Badge>
+              )}
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveCardDetail} className="space-y-4 py-2 text-xs">
+            {/* Judul */}
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Judul Kartu / Task *
+              </label>
+              <Input
+                value={detailJudul}
+                disabled={!canEdit}
+                onChange={(e) => setDetailJudul(e.target.value)}
+                required
+                className="text-xs font-semibold"
+              />
+            </div>
+
+            {/* Deskripsi Lengkap */}
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Deskripsi Lengkap
+              </label>
+              <Textarea
+                rows={5}
+                value={detailDeskripsi}
+                disabled={!canEdit}
+                placeholder="Rincian lengkap aktivitas, acceptance criteria, atau langkah implementasi..."
+                onChange={(e) => setDetailDeskripsi(e.target.value)}
+                className="text-xs leading-relaxed font-normal"
+              />
+            </div>
+
+            {/* Grid 1: Tahap Inkubasi & Penugasan Sprint */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Tahap Inkubasi
+                </label>
+                <select
+                  value={detailTahap}
+                  disabled={!canEdit}
+                  onChange={(e) => setDetailTahap(e.target.value)}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
+                >
+                  <option value="innovation_setup">Innovation Setup</option>
+                  <option value="customer_validation">Customer Validation</option>
+                  <option value="market_validation">Market Validation</option>
+                  <option value="umum">Umum</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Penugasan Sprint
+                </label>
+                <select
+                  value={detailSprintNumber === null ? "backlog" : String(detailSprintNumber)}
+                  disabled={!canEdit}
+                  onChange={(e) => {
+                    const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
+                    setDetailSprintNumber(val);
+                  }}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                >
+                  <option value="backlog">📦 Backlog (Tanpa Sprint)</option>
+                  {sprints.map((s) => (
+                    <option key={s.nomorSprint} value={s.nomorSprint}>
+                      Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Grid 2: Status Kolom & PIC Owner */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Status Kolom
+                </label>
+                <select
+                  value={detailStatusKolom}
+                  disabled={!canEdit}
+                  onChange={(e) => setDetailStatusKolom(e.target.value)}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                >
+                  {columns.map((c) => (
+                    <option key={c.namaKolom} value={c.namaKolom}>
+                      {c.namaKolom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Owner / PIC Anggota Tim
+                </label>
+                <select
+                  value={detailOwnerAnggotaId || ""}
+                  disabled={!canEdit}
+                  onChange={(e) => setDetailOwnerAnggotaId(e.target.value || null)}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
+                >
+                  <option value="">-- Belum Ditugaskan --</option>
+                  {anggotaTim.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.nama} ({a.jabatan || a.unitKerja || "Anggota"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Label / Tag */}
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Label / Tag
+              </label>
+              <Input
+                placeholder="Draf Roadmap, Template Baku CV, MVP, SME, dll"
+                value={detailLabel}
+                disabled={!canEdit}
+                onChange={(e) => setDetailLabel(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+
+            {/* Dates: Mulai & Selesai */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Tanggal Mulai
+                </label>
+                <Input
+                  type="date"
+                  value={detailTanggalMulai}
+                  disabled={!canEdit}
+                  onChange={(e) => setDetailTanggalMulai(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Target Selesai
+                </label>
+                <Input
+                  type="date"
+                  value={detailTanggalSelesai}
+                  disabled={!canEdit}
+                  onChange={(e) => setDetailTanggalSelesai(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Acceptance Criteria */}
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Acceptance Criteria / Tolok Ukur Keberhasilan
+              </label>
+              <Textarea
+                rows={2}
+                value={detailAcceptanceCriteria}
+                disabled={!canEdit}
+                placeholder="Kriteria task dianggap tuntas..."
+                onChange={(e) => setDetailAcceptanceCriteria(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+
+            {/* Dependency & Risiko */}
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Ketergantungan / Risiko
+              </label>
+              <Textarea
+                rows={2}
+                value={detailDependencyRisiko}
+                disabled={!canEdit}
+                placeholder="Ketergantungan terhadap divisi lain, SME, akses sistem..."
+                onChange={(e) => setDetailDependencyRisiko(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-gray-100">
+              {canEdit ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={deletingCard || savingDetailCard}
+                  onClick={handleDeleteCard}
+                  className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
+                >
+                  {deletingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  <span>Hapus Kartu</span>
+                </Button>
+              ) : (
+                <div />
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedCardForDetail(null)}
+                  className="text-xs"
+                >
+                  Tutup
+                </Button>
+                {canEdit && (
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={savingDetailCard || !detailJudul.trim()}
+                    className="text-xs bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold gap-1.5 shadow-sm"
+                  >
+                    {savingDetailCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    <span>Simpan Perubahan</span>
+                  </Button>
+                )}
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      {/* Modal / Dialog Tambah Kartu Baru */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isNewCardOpen} onOpenChange={setIsNewCardOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1290,7 +1655,9 @@ export function KanbanClient({
         </DialogContent>
       </Dialog>
 
+      {/* ───────────────────────────────────────────────────────────────────── */}
       {/* Dialog Selesaikan Sprint (Penyelesaian Task Belum Selesai) */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isCompleteModalOpen} onOpenChange={setIsCompleteModalOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -1380,7 +1747,9 @@ export function KanbanClient({
         </DialogContent>
       </Dialog>
 
+      {/* ───────────────────────────────────────────────────────────────────── */}
       {/* Dialog Kelola Jumlah Sprint */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isSprintCountModalOpen} onOpenChange={setIsSprintCountModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
