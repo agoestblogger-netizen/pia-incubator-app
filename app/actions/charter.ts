@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { generateAiCharterFields } from "@/lib/ai/charter-generator";
 
 export type RoleAssignmentItem = {
   id?: string; // local temporary id for UI list keys
@@ -158,6 +159,45 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
     const submisi = snap.data_submisi || snap;
     const formDetail = submisi.form_detail || {};
 
+    // 1. Check if AI charter has already been generated and cached in snapshotData
+    let aiFields = snap.ai_generated_charter as any;
+
+    // 2. If not generated and OPENAI_API_KEY is present, generate it via OpenAI (Runs ONCE per team)
+    if (!aiFields && process.env.OPENAI_API_KEY && !data) {
+      try {
+        const generated = await generateAiCharterFields({
+          teamId: timId,
+          proposalId: dossier.proposalIdAsli || snap.proposal_id || timId,
+          namaProyek: submisi.judul || snap.judul_inovasi || 'Proyek Inovasi',
+          kategoriPia: submisi.kategori_pia || 'BI',
+          rawProposalData: {
+            judul: submisi.judul || snap.judul_inovasi,
+            kategori: submisi.kategori_pia,
+            tema: submisi.tema,
+            form_detail: formDetail,
+            data_submisi: submisi,
+          },
+        });
+
+        if (generated) {
+          aiFields = generated;
+          // Persist into dossierPiaArchive so subsequent loads do not call AI again
+          await db
+            .update(dossierPiaArchive)
+            .set({
+              snapshotData: {
+                ...snap,
+                ai_generated_charter: generated,
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(dossierPiaArchive.id, dossier.id));
+        }
+      } catch (aiErr: any) {
+        console.warn(`[getCharterByTimId] AI generation fallback to static mapping:`, aiErr.message);
+      }
+    }
+
     const mapping: Record<string, string> = {
       projectMission: cleanText(
         submisi.judul ||
@@ -165,47 +205,55 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
         snap.judul_inovasi
       ),
       customerEarlyAdopters: cleanText(
+        aiFields?.customerEarlyAdopters ||
         [
           formDetail.kelompok_dibantu || formDetail.bi_sasaran_pengguna_inovasi || formDetail.bc_kelompok_dibantu || formDetail.sasaran_pengguna,
           formDetail.alasan_memilih_sasaran || formDetail.bi_alasan_memilih_sasaran || formDetail.bc_alasan_memilih_area_bantuan,
         ].filter(Boolean).join('\n\nAlasan Pemilihan:\n')
       ),
       contextAreaBantuan: cleanText(
+        aiFields?.contextAreaBantuan ||
         [
           formDetail.konteks_inovasi || formDetail.bi_konteks_inovasi,
           formDetail.alasan_konteks_inovasi || formDetail.bi_alasan_konteks_inovasi || formDetail.bc_alasan_memilih_area_bantuan,
         ].filter(Boolean).join('\n\nAlasan Konteks:\n')
       ),
       problemWorthSolving: cleanText(
+        aiFields?.problemWorthSolving ||
         [
           formDetail.masalah_sasaran || formDetail.bi_masalah_diselesaikan || formDetail.bc_masalah_sasaran_inovasi,
           formDetail.masalah_penting_karena || formDetail.bi_masalah_penting_karena || formDetail.bc_alasan_penting_diselesaikan || formDetail.detil_permasalahan || formDetail.bc_detil_permasalahan,
         ].filter(Boolean).join('\n\nUrgensi / Alasan Penting Diselesaikan:\n')
       ),
       hmw: cleanText(
+        aiFields?.hmw ||
         formDetail.hmw ||
         formDetail.bi_how_might_we ||
         formDetail.bc_how_might_we ||
         formDetail.how_might_we
       ),
       opportunityStatement: cleanText(
+        aiFields?.opportunityStatement ||
         formDetail.target_non_finansial ||
         formDetail.bi_target_non_finansial ||
         formDetail.bc_target_capaian_non_finansial
       ),
       businessOpportunity: cleanText(
+        aiFields?.businessOpportunity ||
         [
           formDetail.target_finansial || formDetail.bi_target_finansial || formDetail.bc_target_capaian_finansial,
           formDetail.target_non_finansial || formDetail.bi_target_non_finansial || formDetail.bc_target_capaian_non_finansial,
         ].filter(Boolean).join('\n\nDampak Non-Finansial:\n')
       ),
       solusiAwal: cleanText(
+        aiFields?.solusiAwal ||
         [
           formDetail.solusi_diusulkan || formDetail.bi_inovasi_diusulkan || formDetail.bc_eksplorasi_solusi || submisi.deskripsi_lengkap,
           formDetail.inovasi_dapat_menyelesaikan || formDetail.bi_inovasi_dapat_menyelesaikan,
         ].filter(Boolean).join('\n\nCara Penyelesaian:\n')
       ),
       desirabilityHypothesis: cleanText(
+        aiFields?.desirabilityHypothesis ||
         formDetail.target_non_finansial ||
         formDetail.bi_target_non_finansial ||
         formDetail.bc_target_capaian_non_finansial ||
@@ -213,17 +261,20 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
         formDetail.bi_sasaran_pengguna_inovasi
       ),
       feasibilityHypothesis: cleanText(
+        aiFields?.feasibilityHypothesis ||
         [
           formDetail.keunikan || formDetail.bi_keunikan_penyelesaian || formDetail.bc_inovasi_harus_memiliki_kebaruan,
           formDetail.detil_cara_kerja || formDetail.bi_diwujudkan_dengan_cara || formDetail.bi_dengan_cara || formDetail.bc_detil_cara_kerja,
         ].filter(Boolean).join('\n\nPerwujudan Teknis / Cara Kerja:\n')
       ),
       viabilityHypothesis: cleanText(
+        aiFields?.viabilityHypothesis ||
         formDetail.target_finansial ||
         formDetail.bi_target_finansial ||
         formDetail.bc_target_capaian_finansial
       ),
       kebutuhanDukungan: cleanText(
+        aiFields?.kebutuhanDukungan ||
         formDetail.sumber_daya ||
         formDetail.bi_sumber_daya ||
         formDetail.bc_sumber_daya_diperlukan
