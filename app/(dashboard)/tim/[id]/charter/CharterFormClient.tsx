@@ -45,6 +45,7 @@ import {
   Settings2,
   Sparkles,
 } from "lucide-react";
+import { RoleProposalHintTooltip } from "./RoleProposalHintTooltip";
 
 interface RoleConfig {
   roleCode: RoleAssignmentItem['roleCode'];
@@ -502,6 +503,23 @@ export function CharterFormClient({
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${config.badgeColor}`}>
                               {config.badge}
                             </span>
+                            {/* Inline Hint Badge & Tooltip */}
+                            {config.roleCode === 'promotor' && usulanPromotorHint && (
+                              <RoleProposalHintTooltip
+                                title="Usulan Promotor dari Proposal"
+                                content={usulanPromotorHint}
+                                badgeLabel="Ada usulan"
+                                color="amber"
+                              />
+                            )}
+                            {config.roleCode === 'project_owner' && usulanPoHint && (
+                              <RoleProposalHintTooltip
+                                title="Saran Project Owner"
+                                content={usulanPoHint}
+                                badgeLabel="Saran PO"
+                                color="emerald"
+                              />
+                            )}
                           </div>
                           <p className="text-[11px] text-gray-500 leading-relaxed">
                             {config.accountability}
@@ -516,18 +534,6 @@ export function CharterFormClient({
                             </span>
                           )}
                         </div>
-                        {config.roleCode === 'promotor' && usulanPromotorHint && (
-                          <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2 shadow-2xs">
-                            <span className="font-bold shrink-0 text-amber-800">💡 Usulan dari proposal:</span>
-                            <span className="text-amber-900 font-medium leading-relaxed">{usulanPromotorHint}</span>
-                          </div>
-                        )}
-                        {config.roleCode === 'project_owner' && usulanPoHint && (
-                          <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-[11px] flex items-start gap-2 shadow-2xs">
-                            <span className="font-bold shrink-0 text-emerald-800">💡 Saran Project Owner:</span>
-                            <span className="text-emerald-900 font-medium leading-relaxed">{usulanPoHint}</span>
-                          </div>
-                        )}
                       </td>
 
                       {/* Inputs Column: Single row or Multi-Person Stack */}
