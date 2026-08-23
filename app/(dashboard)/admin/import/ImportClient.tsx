@@ -7,20 +7,31 @@ import {
   saveImportedProposal,
   finalizeImportAuditLog,
   type PreviewProposalItem,
+  type CreatedAccountSummaryItem,
 } from '@/app/actions/import-peserta';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   UploadCloud,
   FileArchive,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   XCircle,
   ArrowRight,
   RefreshCw,
   FileText,
   Check,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,6 +48,7 @@ export function ImportClient() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [overrideIds, setOverrideIds] = useState<Set<string>>(new Set());
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [newlyCreatedAccounts, setNewlyCreatedAccounts] = useState<CreatedAccountSummaryItem[] | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +94,7 @@ export function ImportClient() {
     setErrorMsg(null);
     setSuccessMsg(null);
     setImportResult(null);
+    setNewlyCreatedAccounts(null);
     setLoadingPreview(true);
 
     try {
@@ -219,6 +232,7 @@ export function ImportClient() {
     setErrorMsg(null);
     setSuccessMsg(null);
     setProgressPercent(0);
+    setNewlyCreatedAccounts(null);
 
     try {
       const zip = await JSZip.loadAsync(file);
@@ -228,6 +242,7 @@ export function ImportClient() {
       let importedCount = 0;
       let skippedCount = 0;
       const importedIds: string[] = [];
+      const allCreatedAccounts: CreatedAccountSummaryItem[] = [];
 
       for (let i = 0; i < total; i++) {
         const item = selectedList[i];
@@ -274,7 +289,6 @@ export function ImportClient() {
             body: uploadFormData,
           });
 
-          // Safe response handling
           if (!uploadRes.ok) {
             let errorDetail = `Status HTTP ${uploadRes.status}`;
             try {
@@ -299,7 +313,7 @@ export function ImportClient() {
 
         setProgressPercent(Math.round(((i + 0.8) / total) * 100));
 
-        // 3. Save proposal record & dossier to database
+        // 3. Save proposal record & dossier to database + Auto-create Accounts
         const saveRes = await saveImportedProposal({
           proposalId: propId,
           season: item.season,
@@ -322,6 +336,9 @@ export function ImportClient() {
         } else {
           importedCount++;
           importedIds.push(propId);
+          if (saveRes.createdAccounts && saveRes.createdAccounts.length > 0) {
+            allCreatedAccounts.push(...saveRes.createdAccounts);
+          }
         }
 
         setProgressPercent(Math.round(((i + 1) / total) * 100));
@@ -333,6 +350,7 @@ export function ImportClient() {
         importedCount,
         skippedCount,
         proposalIds: importedIds,
+        createdAccountsCount: allCreatedAccounts.length,
       });
 
       setLoadingConfirm(false);
@@ -341,6 +359,10 @@ export function ImportClient() {
         `Proses import selesai: ${importedCount} tim calon peserta berhasil diproses ke database & storage, ${skippedCount} di-skip.`
       );
       setImportResult({ imported: importedCount, skipped: skippedCount });
+
+      if (allCreatedAccounts.length > 0) {
+        setNewlyCreatedAccounts(allCreatedAccounts);
+      }
     } catch (err: any) {
       console.error('Import processing error:', err);
       setLoadingConfirm(false);
@@ -358,116 +380,85 @@ export function ImportClient() {
             <FileArchive className="h-7 w-7 text-[#0F5132]" />
             Import Calon Peserta Inkubasi
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Unggah paket ekspor ZIP dari PIA Curation App untuk memasukkan proposal yang lolos Grand Final (Status Release).
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            Unggah berkas ZIP hasil kurasi Grand Final PIA untuk memasukkan tim inovator, arsip dossier, dan membuat akun anggota tim secara otomatis.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dossier">
-            <Button variant="outline" className="text-xs h-9">
-              <FileText className="h-3.5 w-3.5 mr-1.5" />
-              Lihat Arsip Dossier
-            </Button>
-          </Link>
         </div>
       </div>
 
-      {/* Upload Box */}
-      <Card className="border-dashed border-2 border-gray-300 hover:border-[#0F5132] transition-colors bg-white shadow-sm">
-        <CardContent className="p-8 text-center">
+      {/* Upload Zone */}
+      <Card className="border-2 border-dashed border-gray-300 hover:border-[#0F5132] transition-colors bg-white">
+        <CardContent className="flex flex-col items-center justify-center py-10 px-4 text-center">
+          <div className="p-4 rounded-full bg-green-50 text-[#0F5132] mb-3">
+            <UploadCloud className="h-8 w-8" />
+          </div>
+          <h3 className="font-bold text-base text-gray-900 mb-1">
+            {file ? file.name : 'Pilih Berkas ZIP Calon Peserta'}
+          </h3>
+          <p className="text-xs text-gray-500 max-w-md mb-4">
+            Struktur ZIP harus berisi <code>ringkasan.csv</code>, folder <code>dossier/</code> (.json), dan folder <code>lampiran/</code>.
+          </p>
+
           <input
             type="file"
+            accept=".zip"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept=".zip"
             className="hidden"
           />
 
-          <div className="mx-auto w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mb-4 text-[#0F5132]">
-            <UploadCloud className="h-8 w-8" />
-          </div>
-
-          <h3 className="text-base font-semibold text-gray-900 mb-1">
-            {file ? file.name : 'Pilih atau Tarik File ZIP Ekspor PIA Curation'}
-          </h3>
-          <p className="text-xs text-gray-500 max-w-md mx-auto mb-4">
-            Paket harus berisi <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-800 font-mono">ringkasan.csv</code> di root, folder <code className="bg-gray-100 px-1 py-0.5 rounded font-mono">dossier/</code>, dan lampiran terkait.
-          </p>
-
-          <Button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={loadingPreview || loadingConfirm}
-            className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-9 px-4 font-semibold"
-          >
-            {loadingPreview ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" />
-                Membaca File ZIP...
-              </>
-            ) : file ? (
-              'Ganti File ZIP'
-            ) : (
-              'Pilih File ZIP'
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loadingPreview || loadingConfirm}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-semibold text-xs h-9 px-4 rounded-xl"
+            >
+              {file ? 'Ganti Berkas ZIP' : 'Pilih Berkas ZIP'}
+            </Button>
+            {file && (
+              <span className="text-xs font-mono text-gray-500">
+                {(file.size / (1024 * 1024)).toFixed(2)} MB
+              </span>
             )}
-          </Button>
-
-          {file && !loadingPreview && (
-            <p className="text-xs text-green-700 font-medium mt-2">
-              Ukuran: {(file.size / 1024 / 1024).toFixed(2)} MB • Siap diproses
-            </p>
-          )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Progress Bar while Importing */}
-      {loadingConfirm && (
-        <Card className="border border-green-200 bg-green-50/50 p-4 shadow-sm animate-in fade-in duration-200">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-green-900">
-              <span className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin text-[#0F5132]" />
-                {progressText || 'Memproses upload data...'}
-              </span>
-              <span className="font-mono text-sm">{progressPercent}%</span>
-            </div>
-            <div className="w-full bg-green-200 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-[#0F5132] h-2.5 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        </Card>
+      {/* Loading Preview State */}
+      {loadingPreview && (
+        <div className="py-8 text-center space-y-2">
+          <RefreshCw className="h-6 w-6 text-[#0F5132] animate-spin mx-auto" />
+          <p className="text-xs text-gray-600 font-medium">Membaca dan memverifikasi isi file ZIP...</p>
+        </div>
       )}
 
-      {/* Error & Success Messages */}
+      {/* Alerts */}
       {errorMsg && (
-        <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-3 text-sm text-red-800 shadow-sm">
+        <div className="rounded-xl bg-red-50 border border-red-300 p-4 flex items-start gap-3 text-sm text-red-900 shadow-xs">
           <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold">Terjadi Kesalahan</p>
+            <p className="font-bold">Terjadi Kesalahan</p>
             <p className="text-xs text-red-700 mt-0.5">{errorMsg}</p>
           </div>
         </div>
       )}
 
       {successMsg && (
-        <div className="rounded-xl bg-green-50 border border-green-200 p-4 flex items-start gap-3 text-sm text-green-900 shadow-sm">
+        <div className="rounded-xl bg-green-50 border border-green-300 p-4 flex items-start gap-3 text-sm text-green-900 shadow-xs">
           <CheckCircle2 className="h-5 w-5 text-green-700 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-semibold">Proses Import Berhasil</p>
+            <p className="font-bold">Import Selesai</p>
             <p className="text-xs text-green-800 mt-0.5">{successMsg}</p>
             <div className="mt-3 flex items-center gap-3">
               <Link href="/dashboard">
                 <Button size="sm" className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-8">
-                  Buka Dashboard Tim
-                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                  Lihat Dashboard Tim Inovator
                 </Button>
               </Link>
               <Link href="/dossier">
                 <Button size="sm" variant="outline" className="text-xs h-8">
-                  Buka Perpustakaan Dossier
+                  Buka Menu Dossier Arsip
                 </Button>
               </Link>
             </div>
@@ -475,66 +466,78 @@ export function ImportClient() {
         </div>
       )}
 
-      {/* Preview Table */}
-      {items.length > 0 && (
-        <Card className="border border-gray-200 shadow-sm">
-          <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/50">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <span>Preview Data Submisi ({items.length} Proposal)</span>
-                </CardTitle>
-                <CardDescription className="text-xs text-gray-500 mt-0.5">
-                  Centang proposal yang ingin dimasukkan sebagai tim calon peserta.
-                </CardDescription>
-              </div>
+      {/* Preview Table & Action Controls */}
+      {items.length > 0 && !loadingPreview && (
+        <Card className="border border-gray-200 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="p-4 border-b border-gray-100 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <span>Daftar Calon Peserta Terbaca ({items.length} Proposal)</span>
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-500">
+                Centang proposal yang ingin diimpor ke sistem inkubasi.
+              </CardDescription>
+            </div>
 
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleSelectAll}
-                  disabled={loadingConfirm}
-                  className="text-xs h-8"
-                >
-                  {selectedIds.size === items.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
-                </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={toggleSelectAll}
+                disabled={loadingConfirm}
+                className="text-xs h-8"
+              >
+                {selectedIds.size === items.length ? 'Batal Semua' : 'Pilih Semua'}
+              </Button>
 
-                <Button
-                  type="button"
-                  onClick={handleConfirmImport}
-                  disabled={selectedIds.size === 0 || loadingConfirm}
-                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-semibold text-xs h-8 px-4 shadow-sm"
-                >
-                  {loadingConfirm ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" />
-                      Memproses Import ({selectedIds.size})...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-3.5 w-3.5 mr-1.5" />
-                      Konfirmasi Import ({selectedIds.size} Tim)
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                onClick={handleConfirmImport}
+                disabled={loadingConfirm || selectedIds.size === 0}
+                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-8 font-bold gap-1.5 shadow-xs"
+              >
+                {loadingConfirm ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Memproses ({progressPercent}%)...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Konfirmasi Import ({selectedIds.size})</span>
+                  </>
+                )}
+              </Button>
             </div>
           </CardHeader>
 
+          {loadingConfirm && (
+            <div className="p-4 bg-green-50/60 border-b border-green-200 space-y-2">
+              <div className="flex items-center justify-between text-xs text-green-900 font-semibold">
+                <span>{progressText}</span>
+                <span>{progressPercent}%</span>
+              </div>
+              <div className="w-full bg-green-200 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-[#0F5132] h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-left text-xs text-gray-700">
-              <thead className="bg-gray-100/75 text-gray-700 font-semibold border-b border-gray-200">
-                <tr>
+            <table className="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-100/75 text-gray-700 font-bold uppercase text-[10px] tracking-wider">
                   <th className="p-3 w-10 text-center">Pilih</th>
-                  <th className="p-3">ID Proposal</th>
+                  <th className="p-3">Proposal ID</th>
                   <th className="p-3">Nama Proyek Inovasi</th>
-                  <th className="p-3">Pengusul & Unit</th>
-                  <th className="p-3 text-center">Kategori</th>
-                  <th className="p-3 text-center">Skor AI</th>
-                  <th className="p-3 text-center">Kelengkapan</th>
-                  <th className="p-3 text-center">Status Import</th>
+                  <th className="p-3">Pengusul & Anggota</th>
+                  <th className="p-3">Kategori</th>
+                  <th className="p-3">Dossier & Lampiran</th>
+                  <th className="p-3 text-center">Status Duplikasi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -560,42 +563,53 @@ export function ImportClient() {
 
                       <td className="p-3 font-mono font-bold text-gray-900 whitespace-nowrap">
                         {item.proposal_id}
-                      </td>
-
-                      <td className="p-3 font-semibold text-gray-900 max-w-xs">
-                        <div>{item.nama_proyek}</div>
-                        <div className="text-[10px] text-gray-400 font-normal mt-0.5">
+                        <span className="block text-[10px] text-gray-400 font-normal">
                           {item.season}
-                        </div>
+                        </span>
                       </td>
 
-                      <td className="p-3 whitespace-nowrap">
-                        <div className="font-medium text-gray-800">{item.nama_pengusul}</div>
-                        <div className="text-[11px] text-gray-500">{item.email_pengusul}</div>
+                      <td className="p-3 max-w-xs">
+                        <span className="font-bold text-gray-900 block leading-snug">
+                          {item.nama_proyek}
+                        </span>
                       </td>
 
-                      <td className="p-3 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                      <td className="p-3">
+                        <span className="font-semibold text-gray-800 block">
+                          {item.nama_pengusul}
+                        </span>
+                        <span className="text-[11px] text-gray-500 font-mono">
+                          {item.email_pengusul || '-'}
+                        </span>
+                      </td>
+
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0F5132]/10 text-[#0F5132]">
                           {item.kategori_pia}
                         </span>
                       </td>
 
-                      <td className="p-3 text-center font-mono font-medium whitespace-nowrap">
-                        {item.skor_ai}
-                      </td>
-
-                      <td className="p-3 text-center whitespace-nowrap">
-                        {item.has_dossier_json ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-200">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Dossier OK ({item.lampiran_files.length} file)
+                      <td className="p-3 text-[11px] space-y-0.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              item.has_dossier_json ? 'bg-green-500' : 'bg-red-400'
+                            }`}
+                          />
+                          <span className="text-gray-600">
+                            {item.has_dossier_json ? 'Dossier JSON OK' : 'Tanpa JSON'}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
-                            <AlertTriangle className="h-3 w-3" />
-                            Dossier Hilang
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              item.has_lampiran ? 'bg-blue-500' : 'bg-gray-300'
+                            }`}
+                          />
+                          <span className="text-gray-500">
+                            {item.lampiran_files.length} berkas lampiran
                           </span>
-                        )}
+                        </div>
                       </td>
 
                       <td className="p-3 text-center whitespace-nowrap">
@@ -631,6 +645,70 @@ export function ImportClient() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog Ringkasan Akun Baru Dibuat Otomatis dari Proposal (Import Batch) */}
+      <Dialog
+        open={Boolean(newlyCreatedAccounts && newlyCreatedAccounts.length > 0)}
+        onOpenChange={(open) => {
+          if (!open) setNewlyCreatedAccounts(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+              {newlyCreatedAccounts?.length} Akun Baru Dibuat Otomatis Dari Data Proposal
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <p className="text-gray-700 leading-relaxed">
+              Sebanyak <strong>{newlyCreatedAccounts?.length} akun baru</strong> berhasil dibuat otomatis dari data proposal (password default: <code className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold font-mono">gadai123</code>, <strong>wajib diganti saat login pertama</strong>):
+            </p>
+
+            <div className="space-y-2 border border-emerald-200 bg-emerald-50/50 p-3.5 rounded-xl max-h-64 overflow-y-auto">
+              {newlyCreatedAccounts?.map((acc, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-white border border-emerald-100 shadow-2xs"
+                >
+                  <div className="space-y-0.5 overflow-hidden">
+                    <span className="font-bold text-gray-900 block truncate">{acc.nama}</span>
+                    <span className="text-[11px] text-gray-500 font-mono block truncate">{acc.email}</span>
+                    <span className="text-[10px] text-gray-400 block truncate">Tim: {acc.timNama}</span>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold border-emerald-300 text-emerald-800 shrink-0"
+                  >
+                    {acc.roleName}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5 text-xs">
+                <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+                Informasikan ke Anggota Tim:
+              </p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Segera informasikan ke masing-masing bahwa akun mereka sudah dibuat dan bisa login dengan password default di atas — sistem akan otomatis meminta mereka mengganti password saat login pertama kali.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setNewlyCreatedAccounts(null)}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold w-full sm:w-auto"
+            >
+              Mengerti & Selesai
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
