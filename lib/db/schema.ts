@@ -501,6 +501,7 @@ export const users = pgTable('users', {
   nama: text('nama').notNull(),
   email: text('email').notNull().unique(),
   statusAktif: boolean('status_aktif').notNull().default(true),
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

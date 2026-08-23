@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { checkUserMustChangePasswordAction } from "@/app/actions/auth";
 import { Sparkles, Lock, Mail, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +19,14 @@ export default function LoginPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        router.replace("/dashboard");
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user?.email) {
+        const mustChange = await checkUserMustChangePasswordAction(user.email);
+        if (mustChange) {
+          router.replace("/ganti-password");
+        } else {
+          router.replace("/dashboard");
+        }
       }
     });
   }, [router, supabase]);
@@ -32,14 +38,19 @@ export default function LoginPage() {
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
         setErrorMsg(error.message || "Gagal masuk. Periksa email dan password Anda.");
       } else {
-        router.push("/dashboard");
+        const mustChange = await checkUserMustChangePasswordAction(email);
+        if (mustChange) {
+          router.push("/ganti-password");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }
     } catch (err: any) {

@@ -10,6 +10,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     redirect('/login');
   }
 
+  if (user.mustChangePassword) {
+    redirect('/ganti-password');
+  }
+
   const tasksSummary = await getMyTasks(user);
 
   return (

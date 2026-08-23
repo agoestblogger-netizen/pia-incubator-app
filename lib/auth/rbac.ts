@@ -8,6 +8,7 @@ export type UserProfile = {
   nama: string;
   email: string;
   statusAktif: boolean;
+  mustChangePassword?: boolean;
   avatarUrl: string | null;
   globalRoles: string[];
   timRoles: { timId: string; roleCode: string; roleName: string; timNama?: string; timKategori?: string }[];
@@ -31,6 +32,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
         nama: fullName,
         email: user.email,
         statusAktif: true,
+        mustChangePassword: false,
         avatarUrl: user.user_metadata?.avatar_url || null,
       }).returning();
     }
@@ -71,6 +73,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       nama: dbUser.nama,
       email: dbUser.email,
       statusAktif: dbUser.statusAktif,
+      mustChangePassword: dbUser.mustChangePassword ?? false,
       avatarUrl: dbUser.avatarUrl,
       globalRoles,
       timRoles,

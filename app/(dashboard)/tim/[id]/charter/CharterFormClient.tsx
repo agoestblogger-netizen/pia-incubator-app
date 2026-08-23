@@ -220,6 +220,11 @@ export function CharterFormClient({
   const [sprintAlasan, setSprintAlasan] = useState("");
   const [savingSprintCount, setSavingSprintCount] = useState(false);
 
+  // Auto-created Accounts Dialog State
+  const [newlyCreatedAccounts, setNewlyCreatedAccounts] = useState<
+    Array<{ nama: string; email: string; roleName: string }> | null
+  >(null);
+
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -340,9 +345,39 @@ export function CharterFormClient({
     ]);
 
     if (resCharter.success && resSprints.success) {
+      if (resCharter.createdAccounts && resCharter.createdAccounts.length > 0) {
+        setNewlyCreatedAccounts(resCharter.createdAccounts);
+      }
+
+      if (resCharter.updatedRolesData?.assignments) {
+        const newItems: RoleAssignmentItem[] = [];
+        for (const config of ROLES_CONFIG) {
+          const matched = resCharter.updatedRolesData.assignments.filter(
+            (a: any) => a.roleCode === config.roleCode
+          );
+          if (matched.length > 0) {
+            matched.forEach((assign: any, idx: number) => {
+              const anggota = resCharter.updatedRolesData?.anggotaTim?.find(
+                (ang: any) => ang.userId === assign.userId
+              );
+              newItems.push({
+                id: `updated-${config.roleCode}-${idx}-${assign.userId}`,
+                roleCode: config.roleCode,
+                userId: assign.userId,
+                userName: assign.userName || "",
+                userEmail: assign.userEmail || "",
+                jabatan: anggota?.jabatan || "",
+                unitKerja: anggota?.unitKerja || "",
+              });
+            });
+          }
+        }
+        setRoleAssignments(newItems);
+      }
+
       setStatusMsg({
         type: "success",
-        text: "Innovation Charter & Milestone Sprint terstruktur berhasil disimpan!",
+        text: "Innovation Charter & Penugasan Tim Inovator berhasil disimpan!",
       });
     } else {
       setStatusMsg({
@@ -1192,6 +1227,63 @@ export function CharterFormClient({
             >
               {savingSprintCount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               <span>Simpan Perubahan Sprint</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Ringkasan Akun Baru Dibuat Otomatis dari Proposal */}
+      <Dialog
+        open={Boolean(newlyCreatedAccounts && newlyCreatedAccounts.length > 0)}
+        onOpenChange={(open) => {
+          if (!open) setNewlyCreatedAccounts(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+              Akun Baru Dibuat Otomatis Dari Data Proposal
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <p className="text-gray-700 leading-relaxed">
+              Akun baru dibuat otomatis dari data proposal (password default: <code className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold font-mono">gadai123</code>, <strong>wajib diganti saat login pertama</strong>):
+            </p>
+
+            <div className="space-y-2 border border-emerald-200 bg-emerald-50/50 p-3.5 rounded-xl max-h-56 overflow-y-auto">
+              {newlyCreatedAccounts?.map((acc, idx) => (
+                <div key={idx} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-white border border-emerald-100 shadow-2xs">
+                  <div>
+                    <span className="font-bold text-gray-900 block">{acc.nama}</span>
+                    <span className="text-[11px] text-gray-500 font-mono">{acc.email}</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-bold border-emerald-300 text-emerald-800 shrink-0">
+                    {acc.roleName}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
+              <p className="font-bold flex items-center gap-1.5 text-xs">
+                <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+                Informasikan ke Anggota Tim:
+              </p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Segera informasikan ke yang bersangkutan bahwa akun mereka sudah dibuat dan bisa login dengan password default di atas — sistem akan otomatis meminta mereka mengganti password saat login pertama kali.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setNewlyCreatedAccounts(null)}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold w-full sm:w-auto"
+            >
+              Mengerti & Tutup
             </Button>
           </DialogFooter>
         </DialogContent>
