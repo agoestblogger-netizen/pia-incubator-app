@@ -121,6 +121,7 @@ export function CharterFormClient({
   initialSprints = [],
   autoFilledFields = [],
   usulanPromotorHint = null,
+  usulanPoHint = null,
   canEdit = true,
   canApprove = false,
   currentUser,
@@ -131,6 +132,7 @@ export function CharterFormClient({
   initialSprints?: any[];
   autoFilledFields?: string[];
   usulanPromotorHint?: string | null;
+  usulanPoHint?: string | null;
   canEdit?: boolean;
   canApprove?: boolean;
   currentUser?: any;
@@ -518,6 +520,12 @@ export function CharterFormClient({
                           <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2 shadow-2xs">
                             <span className="font-bold shrink-0 text-amber-800">💡 Usulan dari proposal:</span>
                             <span className="text-amber-900 font-medium leading-relaxed">{usulanPromotorHint}</span>
+                          </div>
+                        )}
+                        {config.roleCode === 'project_owner' && usulanPoHint && (
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-[11px] flex items-start gap-2 shadow-2xs">
+                            <span className="font-bold shrink-0 text-emerald-800">💡 Saran Project Owner:</span>
+                            <span className="text-emerald-900 font-medium leading-relaxed">{usulanPoHint}</span>
                           </div>
                         )}
                       </td>

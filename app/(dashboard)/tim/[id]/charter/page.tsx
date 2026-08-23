@@ -39,6 +39,7 @@ export default async function CharterPage({
         initialSprints={initialSprints}
         autoFilledFields={initialData.autoFilledFields}
         usulanPromotorHint={initialData.usulanPromotorHint}
+        usulanPoHint={initialData.usulanPoHint}
         canEdit={canEdit}
         canApprove={canApprove}
         currentUser={user}

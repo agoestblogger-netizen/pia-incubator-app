@@ -89,6 +89,28 @@ async function runExtraction() {
     'proposal_id,season,nama_proyek,nama_pengusul,email_pengusul,kategori_pia,skor_ai,vote_nominasi,tanggal_release,dossier_file'
   ];
 
+  function extractPromotorHint(text?: string | null): string | null {
+    if (!text) return null;
+    const promotorIdx = text.search(/Usulan\s*Promotor/i);
+    if (promotorIdx === -1) return null;
+
+    const slice = text.substring(promotorIdx);
+    const colonIdx = slice.indexOf(':');
+    if (colonIdx === -1) return null;
+
+    const afterColon = slice.substring(colonIdx + 1);
+    const endMatch = afterColon.search(/(?:Diusulkan\s+sebagai|Alasan\s+memilih|Judul\s+Inovasi|Kategori\s+Inovasi|\n\s*\n\s*[A-Z])/i);
+    let result = endMatch !== -1 ? afterColon.substring(0, endMatch) : afterColon.substring(0, 300);
+
+    result = result
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return result.length > 5 && result !== 'null' ? result : null;
+  }
+
   // Helper to escape CSV values
   const escapeCsv = (val: any) => {
     if (val === null || val === undefined) return '';
@@ -368,7 +390,10 @@ async function runExtraction() {
           bc_sumber_daya_diperlukan: p.bc_sumber_daya_diperlukan,
           bc_target_capaian_finansial: p.bc_target_capaian_finansial,
           bc_target_capaian_non_finansial: p.bc_target_capaian_non_finansial,
-        }
+          // Usulan Promotor from resubmission text
+          usulan_promotor: extractPromotorHint(p.resubmit_document_text),
+        },
+        resubmit_document_text: p.resubmit_document_text || '',
       },
       voting_summary: {
         nominate_votes: finalNominate,

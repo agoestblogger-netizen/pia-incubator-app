@@ -32,6 +32,7 @@ export type CharterWithAutoFill = {
   charter: any;
   autoFilledFields: string[];
   usulanPromotorHint: string | null;
+  usulanPoHint: string | null;
   hasDossier: boolean;
 };
 
@@ -288,21 +289,53 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       }
     }
 
+    function extractPromotorFromText(text?: string | null): string | null {
+      if (!text) return null;
+      const promotorIdx = text.search(/Usulan\s*Promotor/i);
+      if (promotorIdx === -1) return null;
+      const slice = text.substring(promotorIdx);
+      const colonIdx = slice.indexOf(':');
+      if (colonIdx === -1) return null;
+      const afterColon = slice.substring(colonIdx + 1);
+      const endMatch = afterColon.search(/(?:Diusulkan\s+sebagai|Alasan\s+memilih|Judul\s+Inovasi|Kategori\s+Inovasi|\n\s*\n\s*[A-Z])/i);
+      let result = endMatch !== -1 ? afterColon.substring(0, endMatch) : afterColon.substring(0, 300);
+      result = result.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+      return result.length > 5 && result !== 'null' ? result : null;
+    }
+
     const rawPromotor =
       formDetail.usulan_promotor ||
       formDetail.promotor_diusulkan ||
       submisi.usulan_promotor ||
-      (typeof snap.resubmit_document_text === 'string' && snap.resubmit_document_text.match(/Usulan\s*Promotor\s*[:\-]\s*([^\n]+)/i)?.[1]);
+      extractPromotorFromText(snap.resubmit_document_text) ||
+      extractPromotorFromText(submisi.resubmit_document_text);
 
-    if (rawPromotor && typeof rawPromotor === 'string' && rawPromotor.trim()) {
+    if (rawPromotor && typeof rawPromotor === 'string' && rawPromotor.trim() && rawPromotor !== 'null') {
       usulanPromotorHint = cleanText(rawPromotor);
     }
+
+    const pengusulNama = cleanText(submisi.pengusul?.nama || submisi.nama_pengusul || snap.nama_pengusul);
+    const rawPo = formDetail.usulan_po || formDetail.usulan_project_owner;
+    const usulanPoHint = rawPo
+      ? cleanText(rawPo)
+      : pengusulNama
+      ? `Pengusul proposal ini: ${pengusulNama} (sudah terdaftar sebagai Inisiator) — bisa dipertimbangkan juga sebagai Project Owner jika sesuai.`
+      : null;
+
+    return {
+      charter: resultCharter,
+      autoFilledFields,
+      usulanPromotorHint,
+      usulanPoHint,
+      hasDossier,
+    };
   }
 
   return {
     charter: resultCharter,
     autoFilledFields,
     usulanPromotorHint,
+    usulanPoHint: null,
     hasDossier,
   };
 }
