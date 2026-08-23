@@ -1,7 +1,9 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getKeuanganData } from "@/app/actions/keuangan";
+import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
-import { TimNavTabs } from "@/components/layout/TimNavTabs";
+import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
 import { KeuanganClient } from "./KeuanganClient";
 
 export const dynamic = 'force-dynamic';
@@ -15,22 +17,24 @@ export default async function KeuanganPage({
   const tim = await getTimInovatorById(resolvedParams.id);
   if (!tim) return notFound();
 
-  const list = await getKeuanganData(tim.id);
+  const user = await getCurrentUser();
+  const [list, phaseGateStatus, canSubmit, canManage] = await Promise.all([
+    getKeuanganData(tim.id),
+    getTeamPhaseGateStatus(tim.id),
+    user ? hasPermission(user, 'anggaran.submit', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
+  ]);
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Pengajuan Anggaran (RAB) & LPJ — {tim.namaProyekInovasi}
-        </h1>
-        <p className="text-xs text-gray-500">
-          Plafon anggaran maksimal Rp 20.000.000 per fase untuk validasi pelanggan dan validasi pasar (Grup F)
-        </p>
-      </div>
+      <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
 
-      <TimNavTabs timId={tim.id} />
-
-      <KeuanganClient timId={tim.id} initialList={list} />
+      <KeuanganClient
+        timId={tim.id}
+        initialList={list}
+        canSubmit={canSubmit}
+        canManage={canManage}
+      />
     </div>
   );
 }

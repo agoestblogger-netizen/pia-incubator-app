@@ -11,6 +11,7 @@ export type UserProfile = {
   avatarUrl: string | null;
   globalRoles: string[];
   timRoles: { timId: string; roleCode: string; roleName: string; timNama?: string; timKategori?: string }[];
+  hasGlobalScope?: boolean;
 };
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
@@ -39,6 +40,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       .select({
         roleCode: roles.kodeRole,
         roleName: roles.namaRole,
+        roleScope: roles.scope,
         timId: userRoleTim.timInovatorId,
         timNama: timInovator.namaProyekInovasi,
         timKategori: timInovator.kategoriPia,
@@ -49,7 +51,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       .where(eq(userRoleTim.userId, dbUser.id));
 
     const globalRoles = assignments
-      .filter(a => !a.timId)
+      .filter(a => a.roleScope === 'global' || !a.timId)
       .map(a => a.roleCode);
 
     const timRoles = assignments
@@ -62,6 +64,8 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
         timKategori: a.timKategori || undefined,
       }));
 
+    const hasGlobalScope = assignments.some(a => a.roleScope === 'global' || !a.timId);
+
     return {
       id: dbUser.id,
       nama: dbUser.nama,
@@ -70,6 +74,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
       avatarUrl: dbUser.avatarUrl,
       globalRoles,
       timRoles,
+      hasGlobalScope,
     };
   } catch (error) {
     console.error('getCurrentUser error:', error);

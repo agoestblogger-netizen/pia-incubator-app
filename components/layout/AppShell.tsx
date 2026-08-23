@@ -1,5 +1,6 @@
 import { Navbar } from "./Navbar";
 import { getCurrentUser } from "@/lib/auth/rbac";
+import { getMyTasks } from "@/app/actions/tasks";
 import { redirect } from "next/navigation";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -9,9 +10,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     redirect('/login');
   }
 
+  const tasksSummary = await getMyTasks(user);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
-      <Navbar user={user} />
+      <Navbar user={user} taskCount={tasksSummary.totalCount} />
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {children}
       </main>

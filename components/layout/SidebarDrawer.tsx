@@ -17,12 +17,20 @@ import {
   Sparkles,
   ChevronRight,
   User as UserIcon,
+  Bell,
+  CheckSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import type { UserProfile } from '@/lib/auth/rbac';
 
-export function SidebarDrawer({ user }: { user?: UserProfile | null }) {
+export function SidebarDrawer({
+  user,
+  taskCount = 0,
+}: {
+  user?: UserProfile | null;
+  taskCount?: number;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -70,10 +78,13 @@ export function SidebarDrawer({ user }: { user?: UserProfile | null }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center justify-center p-2 rounded-xl text-white hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors"
+        className="inline-flex items-center justify-center p-2 rounded-xl text-white hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/40 transition-colors relative"
         aria-label="Buka Menu Navigasi"
       >
         <Menu className="h-6 w-6" />
+        {taskCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-[#0F5132]" />
+        )}
       </button>
 
       {/* Dimmed Overlay Backdrop */}
@@ -138,6 +149,25 @@ export function SidebarDrawer({ user }: { user?: UserProfile | null }) {
             >
               <LayoutDashboard className={`h-4 w-4 ${isActive('/dashboard') && !pathname.includes('/tim-baru') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
               <span>Dashboard Program</span>
+            </Link>
+
+            <Link
+              href="/tugas"
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                isActive('/tugas')
+                  ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
+                  : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Bell className={`h-4 w-4 ${isActive('/tugas') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
+                <span>Tugas Saya</span>
+              </div>
+              {taskCount > 0 && (
+                <span className="h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold shadow-xs">
+                  {taskCount > 99 ? '99+' : taskCount}
+                </span>
+              )}
             </Link>
 
             <Link
@@ -263,29 +293,53 @@ export function SidebarDrawer({ user }: { user?: UserProfile | null }) {
           )}
         </div>
 
-        {/* Drawer Footer — Profile & Logout */}
+        {/* Drawer Footer — Profile, Task Alert & Logout */}
         <div className="p-4 border-t border-gray-100 bg-gray-50/75 space-y-3">
           {user ? (
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="h-9 w-9 rounded-full bg-[#0F5132] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                  {user.nama.charAt(0).toUpperCase()}
-                </div>
-                <div className="overflow-hidden">
-                  <p className="font-bold text-xs text-gray-900 truncate">{user.nama}</p>
-                  <p className="text-[10px] text-gray-500 truncate font-mono">{user.email}</p>
-                </div>
-              </div>
+            <>
+              {taskCount > 0 && (
+                <Link
+                  href="/tugas"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-semibold hover:bg-amber-100/90 transition-all shadow-2xs group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-amber-700 shrink-0 group-hover:animate-bounce" />
+                    <span>Tugas Perlu Tindakan</span>
+                  </div>
+                  <span className="h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold shadow-xs">
+                    {taskCount > 99 ? '99+' : taskCount}
+                  </span>
+                </Link>
+              )}
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors shrink-0"
-                title="Keluar dari Aplikasi"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
+              <div className="flex items-center justify-between gap-3">
+                <Link href="/tugas" className="flex items-center gap-2.5 overflow-hidden group flex-1">
+                  <div className="relative">
+                    <div className="h-9 w-9 rounded-full bg-[#0F5132] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs group-hover:opacity-90">
+                      {user.nama.charAt(0).toUpperCase()}
+                    </div>
+                    {taskCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-xs">
+                        {taskCount > 99 ? '99+' : taskCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="font-bold text-xs text-gray-900 truncate group-hover:text-[#0F5132] transition-colors">{user.nama}</p>
+                    <p className="text-[10px] text-gray-500 truncate font-mono">{user.email}</p>
+                  </div>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors shrink-0"
+                  title="Keluar dari Aplikasi"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            </>
           ) : (
             <Link href="/login" className="block">
               <Button className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-9 font-semibold">

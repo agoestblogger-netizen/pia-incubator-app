@@ -129,7 +129,17 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'kanban.manage', 'kanban.edit', 'kanban.comment', 'kanban.view',
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
     'market_val.manage', 'market_val.edit', 'market_val.view',
-    'anggaran.manage', 'anggaran.submit', 'anggaran.view',
+    'anggaran.manage', 'anggaran.view',
+    'fmi.manage', 'fmi.view',
+    'dossier.view'
+  ],
+  divisi_ic: [
+    'tim.view',
+    'charter.manage', 'charter.view',
+    'kanban.view',
+    'cust_val.view',
+    'market_val.manage', 'market_val.view',
+    'anggaran.manage', 'anggaran.view',
     'fmi.manage', 'fmi.view',
     'dossier.view'
   ],
@@ -149,7 +159,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'kanban.manage', 'kanban.edit', 'kanban.view',
     'cust_val.edit', 'cust_val.view',
     'market_val.manage', 'market_val.edit', 'market_val.view',
-    'anggaran.manage', 'anggaran.submit', 'anggaran.view',
+    'anggaran.submit', 'anggaran.view',
     'fmi.view', 'dossier.view'
   ],
   inisiator: [

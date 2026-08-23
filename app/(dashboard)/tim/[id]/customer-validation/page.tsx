@@ -1,7 +1,8 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getCustomerValidationData } from "@/app/actions/customer-validation";
+import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { notFound } from "next/navigation";
-import { TimNavTabs } from "@/components/layout/TimNavTabs";
+import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
 import { CustomerValidationClient } from "./CustomerValidationClient";
 
 export const dynamic = 'force-dynamic';
@@ -12,23 +13,17 @@ export default async function CustomerValidationPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const tim = await getTimInovatorById(resolvedParams.id);
-  if (!tim) return notFound();
+  const [tim, data, phaseGateStatus] = await Promise.all([
+    getTimInovatorById(resolvedParams.id),
+    getCustomerValidationData(resolvedParams.id),
+    getTeamPhaseGateStatus(resolvedParams.id),
+  ]);
 
-  const data = await getCustomerValidationData(tim.id);
+  if (!tim) return notFound();
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Customer Validation (Tahap 2) — {tim.namaProyekInovasi}
-        </h1>
-        <p className="text-xs text-gray-500">
-          Uji coba prototype pada early adopters, evaluasi Problem-Solution Fit (PSF), dan metrik keberhasilan
-        </p>
-      </div>
-
-      <TimNavTabs timId={tim.id} />
+      <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
 
       <CustomerValidationClient timId={tim.id} initialData={data} />
     </div>

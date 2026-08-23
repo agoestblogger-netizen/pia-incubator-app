@@ -7,10 +7,22 @@ import {
   revokeCharterApprovalAction,
   RoleAssignmentItem,
 } from "@/app/actions/charter";
+import {
+  saveCharterSprintsAction,
+  updateSprintCountAction,
+} from "@/app/actions/sprint";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { UserSelectCombobox, SelectedUser } from "@/components/user/UserSelectCombobox";
 import {
   Save,
@@ -28,6 +40,10 @@ import {
   Loader2,
   AlertCircle,
   FileCheck2,
+  Calendar,
+  Layers,
+  Settings2,
+  Sparkles,
 } from "lucide-react";
 
 interface RoleConfig {
@@ -51,41 +67,41 @@ const ROLES_CONFIG: RoleConfig[] = [
   {
     roleCode: 'promotor',
     title: 'Promotor',
-    badge: 'Adopsi & Jaringan',
-    badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
-    accountability: 'Mendorong adopsi lintas unit kerja, membuka akses jaringan internal, dan mengawal integrasi solusi.',
+    badge: 'Decision Maker & Approver',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    accountability: 'Memeriksa & menyetujui Innovation Charter, mengawal keselarasan bisnis unit, dan evaluasi hasil inkubasi.',
     isMulti: false,
   },
   {
     roleCode: 'project_owner',
     title: 'Project Owner',
-    badge: 'Lead Eksekusi',
+    badge: 'Leader & Eksekutor',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    accountability: 'Memimpin eksekusi harian, mengelola backlog sprint, dan bertanggung jawab atas deliverable & timeline.',
+    accountability: 'Memimpin eksekusi harian tim, mengelola Kanban board, dan menyusun pengajuan anggaran/LPJ.',
     isMulti: false,
   },
   {
     roleCode: 'inisiator',
     title: 'Inisiator',
-    badge: 'Visi Inovasi',
-    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-    accountability: 'Pemilik gagasan awal, menjaga orisinalitas visi dan esensi problem-solution fit selama inkubasi.',
+    badge: 'Konseptor Solusi',
+    badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+    accountability: 'Penggagas ide awal proposal PIA dan menjaga kemurnian visi solusi nilai tambah inovasi.',
     isMulti: true,
   },
   {
     roleCode: 'co_creator',
-    title: 'Co-creators',
-    badge: 'Tim Inti',
+    title: 'Co-creator',
+    badge: 'Core Team',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
-    accountability: 'Anggota tim inti yang mengeksekusi pengembangan teknis, user testing, dan pengujian lapangan.',
+    accountability: 'Anggota inti tim dalam pengembangan prototipe, customer testing, dan iterasi sprint.',
     isMulti: true,
   },
   {
     roleCode: 'coach',
     title: 'Innovation Coach',
-    badge: 'Fasilitator & Metodologi',
+    badge: 'Metodologi & Fasilitator',
     badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    accountability: 'Memandu penerapan metodologi inovasi, pacing monitoring 2-mingguan, dan problem solving tim.',
+    accountability: 'Membimbing penerapan metodologi design thinking/lean startup dan memfasilitasi sprint review berkala.',
     isMulti: false,
   },
   {
@@ -102,6 +118,9 @@ export function CharterFormClient({
   timId,
   initialData,
   initialRolesData,
+  initialSprints = [],
+  autoFilledFields = [],
+  usulanPromotorHint = null,
   canEdit = true,
   canApprove = false,
   currentUser,
@@ -109,6 +128,9 @@ export function CharterFormClient({
   timId: string;
   initialData: any;
   initialRolesData?: any;
+  initialSprints?: any[];
+  autoFilledFields?: string[];
+  usulanPromotorHint?: string | null;
   canEdit?: boolean;
   canApprove?: boolean;
   currentUser?: any;
@@ -173,6 +195,31 @@ export function CharterFormClient({
     return items;
   });
 
+  const [sprints, setSprints] = useState<any[]>(() => {
+    if (initialSprints && initialSprints.length > 0) {
+      return initialSprints.map((s) => ({
+        ...s,
+        tanggalMulaiRencana: s.tanggalMulaiRencana
+          ? new Date(s.tanggalMulaiRencana).toISOString().split("T")[0]
+          : "",
+        tanggalSelesaiRencana: s.tanggalSelesaiRencana
+          ? new Date(s.tanggalSelesaiRencana).toISOString().split("T")[0]
+          : "",
+      }));
+    }
+    return [
+      { nomorSprint: 1, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 1: Problem Validation & Setup" },
+      { nomorSprint: 2, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 2: Solution Exploration & Prototyping" },
+      { nomorSprint: 3, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 3: MVP Development & Testing" },
+      { nomorSprint: 4, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 4: Market Validation & Pitch Preparation" },
+    ];
+  });
+
+  const [isSprintModalOpen, setIsSprintModalOpen] = useState(false);
+  const [targetSprintCount, setTargetSprintCount] = useState(sprints.length);
+  const [sprintAlasan, setSprintAlasan] = useState("");
+  const [savingSprintCount, setSavingSprintCount] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -182,6 +229,43 @@ export function CharterFormClient({
   const handleChange = (field: string, value: string) => {
     if (isReadOnly) return;
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSprintChange = (nomorSprint: number, field: string, value: string) => {
+    if (isReadOnly) return;
+    setSprints((prev) =>
+      prev.map((s) => (s.nomorSprint === nomorSprint ? { ...s, [field]: value } : s))
+    );
+  };
+
+  const handleApplySprintCountChange = async () => {
+    if (!sprintAlasan.trim()) {
+      alert("Alasan perubahan jumlah sprint wajib diisi.");
+      return;
+    }
+    setSavingSprintCount(true);
+    const res = await updateSprintCountAction(timId, targetSprintCount, sprintAlasan);
+    if (res.success) {
+      setIsSprintModalOpen(false);
+      setSprintAlasan("");
+      if (targetSprintCount > sprints.length) {
+        const added = [];
+        for (let i = sprints.length + 1; i <= targetSprintCount; i++) {
+          added.push({
+            nomorSprint: i,
+            tanggalMulaiRencana: "",
+            tanggalSelesaiRencana: "",
+            tujuan: `Sprint ${i}`,
+          });
+        }
+        setSprints([...sprints, ...added]);
+      } else {
+        setSprints(sprints.slice(0, targetSprintCount));
+      }
+    } else {
+      alert(res.error || "Gagal mengubah jumlah sprint.");
+    }
+    setSavingSprintCount(false);
   };
 
   const handleAddPerson = (roleCode: RoleAssignmentItem['roleCode']) => {
@@ -242,14 +326,29 @@ export function CharterFormClient({
     setSaving(true);
     setStatusMsg(null);
 
-    const res = await saveCharterAction(timId, formData, roleAssignments);
-    if (res.success) {
+    const [resCharter, resSprints] = await Promise.all([
+      saveCharterAction(timId, formData, roleAssignments),
+      saveCharterSprintsAction(
+        timId,
+        sprints.map((s) => ({
+          nomorSprint: s.nomorSprint,
+          tanggalMulaiRencana: s.tanggalMulaiRencana || null,
+          tanggalSelesaiRencana: s.tanggalSelesaiRencana || null,
+          tujuan: s.tujuan || null,
+        }))
+      ),
+    ]);
+
+    if (resCharter.success && resSprints.success) {
       setStatusMsg({
         type: "success",
-        text: "Innovation Charter & Struktur Akuntabilitas Tim berhasil disimpan!",
+        text: "Innovation Charter & Milestone Sprint terstruktur berhasil disimpan!",
       });
     } else {
-      setStatusMsg({ type: "error", text: res.error || "Gagal menyimpan Charter." });
+      setStatusMsg({
+        type: "error",
+        text: resCharter.error || resSprints.error || "Gagal menyimpan Charter.",
+      });
     }
     setSaving(false);
   };
@@ -380,6 +479,12 @@ export function CharterFormClient({
                             </span>
                           )}
                         </div>
+                        {config.roleCode === 'promotor' && usulanPromotorHint && (
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2 shadow-2xs">
+                            <span className="font-bold shrink-0 text-amber-800">💡 Usulan dari proposal:</span>
+                            <span className="text-amber-900 font-medium leading-relaxed">{usulanPromotorHint}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Inputs Column: Single row or Multi-Person Stack */}
@@ -432,7 +537,7 @@ export function CharterFormClient({
                                           e.target.value
                                         )
                                       }
-                                      className="h-9 text-xs border-gray-200 bg-white disabled:bg-gray-50"
+                                      className="disabled:bg-gray-50 text-xs h-9"
                                     />
                                   </div>
 
@@ -440,7 +545,7 @@ export function CharterFormClient({
                                   <div>
                                     <Input
                                       disabled={isReadOnly}
-                                      placeholder="Contoh: Divisi TI"
+                                      placeholder="Contoh: Divisi Bisnis Digital"
                                       value={item.unitKerja || ""}
                                       onChange={(e) =>
                                         handlePersonDetailChange(
@@ -449,25 +554,21 @@ export function CharterFormClient({
                                           e.target.value
                                         )
                                       }
-                                      className="h-9 text-xs border-gray-200 bg-white disabled:bg-gray-50"
+                                      className="disabled:bg-gray-50 text-xs h-9"
                                     />
                                   </div>
 
-                                  {/* Delete Person Button */}
+                                  {/* Action Delete */}
                                   <div className="text-center">
-                                    {config.isMulti && !isReadOnly ? (
-                                      <Button
+                                    {config.isMulti && !isReadOnly && (
+                                      <button
                                         type="button"
-                                        variant="ghost"
-                                        size="sm"
                                         onClick={() => handleRemovePerson(item.id)}
-                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
-                                        title="Hapus orang ini dari peran"
+                                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                        title="Hapus baris orang"
                                       >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    ) : (
-                                      <span className="text-gray-300 text-xs">—</span>
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
                                     )}
                                   </div>
                                 </div>
@@ -475,9 +576,9 @@ export function CharterFormClient({
                             })
                           )}
 
-                          {/* + Tambah Orang button */}
+                          {/* Multi-add Button for multi-person roles */}
                           {config.isMulti && !isReadOnly && (
-                            <div className="p-2.5 bg-gray-50/60 flex items-center justify-start">
+                            <div className="p-2.5 bg-gray-50/50 border-t border-gray-100 flex justify-end">
                               <Button
                                 type="button"
                                 variant="outline"
@@ -530,45 +631,69 @@ export function CharterFormClient({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
-                Customer & Early Adopters
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Customer & Early Adopters
+                </label>
+                {autoFilledFields.includes("customerEarlyAdopters") && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                    Terisi otomatis dari proposal
+                  </span>
+                )}
+              </div>
               <Textarea
                 disabled={isReadOnly}
                 rows={2}
                 placeholder="Siapa pengguna sasaran awal yang paling merasakan masalah ini?"
                 value={formData.customerEarlyAdopters}
                 onChange={(e) => handleChange("customerEarlyAdopters", e.target.value)}
-                className="disabled:bg-gray-50"
+                className={`disabled:bg-gray-50 ${autoFilledFields.includes("customerEarlyAdopters") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
-                Context & Area Bantuan
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Context & Area Bantuan
+                </label>
+                {autoFilledFields.includes("contextAreaBantuan") && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                    Terisi otomatis dari proposal
+                  </span>
+                )}
+              </div>
               <Textarea
                 disabled={isReadOnly}
                 rows={2}
                 placeholder="Di mana dan dalam konteks operasional apa solusi ini diterapkan?"
                 value={formData.contextAreaBantuan}
                 onChange={(e) => handleChange("contextAreaBantuan", e.target.value)}
-                className="disabled:bg-gray-50"
+                className={`disabled:bg-gray-50 ${autoFilledFields.includes("contextAreaBantuan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">
-              Problem Worth Solving (Masalah yang Layak Diselesaikan)
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-gray-700">
+                Problem Worth Solving (Masalah yang Layak Diselesaikan)
+              </label>
+              {autoFilledFields.includes("problemWorthSolving") && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                  Terisi otomatis dari proposal
+                </span>
+              )}
+            </div>
             <Textarea
               disabled={isReadOnly}
               rows={3}
               placeholder="Deskripsikan akar masalah utama beserta dampaknya jika tidak diselesaikan..."
               value={formData.problemWorthSolving}
               onChange={(e) => handleChange("problemWorthSolving", e.target.value)}
-              className="disabled:bg-gray-50"
+              className={`disabled:bg-gray-50 ${autoFilledFields.includes("problemWorthSolving") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
             />
           </div>
 
@@ -601,24 +726,39 @@ export function CharterFormClient({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">
-              Solusi Awal yang Diusulkan
-            </label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-gray-700">
+                Solusi Awal yang Diusulkan
+              </label>
+              {autoFilledFields.includes("solusiAwal") && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                  Terisi otomatis dari proposal
+                </span>
+              )}
+            </div>
             <Textarea
               disabled={isReadOnly}
               rows={3}
               placeholder="Bentuk prototype atau solusi minimum yang akan dibangun..."
               value={formData.solusiAwal}
               onChange={(e) => handleChange("solusiAwal", e.target.value)}
-              className="disabled:bg-gray-50"
+              className={`disabled:bg-gray-50 ${autoFilledFields.includes("solusiAwal") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
-              <label className="text-xs font-bold text-blue-900 block">
-                🎯 Desirability Hypothesis
-              </label>
+              <div className="flex items-center justify-between gap-1">
+                <label className="text-xs font-bold text-blue-900 block">
+                  🎯 Desirability Hypothesis
+                </label>
+                {autoFilledFields.includes("desirabilityHypothesis") && (
+                  <span className="text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
+                    Auto-fill
+                  </span>
+                )}
+              </div>
               <Textarea
                 disabled={isReadOnly}
                 rows={3}
@@ -630,9 +770,16 @@ export function CharterFormClient({
             </div>
 
             <div className="p-3.5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-1.5">
-              <label className="text-xs font-bold text-amber-900 block">
-                ⚙️ Feasibility Hypothesis
-              </label>
+              <div className="flex items-center justify-between gap-1">
+                <label className="text-xs font-bold text-amber-900 block">
+                  ⚙️ Feasibility Hypothesis
+                </label>
+                {autoFilledFields.includes("feasibilityHypothesis") && (
+                  <span className="text-[9px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded">
+                    Auto-fill
+                  </span>
+                )}
+              </div>
               <Textarea
                 disabled={isReadOnly}
                 rows={3}
@@ -644,9 +791,16 @@ export function CharterFormClient({
             </div>
 
             <div className="p-3.5 bg-green-50/50 rounded-xl border border-green-100 space-y-1.5">
-              <label className="text-xs font-bold text-green-900 block">
-                💰 Viability Hypothesis
-              </label>
+              <div className="flex items-center justify-between gap-1">
+                <label className="text-xs font-bold text-green-900 block">
+                  💰 Viability Hypothesis
+                </label>
+                {autoFilledFields.includes("viabilityHypothesis") && (
+                  <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    Auto-fill
+                  </span>
+                )}
+              </div>
               <Textarea
                 disabled={isReadOnly}
                 rows={3}
@@ -661,18 +815,40 @@ export function CharterFormClient({
       </Card>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* BAGIAN 3: TATA KELOLA & RITME KERJA */}
+      {/* BAGIAN 3: TATA KELOLA, RITME KERJA & MILESTONE SPRINT TERSTRUKTUR */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-base font-bold text-gray-900">
-            3. Tata Kelola, Ritme Kerja & Mitigasi Risiko
-          </CardTitle>
-          <CardDescription className="text-xs text-gray-500">
-            Pacing monitoring dan kebutuhan dukungan selama masa inkubasi
-          </CardDescription>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Layers className="h-5 w-5 text-[#0F5132]" />
+                3. Tata Kelola, Ritme Kerja & Rencana Milestone Sprint
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-500">
+                Pacing monitoring, jadwal rencana sprint, dan kebutuhan dukungan selama masa inkubasi
+              </CardDescription>
+            </div>
+
+            {!isReadOnly && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setTargetSprintCount(sprints.length);
+                  setSprintAlasan("");
+                  setIsSprintModalOpen(true);
+                }}
+                className="text-xs gap-1.5 font-semibold text-gray-700 hover:text-[#0F5132]"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                <span>Ubah Jumlah Sprint ({sprints.length})</span>
+              </Button>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-700">
@@ -699,17 +875,107 @@ export function CharterFormClient({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">
-              Kebutuhan Dukungan (Data / SME / Akses Sistem)
-            </label>
+          {/* Structured Sprint Milestones */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  Rencana Milestone per Sprint
+                </h4>
+                <p className="text-[11px] text-gray-500">
+                  Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Kanban).
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
+                {sprints.length} Iterasi Sprint
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {sprints.map((s) => (
+                <div
+                  key={s.nomorSprint}
+                  className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <Badge variant="default" className="text-xs bg-[#0F5132] font-bold">
+                      Sprint {s.nomorSprint}
+                    </Badge>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {s.status === 'aktif' ? '🟢 Sedang Aktif' : s.status === 'selesai' ? '🔵 Selesai' : '⚪ Belum Dimulai'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    <div className="md:col-span-3 space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-600 block">
+                        Tanggal Mulai Rencana
+                      </label>
+                      <Input
+                        type="date"
+                        disabled={isReadOnly}
+                        value={s.tanggalMulaiRencana || ""}
+                        onChange={(e) =>
+                          handleSprintChange(s.nomorSprint, "tanggalMulaiRencana", e.target.value)
+                        }
+                        className="text-xs h-8 disabled:bg-white"
+                      />
+                    </div>
+
+                    <div className="md:col-span-3 space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-600 block">
+                        Target Selesai Rencana
+                      </label>
+                      <Input
+                        type="date"
+                        disabled={isReadOnly}
+                        value={s.tanggalSelesaiRencana || ""}
+                        onChange={(e) =>
+                          handleSprintChange(s.nomorSprint, "tanggalSelesaiRencana", e.target.value)
+                        }
+                        className="text-xs h-8 disabled:bg-white"
+                      />
+                    </div>
+
+                    <div className="md:col-span-6 space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-600 block">
+                        Tujuan / Sasaran Milestone Sprint
+                      </label>
+                      <Input
+                        disabled={isReadOnly}
+                        placeholder={`Contoh: Problem validation dengan 10 customer...`}
+                        value={s.tujuan || ""}
+                        onChange={(e) =>
+                          handleSprintChange(s.nomorSprint, "tujuan", e.target.value)
+                        }
+                        className="text-xs h-8 disabled:bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-gray-700">
+                Kebutuhan Dukungan (Data / SME / Akses Sistem)
+              </label>
+              {autoFilledFields.includes("kebutuhanDukungan") && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                  Terisi otomatis dari proposal
+                </span>
+              )}
+            </div>
             <Textarea
               disabled={isReadOnly}
               rows={2}
               placeholder="Sebutkan dukungan divisi atau data yang dibutuhkan untuk validasi..."
               value={formData.kebutuhanDukungan}
               onChange={(e) => handleChange("kebutuhanDukungan", e.target.value)}
-              className="disabled:bg-gray-50"
+              className={`disabled:bg-gray-50 ${autoFilledFields.includes("kebutuhanDukungan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
             />
           </div>
 
@@ -852,10 +1118,84 @@ export function CharterFormClient({
             className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold px-8 h-12 rounded-xl shadow-md gap-2"
           >
             <Save className="h-4 w-4" />
-            <span>{saving ? "Menyimpan..." : "Simpan Innovation Charter & Role Tim"}</span>
+            <span>{saving ? "Menyimpan..." : "Simpan Innovation Charter & Milestone Sprint"}</span>
           </Button>
         </div>
       )}
+
+      {/* Dialog Ubah Jumlah Sprint */}
+      <Dialog open={isSprintModalOpen} onOpenChange={setIsSprintModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-[#0F5132]" />
+              Ubah Jumlah Iterasi Sprint
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+              <p className="font-semibold">Perhatian Perubahan Jumlah Sprint</p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Jumlah sprint default adalah 4. Perubahan jumlah sprint wajib disertai alasan resmi dan akan dicatat ke dalam <strong>sprint_log</strong> (audit trail).
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-semibold text-gray-700 block">
+                Target Jumlah Sprint Baru *
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={targetSprintCount}
+                onChange={(e) => setTargetSprintCount(parseInt(e.target.value) || 1)}
+                className="text-xs font-bold"
+              />
+              <span className="text-[10px] text-gray-400">
+                Jumlah sprint saat ini: {sprints.length} sprint
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-semibold text-gray-700 block">
+                Alasan Perubahan Jumlah Sprint *
+              </label>
+              <Textarea
+                rows={3}
+                placeholder="Contoh: Penambahan 2 sprint untuk fase pengujian pasar skala luas..."
+                value={sprintAlasan}
+                onChange={(e) => setSprintAlasan(e.target.value)}
+                className="text-xs"
+                required
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSprintModalOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={savingSprintCount || !sprintAlasan.trim() || targetSprintCount === sprints.length}
+              onClick={handleApplySprintCountChange}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-semibold gap-1.5"
+            >
+              {savingSprintCount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <span>Simpan Perubahan Sprint</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

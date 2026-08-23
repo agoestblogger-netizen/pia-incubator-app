@@ -2,13 +2,36 @@
 
 import { db } from "@/lib/db";
 import { timInovator, anggotaTim, durasiLog, kanbanColumn } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
+import { getCurrentUser, hasPermission, type UserProfile } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 
-export async function getTimInovatorList() {
-  return await db.select().from(timInovator).orderBy(desc(timInovator.createdAt));
+export async function getTimInovatorList(currentUser?: UserProfile | null) {
+  const user = currentUser !== undefined ? currentUser : await getCurrentUser();
+  if (!user) {
+    return [];
+  }
+
+  // Role dengan scope global (admin_ic, divisi_ic, atau role custom dengan scope global)
+  if (user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0)) {
+    return await db.select().from(timInovator).orderBy(desc(timInovator.createdAt));
+  }
+
+  // Role dengan scope per_tim: hanya tampilkan tim yang di-assign ke user ini
+  const assignedTimIds = Array.from(
+    new Set(user.timRoles.map((t) => t.timId).filter(Boolean))
+  );
+
+  if (assignedTimIds.length === 0) {
+    return [];
+  }
+
+  return await db
+    .select()
+    .from(timInovator)
+    .where(inArray(timInovator.id, assignedTimIds))
+    .orderBy(desc(timInovator.createdAt));
 }
 
 export async function getTimInovatorById(id: string) {

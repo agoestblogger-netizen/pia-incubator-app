@@ -101,6 +101,36 @@ export const charter = pgTable('charter', {
 // GRUP C — KANBAN & TIMELINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
+export const sprint = pgTable('sprint', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  nomorSprint: integer('nomor_sprint').notNull(),
+  tanggalMulaiRencana: timestamp('tanggal_mulai_rencana', { withTimezone: true }),
+  tanggalSelesaiRencana: timestamp('tanggal_selesai_rencana', { withTimezone: true }),
+  tanggalMulaiAktual: timestamp('tanggal_mulai_aktual', { withTimezone: true }),
+  tanggalSelesaiAktual: timestamp('tanggal_selesai_aktual', { withTimezone: true }),
+  status: text('status').notNull().default('belum_dimulai'), // 'belum_dimulai' | 'aktif' | 'selesai'
+  tujuan: text('tujuan'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('sprint_tim_nomor_unique').on(t.timInovatorId, t.nomorSprint),
+  index('sprint_tim_idx').on(t.timInovatorId),
+]);
+
+export const sprintLog = pgTable('sprint_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  jumlahLama: integer('jumlah_lama').notNull(),
+  jumlahBaru: integer('jumlah_baru').notNull(),
+  alasan: text('alasan').notNull(),
+  diubahOleh: text('diubah_oleh'),
+  tanggalPerubahan: timestamp('tanggal_perubahan', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('sprint_log_tim_idx').on(t.timInovatorId),
+]);
+
 export const kanbanColumn = pgTable('kanban_column', {
   id: uuid('id').primaryKey().defaultRandom(),
   timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
@@ -537,3 +567,15 @@ export const appSettings = pgTable('app_settings', {
   value: jsonb('value').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const taskDismissal = pgTable('task_dismissal', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  taskType: text('task_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  dismissedAt: timestamp('dismissed_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('task_dismissal_user_task_entity_unique').on(t.userId, t.taskType, t.entityId),
+  index('task_dismissal_user_idx').on(t.userId),
+]);
+

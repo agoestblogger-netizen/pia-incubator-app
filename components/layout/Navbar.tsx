@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, LogOut, User as UserIcon } from "lucide-react";
+import { Sparkles, LogOut, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -10,8 +10,10 @@ import type { UserProfile } from "@/lib/auth/rbac";
 
 export function Navbar({
   user,
+  taskCount = 0,
 }: {
   user?: UserProfile | null;
+  taskCount?: number;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -28,7 +30,7 @@ export function Navbar({
         {/* Left Section: Hamburger Sidebar Trigger & Brand Logo */}
         <div className="flex items-center gap-3">
           {/* Hamburger Drawer Trigger */}
-          <SidebarDrawer user={user} />
+          <SidebarDrawer user={user} taskCount={taskCount} />
 
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white border border-white/20 shadow-inner group-hover:bg-white/20 transition-all">
@@ -54,6 +56,23 @@ export function Navbar({
         <div className="flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-3">
+              {/* Notification Task Bell */}
+              <Link href="/tugas" className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/10 hover:text-white relative"
+                  title="Tugas Saya"
+                >
+                  <Bell className="h-4 w-4" />
+                  {taskCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-[#0F5132]">
+                      {taskCount > 99 ? "99+" : taskCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+
               <div className="hidden md:block text-right">
                 <p className="text-xs font-semibold text-white leading-tight">
                   {user.nama}

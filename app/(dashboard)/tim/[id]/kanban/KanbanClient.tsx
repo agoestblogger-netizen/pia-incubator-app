@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   createKanbanCardAction,
   updateKanbanCardStatusAction,
+  updateKanbanCardSprintAction,
 } from "@/app/actions/kanban";
+import {
+  startSprintAction,
+  completeSprintAction,
+  updateSprintCountAction,
+} from "@/app/actions/sprint";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,10 +28,17 @@ import {
   Layers,
   Kanban as KanbanIcon,
   Clock,
-  User,
   Tag,
   GripVertical,
   AlertCircle,
+  AlertTriangle,
+  Play,
+  CheckCircle2,
+  Settings2,
+  ArrowRight,
+  Sparkles,
+  Inbox,
+  Loader2,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
 
@@ -53,17 +66,21 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Card Component (Sortable)
+// Card Component (Sortable) with Overdue Visualization
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SortableCard({
   card,
   columns,
+  sprints,
   onMoveCard,
+  onAssignSprint,
 }: {
   card: any;
   columns: any[];
+  sprints: any[];
   onMoveCard: (cardId: string, newCol: string) => void;
+  onAssignSprint: (cardId: string, sprintNum: number | null) => void;
 }) {
   const {
     attributes,
@@ -86,24 +103,50 @@ function SortableCard({
     opacity: isDragging ? 0.3 : 1,
   };
 
+  const now = new Date();
+  const isDone = card.statusKolom === "Done";
+  const isOverdue =
+    Boolean(card.tanggalSelesai) &&
+    new Date(card.tanggalSelesai) < now &&
+    !isDone;
+
+  const overdueDays = isOverdue
+    ? Math.ceil(
+        (now.getTime() - new Date(card.tanggalSelesai).getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`group relative bg-white rounded-xl p-3.5 border transition-all select-none shadow-xs ${
+      className={`group relative rounded-xl p-3.5 border transition-all select-none shadow-2xs ${
         isDragging
           ? "border-[#0F5132] bg-green-50/20 shadow-lg"
-          : "border-gray-200 hover:border-[#0F5132]/60 hover:shadow-sm"
+          : isOverdue
+          ? "border-red-400 bg-red-50/25 hover:border-red-500 hover:shadow-sm ring-1 ring-red-300"
+          : "border-gray-200 bg-white hover:border-[#0F5132]/60 hover:shadow-sm"
       }`}
     >
-      {/* Drag handle & Header */}
-      <div className="flex items-start justify-between gap-2">
-        {card.label && (
-          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0F5132]/10 text-[#0F5132]">
-            {card.label}
-          </span>
-        )}
+      {/* Top Tag & Drag handle */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {card.label && (
+            <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0F5132]/10 text-[#0F5132]">
+              {card.label}
+            </span>
+          )}
+
+          {isOverdue && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              <span>Terlambat {overdueDays} hari</span>
+            </span>
+          )}
+        </div>
+
         <div
           {...listeners}
           className="cursor-grab active:cursor-grabbing p-1 -mr-1 text-gray-300 hover:text-gray-600 rounded transition-colors touch-none"
@@ -113,8 +156,13 @@ function SortableCard({
         </div>
       </div>
 
-      <div {...listeners} className="cursor-grab active:cursor-grabbing space-y-1.5 mt-1 touch-none">
-        <h4 className="text-xs font-bold text-gray-900 leading-tight">
+      {/* Card Body */}
+      <div {...listeners} className="cursor-grab active:cursor-grabbing space-y-1.5 touch-none">
+        <h4
+          className={`text-xs font-bold leading-tight ${
+            isOverdue ? "text-red-950" : "text-gray-900"
+          }`}
+        >
           {card.judul}
         </h4>
 
@@ -125,29 +173,56 @@ function SortableCard({
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-gray-100 text-[10px] text-gray-400">
+      {/* Card Footer: Sprint selector, Due date, Status selector */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 mt-2 border-t border-gray-100 text-[10px] text-gray-400">
         {card.tanggalSelesai ? (
-          <span className="flex items-center gap-1">
+          <span
+            className={`flex items-center gap-1 font-mono ${
+              isOverdue ? "text-red-700 font-bold" : "text-gray-500"
+            }`}
+          >
             <Calendar className="h-3 w-3" />
-            {new Date(card.tanggalSelesai).toLocaleDateString("id-ID")}
+            {formatDateIndo(card.tanggalSelesai)}
           </span>
         ) : (
           <span>-</span>
         )}
 
-        {/* Alternative status dropdown (accessibility & mobile) */}
-        <select
-          className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
-          value={card.statusKolom}
-          onChange={(e) => onMoveCard(card.id, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {columns.map((c) => (
-            <option key={c.namaKolom} value={c.namaKolom}>
-              {c.namaKolom}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1">
+          {/* Sprint assignment dropdown */}
+          <select
+            className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-semibold focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
+            value={card.sprintNumber === null ? "backlog" : String(card.sprintNumber)}
+            onChange={(e) => {
+              const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
+              onAssignSprint(card.id, val);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            title="Pindahkan ke Sprint / Backlog"
+          >
+            <option value="backlog">📦 Backlog</option>
+            {sprints.map((s) => (
+              <option key={s.nomorSprint} value={s.nomorSprint}>
+                Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
+              </option>
+            ))}
+          </select>
+
+          {/* Status Column dropdown */}
+          <select
+            className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
+            value={card.statusKolom}
+            onChange={(e) => onMoveCard(card.id, e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            title="Ubah status kolom"
+          >
+            {columns.map((c) => (
+              <option key={c.namaKolom} value={c.namaKolom}>
+                {c.namaKolom}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
@@ -184,23 +259,32 @@ function DraggingCardOverlay({ card }: { card: any }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function KanbanColumnDroppable({
-  column,
+  columnId,
+  columnTitle,
   cards,
   columns,
+  sprints,
+  isBacklogArea = false,
   onAddCard,
   onMoveCard,
+  onAssignSprint,
 }: {
-  column: any;
+  columnId: string;
+  columnTitle: string;
   cards: any[];
   columns: any[];
+  sprints: any[];
+  isBacklogArea?: boolean;
   onAddCard: (colName: string) => void;
   onMoveCard: (cardId: string, newCol: string) => void;
+  onAssignSprint: (cardId: string, sprintNum: number | null) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: column.namaKolom,
+    id: columnId,
     data: {
       type: "Column",
-      column,
+      columnId,
+      isBacklogArea,
     },
   });
 
@@ -209,25 +293,39 @@ function KanbanColumnDroppable({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl p-3 border transition-colors flex flex-col space-y-3 min-h-[300px] ${
+      className={`rounded-2xl p-3.5 border transition-all flex flex-col space-y-3 min-h-[360px] ${
         isOver
-          ? "bg-green-50/60 border-[#0F5132]/50 ring-2 ring-[#0F5132]/20"
-          : "bg-gray-100/80 border-gray-200/80"
+          ? "bg-green-50/70 border-[#0F5132]/60 ring-2 ring-[#0F5132]/20"
+          : isBacklogArea
+          ? "bg-slate-50/90 border-slate-200"
+          : "bg-gray-50/80 border-gray-200"
       }`}
     >
       {/* Column Header */}
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-          <span>{column.namaKolom}</span>
-          <span className="text-[10px] bg-white px-1.5 py-0.5 rounded-full text-gray-600 font-bold border border-gray-200">
+        <h3
+          className={`text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 ${
+            isBacklogArea ? "text-slate-800" : "text-gray-700"
+          }`}
+        >
+          {isBacklogArea && <Inbox className="h-3.5 w-3.5 text-slate-600" />}
+          <span>{columnTitle}</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${
+              isBacklogArea
+                ? "bg-slate-200 text-slate-800 border-slate-300"
+                : "bg-white text-gray-700 border-gray-200"
+            }`}
+          >
             {cards.length}
           </span>
         </h3>
+
         <button
           type="button"
-          onClick={() => onAddCard(column.namaKolom)}
+          onClick={() => onAddCard(isBacklogArea ? "To Do" : columnTitle)}
           className="text-gray-400 hover:text-gray-700 p-1 rounded hover:bg-gray-200/60 transition-colors"
-          title={`Tambah kartu ke ${column.namaKolom}`}
+          title={`Tambah kartu ke ${columnTitle}`}
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -235,19 +333,21 @@ function KanbanColumnDroppable({
 
       {/* Cards List with Sortable Context */}
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2 flex-1">
+        <div className="space-y-2.5 flex-1">
           {cards.map((card) => (
             <SortableCard
               key={card.id}
               card={card}
               columns={columns}
+              sprints={sprints}
               onMoveCard={onMoveCard}
+              onAssignSprint={onAssignSprint}
             />
           ))}
 
           {cards.length === 0 && (
-            <div className="h-24 border-2 border-dashed border-gray-300/80 rounded-xl flex items-center justify-center text-[11px] text-gray-400 italic">
-              Tarik kartu ke sini
+            <div className="h-28 border-2 border-dashed border-gray-300/70 rounded-xl flex items-center justify-center text-[11px] text-gray-400 italic">
+              {isBacklogArea ? "Tarik kartu ke Backlog" : "Tarik kartu ke sini"}
             </div>
           )}
         </div>
@@ -264,15 +364,22 @@ export function KanbanClient({
   timId,
   initialColumns,
   initialCards,
+  initialSprints = [],
   anggotaTim,
+  canEdit = true,
+  currentUser,
 }: {
   timId: string;
   initialColumns: any[];
   initialCards: any[];
+  initialSprints?: any[];
   anggotaTim: any[];
+  canEdit?: boolean;
+  currentUser?: any;
 }) {
   const [viewMode, setViewMode] = useState<"board" | "timeline">("board");
   const [cards, setCards] = useState<any[]>(initialCards);
+  const [sprints, setSprints] = useState<any[]>(initialSprints);
   const [columns] = useState<any[]>(
     initialColumns.length > 0
       ? initialColumns
@@ -284,26 +391,59 @@ export function KanbanClient({
         ]
   );
 
+  // Selected Sprint Filter: 'all' | 'backlog' | number
+  const initialActiveSprint = sprints.find((s) => s.status === "aktif");
+  const [selectedSprintTab, setSelectedSprintTab] = useState<string>(
+    initialActiveSprint
+      ? String(initialActiveSprint.nomorSprint)
+      : sprints.length > 0
+      ? String(sprints[0].nomorSprint)
+      : "all"
+  );
+
   const [tahapFilter, setTahapFilter] = useState("all");
   const [isNewCardOpen, setIsNewCardOpen] = useState(false);
   const [targetColumn, setTargetColumn] = useState("To Do");
+  const [targetSprintForNewCard, setTargetSprintForNewCard] = useState<number | null>(
+    selectedSprintTab !== "all" && selectedSprintTab !== "backlog"
+      ? parseInt(selectedSprintTab)
+      : null
+  );
+
   const [activeCard, setActiveCard] = useState<any | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Form State
+  // Sprint Complete Dialog State
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [incompleteCardsDestinations, setIncompleteCardsDestinations] = useState<
+    Record<string, "backlog" | "next_sprint">
+  >({});
+
+  // Sprint Count Dialog State
+  const [isSprintCountModalOpen, setIsSprintCountModalOpen] = useState(false);
+  const [targetSprintCount, setTargetSprintCount] = useState(sprints.length);
+  const [sprintCountReason, setSprintCountReason] = useState("");
+
+  // New Card Form State
   const [judul, setJudul] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
   const [tahap, setTahap] = useState("innovation_setup");
   const [label, setLabel] = useState("Backlog Charter");
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalSelesai, setTanggalSelesai] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // dnd-kit Sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // 5px movement required before drag starts (allows clicks on dropdowns)
+        distance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -311,14 +451,45 @@ export function KanbanClient({
     })
   );
 
-  const filteredCards = useMemo(
-    () => cards.filter((c) => tahapFilter === "all" || c.tahap === tahapFilter),
-    [cards, tahapFilter]
-  );
+  // Currently viewed sprint object (if viewing a specific sprint)
+  const currentSprintObj = useMemo(() => {
+    if (selectedSprintTab === "all" || selectedSprintTab === "backlog") return null;
+    const num = parseInt(selectedSprintTab);
+    return sprints.find((s) => s.nomorSprint === num) || null;
+  }, [sprints, selectedSprintTab]);
+
+  // Filtered Cards for display
+  const filteredCards = useMemo(() => {
+    return cards.filter((c) => {
+      const matchTahap = tahapFilter === "all" || c.tahap === tahapFilter;
+      return matchTahap;
+    });
+  }, [cards, tahapFilter]);
+
+  // Backlog Cards
+  const backlogCards = useMemo(() => {
+    return filteredCards.filter((c) => c.sprintNumber === null || c.sprintNumber === undefined);
+  }, [filteredCards]);
+
+  // Sprint Cards for currently selected sprint
+  const activeSprintCards = useMemo(() => {
+    if (!currentSprintObj) return [];
+    return filteredCards.filter((c) => c.sprintNumber === currentSprintObj.nomorSprint);
+  }, [filteredCards, currentSprintObj]);
+
+  // Incomplete cards for completion dialog
+  const incompleteCardsInCurrentSprint = useMemo(() => {
+    if (!currentSprintObj) return [];
+    return activeSprintCards.filter((c) => c.statusKolom !== "Done");
+  }, [activeSprintCards, currentSprintObj]);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Card Actions
+  // ───────────────────────────────────────────────────────────────────────────
 
   const handleCreateCard = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+    setSavingCard(true);
     setErrorMessage(null);
 
     const res = await createKanbanCardAction(timId, {
@@ -327,6 +498,7 @@ export function KanbanClient({
       statusKolom: targetColumn,
       tahap,
       label,
+      sprintNumber: targetSprintForNewCard,
       tanggalMulai: tanggalMulai ? new Date(tanggalMulai) : null,
       tanggalSelesai: tanggalSelesai ? new Date(tanggalSelesai) : null,
       urutan: cards.length + 1,
@@ -340,7 +512,7 @@ export function KanbanClient({
     } else if (res.error) {
       setErrorMessage(res.error);
     }
-    setSaving(false);
+    setSavingCard(false);
   };
 
   const handleMoveCardDropdown = async (cardId: string, newCol: string) => {
@@ -351,10 +523,136 @@ export function KanbanClient({
 
     const res = await updateKanbanCardStatusAction(timId, cardId, newCol, 0);
     if (!res.success) {
-      // Rollback on error
       setCards(previousCards);
       setErrorMessage(res.error || "Gagal memindahkan kartu.");
     }
+  };
+
+  const handleAssignSprint = async (cardId: string, sprintNum: number | null) => {
+    const previousCards = [...cards];
+    setCards((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, sprintNumber: sprintNum } : c))
+    );
+
+    const res = await updateKanbanCardSprintAction(timId, cardId, sprintNum);
+    if (!res.success) {
+      setCards(previousCards);
+      setErrorMessage(res.error || "Gagal memindahkan kartu ke sprint.");
+    }
+  };
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Sprint Lifecycle Handlers
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const handleStartSprint = async (sprintId: string) => {
+    setActionLoading(true);
+    setErrorMessage(null);
+
+    const res = await startSprintAction(timId, sprintId);
+    if (res.success) {
+      setSprints((prev) =>
+        prev.map((s) =>
+          s.id === sprintId
+            ? { ...s, status: "aktif", tanggalMulaiAktual: new Date() }
+            : s.status === "aktif"
+            ? { ...s, status: "belum_dimulai" }
+            : s
+        )
+      );
+    } else {
+      setErrorMessage(res.error || "Gagal memulai sprint.");
+    }
+    setActionLoading(false);
+  };
+
+  const handleOpenCompleteDialog = () => {
+    if (!currentSprintObj) return;
+
+    // Initialize destinations for incomplete cards
+    const initialDestinations: Record<string, "backlog" | "next_sprint"> = {};
+    for (const card of incompleteCardsInCurrentSprint) {
+      initialDestinations[card.id] = "backlog";
+    }
+    setIncompleteCardsDestinations(initialDestinations);
+    setIsCompleteModalOpen(true);
+  };
+
+  const handleConfirmCompleteSprint = async () => {
+    if (!currentSprintObj) return;
+    setActionLoading(true);
+    setErrorMessage(null);
+
+    const nextSprintNum = currentSprintObj.nomorSprint + 1;
+    const cardMovements = incompleteCardsInCurrentSprint.map((card) => {
+      const dest = incompleteCardsDestinations[card.id] || "backlog";
+      return {
+        cardId: card.id,
+        destination: dest,
+        nextSprintNumber: dest === "next_sprint" ? nextSprintNum : null,
+      };
+    });
+
+    const res = await completeSprintAction(timId, currentSprintObj.id, cardMovements);
+    if (res.success) {
+      setSprints((prev) =>
+        prev.map((s) =>
+          s.id === currentSprintObj.id
+            ? { ...s, status: "selesai", tanggalSelesaiAktual: new Date() }
+            : s
+        )
+      );
+
+      // Update local card sprint numbers
+      setCards((prev) =>
+        prev.map((card) => {
+          const mov = cardMovements.find((m) => m.cardId === card.id);
+          if (mov) {
+            return {
+              ...card,
+              sprintNumber: mov.destination === "next_sprint" ? nextSprintNum : null,
+            };
+          }
+          return card;
+        })
+      );
+
+      setIsCompleteModalOpen(false);
+    } else {
+      setErrorMessage(res.error || "Gagal menyelesaikan sprint.");
+    }
+    setActionLoading(false);
+  };
+
+  const handleApplySprintCountChange = async () => {
+    if (!sprintCountReason.trim()) {
+      alert("Alasan perubahan jumlah sprint wajib diisi.");
+      return;
+    }
+    setActionLoading(true);
+    const res = await updateSprintCountAction(timId, targetSprintCount, sprintCountReason);
+    if (res.success) {
+      setIsSprintCountModalOpen(false);
+      setSprintCountReason("");
+      if (targetSprintCount > sprints.length) {
+        const added = [];
+        for (let i = sprints.length + 1; i <= targetSprintCount; i++) {
+          added.push({
+            id: `temp-${i}`,
+            timInovatorId: timId,
+            nomorSprint: i,
+            status: "belum_dimulai",
+            tujuan: `Sprint ${i}`,
+          });
+        }
+        setSprints([...sprints, ...added]);
+      } else {
+        setSprints(sprints.slice(0, targetSprintCount));
+      }
+    } else {
+      alert(res.error || "Gagal mengubah jumlah sprint.");
+    }
+    setActionLoading(false);
   };
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -375,28 +673,27 @@ export function KanbanClient({
 
     const activeId = active.id;
     const overId = over.id;
-
     if (activeId === overId) return;
 
-    const activeCard = cards.find((c) => c.id === activeId);
-    const overCard = cards.find((c) => c.id === overId);
+    const activeCardItem = cards.find((c) => c.id === activeId);
+    if (!activeCardItem) return;
 
-    if (!activeCard) return;
-
-    // Determine target column name
+    const isDroppingOnBacklog = overId === "column-backlog";
     const overColumn = columns.find((col) => col.namaKolom === overId);
-    const targetColumnName = overColumn
-      ? overColumn.namaKolom
-      : overCard
-      ? overCard.statusKolom
-      : null;
 
-    if (targetColumnName && activeCard.statusKolom !== targetColumnName) {
-      setCards((prev) => {
-        return prev.map((c) =>
-          c.id === activeId ? { ...c, statusKolom: targetColumnName } : c
-        );
-      });
+    if (isDroppingOnBacklog && activeCardItem.sprintNumber !== null) {
+      setCards((prev) =>
+        prev.map((c) => (c.id === activeId ? { ...c, sprintNumber: null } : c))
+      );
+    } else if (overColumn && activeCardItem.statusKolom !== overColumn.namaKolom) {
+      const targetSprintNum = currentSprintObj ? currentSprintObj.nomorSprint : activeCardItem.sprintNumber;
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === activeId
+            ? { ...c, statusKolom: overColumn.namaKolom, sprintNumber: targetSprintNum }
+            : c
+        )
+      );
     }
   };
 
@@ -408,28 +705,27 @@ export function KanbanClient({
 
     const activeId = String(active.id);
     const overId = String(over.id);
-
     const currentCard = cards.find((c) => c.id === activeId);
     if (!currentCard) return;
 
-    // Determine target column and new index
+    const isBacklog = overId === "column-backlog";
     const overColumn = columns.find((col) => col.namaKolom === overId);
-    const targetColName = overColumn
-      ? overColumn.namaKolom
-      : cards.find((c) => c.id === overId)?.statusKolom || currentCard.statusKolom;
 
-    const columnCards = cards.filter((c) => c.statusKolom === targetColName);
-    const newIndex = columnCards.findIndex((c) => c.id === activeId);
-    const finalIndex = newIndex >= 0 ? newIndex : columnCards.length;
+    const newColName = overColumn ? overColumn.namaKolom : currentCard.statusKolom;
+    const newSprintNumber = isBacklog
+      ? null
+      : currentSprintObj
+      ? currentSprintObj.nomorSprint
+      : currentCard.sprintNumber;
 
-    // Optimistic state is already updated via handleDragOver / reorder
     const previousCards = [...cards];
 
     const res = await updateKanbanCardStatusAction(
       timId,
       activeId,
-      targetColName,
-      finalIndex
+      newColName,
+      0,
+      newSprintNumber
     );
 
     if (!res.success) {
@@ -439,11 +735,11 @@ export function KanbanClient({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Error Banner */}
+    <div className="space-y-6">
+      {/* Error Alert Banner */}
       {errorMessage && (
-        <div className="rounded-xl bg-red-50 border border-red-200 p-3 flex items-start gap-2.5 text-xs text-red-800 shadow-xs">
-          <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex items-start gap-2.5 text-xs text-red-800 shadow-xs">
+          <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
           <div className="flex-1 flex items-center justify-between">
             <span>{errorMessage}</span>
             <button
@@ -456,24 +752,174 @@ export function KanbanClient({
         </div>
       )}
 
-      {/* Controls & Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200 shadow-xs">
-        <div className="flex items-center gap-2">
-          <div className="flex bg-gray-100 p-1 rounded-lg">
+      {/* Sprint Header & Controller Bar (ala Jira) */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-4">
+        {/* Top Sprint Tabs Navigation */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mr-2 shrink-0">
+              Pilih Sprint:
+            </span>
+
+            {sprints.map((s) => {
+              const isSelected = selectedSprintTab === String(s.nomorSprint);
+              const isAktif = s.status === "aktif";
+              const isSelesai = s.status === "selesai";
+
+              return (
+                <button
+                  key={s.nomorSprint}
+                  onClick={() => setSelectedSprintTab(String(s.nomorSprint))}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    isSelected
+                      ? "bg-[#0F5132] text-white shadow-xs"
+                      : "bg-gray-100/90 text-gray-700 hover:bg-gray-200 border border-gray-200/80"
+                  }`}
+                >
+                  <span>Sprint {s.nomorSprint}</span>
+                  {isAktif && (
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  )}
+                  {isSelesai && (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  )}
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => setSelectedSprintTab("backlog")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                selectedSprintTab === "backlog"
+                  ? "bg-slate-800 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+              }`}
+            >
+              <Inbox className="h-3.5 w-3.5" />
+              <span>Semua Backlog ({backlogCards.length})</span>
+            </button>
+          </div>
+
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTargetSprintCount(sprints.length);
+                setSprintCountReason("");
+                setIsSprintCountModalOpen(true);
+              }}
+              className="text-xs font-semibold gap-1.5 text-gray-700 hover:text-[#0F5132]"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              <span>Kelola Jumlah Sprint ({sprints.length})</span>
+            </Button>
+          )}
+        </div>
+
+        {/* Selected Sprint Details & Start/Complete Action Buttons */}
+        {currentSprintObj ? (
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-extrabold text-gray-900">
+                  Sprint {currentSprintObj.nomorSprint}: {currentSprintObj.tujuan || `Sprint ${currentSprintObj.nomorSprint}`}
+                </h2>
+                <Badge
+                  variant={
+                    currentSprintObj.status === "aktif"
+                      ? "success"
+                      : currentSprintObj.status === "selesai"
+                      ? "gold"
+                      : "secondary"
+                  }
+                  className="text-[10px] capitalize font-bold"
+                >
+                  {currentSprintObj.status === "aktif"
+                    ? "🟢 Sedang Aktif"
+                    : currentSprintObj.status === "selesai"
+                    ? "🔵 Selesai"
+                    : "⚪ Belum Dimulai"}
+                </Badge>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                {currentSprintObj.tanggalMulaiRencana && (
+                  <span className="flex items-center gap-1 font-mono">
+                    <Calendar className="h-3 w-3" />
+                    Target: {formatDateIndo(currentSprintObj.tanggalMulaiRencana)} – {formatDateIndo(currentSprintObj.tanggalSelesaiRencana)}
+                  </span>
+                )}
+                {currentSprintObj.tanggalMulaiAktual && (
+                  <span className="text-[11px] text-emerald-700 font-medium">
+                    &bull; Dimulai: {formatDateIndo(currentSprintObj.tanggalMulaiAktual)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Sprint Action Controls */}
+            {canEdit && (
+              <div className="flex items-center gap-2">
+                {currentSprintObj.status === "belum_dimulai" && (
+                  <Button
+                    size="sm"
+                    disabled={actionLoading}
+                    onClick={() => handleStartSprint(currentSprintObj.id)}
+                    className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 px-4 h-9 shadow-sm"
+                  >
+                    {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-white" />}
+                    <span>Mulai Sprint</span>
+                  </Button>
+                )}
+
+                {currentSprintObj.status === "aktif" && (
+                  <Button
+                    size="sm"
+                    disabled={actionLoading}
+                    onClick={handleOpenCompleteDialog}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 px-4 h-9 shadow-sm"
+                  >
+                    {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    <span>Selesaikan Sprint</span>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-slate-600" />
+                Area Backlog Tim
+              </h2>
+              <p className="text-xs text-gray-500">
+                Daftar kartu kerja yang belum di-assign ke Sprint manapun.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Filter & View Switcher Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-xl">
             <button
               onClick={() => setViewMode("board")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 viewMode === "board"
                   ? "bg-white text-[#0F5132] shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
               <KanbanIcon className="h-3.5 w-3.5" />
-              <span>Board View (Drag & Drop)</span>
+              <span>Board View</span>
             </button>
             <button
               onClick={() => setViewMode("timeline")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 viewMode === "timeline"
                   ? "bg-white text-[#0F5132] shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -488,11 +934,11 @@ export function KanbanClient({
 
           {/* Filter Tahap */}
           <select
-            className="text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-700 font-medium focus:ring-1 focus:ring-[#0F5132]"
+            className="text-xs bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-gray-700 font-semibold focus:ring-1 focus:ring-[#0F5132]"
             value={tahapFilter}
             onChange={(e) => setTahapFilter(e.target.value)}
           >
-            <option value="all">Semua Tahap</option>
+            <option value="all">Semua Tahap Inkubasi</option>
             <option value="innovation_setup">Innovation Setup</option>
             <option value="customer_validation">Customer Validation</option>
             <option value="market_validation">Market Validation</option>
@@ -500,119 +946,213 @@ export function KanbanClient({
           </select>
         </div>
 
-        <Button
-          onClick={() => {
-            setTargetColumn("To Do");
-            setIsNewCardOpen(true);
-          }}
-          variant="default"
-          size="sm"
-          className="text-xs gap-1.5 font-semibold bg-[#0F5132] hover:bg-[#1B7A4D] text-white"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Tambah Kartu / Task</span>
-        </Button>
+        {canEdit && (
+          <Button
+            onClick={() => {
+              setTargetColumn("To Do");
+              setTargetSprintForNewCard(
+                currentSprintObj ? currentSprintObj.nomorSprint : null
+              );
+              setIsNewCardOpen(true);
+            }}
+            variant="default"
+            size="sm"
+            className="text-xs gap-1.5 font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-xs"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Tambah Kartu Task</span>
+          </Button>
+        )}
       </div>
 
-      {/* View Mode 1: Board Columns with @dnd-kit Drag & Drop */}
+      {/* View Mode 1: Board Columns with Backlog Column & Drag & Drop */}
       {viewMode === "board" && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-            {columns.map((col) => {
-              const colCards = filteredCards.filter(
-                (c) => c.statusKolom === col.namaKolom
-              );
-
-              return (
-                <KanbanColumnDroppable
-                  key={col.id || col.namaKolom}
-                  column={col}
-                  cards={colCards}
-                  columns={columns}
-                  onAddCard={(colName) => {
-                    setTargetColumn(colName);
-                    setIsNewCardOpen(true);
-                  }}
-                  onMoveCard={handleMoveCardDropdown}
-                />
-              );
-            })}
-          </div>
-
-          {/* Floating Drag Overlay */}
-          <DragOverlay
-            dropAnimation={{
-              sideEffects: defaultDropAnimationSideEffects({
-                styles: {
-                  active: {
-                    opacity: "0.4",
-                  },
-                },
-              }),
-            }}
+        isMounted ? (
+          <DndContext
+            id="kanban-board-dnd-context"
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
           >
-            {activeCard ? <DraggingCardOverlay card={activeCard} /> : null}
-          </DragOverlay>
-        </DndContext>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
+              {/* 1. Kolom Khusus Backlog */}
+              <KanbanColumnDroppable
+                columnId="column-backlog"
+                columnTitle="Backlog"
+                isBacklogArea={true}
+                cards={backlogCards}
+                columns={columns}
+                sprints={sprints}
+                onAddCard={() => {
+                  setTargetColumn("To Do");
+                  setTargetSprintForNewCard(null);
+                  setIsNewCardOpen(true);
+                }}
+                onMoveCard={handleMoveCardDropdown}
+                onAssignSprint={handleAssignSprint}
+              />
+
+              {/* 2-5. Kolom Kerja Sprint (To Do, In Progress, Review, Done) */}
+              {columns.map((col) => {
+                const colCards = activeSprintCards.filter(
+                  (c) => c.statusKolom === col.namaKolom
+                );
+
+                return (
+                  <KanbanColumnDroppable
+                    key={col.id || col.namaKolom}
+                    columnId={col.namaKolom}
+                    columnTitle={col.namaKolom}
+                    isBacklogArea={false}
+                    cards={colCards}
+                    columns={columns}
+                    sprints={sprints}
+                    onAddCard={(colName) => {
+                      setTargetColumn(colName);
+                      setTargetSprintForNewCard(
+                        currentSprintObj ? currentSprintObj.nomorSprint : null
+                      );
+                      setIsNewCardOpen(true);
+                    }}
+                    onMoveCard={handleMoveCardDropdown}
+                    onAssignSprint={handleAssignSprint}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Floating Drag Overlay */}
+            <DragOverlay
+              dropAnimation={{
+                sideEffects: defaultDropAnimationSideEffects({
+                  styles: {
+                    active: {
+                      opacity: "0.4",
+                    },
+                  },
+                }),
+              }}
+            >
+              {activeCard ? <DraggingCardOverlay card={activeCard} /> : null}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
+            <div className="rounded-2xl p-3.5 border bg-slate-50/90 border-slate-200 min-h-[360px] animate-pulse" />
+            {columns.map((col) => (
+              <div
+                key={col.id || col.namaKolom}
+                className="rounded-2xl p-3.5 border bg-gray-50/80 border-gray-200 min-h-[360px] animate-pulse"
+              />
+            ))}
+          </div>
+        )
       )}
 
-      {/* View Mode 2: Timeline Roadmap */}
+      {/* View Mode 2: Timeline Roadmap with 2-segment Overdue Visualization */}
       {viewMode === "timeline" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 shadow-xs">
-          <div className="border-b border-gray-100 pb-3">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 shadow-xs">
+          <div className="border-b border-gray-100 pb-4">
             <h3 className="text-sm font-bold text-gray-900">
-              Timeline & Roadmap Proyek
+              Timeline & Roadmap Visualisasi Keterlambatan
             </h3>
             <p className="text-xs text-gray-500">
-              Jadwal pelaksanaan kartu kerja berdasarkan rentang tanggal mulai
-              dan selesai.
+              Visualisasi jadwal rencana dan segmen merah otomatis untuk kartu kerja yang melewati batas waktu.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {filteredCards.length === 0 ? (
-              <p className="text-xs text-gray-400 italic py-6 text-center">
-                Belum ada kartu kerja untuk tahap ini.
+              <p className="text-xs text-gray-400 italic py-8 text-center">
+                Belum ada kartu kerja untuk filter ini.
               </p>
             ) : (
-              filteredCards.map((c) => (
-                <div
-                  key={c.id}
-                  className="p-3 rounded-lg border border-gray-100 bg-gray-50/50 flex items-center justify-between gap-4 text-xs"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-900">{c.judul}</span>
-                      <Badge variant="outline" className="text-[10px]">
-                        {c.statusKolom}
-                      </Badge>
-                    </div>
-                    {c.deskripsi && (
-                      <p className="text-gray-500 text-[11px] line-clamp-1">
-                        {c.deskripsi}
-                      </p>
-                    )}
-                  </div>
+              filteredCards.map((c) => {
+                const now = new Date();
+                const isDone = c.statusKolom === "Done";
+                const isOverdue =
+                  Boolean(c.tanggalSelesai) &&
+                  new Date(c.tanggalSelesai) < now &&
+                  !isDone;
 
-                  <div className="flex items-center gap-3 shrink-0 text-gray-500">
-                    <span className="text-[11px] font-mono">
-                      {c.tanggalMulai
-                        ? new Date(c.tanggalMulai).toLocaleDateString("id-ID")
-                        : "Start -"}{" "}
-                      s/d{" "}
-                      {c.tanggalSelesai
-                        ? new Date(c.tanggalSelesai).toLocaleDateString("id-ID")
-                        : "End -"}
-                    </span>
+                const overdueDays = isOverdue
+                  ? Math.ceil(
+                      (now.getTime() - new Date(c.tanggalSelesai).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                  : 0;
+
+                return (
+                  <div
+                    key={c.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      isOverdue
+                        ? "border-red-300 bg-red-50/30"
+                        : "border-gray-100 bg-gray-50/60"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-gray-900">
+                          {c.judul}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {c.statusKolom}
+                        </Badge>
+                        {c.sprintNumber ? (
+                          <Badge variant="secondary" className="text-[9px]">
+                            Sprint {c.sprintNumber}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] text-slate-500">
+                            Backlog
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
+                        <span>
+                          {c.tanggalMulai
+                            ? formatDateIndo(c.tanggalMulai)
+                            : "Start -"}{" "}
+                          s/d{" "}
+                          {c.tanggalSelesai
+                            ? formatDateIndo(c.tanggalSelesai)
+                            : "End -"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Timeline Segment Bar */}
+                    <div className="space-y-1 pt-1">
+                      <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden flex items-center">
+                        {/* Normal Planned Segment */}
+                        <div className="h-3 bg-[#0F5132] rounded-l-full w-2/3" />
+
+                        {/* Overdue Red Extended Segment */}
+                        {isOverdue && (
+                          <div className="h-3 bg-red-500 rounded-r-full w-1/3 animate-pulse relative">
+                            {/* Thin vertical marker */}
+                            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white shadow-xs" />
+                          </div>
+                        )}
+                      </div>
+
+                      {isOverdue && (
+                        <div className="flex items-center justify-between text-[10px] text-red-700 font-bold pt-0.5">
+                          <span>Target Rencana: {formatDateIndo(c.tanggalSelesai)}</span>
+                          <span className="flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Molor {overdueDays} hari dari jadwal
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -656,6 +1196,27 @@ export function KanbanClient({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Penugasan Sprint
+                </label>
+                <select
+                  value={targetSprintForNewCard === null ? "backlog" : String(targetSprintForNewCard)}
+                  onChange={(e) => {
+                    const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
+                    setTargetSprintForNewCard(val);
+                  }}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                >
+                  <option value="backlog">📦 Backlog (Tanpa Sprint)</option>
+                  {sprints.map((s) => (
+                    <option key={s.nomorSprint} value={s.nomorSprint}>
+                      Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
                   Tahap Inkubasi
                 </label>
                 <select
@@ -669,18 +1230,18 @@ export function KanbanClient({
                   <option value="umum">Umum</option>
                 </select>
               </div>
+            </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Label
-                </label>
-                <Input
-                  placeholder="Backlog Charter, SME, MVP, dll"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Label / Tag
+              </label>
+              <Input
+                placeholder="Backlog Charter, SME, MVP, dll"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                className="text-xs"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -719,13 +1280,177 @@ export function KanbanClient({
               </Button>
               <Button
                 type="submit"
-                disabled={saving || !judul.trim()}
-                className="text-xs bg-[#0F5132] hover:bg-[#1B7A4D] text-white"
+                disabled={savingCard || !judul.trim()}
+                className="text-xs bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold"
               >
-                {saving ? "Menyimpan..." : "Buat Kartu"}
+                {savingCard ? "Menyimpan..." : "Buat Kartu"}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Selesaikan Sprint (Penyelesaian Task Belum Selesai) */}
+      <Dialog open={isCompleteModalOpen} onOpenChange={setIsCompleteModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+              Selesaikan Sprint {currentSprintObj?.nomorSprint}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            {incompleteCardsInCurrentSprint.length === 0 ? (
+              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
+                <p className="font-bold">🎉 Luar Biasa!</p>
+                <p className="text-[11px] text-emerald-800">
+                  Semua kartu kerja pada Sprint {currentSprintObj?.nomorSprint} telah berstatus <strong>Done</strong>. Anda dapat langsung menyelesaikan sprint ini.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-700" />
+                    Terdapat {incompleteCardsInCurrentSprint.length} kartu yang belum "Done"
+                  </p>
+                  <p className="text-[11px] text-amber-800">
+                    Pilih tujuan pemindahan untuk masing-masing kartu yang belum selesai:
+                  </p>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {incompleteCardsInCurrentSprint.map((card) => (
+                    <div
+                      key={card.id}
+                      className="p-2.5 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between gap-3"
+                    >
+                      <div className="space-y-0.5 overflow-hidden">
+                        <p className="font-bold text-gray-900 truncate">{card.judul}</p>
+                        <span className="text-[10px] text-gray-400">
+                          Status saat ini: {card.statusKolom}
+                        </span>
+                      </div>
+
+                      <select
+                        className="text-xs bg-white border border-gray-200 rounded-lg p-1.5 font-semibold text-gray-700 shrink-0"
+                        value={incompleteCardsDestinations[card.id] || "backlog"}
+                        onChange={(e) => {
+                          const val = e.target.value as "backlog" | "next_sprint";
+                          setIncompleteCardsDestinations((prev) => ({
+                            ...prev,
+                            [card.id]: val,
+                          }));
+                        }}
+                      >
+                        <option value="backlog">Pindahkan ke Backlog</option>
+                        <option value="next_sprint">
+                          Pindahkan ke Sprint {currentSprintObj ? currentSprintObj.nomorSprint + 1 : "Berikutnya"}
+                        </option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCompleteModalOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={actionLoading}
+              onClick={handleConfirmCompleteSprint}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5"
+            >
+              {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              <span>Konfirmasi Selesaikan Sprint</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Kelola Jumlah Sprint */}
+      <Dialog open={isSprintCountModalOpen} onOpenChange={setIsSprintCountModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-[#0F5132]" />
+              Kelola Jumlah Iterasi Sprint
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+              <p className="font-semibold">Audit Trail Perubahan Sprint</p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Setiap perubahan jumlah sprint akan dicatat ke dalam <strong>sprint_log</strong> dengan alasan yang Anda masukkan.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-semibold text-gray-700 block">
+                Target Jumlah Sprint Baru *
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={targetSprintCount}
+                onChange={(e) => setTargetSprintCount(parseInt(e.target.value) || 1)}
+                className="text-xs font-bold"
+              />
+              <span className="text-[10px] text-gray-400">
+                Jumlah sprint saat ini: {sprints.length} sprint
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-semibold text-gray-700 block">
+                Alasan Perubahan Jumlah Sprint *
+              </label>
+              <Textarea
+                rows={3}
+                placeholder="Contoh: Menambah 2 sprint untuk fase pilot regional..."
+                value={sprintCountReason}
+                onChange={(e) => setSprintCountReason(e.target.value)}
+                className="text-xs"
+                required
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSprintCountModalOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={actionLoading || !sprintCountReason.trim() || targetSprintCount === sprints.length}
+              onClick={handleApplySprintCountChange}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5"
+            >
+              {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Settings2 className="h-3.5 w-3.5" />}
+              <span>Simpan Perubahan</span>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

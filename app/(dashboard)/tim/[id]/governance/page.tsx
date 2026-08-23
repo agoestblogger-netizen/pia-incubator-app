@@ -1,7 +1,8 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getFmiData } from "@/app/actions/fmi";
+import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { notFound } from "next/navigation";
-import { TimNavTabs } from "@/components/layout/TimNavTabs";
+import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
 import { GovernanceClient } from "./GovernanceClient";
 
 export const dynamic = 'force-dynamic';
@@ -12,23 +13,17 @@ export default async function GovernancePage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const tim = await getTimInovatorById(resolvedParams.id);
-  if (!tim) return notFound();
+  const [tim, data, phaseGateStatus] = await Promise.all([
+    getTimInovatorById(resolvedParams.id),
+    getFmiData(resolvedParams.id),
+    getTeamPhaseGateStatus(resolvedParams.id),
+  ]);
 
-  const data = await getFmiData(tim.id);
+  if (!tim) return notFound();
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Forum Manajemen Inovasi (FMI) & Hasil Akhir — {tim.namaProyekInovasi}
-        </h1>
-        <p className="text-xs text-gray-500">
-          Keputusan akhir Dewan Direksi/Manajemen: Lanjut Skala Nasional, Diadopsi, atau Selesai (Input manual Admin)
-        </p>
-      </div>
-
-      <TimNavTabs timId={tim.id} />
+      <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
 
       <GovernanceClient timId={tim.id} initialData={data} />
     </div>
