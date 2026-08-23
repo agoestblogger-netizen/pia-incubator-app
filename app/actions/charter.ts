@@ -289,38 +289,100 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       }
     }
 
-    function extractPromotorFromText(text?: string | null): string | null {
-      if (!text) return null;
-      const promotorIdx = text.search(/Usulan\s*Promotor/i);
-      if (promotorIdx === -1) return null;
-      const slice = text.substring(promotorIdx);
-      const colonIdx = slice.indexOf(':');
-      if (colonIdx === -1) return null;
-      const afterColon = slice.substring(colonIdx + 1);
-      const endMatch = afterColon.search(/(?:Diusulkan\s+sebagai|Alasan\s+memilih|Judul\s+Inovasi|Kategori\s+Inovasi|\n\s*\n\s*[A-Z])/i);
-      let result = endMatch !== -1 ? afterColon.substring(0, endMatch) : afterColon.substring(0, 300);
-      result = result.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-      return result.length > 5 && result !== 'null' ? result : null;
+    function extractStrictRoleHints(rawText?: string | null): {
+      promotorSuggestion: string | null;
+      poSuggestion: string | null;
+    } {
+      if (!rawText) return { promotorSuggestion: null, poSuggestion: null };
+
+      const clean = rawText
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/<[^>]*>/g, ' ');
+
+      const promotorIdx = clean.search(/Usulan\s*Promotor/i);
+      let textToSearch = clean;
+      if (promotorIdx !== -1) {
+        const endMatch = clean.substring(promotorIdx).search(/(?:\n\s*\n|Keunikan\s*dari|Cara\s*sasaran|Target\s*Capaian|Proposal\s*Resubmission)/i);
+        textToSearch = endMatch !== -1 ? clean.substring(promotorIdx, promotorIdx + endMatch) : clean.substring(promotorIdx, promotorIdx + 500);
+      }
+
+      let poCandidate: string | null = null;
+      let promotorCandidate: string | null = null;
+
+      const cleanSnippet = (str: string) => {
+        return str
+          .replace(/^Usulan\s*Promotor\s*(?:untuk\s*ide\s*inovasi\s*ini)?\s*[:\-]?\s*/i, '')
+          .replace(/^Kami\s*memilih\s*(?:bapak|ibu)?\s*/i, '')
+          .replace(/(?:Diusulkan\s+sebagai|sebagai\s+promotor|karena\s+bisa|karena\s+memiliki|Alasan\s*:|Kenapa\s+bisa).*$/i, '')
+          .replace(/Jabatan\s*:\s*/gi, '')
+          .replace(/Unit\s*Kerja\s*:\s*/gi, '')
+          .replace(/Nama\s*:\s*/gi, '')
+          .replace(/\s+/g, ' ')
+          .replace(/[,\s]+$/, '')
+          .trim();
+      };
+
+      // 1. Check for Kepala Departemen / Kadep (Candidate for Project Owner)
+      if (/Kepala\s*Departemen|Kepala\s*Dept|Kadep/i.test(textToSearch)) {
+        const kvMatch = textToSearch.match(/Nama\s*:\s*([^,\n\r]+)[^,\n\r]*?Jabatan\s*:\s*(Kepala\s*Departemen[^\n\r]*?)(?:Unit\s*Kerja\s*:\s*([^,\n\r]+))?(?:\n|Alasan|$)/i);
+        if (kvMatch) {
+          const name = kvMatch[1].trim();
+          const jabatan = kvMatch[2].trim();
+          const unit = kvMatch[3]?.trim();
+          poCandidate = `${name}, ${jabatan}${unit ? `, ${unit}` : ''}`;
+        } else {
+          const natMatch = textToSearch.match(/([A-Z][a-zA-Z\s\.]*?,?\s*Kepala\s*Departemen[^\n\r,\.;]*(?:,?\s*Divisi[^\n\r,\.;]*)?)/i);
+          if (natMatch && natMatch[1]) {
+            poCandidate = cleanSnippet(natMatch[1]);
+          }
+        }
+      }
+
+      // 2. Check for Kepala Divisi / Kadiv (Candidate for Promotor)
+      if (/Kepala\s*Divisi|Kadiv/i.test(textToSearch) && !/Kepala\s*Departemen/i.test(textToSearch.match(/Kepala\s*Divisi/i)?.[0] || '')) {
+        const kvMatch = textToSearch.match(/Nama\s*:\s*([^,\n\r●○]+)[^,\n\r●○]*?Jabatan\s*:\s*(Kepala\s*Divisi[^\n\r●○]*?)(?:Unit\s*Kerja\s*:\s*([^,\n\r●○]+))?(?:\n|Alasan|Kenapa|Divisi|$)/i);
+        if (kvMatch) {
+          const name = kvMatch[1].replace(/^[●○\s]+/, '').trim();
+          const jabatan = kvMatch[2].trim();
+          const unit = kvMatch[3]?.trim();
+          promotorCandidate = `${name}, ${jabatan}${unit ? `, ${unit}` : ''}`;
+        } else {
+          const natMatch = textToSearch.match(/([A-Z][a-zA-Z\s\.]*?(?:,|bapak|ibu|\s)\s*Kepala\s*Divisi[^\n\r,\.;]*(?:,?\s*(?:Unit\s*Kerja\s*:|Divisi|PT)[^\n\r,\.;]*)?)/i);
+          if (natMatch && natMatch[1]) {
+            promotorCandidate = cleanSnippet(natMatch[1]);
+          }
+        }
+      }
+
+      // Filter out any Deputy / non-matching names
+      if (poCandidate && /Darma\s*Satria|Deputy/i.test(poCandidate)) {
+        poCandidate = poCandidate.split(/Darma\s*Satria|Deputy/i)[0].replace(/[,\s]+$/, '').trim();
+      }
+      if (promotorCandidate && /Darma\s*Satria|Deputy/i.test(promotorCandidate)) {
+        promotorCandidate = promotorCandidate.split(/Darma\s*Satria|Deputy/i)[0].replace(/[,\s]+$/, '').trim();
+      }
+
+      return {
+        promotorSuggestion: promotorCandidate && promotorCandidate.length > 5 ? promotorCandidate : null,
+        poSuggestion: poCandidate && poCandidate.length > 5 ? poCandidate : null,
+      };
     }
 
-    const rawPromotor =
+    const fullProposalText =
+      submisi.resubmit_document_text ||
+      snap.resubmit_document_text ||
       formDetail.usulan_promotor ||
       formDetail.promotor_diusulkan ||
       submisi.usulan_promotor ||
-      extractPromotorFromText(snap.resubmit_document_text) ||
-      extractPromotorFromText(submisi.resubmit_document_text);
+      '';
 
-    if (rawPromotor && typeof rawPromotor === 'string' && rawPromotor.trim() && rawPromotor !== 'null') {
-      usulanPromotorHint = cleanText(rawPromotor);
-    }
+    const { promotorSuggestion, poSuggestion } = extractStrictRoleHints(fullProposalText);
 
-    const pengusulNama = cleanText(submisi.pengusul?.nama || submisi.nama_pengusul || snap.nama_pengusul);
-    const rawPo = formDetail.usulan_po || formDetail.usulan_project_owner;
-    const usulanPoHint = rawPo
-      ? cleanText(rawPo)
-      : pengusulNama
-      ? `Pengusul proposal ini: ${pengusulNama} (sudah terdaftar sebagai Inisiator) — bisa dipertimbangkan juga sebagai Project Owner jika sesuai.`
-      : null;
+    usulanPromotorHint = promotorSuggestion ? cleanText(promotorSuggestion) : null;
+    const usulanPoHint = poSuggestion ? cleanText(poSuggestion) : null;
 
     return {
       charter: resultCharter,
