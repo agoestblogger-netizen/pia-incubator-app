@@ -2,13 +2,25 @@
 
 import { db } from "@/lib/db";
 import { roles, permissions, rolePermissions, users, userRoleTim, timInovator } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 
+const SYSTEM_DEFAULT_ROLE_CODES = [
+  'admin_ic',
+  'divisi_ic',
+  'sponsor',
+  'promotor',
+  'project_owner',
+  'inisiator',
+  'co_creator',
+  'coach',
+  'sme',
+];
+
 export async function getRbacMatrixData() {
-  const allRoles = await db.select().from(roles);
+  const allRoles = await db.select().from(roles).orderBy(roles.createdAt);
   const allPermissions = await db.select().from(permissions);
   const allRolePermissions = await db.select().from(rolePermissions);
   const allUsers = await db.select().from(users);
@@ -160,5 +172,146 @@ export async function removeUserRoleTimAction(userRoleTimId: string) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menghapus penugasan role.' };
+  }
+}
+
+export async function createCustomRoleAction(data: {
+  namaRole: string;
+  scope: 'global' | 'per_tim';
+  deskripsi?: string;
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'user.manage');
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Khusus Admin Innovation Center yang dapat membuat role baru.',
+      };
+    }
+
+    const trimmedNama = (data.namaRole || '').trim();
+    if (!trimmedNama) {
+      return { success: false, error: 'Nama role wajib diisi.' };
+    }
+
+    // Generate kode role
+    let baseCode = trimmedNama
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
+    if (!baseCode) baseCode = 'custom_role';
+
+    // Check uniqueness
+    const [existingCode] = await db.select().from(roles).where(eq(roles.kodeRole, baseCode)).limit(1);
+    const finalCode = existingCode ? `${baseCode}_${Math.random().toString(36).substring(2, 6)}` : baseCode;
+
+    const [newRole] = await db
+      .insert(roles)
+      .values({
+        namaRole: trimmedNama,
+        kodeRole: finalCode,
+        scope: data.scope || 'per_tim',
+        deskripsi: data.deskripsi || `Role kustom ${trimmedNama}`,
+        isDefault: false,
+      })
+      .returning();
+
+    // Default all permissions to false
+    const allPerms = await db.select().from(permissions);
+    for (const p of allPerms) {
+      await db.insert(rolePermissions).values({
+        roleId: newRole.id,
+        permissionId: p.id,
+        diizinkan: false,
+      });
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'ROLE_CREATE',
+      entity: 'roles',
+      entityId: newRole.id,
+      details: {
+        namaRole: newRole.namaRole,
+        kodeRole: newRole.kodeRole,
+        scope: newRole.scope,
+      },
+    });
+
+    revalidatePath('/admin/roles');
+    return { success: true, role: newRole };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal membuat role kustom baru.' };
+  }
+}
+
+export async function deleteCustomRoleAction(roleId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'user.manage');
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Khusus Admin Innovation Center yang dapat menghapus role.',
+      };
+    }
+
+    const [targetRole] = await db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
+    if (!targetRole) {
+      return { success: false, error: 'Role tidak ditemukan.' };
+    }
+
+    if (targetRole.isDefault || SYSTEM_DEFAULT_ROLE_CODES.includes(targetRole.kodeRole)) {
+      return {
+        success: false,
+        error: `Role bawaan sistem "${targetRole.namaRole}" tidak dapat dihapus.`,
+      };
+    }
+
+    // Smart check: is this role assigned to any user?
+    const [assignedCountRes] = await db
+      .select({ count: count() })
+      .from(userRoleTim)
+      .where(eq(userRoleTim.roleId, roleId));
+
+    const assignedCount = Number(assignedCountRes?.count || 0);
+    if (assignedCount > 0) {
+      return {
+        success: false,
+        error: `Role "${targetRole.namaRole}" sedang ditugaskan kepada ${assignedCount} pengguna. Hapus penugasan pengguna terkait terlebih dahulu sebelum menghapus role ini.`,
+      };
+    }
+
+    // Delete role_permissions first, then role
+    await db.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+    await db.delete(roles).where(eq(roles.id, roleId));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'ROLE_DELETE',
+      entity: 'roles',
+      entityId: roleId,
+      details: {
+        namaRole: targetRole.namaRole,
+        kodeRole: targetRole.kodeRole,
+      },
+    });
+
+    revalidatePath('/admin/roles');
+    return { success: true, message: `Role "${targetRole.namaRole}" berhasil dihapus permanen.` };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menghapus role.' };
   }
 }

@@ -1,5 +1,6 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getCharterByTimId, getCharterRolesData } from "@/app/actions/charter";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { TimNavTabs } from "@/components/layout/TimNavTabs";
 import { CharterFormClient } from "./CharterFormClient";
@@ -15,9 +16,12 @@ export default async function CharterPage({
   const tim = await getTimInovatorById(resolvedParams.id);
   if (!tim) return notFound();
 
-  const [initialData, rolesData] = await Promise.all([
+  const user = await getCurrentUser();
+  const [initialData, rolesData, canEdit, canApprove] = await Promise.all([
     getCharterByTimId(tim.id),
     getCharterRolesData(tim.id),
+    user ? hasPermission(user, 'charter.edit', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'charter.approve', tim.id) : Promise.resolve(false),
   ]);
 
   return (
@@ -37,8 +41,10 @@ export default async function CharterPage({
         timId={tim.id}
         initialData={initialData}
         initialRolesData={rolesData}
+        canEdit={canEdit}
+        canApprove={canApprove}
+        currentUser={user}
       />
     </div>
   );
 }
-

@@ -1,5 +1,6 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getMarketValidationData } from "@/app/actions/market-validation";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { TimNavTabs } from "@/components/layout/TimNavTabs";
 import { MarketValidationClient } from "./MarketValidationClient";
@@ -15,7 +16,12 @@ export default async function MarketValidationPage({
   const tim = await getTimInovatorById(resolvedParams.id);
   if (!tim) return notFound();
 
-  const data = await getMarketValidationData(tim.id);
+  const user = await getCurrentUser();
+  const [data, canEdit, canApprove] = await Promise.all([
+    getMarketValidationData(tim.id),
+    user ? hasPermission(user, 'market_val.edit', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'market_val.approve', tim.id) : Promise.resolve(false),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -30,7 +36,13 @@ export default async function MarketValidationPage({
 
       <TimNavTabs timId={tim.id} />
 
-      <MarketValidationClient timId={tim.id} initialData={data} />
+      <MarketValidationClient
+        timId={tim.id}
+        initialData={data}
+        canEdit={canEdit}
+        canApprove={canApprove}
+        currentUser={user}
+      />
     </div>
   );
 }

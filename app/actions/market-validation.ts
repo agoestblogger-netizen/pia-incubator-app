@@ -1,8 +1,16 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { marketValidationPlan, marketValidationReport, mvpMappingFitur, mvpResourcesNeeded, mvReleaseLog, dfvRekapitulasi } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  marketValidationPlan,
+  marketValidationReport,
+  mvpMappingFitur,
+  mvpResourcesNeeded,
+  mvReleaseLog,
+  dfvRekapitulasi,
+  anggotaTim,
+} from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -120,5 +128,121 @@ export async function saveMarketValidationReportAction(planId: string, timId: st
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menyimpan laporan market validation.' };
+  }
+}
+
+export async function approveMarketValidationReportAction(reportId: string, timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'market_val.approve', timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Hanya Promotor inovasi yang memiliki izin menyetujui Market Validation Report tim ini.',
+      };
+    }
+
+    const [existingReport] = await db
+      .select()
+      .from(marketValidationReport)
+      .where(eq(marketValidationReport.id, reportId))
+      .limit(1);
+
+    if (!existingReport) {
+      return { success: false, error: 'Market Validation Report belum disimpan.' };
+    }
+
+    // Get user's jabatan and unitKerja from anggotaTim if available
+    const [anggota] = await db
+      .select()
+      .from(anggotaTim)
+      .where(
+        and(
+          eq(anggotaTim.timInovatorId, timId),
+          eq(anggotaTim.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    const approvalData = {
+      userId: user.id,
+      nama: user.nama,
+      jabatan: anggota?.jabatan || 'Promotor Inovasi',
+      unit: anggota?.unitKerja || 'PT Pegadaian',
+      tanggal: new Date().toISOString(),
+      status: 'approved',
+    };
+
+    await db
+      .update(marketValidationReport)
+      .set({
+        ttdDisetujui: approvalData,
+        updatedAt: new Date(),
+      })
+      .where(eq(marketValidationReport.id, reportId));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'MARKET_VALIDATION_APPROVE',
+      entity: 'market_validation_report',
+      entityId: reportId,
+      details: {
+        timId,
+        approvedBy: user.nama,
+        email: user.email,
+      },
+    });
+
+    revalidatePath(`/tim/${timId}/market-validation`);
+    return { success: true, ttdDisetujui: approvalData };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menyetujui Market Validation Report.' };
+  }
+}
+
+export async function revokeMarketValidationReportApprovalAction(reportId: string, timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'market_val.approve', timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk membatalkan persetujuan Market Validation Report tim ini.',
+      };
+    }
+
+    await db
+      .update(marketValidationReport)
+      .set({
+        ttdDisetujui: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(marketValidationReport.id, reportId));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'MARKET_VALIDATION_REVOKE_APPROVAL',
+      entity: 'market_validation_report',
+      entityId: reportId,
+      details: {
+        timId,
+        revokedBy: user.nama,
+      },
+    });
+
+    revalidatePath(`/tim/${timId}/market-validation`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal membatalkan persetujuan Market Validation Report.' };
   }
 }

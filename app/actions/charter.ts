@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { charter, roles, userRoleTim, anggotaTim, users } from "@/lib/db/schema";
-import { eq, and, inArray, notInArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -97,7 +97,6 @@ export async function saveCharterAction(
       const allRoles = await db.select().from(roles);
       const roleMap = new Map(allRoles.map((r) => [r.kodeRole, r]));
 
-      // List of supported standard roles
       const standardRoleCodes: RoleAssignmentItem['roleCode'][] = [
         'sponsor',
         'promotor',
@@ -114,12 +113,11 @@ export async function saveCharterAction(
         const targetRole = roleMap.get(roleCode);
         if (!targetRole) continue;
 
-        // Find all submitted items for this specific roleCode
         const submittedItems = roleAssignments.filter(
           (r) => r.roleCode === roleCode && r.userId
         );
 
-        // Delete all existing user_role_tim assignments for this (timId, roleId)
+        // Delete existing user_role_tim assignments for this role in this team
         await db
           .delete(userRoleTim)
           .where(
@@ -129,7 +127,6 @@ export async function saveCharterAction(
             )
           );
 
-        // Insert new assignments and upsert anggota_tim for each submitted person
         for (const item of submittedItems) {
           if (!item.userId) continue;
           allActiveUserIds.add(item.userId);
@@ -141,7 +138,6 @@ export async function saveCharterAction(
             .limit(1);
 
           if (assignedUser) {
-            // Insert user_role_tim
             await db
               .insert(userRoleTim)
               .values({
@@ -151,7 +147,6 @@ export async function saveCharterAction(
               })
               .onConflictDoNothing();
 
-            // Upsert anggota_tim
             const [existingAnggota] = await db
               .select()
               .from(anggotaTim)
@@ -188,7 +183,7 @@ export async function saveCharterAction(
         }
       }
 
-      // Clean up anggota_tim rows for users who are no longer assigned to ANY role in this team
+      // Clean up anggota_tim rows for users no longer assigned to ANY role in this team
       const existingTeamAnggota = await db
         .select()
         .from(anggotaTim)
@@ -220,5 +215,136 @@ export async function saveCharterAction(
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menyimpan Charter.' };
+  }
+}
+
+export async function approveCharterAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'charter.approve', timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Hanya Promotor inovasi yang memiliki izin menyetujui Innovation Charter tim ini.',
+      };
+    }
+
+    const [existingCharter] = await db
+      .select()
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1);
+
+    if (!existingCharter) {
+      return {
+        success: false,
+        error: 'Innovation Charter belum disimpan oleh tim. Silakan simpan draf terlebih dahulu sebelum disetujui.',
+      };
+    }
+
+    // Get user's jabatan and unitKerja from anggotaTim if available
+    const [anggota] = await db
+      .select()
+      .from(anggotaTim)
+      .where(
+        and(
+          eq(anggotaTim.timInovatorId, timId),
+          eq(anggotaTim.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    const approvalData = {
+      userId: user.id,
+      nama: user.nama,
+      jabatan: anggota?.jabatan || 'Promotor Inovasi',
+      unit: anggota?.unitKerja || 'PT Pegadaian',
+      tanggal: new Date().toISOString(),
+      status: 'approved',
+    };
+
+    await db
+      .update(charter)
+      .set({
+        ttdDisetujui: approvalData,
+        updatedAt: new Date(),
+      })
+      .where(eq(charter.id, existingCharter.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'CHARTER_APPROVE',
+      entity: 'charter',
+      entityId: existingCharter.id,
+      details: {
+        timId,
+        approvedBy: user.nama,
+        email: user.email,
+      },
+    });
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/charter`);
+    return { success: true, ttdDisetujui: approvalData };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menyetujui Innovation Charter.' };
+  }
+}
+
+export async function revokeCharterApprovalAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'charter.approve', timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk membatalkan persetujuan Innovation Charter tim ini.',
+      };
+    }
+
+    const [existingCharter] = await db
+      .select()
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1);
+
+    if (!existingCharter) {
+      return { success: false, error: 'Innovation Charter tidak ditemukan.' };
+    }
+
+    await db
+      .update(charter)
+      .set({
+        ttdDisetujui: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(charter.id, existingCharter.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'CHARTER_REVOKE_APPROVAL',
+      entity: 'charter',
+      entityId: existingCharter.id,
+      details: {
+        timId,
+        revokedBy: user.nama,
+      },
+    });
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/charter`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal membatalkan persetujuan Innovation Charter.' };
   }
 }

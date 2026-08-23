@@ -5,6 +5,8 @@ import {
   toggleRolePermissionAction,
   assignUserRoleTimAction,
   removeUserRoleTimAction,
+  createCustomRoleAction,
+  deleteCustomRoleAction,
 } from "@/app/actions/admin-roles";
 import {
   createUserAction,
@@ -39,12 +41,15 @@ import {
   Edit,
   AlertTriangle,
   Lock,
+  PlusCircle,
+  ShieldCheck,
 } from "lucide-react";
 
 export function RolesClient({ initialData }: { initialData: any }) {
   const [activeTab, setActiveTab] = useState<"matrix" | "users">("matrix");
 
   // State for RBAC Matrix
+  const [rolesList, setRolesList] = useState<any[]>(initialData.roles || []);
   const [rolePermissions, setRolePermissions] = useState<any[]>(initialData.rolePermissions || []);
   const [userRoles, setUserRoles] = useState<any[]>(initialData.userRoles || []);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -53,6 +58,15 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [selectedTimId, setSelectedTimId] = useState("");
   const [savingAssign, setSavingAssign] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+
+  // State for Custom Role Creation
+  const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleScope, setNewRoleScope] = useState<"per_tim" | "global">("per_tim");
+  const [newRoleDeskripsi, setNewRoleDeskripsi] = useState("");
+  const [creatingRole, setCreatingRole] = useState(false);
+  const [createRoleError, setCreateRoleError] = useState<string | null>(null);
+  const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
 
   // State for User Management
   const [usersList, setUsersList] = useState<any[]>(initialData.users || []);
@@ -87,7 +101,6 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
-  const roles = initialData.roles || [];
   const permissions = initialData.permissions || [];
   const teams = initialData.teams || [];
 
@@ -99,38 +112,57 @@ export function RolesClient({ initialData }: { initialData: any }) {
   }, {});
 
   const isAllowed = (roleId: string, permissionId: string) => {
-    const found = rolePermissions.find(
-      (rp) => rp.roleId === roleId && rp.permissionId === permissionId
+    const rp = rolePermissions.find(
+      (item) => item.roleId === roleId && item.permissionId === permissionId
     );
-    return found ? found.diizinkan : false;
+    return rp ? rp.diizinkan : false;
   };
 
   const handleToggle = async (roleId: string, permissionId: string, roleCode: string) => {
-    if (roleCode === "admin_ic") return;
+    if (roleCode === "admin_ic") return; // Admin IC cannot be toggled
 
-    const current = isAllowed(roleId, permissionId);
-    const nextVal = !current;
+    const currentAllowed = isAllowed(roleId, permissionId);
+    const nextAllowed = !currentAllowed;
 
+    // Optimistic UI update
     setRolePermissions((prev) => {
-      const existing = prev.find((rp) => rp.roleId === roleId && rp.permissionId === permissionId);
+      const existing = prev.find(
+        (rp) => rp.roleId === roleId && rp.permissionId === permissionId
+      );
       if (existing) {
         return prev.map((rp) =>
-          rp.roleId === roleId && rp.permissionId === permissionId ? { ...rp, diizinkan: nextVal } : rp
+          rp.roleId === roleId && rp.permissionId === permissionId
+            ? { ...rp, diizinkan: nextAllowed }
+            : rp
         );
+      } else {
+        return [...prev, { roleId, permissionId, diizinkan: nextAllowed }];
       }
-      return [...prev, { roleId, permissionId, diizinkan: nextVal }];
     });
 
-    await toggleRolePermissionAction(roleId, permissionId, nextVal);
+    const res = await toggleRolePermissionAction(roleId, permissionId, nextAllowed);
+    if (!res.success) {
+      // Rollback on failure
+      setRolePermissions((prev) =>
+        prev.map((rp) =>
+          rp.roleId === roleId && rp.permissionId === permissionId
+            ? { ...rp, diizinkan: currentAllowed }
+            : rp
+        )
+      );
+      alert(res.error || "Gagal mengubah hak akses.");
+    }
   };
 
   const handleAssignRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId || !selectedRoleId) {
-      alert("Harap pilih Pengguna dan Role.");
+      alert("Harap pilih pengguna dan role.");
       return;
     }
+
     setSavingAssign(true);
+    setMsg(null);
 
     const res = await assignUserRoleTimAction({
       userId: selectedUserId,
@@ -139,12 +171,32 @@ export function RolesClient({ initialData }: { initialData: any }) {
     });
 
     if (res.success && res.data) {
-      setMsg({ type: "success", text: "Penugasan role pengguna berhasil!" });
+      const targetUser = usersList.find((u: any) => u.id === selectedUserId);
+      const targetRole = rolesList.find((r: any) => r.id === selectedRoleId);
+
+      setUserRoles((prev) => [
+        {
+          id: res.data.id,
+          userId: selectedUserId,
+          roleId: selectedRoleId,
+          timInovatorId: selectedTimId || null,
+          roleName: targetRole?.namaRole,
+          roleCode: targetRole?.kodeRole,
+          userName: targetUser?.nama,
+          userEmail: targetUser?.email,
+        },
+        ...prev,
+      ]);
+
+      setMsg({ type: "success", text: "Role pengguna berhasil ditetapkan!" });
       setIsAssignOpen(false);
-      window.location.reload();
+      setSelectedUserId("");
+      setSelectedRoleId("");
+      setSelectedTimId("");
     } else {
       alert(res.error || "Gagal menetapkan role.");
     }
+
     setSavingAssign(false);
   };
 
@@ -157,6 +209,53 @@ export function RolesClient({ initialData }: { initialData: any }) {
     } else {
       alert(res.error || "Gagal menghapus penugasan role.");
     }
+  };
+
+  // Custom Role Handlers
+  const handleCreateCustomRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateRoleError(null);
+
+    const trimmedName = newRoleName.trim();
+    if (!trimmedName) {
+      setCreateRoleError("Nama role wajib diisi.");
+      return;
+    }
+
+    setCreatingRole(true);
+    const res = await createCustomRoleAction({
+      namaRole: trimmedName,
+      scope: newRoleScope,
+      deskripsi: newRoleDeskripsi.trim() || undefined,
+    });
+
+    if (res.success && res.role) {
+      setRolesList((prev) => [...prev, res.role]);
+      setMsg({ type: "success", text: `Role kustom "${res.role.namaRole}" berhasil dibuat dengan seluruh izin awal Tanpa Akses.` });
+      setIsCreateRoleOpen(false);
+      setNewRoleName("");
+      setNewRoleScope("per_tim");
+      setNewRoleDeskripsi("");
+    } else {
+      setCreateRoleError(res.error || "Gagal membuat role kustom.");
+    }
+    setCreatingRole(false);
+  };
+
+  const handleDeleteCustomRole = async (role: any) => {
+    if (!confirm(`Hapus role kustom "${role.namaRole}" secara permanen?`)) return;
+
+    setDeletingRoleId(role.id);
+    const res = await deleteCustomRoleAction(role.id);
+
+    if (res.success) {
+      setRolesList((prev) => prev.filter((r) => r.id !== role.id));
+      setUserRoles((prev) => prev.filter((ur) => ur.roleId !== role.id));
+      setMsg({ type: "success", text: res.message || `Role "${role.namaRole}" berhasil dihapus.` });
+    } else {
+      alert(res.error || "Gagal menghapus role.");
+    }
+    setDeletingRoleId(null);
   };
 
   // User Management Actions
@@ -318,23 +417,32 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
   return (
     <div className="space-y-6">
+      {/* Feedback Alert */}
       {msg && (
         <div
-          className={`p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs ${
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs ${
             msg.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-800"
+              ? "bg-green-50 text-green-800 border border-green-200"
               : msg.type === "info"
-              ? "bg-amber-50 border border-amber-200 text-amber-800"
-              : "bg-red-50 border border-red-200 text-red-800"
+              ? "bg-blue-50 text-blue-800 border border-blue-200"
+              : "bg-red-50 text-red-800 border border-red-200"
           }`}
         >
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span>{msg.text}</span>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{msg.text}</span>
+          </div>
+          <button
+            onClick={() => setMsg(null)}
+            className="text-gray-400 hover:text-gray-600 text-xs"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* Top Tab Bar Navigation */}
-      <div className="flex border-b border-gray-200 bg-white rounded-t-2xl px-6 pt-3 space-x-6">
+      {/* Main Tab Navigation */}
+      <div className="flex border-b border-gray-200 gap-8">
         <button
           onClick={() => setActiveTab("matrix")}
           className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
@@ -344,7 +452,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
           }`}
         >
           <Shield className="h-4 w-4" />
-          <span>Matriks Hak Akses Role</span>
+          <span>Matriks Hak Akses Role ({rolesList.length})</span>
         </button>
 
         <button
@@ -367,38 +475,77 @@ export function RolesClient({ initialData }: { initialData: any }) {
         <div className="space-y-8">
           {/* Bagian 1: Matriks Permission */}
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-              <CardTitle className="text-base font-bold text-gray-900">
-                Matriks Hak Akses (Matrix Permissions)
-              </CardTitle>
-              <CardDescription className="text-xs text-gray-500">
-                Klik ikon untuk mengaktifkan atau menonaktifkan izin. Admin Innovation Center selalu memiliki izin penuh di semua modul.
-              </CardDescription>
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100 flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-base font-bold text-gray-900">
+                  Matriks Hak Akses (Matrix Permissions)
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-1">
+                  Klik ikon untuk mengaktifkan atau menonaktifkan izin per modul. Admin Innovation Center selalu memiliki izin penuh.
+                </CardDescription>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => {
+                  setCreateRoleError(null);
+                  setIsCreateRoleOpen(true);
+                }}
+                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs shrink-0"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                + Buat Role Baru
+              </Button>
             </CardHeader>
+
             <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse min-w-[800px]">
+              <table className="w-full text-xs text-left border-collapse min-w-[850px]">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50 text-gray-700 font-bold">
                     <th className="p-3.5 border-r border-gray-200 w-80">Modul & Hak Akses</th>
-                    {roles.map((r: any) => (
-                      <th
-                        key={r.id}
-                        className={`p-3 text-center border-r border-gray-200 last:border-r-0 ${
-                          r.kodeRole === "admin_ic" ? "bg-amber-50/70 text-amber-900" : ""
-                        }`}
-                      >
-                        <div>{r.namaRole}</div>
-                        <span className="text-[10px] text-gray-400 font-mono font-normal">
-                          {r.scope}
-                        </span>
-                      </th>
-                    ))}
+                    {rolesList.map((r: any) => {
+                      const isCustom = !r.isDefault;
+                      return (
+                        <th
+                          key={r.id}
+                          className={`p-3 text-center border-r border-gray-200 last:border-r-0 ${
+                            r.kodeRole === "admin_ic"
+                              ? "bg-amber-50/70 text-amber-900"
+                              : r.kodeRole === "divisi_ic"
+                              ? "bg-emerald-50/70 text-emerald-950"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span className="font-bold">{r.namaRole}</span>
+                            {isCustom && (
+                              <button
+                                type="button"
+                                disabled={deletingRoleId === r.id}
+                                onClick={() => handleDeleteCustomRole(r)}
+                                className="text-red-500 hover:text-red-700 p-0.5 rounded hover:bg-red-50"
+                                title={`Hapus role kustom "${r.namaRole}"`}
+                              >
+                                {deletingRoleId === r.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-mono font-normal block mt-0.5">
+                            {r.scope} {isCustom ? "(Custom)" : ""}
+                          </span>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {Object.entries(groupedPermissions).map(([modul, perms]: [string, any]) => (
                     <tr key={modul} className="group">
-                      <td colSpan={roles.length + 1} className="p-0">
+                      <td colSpan={rolesList.length + 1} className="p-0">
                         <div className="bg-gray-100/70 font-bold text-gray-800 px-3.5 py-1.5 uppercase text-[10px] tracking-wider">
                           Modul: {modul.replace("_", " ")}
                         </div>
@@ -415,7 +562,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                                   </div>
                                   <div className="text-gray-500 text-[11px]">{p.deskripsi}</div>
                                 </td>
-                                {roles.map((r: any) => {
+                                {rolesList.map((r: any) => {
                                   const allowed = isAllowed(r.id, p.id);
                                   const isAdmin = r.kodeRole === "admin_ic";
 
@@ -501,37 +648,48 @@ export function RolesClient({ initialData }: { initialData: any }) {
                       </td>
                     </tr>
                   ) : (
-                    userRoles.map((ur: any) => {
-                      const tim = teams.find((t: any) => t.id === ur.timInovatorId);
-                      return (
-                        <tr key={ur.id} className="hover:bg-gray-50/60 transition-colors">
-                          <td className="p-3 font-semibold text-gray-900">{ur.userName}</td>
-                          <td className="p-3 text-gray-500 font-mono text-[11px]">{ur.userEmail}</td>
-                          <td className="p-3">
-                            <Badge
-                              variant="outline"
-                              className="font-bold text-[11px] border-[#0F5132]/30 text-[#0F5132] bg-[#0F5132]/5"
-                            >
-                              {ur.roleName}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-gray-600">
-                            {tim ? tim.nama : <span className="text-gray-400 italic">Global (Semua Tim)</span>}
-                          </td>
-                          <td className="p-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveRole(ur.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
-                              title="Hapus Penugasan Role"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })
+                    userRoles.map((ur: any) => (
+                      <tr key={ur.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="p-3 font-semibold text-gray-900">{ur.userName}</td>
+                        <td className="p-3 text-gray-500 font-mono">{ur.userEmail}</td>
+                        <td className="p-3">
+                          <Badge
+                            variant="secondary"
+                            className={
+                              ur.roleCode === "admin_ic"
+                                ? "bg-amber-100 text-amber-900 border-amber-200"
+                                : ur.roleCode === "divisi_ic"
+                                ? "bg-emerald-100 text-emerald-950 border-emerald-200"
+                                : "bg-gray-100 text-gray-800"
+                            }
+                          >
+                            {ur.roleName}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          {ur.timInovatorId ? (
+                            <span className="text-[#0F5132] font-semibold">
+                              Tim: {teams.find((t: any) => t.id === ur.timInovatorId)?.nama || ur.timInovatorId.slice(0, 8)}
+                            </span>
+                          ) : (
+                            <span className="text-purple-700 font-semibold bg-purple-50 px-2 py-0.5 rounded text-[10px] border border-purple-200">
+                              Global (Seluruh Tim)
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveRole(ur.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
+                            title="Hapus penugasan role"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -545,147 +703,157 @@ export function RolesClient({ initialData }: { initialData: any }) {
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "users" && (
         <div className="space-y-6">
-          {/* User Stats & Action Header */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Cari user berdasarkan nama / email..."
-                  value={searchUserQuery}
-                  onChange={(e) => setSearchUserQuery(e.target.value)}
-                  className="pl-9 h-9 text-xs w-72 bg-white border-gray-200"
-                />
-              </div>
-              <span className="text-xs text-gray-500 font-medium">
-                Total: <strong>{filteredUsers.length}</strong> pengguna
-              </span>
-            </div>
-
-            <Button
-              onClick={() => setIsCreateUserOpen(true)}
-              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-              Tambah User Baru
-            </Button>
-          </div>
-
-          {/* Users Table Card */}
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-[#0F5132]" />
+                    Daftar Pengguna Aplikasi
+                  </CardTitle>
+                  <CardDescription className="text-xs text-gray-500 mt-1">
+                    Kelola akun login inovator, coach, promotor, sponsor, dan admin.
+                  </CardDescription>
+                </div>
+
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setCreateUserError(null);
+                    setIsCreateUserOpen(true);
+                  }}
+                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  + Tambah User Baru
+                </Button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="pt-3">
+                <div className="relative max-w-sm">
+                  <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Cari nama atau email pengguna..."
+                    value={searchUserQuery}
+                    onChange={(e) => setSearchUserQuery(e.target.value)}
+                    className="pl-9 h-9 text-xs border-gray-200 bg-white"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+
             <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse">
+              <table className="w-full text-xs text-left border-collapse min-w-[700px]">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-gray-700 font-bold">
+                  <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-700 font-bold">
                     <th className="p-3.5">Nama Pengguna</th>
-                    <th className="p-3.5">Email Korporat</th>
-                    <th className="p-3.5 text-center">Status Akun</th>
-                    <th className="p-3.5 text-center">Role / Tim Terhubung</th>
-                    <th className="p-3.5 text-right">Aksi Kelola</th>
+                    <th className="p-3.5">Email</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5">Role Terhubung</th>
+                    <th className="p-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-400">
-                        Tidak ada data user ditemukan.
+                      <td colSpan={5} className="p-8 text-center text-gray-400 text-xs">
+                        {searchUserQuery
+                          ? "Tidak ada user yang cocok dengan kata kunci pencarian."
+                          : "Belum ada user terdaftar."}
                       </td>
                     </tr>
                   ) : (
                     filteredUsers.map((u: any) => {
-                      const userRolesForThisUser = userRoles.filter((ur: any) => ur.userId === u.id);
-                      const uniqueTeamsCount = new Set(
-                        userRolesForThisUser.filter((ur: any) => ur.timInovatorId).map((ur: any) => ur.timInovatorId)
-                      ).size;
+                      const userAssignedRoles = userRoles.filter((ur: any) => ur.userId === u.id);
 
                       return (
-                        <tr key={u.id} className="hover:bg-gray-50/60 transition-colors">
-                          {/* Nama */}
-                          <td className="p-3.5 font-semibold text-gray-900 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#0F5132] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                              {(u.nama || "U")
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .slice(0, 2)
-                                .join("")
-                                .toUpperCase()}
+                        <tr key={u.id} className="hover:bg-gray-50/40 transition-colors">
+                          <td className="p-3.5 font-semibold text-gray-900">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-full bg-[#0F5132]/10 text-[#0F5132] flex items-center justify-center font-bold text-xs shrink-0">
+                                {u.nama ? u.nama.charAt(0).toUpperCase() : "U"}
+                              </div>
+                              <div>
+                                <span className="font-bold text-gray-900 block">{u.nama}</span>
+                                <span className="text-[10px] text-gray-400 font-mono">{u.id.slice(0, 8)}...</span>
+                              </div>
                             </div>
-                            <span className="truncate">{u.nama}</span>
                           </td>
-
-                          {/* Email */}
-                          <td className="p-3.5 text-gray-600 font-mono text-[11px]">
-                            {u.email}
+                          <td className="p-3.5 text-gray-600 font-mono">{u.email}</td>
+                          <td className="p-3.5">
+                            {u.statusAktif ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-600"></span>
+                                Aktif
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                                Non-Aktif
+                              </span>
+                            )}
                           </td>
-
-                          {/* Status */}
-                          <td className="p-3.5 text-center">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                                u.statusAktif
-                                  ? "bg-green-100 text-green-800 border-green-200"
-                                  : "bg-gray-100 text-gray-600 border-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  u.statusAktif ? "bg-green-600" : "bg-gray-400"
-                                }`}
-                              />
-                              {u.statusAktif ? "Aktif" : "Non-Aktif"}
-                            </span>
+                          <td className="p-3.5">
+                            {userAssignedRoles.length === 0 ? (
+                              <span className="text-gray-400 italic text-[11px]">Belum ada role</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {userAssignedRoles.map((ur: any, idx: number) => (
+                                  <Badge
+                                    key={idx}
+                                    variant="outline"
+                                    className="text-[10px] py-0 px-2 bg-gray-50 border-gray-200 font-medium"
+                                  >
+                                    {ur.roleName}
+                                    {ur.timInovatorId && (
+                                      <span className="text-[9px] text-[#0F5132] ml-1 font-bold">
+                                        (Tim)
+                                      </span>
+                                    )}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </td>
-
-                          {/* Role & Teams */}
-                          <td className="p-3.5 text-center">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-gray-800 text-xs font-semibold">
-                              <Layers className="h-3.5 w-3.5 text-[#0F5132]" />
-                              {uniqueTeamsCount} Tim ({userRolesForThisUser.length} Peran)
-                            </span>
-                          </td>
-
-                          {/* Action Buttons: Edit, Toggle Active/Inactive, and Delete */}
                           <td className="p-3.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {/* Edit Button */}
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => handleOpenEdit(u)}
-                                className="h-8 text-xs font-semibold gap-1 text-gray-700 hover:text-[#0F5132] hover:border-[#0F5132]/40"
+                                className="h-8 px-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg gap-1"
+                                title="Edit nama & reset password"
                               >
-                                <Edit className="h-3.5 w-3.5" />
+                                <Edit className="h-3.5 w-3.5 text-blue-600" />
                                 <span>Edit</span>
                               </Button>
 
                               {/* Toggle Status Button */}
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 disabled={togglingUserId === u.id}
                                 onClick={() => handleToggleUserStatus(u)}
-                                className={`h-8 text-xs font-semibold gap-1 ${
+                                className={`h-8 px-2 text-xs font-semibold rounded-lg gap-1 ${
                                   u.statusAktif
-                                    ? "text-amber-700 border-amber-200 hover:bg-amber-50"
-                                    : "text-green-700 border-green-200 hover:bg-green-50"
+                                    ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                    : "text-green-600 hover:text-green-700 hover:bg-green-50"
                                 }`}
-                                title={u.statusAktif ? "Nonaktifkan Akses User" : "Aktifkan Akses User"}
+                                title={u.statusAktif ? "Nonaktifkan akun" : "Aktifkan akun"}
                               >
-                                {togglingUserId === u.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <Power className="h-3 w-3" />
-                                )}
+                                <Power className="h-3.5 w-3.5" />
                                 <span>{u.statusAktif ? "Nonaktifkan" : "Aktifkan"}</span>
                               </Button>
 
                               {/* Delete Button */}
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => handleOpenDelete(u)}
-                                className="h-8 text-xs font-semibold gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                title="Hapus User (Smart Delete)"
+                                className="h-8 px-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg gap-1"
+                                title="Hapus pengguna"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                                 <span>Hapus</span>
@@ -704,144 +872,210 @@ export function RolesClient({ initialData }: { initialData: any }) {
       )}
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* MODAL DIALOG: EDIT USER & RESET PASSWORD */}
+      {/* MODAL DIALOG: BUAT ROLE BARU (CUSTOM ROLE) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 space-y-6">
+      <Dialog open={isCreateRoleOpen} onOpenChange={setIsCreateRoleOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <Edit className="h-5 w-5 text-[#0F5132]" />
-              Edit Data & Reset Password Pengguna
+              <ShieldCheck className="h-5 w-5 text-[#0F5132]" />
+              Buat Role Kustom Baru
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Perbarui nama profil atau setel ulang password login untuk akun ini.
+              Tambahkan role baru ke sistem. Role baru otomatis dimulai dengan seluruh izin Tanpa Akses.
             </DialogDescription>
           </DialogHeader>
 
-          {editingUser && (
-            <div className="space-y-6 divide-y divide-gray-100">
-              {/* Bagian 1: Update Profil & Nama */}
-              <form onSubmit={handleSaveEditName} className="space-y-4 pt-1">
-                <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-[#0F5132]" />
-                  Informasi Profil Pengguna
-                </h4>
+          {createRoleError && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-800 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{createRoleError}</span>
+            </div>
+          )}
 
-                {editNameMsg && (
-                  <div
-                    className={`p-3 rounded-lg text-xs font-semibold border ${
-                      editNameMsg.type === "success"
-                        ? "bg-green-50 border-green-200 text-green-800"
-                        : "bg-red-50 border-red-200 text-red-800"
-                    }`}
-                  >
-                    {editNameMsg.text}
-                  </div>
+          <form onSubmit={handleCreateCustomRole} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Nama Role *</label>
+              <Input
+                placeholder="Contoh: Auditor Internal / PIC Regional"
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value)}
+                required
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Scope Penugasan *</label>
+              <select
+                className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white font-medium"
+                value={newRoleScope}
+                onChange={(e) => setNewRoleScope(e.target.value as any)}
+              >
+                <option value="per_tim">Per Tim Inovator (Ditugaskan spesifik ke tim tertentu)</option>
+                <option value="global">Global (Berlaku di seluruh tim / sistem program)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Deskripsi / Catatan (Opsional)</label>
+              <Input
+                placeholder="Deskripsi singkat fungsi role..."
+                value={newRoleDeskripsi}
+                onChange={(e) => setNewRoleDeskripsi(e.target.value)}
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <DialogFooter className="pt-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreateRoleOpen(false)}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={creatingRole}
+                size="sm"
+                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5"
+              >
+                {creatingRole ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    Buat Role
+                  </>
                 )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-500">Email Korporat (Identitas Login)</label>
-                  <Input
-                    disabled
-                    value={editingUser.email}
-                    className="h-9 text-xs bg-gray-100 text-gray-600 font-mono cursor-not-allowed"
-                  />
-                  <span className="text-[10px] text-gray-400 block">* Email terikat sebagai identitas login dan tidak dapat diubah.</span>
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {/* MODAL DIALOG: EDIT USER (NAMA & RESET PASSWORD) */}
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Edit className="h-5 w-5 text-blue-600" />
+              Edit Data Pengguna & Reset Password
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Ubah nama tampilan atau setel ulang password untuk akun <strong>{editingUser?.email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-3">
+            {/* Bagian 1: Ubah Nama */}
+            <div className="p-4 bg-gray-50/70 rounded-xl border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-900">Ubah Nama Pengguna</span>
+              </div>
+
+              {editNameMsg && (
+                <div
+                  className={`p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+                    editNameMsg.type === "success"
+                      ? "bg-green-50 text-green-800 border border-green-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{editNameMsg.text}</span>
                 </div>
+              )}
 
+              <form onSubmit={handleSaveEditName} className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-700">Nama Lengkap</label>
+                  <label className="text-[11px] font-semibold text-gray-600">Nama Lengkap</label>
                   <Input
-                    required
                     value={editNama}
                     onChange={(e) => setEditNama(e.target.value)}
-                    className="h-9 text-xs"
-                    placeholder="Nama Lengkap"
+                    required
+                    className="h-9 text-xs bg-white"
                   />
                 </div>
-
                 <div className="flex justify-end">
                   <Button
                     type="submit"
                     disabled={savingEditName}
                     size="sm"
-                    className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5"
+                    className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8"
                   >
-                    {savingEditName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                    Simpan Perubahan Nama
+                    {savingEditName ? <Loader2 className="h-3 w-3 animate-spin" /> : "Simpan Nama"}
                   </Button>
                 </div>
               </form>
+            </div>
 
-              {/* Bagian 2: Reset Password */}
-              <form onSubmit={handleSaveResetPassword} className="space-y-4 pt-4">
-                <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                  <Lock className="h-4 w-4 text-[#0F5132]" />
-                  Reset Password Akun
-                </h4>
+            {/* Bagian 2: Reset Password */}
+            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200 space-y-3">
+              <div className="flex items-center gap-2 text-blue-900">
+                <KeyRound className="h-4 w-4 text-blue-600" />
+                <span className="text-xs font-bold">Reset Password Akun</span>
+              </div>
 
-                {resetPasswordMsg && (
-                  <div
-                    className={`p-3 rounded-lg text-xs font-semibold border ${
-                      resetPasswordMsg.type === "success"
-                        ? "bg-green-50 border-green-200 text-green-800"
-                        : "bg-red-50 border-red-200 text-red-800"
-                    }`}
-                  >
-                    {resetPasswordMsg.text}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
-                      <KeyRound className="h-3 w-3 text-gray-400" />
-                      Password Baru
-                    </label>
-                    <Input
-                      required
-                      type="password"
-                      placeholder="Minimal 6 karakter"
-                      value={resetPasswordVal}
-                      onChange={(e) => setResetPasswordVal(e.target.value)}
-                      className="h-9 text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-700">Konfirmasi Password</label>
-                    <Input
-                      required
-                      type="password"
-                      placeholder="Ketik ulang password"
-                      value={resetConfirmPasswordVal}
-                      onChange={(e) => setResetConfirmPasswordVal(e.target.value)}
-                      className="h-9 text-xs font-mono"
-                    />
-                  </div>
+              {resetPasswordMsg && (
+                <div
+                  className={`p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+                    resetPasswordMsg.type === "success"
+                      ? "bg-green-50 text-green-800 border border-green-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{resetPasswordMsg.text}</span>
                 </div>
+              )}
 
+              <form onSubmit={handleSaveResetPassword} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-600">Password Baru (Min 6 karakter)</label>
+                  <Input
+                    type="password"
+                    placeholder="Masukkan password baru..."
+                    value={resetPasswordVal}
+                    onChange={(e) => setResetPasswordVal(e.target.value)}
+                    required
+                    className="h-9 text-xs bg-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-600">Konfirmasi Password Baru</label>
+                  <Input
+                    type="password"
+                    placeholder="Ulangi password baru..."
+                    value={resetConfirmPasswordVal}
+                    onChange={(e) => setResetConfirmPasswordVal(e.target.value)}
+                    required
+                    className="h-9 text-xs bg-white"
+                  />
+                </div>
                 <div className="flex justify-end">
                   <Button
                     type="submit"
                     disabled={savingResetPassword}
                     size="sm"
-                    variant="outline"
-                    className="border-[#0F5132] text-[#0F5132] hover:bg-[#0F5132]/10 text-xs font-bold gap-1.5"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-8"
                   >
-                    {savingResetPassword ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <KeyRound className="h-3.5 w-3.5" />
-                    )}
-                    Setel Ulang Password
+                    {savingResetPassword ? <Loader2 className="h-3 w-3 animate-spin" /> : "Setel Ulang Password"}
                   </Button>
                 </div>
               </form>
             </div>
-          )}
+          </div>
 
-          <DialogFooter className="pt-2 border-t border-gray-100">
+          <DialogFooter className="pt-4 border-t border-gray-100">
             <Button
               type="button"
               variant="outline"
@@ -856,62 +1090,66 @@ export function RolesClient({ initialData }: { initialData: any }) {
       </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* MODAL DIALOG: HAPUS USER (SMART DELETE) */}
+      {/* MODAL DIALOG: DELETE USER (SMART DELETE) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       <Dialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
         <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              Konfirmasi Penghapusan User
+            <DialogTitle className="text-base font-bold text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Hapus Pengguna
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Sistem akan memverifikasi riwayat aktivitas dan keterhubungan tim sebelum eksekusi.
+              Konfirmasi proses penghapusan akun <strong>{deletingUser?.nama}</strong> ({deletingUser?.email}).
             </DialogDescription>
           </DialogHeader>
 
-          {deletingUser && (
-            <div className="space-y-4 py-2 text-xs">
-              <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-1">
-                <div className="font-bold text-gray-900">{deletingUser.nama}</div>
-                <div className="text-gray-500 font-mono text-[11px]">{deletingUser.email}</div>
+          <div className="py-3 space-y-3">
+            {checkingRefs ? (
+              <div className="p-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-[#0F5132]" />
+                <span>Memeriksa keterkaitan data riwayat pengguna...</span>
               </div>
-
-              {checkingRefs ? (
-                <div className="py-4 text-center text-gray-400 flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#0F5132]" />
-                  <span>Memeriksa riwayat keterhubungan...</span>
-                </div>
-              ) : userRefInfo?.hasReferences ? (
-                <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-2">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <ShieldAlert className="h-4 w-4 text-amber-700" />
-                    <span>Terdeteksi Riwayat Aktivitas ({userRefInfo.references.total} Entri)</span>
+            ) : userRefInfo ? (
+              <div className="space-y-3">
+                {userRefInfo.mode === "can_hard_delete" ? (
+                  <div className="p-3.5 bg-green-50 rounded-xl border border-green-200 text-xs text-green-900 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-green-700" />
+                      Aman untuk Dihapus Permanen
+                    </div>
+                    <p className="text-[11px] text-green-800 leading-relaxed">
+                      Pengguna ini belum memiliki riwayat aktivitas audit log atau penugasan tim. Akun dapat dihapus secara total dari database dan Supabase Auth.
+                    </p>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
-                    User ini sudah pernah terhubung ke riwayat tim / penugasan role / log aktivitas audit. Demi menjaga integritas data, user ini <strong>TIDAK akan dihapus permanen</strong>, melainkan <strong>otomatis dinonaktifkan</strong> sehingga tidak dapat login kembali.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-3.5 bg-red-50 rounded-xl border border-red-200 text-red-900 space-y-2">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <Trash2 className="h-4 w-4 text-red-700" />
-                    <span>Hapus Permanen Akun (Belum Ada Aktivitas)</span>
+                ) : (
+                  <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4 text-amber-700" />
+                      Memiliki Riwayat Aktivitas & Penugasan
+                    </div>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Pengguna ini tercatat memiliki referensi data:
+                    </p>
+                    <ul className="list-disc list-inside text-[11px] space-y-0.5 text-amber-950 font-medium">
+                      <li>{userRefInfo.counts.auditLogs} aktivitas di Log Audit</li>
+                      <li>{userRefInfo.counts.anggotaTim} catatan di Anggota Tim</li>
+                      <li>{userRefInfo.counts.userRoleTim} penugasan Role Tim</li>
+                    </ul>
+                    <p className="text-[11px] text-amber-800 italic pt-1">
+                      Untuk menjaga integritas data historis, akun akan <strong>dinonaktifkan secara aman</strong> dan hak akses timnya dicabut, bukan dihapus keras.
+                    </p>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
-                    User ini belum pernah terhubung ke aktivitas tim manapun. Akun akan <strong>dihapus permanen</strong> dari database dan autentikasi. Tindakan ini tidak dapat dibatalkan.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            ) : null}
+          </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={deletingLoading}
               onClick={() => setDeletingUser(null)}
               className="text-xs"
             >
@@ -922,27 +1160,17 @@ export function RolesClient({ initialData }: { initialData: any }) {
               disabled={deletingLoading || checkingRefs}
               onClick={handleConfirmDelete}
               size="sm"
-              className={`${
-                userRefInfo?.hasReferences
-                  ? "bg-amber-600 hover:bg-amber-700 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
-              } text-xs font-bold gap-1.5`}
+              className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold gap-1.5"
             >
               {deletingLoading ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Memproses...
                 </>
-              ) : userRefInfo?.hasReferences ? (
-                <>
-                  <Power className="h-3.5 w-3.5" />
-                  Konfirmasi Nonaktifkan
-                </>
+              ) : userRefInfo?.mode === "can_hard_delete" ? (
+                "Hapus Permanen"
               ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Hapus Permanen
-                </>
+                "Nonaktifkan & Cabut Akses"
               )}
             </Button>
           </DialogFooter>
@@ -950,81 +1178,78 @@ export function RolesClient({ initialData }: { initialData: any }) {
       </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* MODAL DIALOG: TAMBAH USER BARU */}
+      {/* MODAL DIALOG: BUAT USER BARU */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       <Dialog open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-[#0F5132]" />
-              Tambah Akun Pengguna Baru
+              Tambah User Pengguna Baru
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Buat akun Supabase Auth dan profil pengguna baru. Akun langsung aktif tanpa verifikasi email.
+              Buat akun login baru yang terhubung ke Supabase Auth & profil internal.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
-            {createUserError && (
-              <div className="p-3 bg-red-50 text-red-800 rounded-lg text-xs font-semibold border border-red-200">
-                {createUserError}
-              </div>
-            )}
+          {createUserError && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-800 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{createUserError}</span>
+            </div>
+          )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700">Nama Lengkap</label>
+          <form onSubmit={handleCreateUser} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Nama Lengkap *</label>
               <Input
-                required
                 placeholder="Contoh: Budi Santoso"
                 value={newNama}
                 onChange={(e) => setNewNama(e.target.value)}
+                required
                 className="h-9 text-xs"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
-                <Mail className="h-3 w-3 text-gray-400" />
-                Email Korporat Pegadaian
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Alamat Email *</label>
               <Input
-                required
                 type="email"
-                placeholder="nama.lengkap@pegadaian.co.id"
+                placeholder="budi.santoso@pegadaian.co.id"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
+                required
                 className="h-9 text-xs"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
-                  <KeyRound className="h-3 w-3 text-gray-400" />
-                  Password
-                </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-700">Password Baru *</label>
                 <Input
-                  required
                   type="password"
+                  placeholder="Min 6 karakter"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="h-9 text-xs font-mono"
+                  required
+                  className="h-9 text-xs"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-700">Konfirmasi Password</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-700">Konfirmasi Password *</label>
                 <Input
-                  required
                   type="password"
+                  placeholder="Ulangi password"
                   value={newConfirmPassword}
                   onChange={(e) => setNewConfirmPassword(e.target.value)}
-                  className="h-9 text-xs font-mono"
+                  required
+                  className="h-9 text-xs"
                 />
               </div>
             </div>
 
-            <DialogFooter className="pt-3">
+            <DialogFooter className="pt-3 gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -1043,7 +1268,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                 {creatingUser ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Menyimpan...
+                    Membuat User...
                   </>
                 ) : (
                   <>
@@ -1058,7 +1283,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
       </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* MODAL DIALOG: PENUGASAN ROLE LAMA */}
+      {/* MODAL DIALOG: PENUGASAN ROLE PENGGUNA */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
@@ -1098,9 +1323,9 @@ export function RolesClient({ initialData }: { initialData: any }) {
                 required
               >
                 <option value="">-- Pilih Role --</option>
-                {roles.map((r: any) => (
+                {rolesList.map((r: any) => (
                   <option key={r.id} value={r.id}>
-                    {r.namaRole} ({r.scope})
+                    {r.namaRole} ({r.scope}) {!r.isDefault ? "[Custom]" : ""}
                   </option>
                 ))}
               </select>
