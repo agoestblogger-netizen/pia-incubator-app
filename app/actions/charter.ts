@@ -165,58 +165,66 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
         snap.judul_inovasi
       ),
       customerEarlyAdopters: cleanText(
-        formDetail.bi_sasaran_pengguna_inovasi ||
-        formDetail.bc_kelompok_dibantu ||
-        formDetail.sasaran_pengguna ||
-        formDetail.target_pengguna
+        [
+          formDetail.kelompok_dibantu || formDetail.bi_sasaran_pengguna_inovasi || formDetail.bc_kelompok_dibantu || formDetail.sasaran_pengguna,
+          formDetail.alasan_memilih_sasaran || formDetail.bi_alasan_memilih_sasaran || formDetail.bc_alasan_memilih_area_bantuan,
+        ].filter(Boolean).join('\n\nAlasan Pemilihan:\n')
       ),
       contextAreaBantuan: cleanText(
-        formDetail.bi_konteks_inovasi ||
-        formDetail.bc_alasan_memilih_area_bantuan ||
-        formDetail.konteks_inovasi ||
-        formDetail.area_bantuan
+        [
+          formDetail.konteks_inovasi || formDetail.bi_konteks_inovasi,
+          formDetail.alasan_konteks_inovasi || formDetail.bi_alasan_konteks_inovasi || formDetail.bc_alasan_memilih_area_bantuan,
+        ].filter(Boolean).join('\n\nAlasan Konteks:\n')
       ),
       problemWorthSolving: cleanText(
-        formDetail.bi_permasalahan_utama ||
-        formDetail.bc_analisis_situasi ||
-        formDetail.permasalahan_utama ||
-        formDetail.akar_masalah
+        [
+          formDetail.masalah_sasaran || formDetail.bi_masalah_diselesaikan || formDetail.bc_masalah_sasaran_inovasi,
+          formDetail.masalah_penting_karena || formDetail.bi_masalah_penting_karena || formDetail.bc_alasan_penting_diselesaikan || formDetail.detil_permasalahan || formDetail.bc_detil_permasalahan,
+        ].filter(Boolean).join('\n\nUrgensi / Alasan Penting Diselesaikan:\n')
       ),
       hmw: cleanText(
+        formDetail.hmw ||
         formDetail.bi_how_might_we ||
         formDetail.bc_how_might_we ||
-        formDetail.how_might_we ||
-        formDetail.rumusan_hmw
+        formDetail.how_might_we
+      ),
+      opportunityStatement: cleanText(
+        formDetail.target_non_finansial ||
+        formDetail.bi_target_non_finansial ||
+        formDetail.bc_target_capaian_non_finansial
       ),
       businessOpportunity: cleanText(
-        formDetail.bi_potensi_dampak_finansial ||
-        formDetail.bc_analisis_manfaat_finansial ||
-        formDetail.potensi_manfaat ||
-        formDetail.manfaat_finansial
+        [
+          formDetail.target_finansial || formDetail.bi_target_finansial || formDetail.bc_target_capaian_finansial,
+          formDetail.target_non_finansial || formDetail.bi_target_non_finansial || formDetail.bc_target_capaian_non_finansial,
+        ].filter(Boolean).join('\n\nDampak Non-Finansial:\n')
       ),
       solusiAwal: cleanText(
-        formDetail.bi_gambaran_ide_solusi ||
-        formDetail.bc_gambaran_ide_solusi ||
-        formDetail.ide_solusi ||
-        formDetail.deskripsi_solusi ||
-        submisi.deskripsi_lengkap
+        [
+          formDetail.solusi_diusulkan || formDetail.bi_inovasi_diusulkan || formDetail.bc_eksplorasi_solusi || submisi.deskripsi_lengkap,
+          formDetail.inovasi_dapat_menyelesaikan || formDetail.bi_inovasi_dapat_menyelesaikan,
+        ].filter(Boolean).join('\n\nCara Penyelesaian:\n')
       ),
       desirabilityHypothesis: cleanText(
-        formDetail.bi_target_adopsi_pengguna ||
-        formDetail.bc_target_kelompok_terbantu ||
-        formDetail.target_adopsi
+        formDetail.target_non_finansial ||
+        formDetail.bi_target_non_finansial ||
+        formDetail.bc_target_capaian_non_finansial ||
+        formDetail.kelompok_dibantu ||
+        formDetail.bi_sasaran_pengguna_inovasi
       ),
       feasibilityHypothesis: cleanText(
-        formDetail.bi_aspek_teknologi ||
-        formDetail.bc_kebutuhan_integrasi_sistem ||
-        formDetail.aspek_teknis
+        [
+          formDetail.keunikan || formDetail.bi_keunikan_penyelesaian || formDetail.bc_inovasi_harus_memiliki_kebaruan,
+          formDetail.detil_cara_kerja || formDetail.bi_diwujudkan_dengan_cara || formDetail.bi_dengan_cara || formDetail.bc_detil_cara_kerja,
+        ].filter(Boolean).join('\n\nPerwujudan Teknis / Cara Kerja:\n')
       ),
       viabilityHypothesis: cleanText(
+        formDetail.target_finansial ||
         formDetail.bi_target_finansial ||
-        formDetail.bc_target_capaian_finansial ||
-        formDetail.target_finansial
+        formDetail.bc_target_capaian_finansial
       ),
       kebutuhanDukungan: cleanText(
+        formDetail.sumber_daya ||
         formDetail.bi_sumber_daya ||
         formDetail.bc_sumber_daya_diperlukan
       ),
