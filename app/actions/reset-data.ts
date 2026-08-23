@@ -9,6 +9,8 @@ import {
   charter,
   kanbanColumn,
   kanbanCard,
+  sprint,
+  sprintLog,
   customerValidationPlan,
   customerValidationDimensiFeedback,
   rencanaValidasiMetrik,
@@ -39,6 +41,8 @@ export interface ResetCountSummary {
   timCount: number;
   charterCount: number;
   kanbanCardCount: number;
+  sprintCount: number;
+  sprintLogCount: number;
   custValCount: number;
   marketValCount: number;
   keuanganCount: number;
@@ -70,6 +74,8 @@ export async function getResetPreview(params: {
         timCount: 0,
         charterCount: 0,
         kanbanCardCount: 0,
+        sprintCount: 0,
+        sprintLogCount: 0,
         custValCount: 0,
         marketValCount: 0,
         keuanganCount: 0,
@@ -102,6 +108,8 @@ export async function getResetPreview(params: {
         timCount: 0,
         charterCount: 0,
         kanbanCardCount: 0,
+        sprintCount: 0,
+        sprintLogCount: 0,
         custValCount: 0,
         marketValCount: 0,
         keuanganCount: 0,
@@ -121,6 +129,8 @@ export async function getResetPreview(params: {
     timCount: 0,
     charterCount: 0,
     kanbanCardCount: 0,
+    sprintCount: 0,
+    sprintLogCount: 0,
     custValCount: 0,
     marketValCount: 0,
     keuanganCount: 0,
@@ -144,6 +154,12 @@ export async function getResetPreview(params: {
     if (sections.includes('kanban') || sections.includes('tim_profil') || params.mode === 'total') {
       const cards = await db.select().from(kanbanCard).where(inArray(kanbanCard.timInovatorId, targetTeamIds));
       counts.kanbanCardCount = cards.length;
+
+      const sprints = await db.select().from(sprint).where(inArray(sprint.timInovatorId, targetTeamIds));
+      counts.sprintCount = sprints.length;
+
+      const sprintLogs = await db.select().from(sprintLog).where(inArray(sprintLog.timInovatorId, targetTeamIds));
+      counts.sprintLogCount = sprintLogs.length;
     }
 
     if (sections.includes('customer_validation') || sections.includes('tim_profil') || params.mode === 'total') {
@@ -219,6 +235,8 @@ export async function executeResetData(params: ResetParams): Promise<{
     timCount: 0,
     charterCount: 0,
     kanbanCardCount: 0,
+    sprintCount: 0,
+    sprintLogCount: 0,
     custValCount: 0,
     marketValCount: 0,
     keuanganCount: 0,
@@ -300,11 +318,17 @@ export async function executeResetData(params: ResetParams): Promise<{
       }
     }
 
-    // 6. Kanban Board & Cards
+    // 6. Kanban Board, Cards & Sprint Entities
     if (sections.includes('kanban') || sections.includes('tim_profil') || params.mode === 'total') {
       const cardRes = await db.delete(kanbanCard).where(inArray(kanbanCard.timInovatorId, targetTeamIds)).returning();
       await db.delete(kanbanColumn).where(inArray(kanbanColumn.timInovatorId, targetTeamIds));
       deletedCounts.kanbanCardCount = cardRes.length;
+
+      const sprintLogRes = await db.delete(sprintLog).where(inArray(sprintLog.timInovatorId, targetTeamIds)).returning();
+      deletedCounts.sprintLogCount = sprintLogRes.length;
+
+      const sprintRes = await db.delete(sprint).where(inArray(sprint.timInovatorId, targetTeamIds)).returning();
+      deletedCounts.sprintCount = sprintRes.length;
     }
 
     // 7. Charter
