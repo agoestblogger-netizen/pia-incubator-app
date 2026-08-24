@@ -129,11 +129,20 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     return { success: true, message: 'Tim sudah ada (dilewati).', teamId: existingTeam.id, action: 'skipped', createdAccounts: [] };
   }
 
+  const mergedLampiranUrls: Record<string, string> = { ...(lampiranUrls || {}) };
+  const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
+  const daftarLampiranArr: string[] = Array.isArray(dossierData?.daftar_lampiran) ? dossierData.daftar_lampiran : [];
+  for (const f of daftarLampiranArr) {
+    if (!mergedLampiranUrls[f]) {
+      mergedLampiranUrls[f] = `${supabaseBaseUrl}/storage/v1/object/public/dossier-lampiran/${proposalId}/${f}`;
+    }
+  }
+
   const finalSnapshot = {
     ...(dossierData || {}),
     proposal_id: proposalId,
     season: season,
-    lampiran_urls: lampiranUrls || {},
+    lampiran_urls: mergedLampiranUrls,
   };
 
   let teamId: string;

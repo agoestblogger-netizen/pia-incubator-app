@@ -99,7 +99,11 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
 
   // Active attachment for PDF viewer
   const activeFileName = daftarLampiran[selectedDocIndex] || daftarLampiran[0] || '';
-  const activeFileUrl = activeFileName ? lampiranUrls[activeFileName] : null;
+  const proposalIdForStorage = snap.proposal_id || dossier.proposalIdAsli || '';
+  const supabaseStorageUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
+  const activeFileUrl = activeFileName
+    ? (lampiranUrls[activeFileName] || `${supabaseStorageUrl}/storage/v1/object/public/dossier-lampiran/${proposalIdForStorage}/${activeFileName}`)
+    : null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

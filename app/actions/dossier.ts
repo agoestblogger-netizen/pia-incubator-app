@@ -125,8 +125,27 @@ export async function getDossierDetail(proposalIdOrTimId: string) {
 
   if (!record) return null;
 
+  const rawSnap = (record.snapshotData as any) || {};
+  const proposalId = record.proposalIdAsli || rawSnap.proposal_id || '';
+  const daftarLampiran: string[] = Array.isArray(rawSnap.daftar_lampiran) ? rawSnap.daftar_lampiran : [];
+  const lampiranUrls: Record<string, string> = { ...(rawSnap.lampiran_urls || {}) };
+
+  // Fallback: If any file in daftar_lampiran doesn't have a URL in snapshotData, construct the public Supabase storage URL
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
+  if (proposalId && daftarLampiran.length > 0) {
+    for (const file of daftarLampiran) {
+      if (!lampiranUrls[file]) {
+        lampiranUrls[file] = `${supabaseUrl}/storage/v1/object/public/dossier-lampiran/${proposalId}/${file}`;
+      }
+    }
+  }
+
   return {
     ...record,
-    snapshotData: (record.snapshotData as any) || {},
+    snapshotData: {
+      ...rawSnap,
+      proposal_id: proposalId,
+      lampiran_urls: lampiranUrls,
+    },
   };
 }
