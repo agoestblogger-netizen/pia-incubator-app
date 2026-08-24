@@ -1221,7 +1221,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         statusKolom: "To Do",
         tahap: "innovation_setup",
         sprintNumber: null,
-        suggestedSprintNumber: 1,
+        suggestedSprintNumber: Math.min(totalSprints, 2),
         label: "Draf Roadmap",
         reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
@@ -1236,7 +1236,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           statusKolom: "To Do",
           tahap: "innovation_setup",
           sprintNumber: null,
-          suggestedSprintNumber: Math.min(totalSprints, 2),
+          suggestedSprintNumber: Math.min(totalSprints, 3),
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
@@ -1245,13 +1245,17 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     }
   }
 
-  // 15 Template Baku (7 CV + 8 MV) dengan suggestedSprintNumber proporsional
+  // 15 Template Baku (7 CV + 8 MV) dengan suggestedSprintNumber terdistribusi seimbang
   for (let cvIdx = 0; cvIdx < bakuCVTasks.length; cvIdx++) {
     const t = bakuCVTasks[cvIdx];
-    // Heuristik CV: sebar di sprint pertengahan (misal Sprint 2 atau 3 pada 4 sprint)
+    // Heuristik CV: Tugas 0-1 di Sprint 1, Tugas 2-4 di Sprint 2, Tugas 5-6 di Sprint 3
     const cvSprint = totalSprints <= 2
       ? 1
-      : Math.min(totalSprints, Math.max(1, Math.round(1 + (cvIdx / Math.max(1, bakuCVTasks.length - 1)) * (totalSprints * 0.5))));
+      : cvIdx < 2
+      ? 1
+      : cvIdx < 5
+      ? 2
+      : Math.min(totalSprints, 3);
 
     cardsToInsert.push({
       timInovatorId: timId,
@@ -1270,10 +1274,12 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
 
   for (let mvIdx = 0; mvIdx < bakuMVTasks.length; mvIdx++) {
     const t = bakuMVTasks[mvIdx];
-    // Heuristik MV: sebar di sprint akhir (misal Sprint 3 & 4 pada 4 sprint)
+    // Heuristik MV: Tugas 0-3 di Sprint 3, Tugas 4-7 di Sprint 4
     const mvSprint = totalSprints <= 2
       ? totalSprints
-      : Math.min(totalSprints, Math.max(1, Math.round((totalSprints * 0.5) + (mvIdx / Math.max(1, bakuMVTasks.length - 1)) * (totalSprints * 0.5))));
+      : mvIdx < 4
+      ? Math.min(totalSprints, Math.max(1, totalSprints - 1))
+      : totalSprints;
 
     cardsToInsert.push({
       timInovatorId: timId,

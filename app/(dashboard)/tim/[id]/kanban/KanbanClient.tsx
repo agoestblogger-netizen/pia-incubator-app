@@ -936,11 +936,6 @@ export function KanbanClient({
   const handleSelectReferenceCardInModal = (refCardId: string) => {
     setSelectedRefCardId(refCardId);
     if (!refCardId) {
-      setDetailJudul("");
-      setDetailDeskripsi("");
-      setDetailAcceptanceCriteria("");
-      setDetailTahap("innovation_setup");
-      setDetailLabel("");
       return;
     }
 
@@ -2188,15 +2183,16 @@ export function KanbanClient({
                       Judul Kartu / Task *
                     </label>
                     <Input
-                      value={detailJudul}
+                      value={detailJudul || ""}
                       disabled={!canEdit}
+                      placeholder="Contoh: Susun materi pengujian awal..."
                       onChange={(e) => setDetailJudul(e.target.value)}
                       required
                       style={{
                         border: `2px solid ${currentPhaseToken.accentColor}`,
                         backgroundColor: `${currentPhaseToken.accentColor}0D`,
                       }}
-                      className="text-xs font-bold transition-all shadow-2xs"
+                      className="text-xs font-bold transition-all shadow-2xs focus:bg-white"
                     />
                   </div>
 

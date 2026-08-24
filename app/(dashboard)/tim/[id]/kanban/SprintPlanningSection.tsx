@@ -228,7 +228,7 @@ export function SprintPlanningSection({
           </span>
         </div>
 
-        {/* SATU Kotak Putih Menerus */}
+        {/* SATU Kotak Putih Menerus dengan Scroll Internal */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
           {aiReferenceCards.length === 0 ? (
             <div className="p-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
@@ -236,7 +236,7 @@ export function SprintPlanningSection({
               <span>Semua kartu Backlog Referensi telah diadopsi ke Backlog Kerja.</span>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 max-h-[420px] overflow-y-auto pr-0.5">
               {sortedSprints.map((s) => {
                 const isCurrentPlanningSprint = s.nomorSprint === sprint.nomorSprint;
                 const groupCards = aiReferenceCards.filter(
