@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { changePasswordAction } from "@/app/actions/auth";
-import { Sparkles, Lock, ShieldCheck, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Sparkles, Lock, ShieldCheck, ArrowRight, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -12,6 +12,8 @@ export default function GantiPasswordPage() {
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -98,13 +100,25 @@ export default function GantiPasswordPage() {
                   <div className="relative">
                     <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       required
                       placeholder="Minimal 6 karakter"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="pl-9 text-sm"
+                      className="pl-9 pr-10 text-sm"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      title={showNewPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -115,20 +129,32 @@ export default function GantiPasswordPage() {
                   <div className="relative">
                     <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       required
                       placeholder="Ulangi kata sandi baru"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-9 text-sm"
+                      className="pl-9 pr-10 text-sm"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      title={showConfirmPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-semibold flex items-center justify-center gap-2 rounded-xl transition-all shadow-md"
+                  className="w-full h-11 bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-semibold flex items-center justify-center gap-2 rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>

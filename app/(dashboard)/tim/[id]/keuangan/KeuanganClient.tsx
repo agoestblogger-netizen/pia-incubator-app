@@ -601,8 +601,15 @@ export function KeuanganClient({
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="submit" disabled={saving} className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white">
-                {saving ? "Mengirim..." : "Kirim Pengajuan Anggaran"}
+              <Button type="submit" disabled={saving} className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed">
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Mengirim Pengajuan...</span>
+                  </>
+                ) : (
+                  <span>Kirim Pengajuan Anggaran</span>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -680,9 +687,16 @@ export function KeuanganClient({
                 type="submit"
                 disabled={savingEdit}
                 size="sm"
-                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold"
+                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {savingEdit ? "Menyimpan..." : "Simpan Perubahan"}
+                {savingEdit ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  "Simpan Perubahan"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -726,7 +740,7 @@ export function KeuanganClient({
               disabled={deleting}
               size="sm"
               onClick={handleConfirmDelete}
-              className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold gap-1.5"
+              className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold gap-1.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {deleting ? (
                 <>

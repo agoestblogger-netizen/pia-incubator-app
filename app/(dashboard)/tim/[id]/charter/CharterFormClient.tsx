@@ -1164,10 +1164,19 @@ export function CharterFormClient({
           <Button
             type="submit"
             disabled={saving}
-            className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold px-8 h-12 rounded-xl shadow-md gap-2"
+            className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold px-8 h-12 rounded-xl shadow-md gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <Save className="h-4 w-4" />
-            <span>{saving ? "Menyimpan..." : "Simpan Innovation Charter & Milestone Sprint"}</span>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Menyimpan Innovation Charter...</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span>Simpan Innovation Charter & Milestone Sprint</span>
+              </>
+            )}
           </Button>
         </div>
       )}

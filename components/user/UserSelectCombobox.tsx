@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { searchUsersAction, createUserAction } from '@/app/actions/user';
-import { User, UserPlus, Check, ChevronsUpDown, Search, X, Loader2, KeyRound, Mail } from 'lucide-react';
+import { User, UserPlus, Check, ChevronsUpDown, Search, X, Loader2, KeyRound, Mail, Eye, EyeOff } from 'lucide-react';
 
 export type SelectedUser = {
   id: string;
@@ -38,8 +38,10 @@ export function UserSelectCombobox({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newNama, setNewNama] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('password123');
-  const [newConfirmPassword, setNewConfirmPassword] = useState('password123');
+  const [newPassword, setNewPassword] = useState('gadai123');
+  const [newConfirmPassword, setNewConfirmPassword] = useState('gadai123');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -292,24 +294,52 @@ export function UserSelectCombobox({
                   <KeyRound className="h-3 w-3 text-gray-400" />
                   Password
                 </label>
-                <Input
-                  required
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="h-9 text-xs font-mono"
-                />
+                <div className="relative">
+                  <Input
+                    required
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-9 text-xs font-mono pr-8"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    title={showNewPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-700">Konfirmasi Password</label>
-                <Input
-                  required
-                  type="password"
-                  value={newConfirmPassword}
-                  onChange={(e) => setNewConfirmPassword(e.target.value)}
-                  className="h-9 text-xs font-mono"
-                />
+                <div className="relative">
+                  <Input
+                    required
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={newConfirmPassword}
+                    onChange={(e) => setNewConfirmPassword(e.target.value)}
+                    className="h-9 text-xs font-mono pr-8"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    title={showConfirmPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 

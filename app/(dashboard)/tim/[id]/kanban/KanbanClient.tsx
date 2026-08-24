@@ -1646,9 +1646,16 @@ export function KanbanClient({
               <Button
                 type="submit"
                 disabled={savingCard || !judul.trim()}
-                className="text-xs bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold"
+                className="text-xs bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {savingCard ? "Menyimpan..." : "Buat Kartu"}
+                {savingCard ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <span>Buat Kartu</span>
+                )}
               </Button>
             </DialogFooter>
           </form>

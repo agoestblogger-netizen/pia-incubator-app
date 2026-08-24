@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { checkUserMustChangePasswordAction } from "@/app/actions/auth";
-import { Sparkles, Lock, Mail, ArrowRight } from "lucide-react";
+import { Sparkles, Lock, Mail, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -121,23 +122,38 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 text-sm"
+                    className="pl-9 pr-10 text-sm"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-semibold flex items-center justify-center gap-2 rounded-xl transition-all shadow-md"
+                className="w-full h-11 bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-semibold flex items-center justify-center gap-2 rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <span>Memproses...</span>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Memproses Masuk...</span>
+                  </>
                 ) : (
                   <>
                     <span>Masuk ke Dashboard</span>
