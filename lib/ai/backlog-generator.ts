@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 export interface AiBacklogTask {
   judul: string;
   deskripsi: string;
+  acceptanceCriteria: string;
 }
 
 export interface AiBacklogResponse {
@@ -46,29 +47,21 @@ ATURAN GRANULARITAS TASK (SANGAT PENTING):
    
    CONTOH POLA PEMECAHAN ATOMIK YANG BENAR:
    Jika roadmap berbunyi: "Validasi kebutuhan pengguna melalui FGD bersama Divisi Bullion, anggota IBMA, dan nasabah korporasi":
-   -> "Jadwalkan sesi FGD dengan Divisi Bullion"
-   -> "Susun materi dan daftar pertanyaan FGD"
-   -> "Undang perwakilan anggota IBMA untuk sesi FGD"
-   -> "Lakukan sesi FGD dengan perwakilan nasabah korporasi"
-   -> "Rangkum dan dokumentasikan hasil temuan FGD"
-
-   Jika roadmap berbunyi: "Integrasikan data dan layanan Bullion Pegadaian":
-   -> "Petakan skema data dan kebutuhan integrasi Bullion Pegadaian"
-   -> "Rancang spesifikasi API endpoint layanan Bullion"
-   -> "Kembangkan modul konektor data Bullion ke platform inovasi"
-   -> "Lakukan uji coba simulasi pertukaran data Bullion"
-   -> "Susun dokumentasi teknis hasil integrasi data"
+   -> Task 1: "Jadwalkan sesi FGD dengan Divisi Bullion"
+   -> Task 2: "Susun materi dan daftar pertanyaan FGD"
+   -> Task 3: "Undang perwakilan anggota IBMA untuk sesi FGD"
+   -> Task 4: "Lakukan sesi FGD dengan perwakilan nasabah korporasi"
+   -> Task 5: "Rangkum dan dokumentasikan hasil temuan FGD"
 
    Jika deskripsi aktivitas di proposal sangat ringkas:
    Gunakan pola prosedural wajar: (1) Rencanakan/Petakan kebutuhan -> (2) Susun/Siapkan materi -> (3) Kembangkan/Lakukan aktivitas -> (4) Uji coba/Validasi -> (5) Dokumentasikan/Evaluasi hasil.
 
-ATURAN FORMAT SCRUM & GUARDRAILS:
-1. SETIAP JUDUL TASK HARUS DIAWALI KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
+ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
+1. JUDUL TASK: Wajib diawali KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
 2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap (misal IBMA, Divisi Bullion, nasabah korporasi, dll). JANGAN menambahkan nama vendor, instansi, atau detail teknologi baru di luar data sumber.
-3. DESKRIPSI TASK & OUTPUT: Setiap task WAJIB memiliki deskripsi 1-2 kalimat yang menjelaskan konteks serta luaran/hasilnya.
-   Pola kalimat penutup deskripsi WAJIB menggunakan frasa:
-   "Hasil atau output dari task/aktivitas ini adalah [jelaskan output/hasil/dokumen konkretnya]."
-4. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
+3. DESKRIPSI (deskripsi): HANYA berisi 1-2 kalimat ringkas mengenai konteks aktivitas yang dikerjakan. DILARANG memasukkan kalimat "Hasil atau output dari task/aktivitas ini adalah..." ke dalam field deskripsi!
+4. ACCEPTANCE CRITERIA (acceptanceCriteria): Berisi definisi luaran konkret / tolok ukur hasil kerja task tersebut (misal: "Dokumen panduan FGD yang ditinjau tim", "Spesifikasi API koneksi data Bullion", "Hasil notulensi FGD dan daftar kebutuhan pengguna"), TANPA awalan "Hasil atau output dari task/aktivitas ini adalah".
+5. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
 
     const userPrompt = `PROPOSAL METADATA:
 - Proposal ID: ${proposalId}
@@ -83,12 +76,13 @@ ${roadmapText}
 KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
 ${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
 
-Pecah roadmap di atas menjadi daftar Backlog Task atomik (masing-masing 1 aksi konkret per task, diawali kata kerja aktif, dan deskripsi wajib menyebutkan "Hasil atau output dari task/aktivitas ini adalah...") dengan format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik dengan memisahkan 'deskripsi' (konteks aktivitas) dan 'acceptanceCriteria' (luaran/tolok ukur konkret) ke dalam format JSON:
 {
   "tasks": [
     {
       "judul": "Kata Kerja Aktif + Target dan Konteks Aksi Atomik",
-      "deskripsi": "Penjelasan konteks singkat. Hasil atau output dari task/aktivitas ini adalah [output/dokumen/hasil konkret]."
+      "deskripsi": "1-2 kalimat konteks aktivitas yang dikerjakan tim (bersih dari kalimat output).",
+      "acceptanceCriteria": "Luaran konkret / dokumen / deliverable / tolok ukur selesai."
     }
   ]
 }`;
@@ -135,6 +129,7 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik (masing-masing 1 aksi k
         validatedTasks.push({
           judul: t.judul.trim(),
           deskripsi: typeof t.deskripsi === 'string' ? t.deskripsi.trim() : '',
+          acceptanceCriteria: typeof t.acceptanceCriteria === 'string' ? t.acceptanceCriteria.trim() : '',
         });
       }
     }
