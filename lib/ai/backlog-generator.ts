@@ -35,41 +35,58 @@ export async function generateAiBacklogFromRoadmap(params: {
   try {
     const openai = new OpenAI({ apiKey });
 
-    const systemPrompt = `Anda adalah Scrum Master & Agile Innovation Coach ahli metodologi Scrum dan Lean Startup di PT Pegadaian (Persero).
-Tugas Anda adalah memecah roadmap implementasi ide inovasi (bagian "Cara mewujudkan ide inovasi") dari proposal PIA Season 12 menjadi daftar Backlog Task berstandar Scrum yang actionable, tajam, dan profesional.
+    const systemPrompt = `Anda adalah Scrum Master & Agile Coach senior ahli metodologi Scrum dan Lean Startup di PT Pegadaian (Persero).
+Tugas Anda adalah membedah dan memecah roadmap implementasi inovasi (bagian "Cara mewujudkan ide inovasi" / tahapan implementasi) dari proposal PIA Season 12 menjadi daftar Backlog Task atomik berstandar Scrum yang tajam, konkret, dan siap dikerjakan tim.
 
-ATURAN FORMAT SCRUM & GUARDRAILS (SANGAT KETAT):
-1. SETIAP JUDUL TASK HARUS DIAWALI KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Kembangkan", "Integrasikan", "Uji coba", "Evaluasi", "Rancang", "Implementasikan", "Siapkan", "Lakukan", "Bangun", "Petakan").
-   - POLA BENAR: "Susun skenario FGD dengan Divisi Bullion dan anggota IBMA"
-   - POLA BENAR: "Kembangkan MVP Gold Business Passport"
-   - POLA BENAR: "Integrasikan Market Intelligence Dashboard dengan sistem Bullion Pegadaian"
-   - POLA BENAR: "Uji coba pilot project bersama anggota IBMA"
-   - POLA BENAR: "Evaluasi hasil pilot dan susun SOP operasional"
-   - DILARANG: Kalimat pasif/deskriptif seperti "Validasi kebutuhan pengguna" (tanpa aksi konkret) atau kutipan mentah paragraf.
-2. HANYA gunakan informasi yang ada di DATA SUMBER PROPOSAL & ROADMAP. JANGAN MENAMBAH atau MENGARANG fakta/sistem di luar konteks inovasi ini.
-3. Pecah roadmap menjadi beberapa task backlog terpisah (jumlah menyesuaikan fase/aktivitas yang teridentifikasi, biasanya 3 sampai 6 task utama).
-4. Berikan deskripsi singkat (1-2 kalimat) untuk setiap task yang menjelaskan konteks dan luaran yang diharapkan.
-5. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
+ATURAN GRANULARITAS TASK (SANGAT PENTING):
+1. DILARANG KERAS MEMBUAT TASK SETINGKAT EPIC / MAKRO (contoh yang SALAH & DILARANG: "Kembangkan platform digital GATE sebagai ekosistem bisnis emas", "Integrasikan data dan layanan Bullion Pegadaian", "Rancang alur onboarding"). Task seperti ini terlalu luas dan mewakili satu proyek penuh!
+2. PECAH SETIAP FASE / ELEMEN ROADMAP MENJADI 3 SAMPAI 6 TASK ATOMIK.
+   Setiap task HARUS berupa 1 AKSI NYATA (Single Actionable Work Item) yang bisa dikerjakan 1 orang dalam waktu singkat.
+   Total hasil pemecahan biasanya menghasilkan antara 10 hingga 20 task backlog untuk keseluruhan roadmap proposal.
+   
+   CONTOH POLA PEMECAHAN ATOMIK YANG BENAR:
+   Jika roadmap berbunyi: "Validasi kebutuhan pengguna melalui FGD bersama Divisi Bullion, anggota IBMA, dan nasabah korporasi":
+   -> "Jadwalkan sesi FGD dengan Divisi Bullion"
+   -> "Susun materi dan daftar pertanyaan FGD"
+   -> "Undang perwakilan anggota IBMA untuk sesi FGD"
+   -> "Lakukan sesi FGD dengan perwakilan nasabah korporasi"
+   -> "Rangkum dan dokumentasikan hasil temuan FGD"
+
+   Jika roadmap berbunyi: "Integrasikan data dan layanan Bullion Pegadaian":
+   -> "Petakan skema data dan kebutuhan integrasi Bullion Pegadaian"
+   -> "Rancang spesifikasi API endpoint layanan Bullion"
+   -> "Kembangkan modul konektor data Bullion ke platform inovasi"
+   -> "Lakukan uji coba simulasi pertukaran data Bullion"
+   -> "Susun dokumentasi teknis hasil integrasi data"
+
+   Jika deskripsi aktivitas di proposal sangat ringkas:
+   Gunakan pola prosedural wajar: (1) Rencanakan/Petakan kebutuhan -> (2) Susun/Siapkan materi -> (3) Kembangkan/Lakukan aktivitas -> (4) Uji coba/Validasi -> (5) Dokumentasikan/Evaluasi hasil.
+
+ATURAN FORMAT SCRUM & GUARDRAILS:
+1. SETIAP JUDUL TASK HARUS DIAWALI KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
+2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap (misal IBMA, Divisi Bullion, nasabah korporasi, dll). JANGAN menambahkan nama vendor, instansi, atau detail teknologi baru di luar data sumber.
+3. Berikan deskripsi singkat (1-2 kalimat) untuk tiap task yang menjelaskan konteks dan luaran spesifiknya.
+4. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
 
     const userPrompt = `PROPOSAL METADATA:
 - Proposal ID: ${proposalId}
 - Nama Inovasi: ${namaProyek}
 - Kategori PIA: ${kategoriPia}
 
-TEKS ROADMAP DARI PROPOSAL ("Cara Mewujudkan Ide Inovasi"):
+TEKS ROADMAP LENGKAP DARI PROPOSAL ("Cara Mewujudkan Ide Inovasi"):
 """
 ${roadmapText}
 """
 
-KONTEKS TAMBAHAN PROPOSAL:
+KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
 ${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
 
-Silakan hasilkan JSON dengan struktur berikut:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik (masing-masing 1 aksi konkret per task, diawali kata kerja) dengan format JSON:
 {
   "tasks": [
     {
-      "judul": "Kata Kerja Aktif + Target dan Konteks (Scrum Format)",
-      "deskripsi": "1-2 kalimat ringkas penjelasan konteks dan luaran task"
+      "judul": "Kata Kerja Aktif + Target dan Konteks Aksi Atomik",
+      "deskripsi": "1-2 kalimat ringkas luaran konkret task"
     }
   ]
 }`;
