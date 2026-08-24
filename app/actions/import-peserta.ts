@@ -192,16 +192,15 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     });
   }
 
-  // 4. Auto-create Inisiator & Co-creators Accounts
+  // 4. Auto-create Inovator Accounts for All Team Members (Pengusul + Anggota Tim)
   const createdAccounts: CreatedAccountSummaryItem[] = [];
 
   const allRoles = await db.select().from(roles);
   const inisiatorRole = allRoles.find((r) => r.kodeRole === 'inisiator');
-  const coCreatorRole = allRoles.find((r) => r.kodeRole === 'co_creator');
 
   const submisi = dossierData?.data_submisi || dossierData || {};
 
-  // A. Pengusul -> Inisiator
+  // A. Pengusul -> Inovator (komitmen: Role: Inisiator)
   const pengusulNama = cleanText(submisi.pengusul?.nama || submisi.nama_pengusul || pengusul?.nama);
   const rawEmail = submisi.pengusul?.email || submisi.email_pengusul || pengusul?.email;
   const pengusulEmail = (rawEmail && rawEmail.includes('@')) ? rawEmail.trim().toLowerCase() : (pengusulNama ? formatPegadaianEmail(pengusulNama) : null);
@@ -218,7 +217,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
         createdAccounts.push({
           nama: pengusulNama,
           email: pengusulEmail,
-          roleName: 'Inisiator',
+          roleName: inisiatorRole?.namaRole || 'Inovator',
           timNama: namaProyek,
         });
       }
@@ -236,7 +235,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     }
   }
 
-  // Upsert anggota_tim for Inisiator
+  // Upsert anggota_tim for Inisiator (Pengusul)
   const [existingPengusulAnggota] = await db
     .select()
     .from(anggotaTim)
@@ -271,16 +270,16 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     });
   }
 
-  // B. team_members -> Co-creators
+  // B. team_members -> SEMUA DIBERI ROLE RBAC INOVATOR
   const rawMembers = submisi.team_members || dossierData?.team_members || submisi.anggota_tim || [];
   console.log(`[saveImportedProposal] Team ${proposalId} - rawMembers count: ${Array.isArray(rawMembers) ? rawMembers.length : 0}`, rawMembers);
 
-  if (Array.isArray(rawMembers) && coCreatorRole) {
+  if (Array.isArray(rawMembers) && inisiatorRole) {
     for (let mIdx = 0; mIdx < rawMembers.length; mIdx++) {
       const m = rawMembers[mIdx];
       let mNama = '';
       let mEmail = '';
-      let mJabatan = 'Co-creator';
+      let mJabatan = 'Anggota Tim';
       let mUnit = 'PT Pegadaian';
 
       if (typeof m === 'string') {
@@ -289,8 +288,13 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
       } else if (typeof m === 'object' && m !== null) {
         mNama = cleanText(m.nama || m.name);
         mEmail = (m.email && m.email.includes('@')) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : '');
-        mJabatan = cleanText(m.jabatan || 'Co-creator');
+        mJabatan = cleanText(m.jabatan || 'Anggota Tim');
         mUnit = cleanText(m.unit_kerja || m.unitKerja || 'PT Pegadaian');
+      }
+
+      // Hindari duplikasi jika pengusul sudah tercantum di rawMembers
+      if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
+        continue;
       }
 
       console.log(`[saveImportedProposal] Member [${mIdx + 1}/${rawMembers.length}]:`, { mNama, mEmail, mJabatan, mUnit });
@@ -302,16 +306,17 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
             createdAccounts.push({
               nama: mNama,
               email: mEmail,
-              roleName: 'Co-creator',
+              roleName: inisiatorRole.namaRole || 'Inovator',
               timNama: namaProyek,
             });
           }
 
+          // Assign role RBAC Inovator (inisiatorRole)
           await db
             .insert(userRoleTim)
             .values({
               userId: mUserRes.user.id,
-              roleId: coCreatorRole.id,
+              roleId: inisiatorRole.id,
               timInovatorId: teamId,
             })
             .onConflictDoNothing();
@@ -334,7 +339,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
                 userId: mUserRes.user.id,
                 jabatan: mJabatan,
                 unitKerja: mUnit,
-                komitmenDukungan: 'Role: Co-creator',
+                komitmenDukungan: 'Role: Inovator',
                 updatedAt: new Date(),
               })
               .where(eq(anggotaTim.id, existingMemberAnggota.id));
@@ -345,7 +350,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
               nama: mNama,
               jabatan: mJabatan,
               unitKerja: mUnit,
-              komitmenDukungan: 'Role: Co-creator',
+              komitmenDukungan: 'Role: Inovator',
             });
           }
         }

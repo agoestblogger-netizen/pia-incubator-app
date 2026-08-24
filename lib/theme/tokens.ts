@@ -298,7 +298,7 @@ export const ROLE_BADGE_TOKENS: Record<
     dot: "bg-[#B8720E]",
   },
   inisiator: {
-    label: "Inisiator",
+    label: "Inovator",
     bg: "bg-[#0E8C55]/10",
     text: "text-[#0E8C55]",
     border: "border-[#0E8C55]/20",
