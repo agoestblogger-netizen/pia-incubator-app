@@ -412,6 +412,10 @@ export interface MedalToken {
   badgeBg: string;
   badgeText: string;
   iconType: "bronze" | "silver" | "gold" | "platinum" | "diamond";
+  // Row Full Tint Styling for Dossier Table
+  rowBg: string;
+  rowTitleColor: string;
+  rowSecondaryColor: string;
 }
 
 export const MEDAL_TOKENS: Record<string, MedalToken> = {
@@ -424,6 +428,9 @@ export const MEDAL_TOKENS: Record<string, MedalToken> = {
     badgeBg: "bg-[#8C5A2B]",
     badgeText: "text-white",
     iconType: "bronze",
+    rowBg: "#F1E4D8",
+    rowTitleColor: "#4A2E10",
+    rowSecondaryColor: "#7A4A1E",
   },
   silver: {
     name: "Silver",
@@ -434,6 +441,9 @@ export const MEDAL_TOKENS: Record<string, MedalToken> = {
     badgeBg: "bg-[#8A93A8]",
     badgeText: "text-white",
     iconType: "silver",
+    rowBg: "#EFF0F3",
+    rowTitleColor: "#3A3D47",
+    rowSecondaryColor: "#6B6F7A",
   },
   gold: {
     name: "Gold",
@@ -444,6 +454,9 @@ export const MEDAL_TOKENS: Record<string, MedalToken> = {
     badgeBg: "bg-[#D4AF37]",
     badgeText: "text-white",
     iconType: "gold",
+    rowBg: "#FBF3DD",
+    rowTitleColor: "#4A3410",
+    rowSecondaryColor: "#7A5A0E",
   },
   platinum: {
     name: "Platinum",
@@ -454,6 +467,9 @@ export const MEDAL_TOKENS: Record<string, MedalToken> = {
     badgeBg: "bg-[#6E5E8C]",
     badgeText: "text-white",
     iconType: "platinum",
+    rowBg: "#F1EEF7",
+    rowTitleColor: "#2A2340",
+    rowSecondaryColor: "#4B3D6B",
   },
   diamond: {
     name: "Diamond",
@@ -464,6 +480,9 @@ export const MEDAL_TOKENS: Record<string, MedalToken> = {
     badgeBg: "bg-gradient-to-r from-[#5AC8D8] to-[#8E7CF0]",
     badgeText: "text-white",
     iconType: "diamond",
+    rowBg: "linear-gradient(90deg, #E6F7F9 0%, #F1EEFA 100%)",
+    rowTitleColor: "#17434A",
+    rowSecondaryColor: "#3A4B5A",
   },
 };
 

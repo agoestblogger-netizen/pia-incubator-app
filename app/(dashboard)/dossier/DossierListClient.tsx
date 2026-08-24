@@ -5,11 +5,12 @@ import { type DossierListItem } from '@/app/actions/dossier';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, ArrowUpRight, Award, FolderArchive, Users, Filter, Sparkles } from 'lucide-react';
+import { Search, FileText, ArrowUpRight, Award, FolderArchive, Users, Filter, Sparkles, Gem } from 'lucide-react';
 import Link from 'next/link';
 import {
   PEGADAIAN_HEADER_GRADIENT_STYLE,
   getCategoryBadgeToken,
+  getMedalToken,
 } from '@/lib/theme/tokens';
 
 export function DossierListClient({ initialItems }: { initialItems: DossierListItem[] }) {
@@ -146,44 +147,58 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                     <th className="p-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200/60">
                   {filteredItems.map((item) => {
                     const isBI = item.kategoriPia === 'BI';
                     const isBC = item.kategoriPia === 'BC';
                     const isWilayah = item.kategoriPia === 'WILAYAH';
                     
-                    const rowBorderClass = isBI
-                      ? "border-l-4 border-l-[#5142D6] bg-indigo-50/15 hover:bg-indigo-50/30"
-                      : isBC
-                      ? "border-l-4 border-l-[#0E6E7A] bg-teal-50/15 hover:bg-teal-50/30"
-                      : isWilayah
-                      ? "border-l-4 border-l-[#B8720E] bg-amber-50/15 hover:bg-amber-50/30"
-                      : "border-l-4 border-l-[#0E8C55] bg-emerald-50/15 hover:bg-emerald-50/30";
-
-                    const isPlatinum = item.peringkatMedali?.toLowerCase().includes('platinum');
-                    const isGold = item.peringkatMedali?.toLowerCase().includes('gold');
+                    const medal = getMedalToken(item.peringkatMedali);
 
                     return (
-                      <tr key={item.id} className={`${rowBorderClass} transition-colors`}>
+                      <tr
+                        key={item.id}
+                        style={{ background: medal.rowBg }}
+                        className="transition-colors hover:brightness-96"
+                      >
                         <td className="p-3.5 whitespace-nowrap">
-                          <div className="font-mono font-bold text-[#0F5132]">
+                          <div
+                            className="font-mono font-extrabold text-sm"
+                            style={{ color: medal.rowTitleColor }}
+                          >
                             {item.proposalIdAsli}
                           </div>
-                          <div className="text-[10px] text-gray-500 font-semibold mt-0.5">{item.seasonAsli}</div>
+                          <div
+                            className="text-[10px] font-semibold mt-0.5"
+                            style={{ color: medal.rowSecondaryColor }}
+                          >
+                            {item.seasonAsli}
+                          </div>
                         </td>
 
                         <td className="p-3.5 max-w-sm">
                           <Link
                             href={`/dossier/${item.proposalIdAsli}`}
-                            className="font-bold text-gray-900 hover:text-[#0F5132] transition-colors block text-sm"
+                            style={{ color: medal.rowTitleColor }}
+                            className="font-extrabold hover:underline transition-colors block text-sm leading-snug"
                           >
                             {item.namaProyek}
                           </Link>
                         </td>
 
                         <td className="p-3.5 whitespace-nowrap">
-                          <div className="font-medium text-gray-800">{item.namaPengusul}</div>
-                          <div className="text-[11px] text-gray-400">{item.emailPengusul}</div>
+                          <div
+                            className="font-bold text-xs"
+                            style={{ color: medal.rowTitleColor }}
+                          >
+                            {item.namaPengusul}
+                          </div>
+                          <div
+                            className="text-[11px] font-medium"
+                            style={{ color: medal.rowSecondaryColor }}
+                          >
+                            {item.emailPengusul}
+                          </div>
                         </td>
 
                         <td className="p-3.5 text-center whitespace-nowrap">
@@ -207,32 +222,27 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                         </td>
 
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          {isPlatinum ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-slate-800 to-indigo-950 text-white shadow-xs">
-                              <Award className="h-3 w-3 text-cyan-300" />
-                              Platinum
-                            </span>
-                          ) : isGold ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs">
-                              <Award className="h-3 w-3 text-amber-200" />
-                              Gold
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-xs">
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white shadow-2xs"
+                            style={{ background: medal.bgGradient }}
+                          >
+                            {medal.iconType === "diamond" ? (
+                              <Gem className="h-3 w-3 text-white" />
+                            ) : (
                               <Award className="h-3 w-3 text-white" />
-                              {item.peringkatMedali || 'Finalis'}
-                            </span>
-                          )}
+                            )}
+                            <span>{medal.name}</span>
+                          </span>
                         </td>
 
                         <td className="p-3.5 text-center whitespace-nowrap">
                           {item.timInovatorId ? (
                             <Link
                               href={`/tim/${item.timInovatorId}`}
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors shadow-2xs ${
                                 item.timStatus === 'calon_peserta'
-                                  ? 'text-[#5142D6] bg-indigo-50 hover:bg-indigo-100 border border-[#5142D6]/30'
-                                  : 'text-[#0E8C55] bg-emerald-50 hover:bg-emerald-100 border border-[#0E8C55]/30'
+                                  ? 'text-[#5142D6] bg-indigo-50/90 hover:bg-indigo-100 border border-[#5142D6]/30'
+                                  : 'text-[#0E8C55] bg-emerald-50/90 hover:bg-emerald-100 border border-[#0E8C55]/30'
                               }`}
                             >
                               <Users className="h-3 w-3" />
@@ -249,7 +259,7 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 text-xs font-semibold text-[#0F5132] border-green-200 hover:bg-green-50"
+                              className="h-8 text-xs font-semibold text-[#0F5132] border-green-300 bg-white/80 hover:bg-white hover:border-[#0F5132]"
                             >
                               <FileText className="h-3.5 w-3.5 mr-1" />
                               Buka Dossier
