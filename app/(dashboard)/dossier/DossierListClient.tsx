@@ -147,76 +147,118 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50/80 transition-colors">
-                      <td className="p-3.5 whitespace-nowrap">
-                        <div className="font-mono font-bold text-[#0F5132]">
-                          {item.proposalIdAsli}
-                        </div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">{item.seasonAsli}</div>
-                      </td>
+                  {filteredItems.map((item) => {
+                    const isBI = item.kategoriPia === 'BI';
+                    const isBC = item.kategoriPia === 'BC';
+                    const isWilayah = item.kategoriPia === 'WILAYAH';
+                    
+                    const rowBorderClass = isBI
+                      ? "border-l-4 border-l-[#5142D6] bg-indigo-50/15 hover:bg-indigo-50/30"
+                      : isBC
+                      ? "border-l-4 border-l-[#0E6E7A] bg-teal-50/15 hover:bg-teal-50/30"
+                      : isWilayah
+                      ? "border-l-4 border-l-[#B8720E] bg-amber-50/15 hover:bg-amber-50/30"
+                      : "border-l-4 border-l-[#0E8C55] bg-emerald-50/15 hover:bg-emerald-50/30";
 
-                      <td className="p-3.5 max-w-sm">
-                        <Link
-                          href={`/dossier/${item.proposalIdAsli}`}
-                          className="font-bold text-gray-900 hover:text-[#0F5132] transition-colors block text-sm"
-                        >
-                          {item.namaProyek}
-                        </Link>
-                      </td>
+                    const isPlatinum = item.peringkatMedali?.toLowerCase().includes('platinum');
+                    const isGold = item.peringkatMedali?.toLowerCase().includes('gold');
 
-                      <td className="p-3.5 whitespace-nowrap">
-                        <div className="font-medium text-gray-800">{item.namaPengusul}</div>
-                        <div className="text-[11px] text-gray-400">{item.emailPengusul}</div>
-                      </td>
+                    return (
+                      <tr key={item.id} className={`${rowBorderClass} transition-colors`}>
+                        <td className="p-3.5 whitespace-nowrap">
+                          <div className="font-mono font-bold text-[#0F5132]">
+                            {item.proposalIdAsli}
+                          </div>
+                          <div className="text-[10px] text-gray-500 font-semibold mt-0.5">{item.seasonAsli}</div>
+                        </td>
 
-                      <td className="p-3.5 text-center whitespace-nowrap">
-                        {(() => {
-                          const catToken = getCategoryBadgeToken(item.kategoriPia);
-                          return (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${catToken.bg} ${catToken.text} border ${catToken.border}`}>
-                              {item.kategoriPia}
-                            </span>
-                          );
-                        })()}
-                      </td>
-
-                      <td className="p-3.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          <Award className="h-3 w-3 text-amber-600" />
-                          {item.peringkatMedali}
-                        </span>
-                      </td>
-
-                      <td className="p-3.5 text-center whitespace-nowrap">
-                        {item.timInovatorId ? (
+                        <td className="p-3.5 max-w-sm">
                           <Link
-                            href={`/tim/${item.timInovatorId}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 transition-colors"
+                            href={`/dossier/${item.proposalIdAsli}`}
+                            className="font-bold text-gray-900 hover:text-[#0F5132] transition-colors block text-sm"
                           >
-                            <Users className="h-3 w-3" />
-                            {item.timStatus === 'calon_peserta' ? 'Calon Peserta' : 'Tim Aktif'}
-                            <ArrowUpRight className="h-3 w-3 ml-0.5" />
+                            {item.namaProyek}
                           </Link>
-                        ) : (
-                          <span className="text-[11px] text-gray-400">Belum di-assign</span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="p-3.5 text-right whitespace-nowrap">
-                        <Link href={`/dossier/${item.proposalIdAsli}`}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs font-semibold text-[#0F5132] border-green-200 hover:bg-green-50"
-                          >
-                            <FileText className="h-3.5 w-3.5 mr-1" />
-                            Buka Dossier
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="p-3.5 whitespace-nowrap">
+                          <div className="font-medium text-gray-800">{item.namaPengusul}</div>
+                          <div className="text-[11px] text-gray-400">{item.emailPengusul}</div>
+                        </td>
+
+                        <td className="p-3.5 text-center whitespace-nowrap">
+                          {isBI ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#5142D6] text-white shadow-2xs">
+                              BI (Breakthrough)
+                            </span>
+                          ) : isBC ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#0E6E7A] text-white shadow-2xs">
+                              BC (Business Case)
+                            </span>
+                          ) : isWilayah ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#B8720E] text-white shadow-2xs">
+                              Wilayah
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#0E8C55] text-white shadow-2xs">
+                              {item.kategoriPia || 'Pusat'}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 text-center whitespace-nowrap">
+                          {isPlatinum ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-slate-800 to-indigo-950 text-white shadow-xs">
+                              <Award className="h-3 w-3 text-cyan-300" />
+                              Platinum
+                            </span>
+                          ) : isGold ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs">
+                              <Award className="h-3 w-3 text-amber-200" />
+                              Gold
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-xs">
+                              <Award className="h-3 w-3 text-white" />
+                              {item.peringkatMedali || 'Finalis'}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 text-center whitespace-nowrap">
+                          {item.timInovatorId ? (
+                            <Link
+                              href={`/tim/${item.timInovatorId}`}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors ${
+                                item.timStatus === 'calon_peserta'
+                                  ? 'text-[#5142D6] bg-indigo-50 hover:bg-indigo-100 border border-[#5142D6]/30'
+                                  : 'text-[#0E8C55] bg-emerald-50 hover:bg-emerald-100 border border-[#0E8C55]/30'
+                              }`}
+                            >
+                              <Users className="h-3 w-3" />
+                              {item.timStatus === 'calon_peserta' ? 'Calon Peserta' : 'Tim Aktif'}
+                              <ArrowUpRight className="h-3 w-3 ml-0.5" />
+                            </Link>
+                          ) : (
+                            <span className="text-[11px] text-gray-400">Belum di-assign</span>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 text-right whitespace-nowrap">
+                          <Link href={`/dossier/${item.proposalIdAsli}`}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs font-semibold text-[#0F5132] border-green-200 hover:bg-green-50"
+                            >
+                              <FileText className="h-3.5 w-3.5 mr-1" />
+                              Buka Dossier
+                            </Button>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

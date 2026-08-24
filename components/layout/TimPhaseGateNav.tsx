@@ -196,7 +196,8 @@ export function TimPhaseGateNav({
                 key={item.id}
                 type="button"
                 onClick={(e) => handleBoxClick(item, e)}
-                className={`relative text-left p-3.5 rounded-2xl ${token.solidGradient} text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[96px] border border-white/20`}
+                style={{ background: token.solidGradientCss }}
+                className={`relative text-left p-3.5 rounded-2xl text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[96px] border border-white/20`}
                 title="Klik untuk melihat syarat pembukaan fase ini"
               >
                 <div className="flex items-start justify-between gap-1 w-full">
@@ -224,7 +225,8 @@ export function TimPhaseGateNav({
             <Link
               key={item.id}
               href={item.href}
-              className={`relative p-3.5 rounded-2xl ${token.solidGradient} text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[96px] group border border-white/20 ${
+              style={{ background: token.solidGradientCss }}
+              className={`relative p-3.5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[96px] group border border-white/20 ${
                 isActive
                   ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md"
                   : "opacity-95 hover:opacity-100 hover:scale-[1.01]"

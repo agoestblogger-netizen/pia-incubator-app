@@ -23,6 +23,7 @@ export interface PhaseToken {
   name: string;
   shortName: string;
   solidGradient: string; // Tailwind class
+  solidGradientCss: string; // Direct CSS gradient
   solidBgHex: string;
   solidHover: string;
   accentColor: string;
@@ -41,6 +42,7 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
     name: "Innovation Setup",
     shortName: "Setup",
     solidGradient: "bg-gradient-to-br from-[#7B6EF0] to-[#5142D6]",
+    solidGradientCss: "linear-gradient(135deg, #7B6EF0 0%, #5142D6 100%)",
     solidBgHex: "#5142D6",
     solidHover: "hover:from-[#6C5EE8] hover:to-[#4335C7]",
     accentColor: "#5142D6",
@@ -56,6 +58,7 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
     name: "Customer Validation",
     shortName: "Cust Val",
     solidGradient: "bg-gradient-to-br from-[#E29A2E] to-[#B8720E]",
+    solidGradientCss: "linear-gradient(135deg, #E29A2E 0%, #B8720E 100%)",
     solidBgHex: "#B8720E",
     solidHover: "hover:from-[#D48F24] hover:to-[#A36208]",
     accentColor: "#B8720E",
@@ -71,6 +74,7 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
     name: "Market Validation",
     shortName: "Market Val",
     solidGradient: "bg-gradient-to-br from-[#22B06E] to-[#0E8C55]",
+    solidGradientCss: "linear-gradient(135deg, #22B06E 0%, #0E8C55 100%)",
     solidBgHex: "#0E8C55",
     solidHover: "hover:from-[#1CA062] hover:to-[#0B7A49]",
     accentColor: "#0E8C55",
@@ -86,6 +90,7 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
     name: "RAB & LPJ",
     shortName: "Keuangan",
     solidGradient: "bg-gradient-to-br from-[#1F98A8] to-[#0E6E7A]",
+    solidGradientCss: "linear-gradient(135deg, #1F98A8 0%, #0E6E7A 100%)",
     solidBgHex: "#0E6E7A",
     solidHover: "hover:from-[#198998] hover:to-[#0B5C66]",
     accentColor: "#0E6E7A",
@@ -101,6 +106,7 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
     name: "FMI & Hasil",
     shortName: "Governance",
     solidGradient: "bg-gradient-to-br from-[#DB4E80] to-[#B23262]",
+    solidGradientCss: "linear-gradient(135deg, #DB4E80 0%, #B23262 100%)",
     solidBgHex: "#B23262",
     solidHover: "hover:from-[#CE3E71] hover:to-[#9E2753]",
     accentColor: "#B23262",
@@ -119,39 +125,49 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
 
 export const PASTEL_CARD_VARIANTS = [
   {
-    bg: "bg-[#F5F3FF]",
+    bg: "bg-[#F3F0FF]",
     border: "border-[#DDD6FE]",
+    hexBg: "#F3F0FF",
+    hexBorder: "#DDD6FE",
     hover: "hover:border-[#7B6EF0] hover:shadow-indigo-100",
     accent: "#5142D6",
-    badge: "bg-[#5142D6]/10 text-[#5142D6]",
+    badge: "bg-[#5142D6]/15 text-[#5142D6] border border-[#5142D6]/30",
   },
   {
-    bg: "bg-[#FFFBEB]",
+    bg: "bg-[#FEF3C7]",
     border: "border-[#FDE68A]",
+    hexBg: "#FEF3C7",
+    hexBorder: "#FDE68A",
     hover: "hover:border-[#E29A2E] hover:shadow-amber-100",
     accent: "#B8720E",
-    badge: "bg-[#B8720E]/10 text-[#B8720E]",
+    badge: "bg-[#B8720E]/15 text-[#B8720E] border border-[#B8720E]/30",
   },
   {
-    bg: "bg-[#ECFDF5]",
+    bg: "bg-[#D1FAE5]",
     border: "border-[#A7F3D0]",
+    hexBg: "#D1FAE5",
+    hexBorder: "#A7F3D0",
     hover: "hover:border-[#22B06E] hover:shadow-emerald-100",
     accent: "#0E8C55",
-    badge: "bg-[#0E8C55]/10 text-[#0E8C55]",
+    badge: "bg-[#0E8C55]/15 text-[#0E8C55] border border-[#0E8C55]/30",
   },
   {
-    bg: "bg-[#F0FDFA]",
+    bg: "bg-[#CCFBF1]",
     border: "border-[#99F6E4]",
+    hexBg: "#CCFBF1",
+    hexBorder: "#99F6E4",
     hover: "hover:border-[#1F98A8] hover:shadow-teal-100",
     accent: "#0E6E7A",
-    badge: "bg-[#0E6E7A]/10 text-[#0E6E7A]",
+    badge: "bg-[#0E6E7A]/15 text-[#0E6E7A] border border-[#0E6E7A]/30",
   },
   {
-    bg: "bg-[#FFF1F2]",
+    bg: "bg-[#FFE4E6]",
     border: "border-[#FECDD3]",
+    hexBg: "#FFE4E6",
+    hexBorder: "#FECDD3",
     hover: "hover:border-[#DB4E80] hover:shadow-rose-100",
     accent: "#B23262",
-    badge: "bg-[#B23262]/10 text-[#B23262]",
+    badge: "bg-[#B23262]/15 text-[#B23262] border border-[#B23262]/30",
   },
 ];
 
@@ -163,33 +179,48 @@ export function getPastelCardVariant(index: number) {
 // 4. KANBAN COLUMN PILL TOKENS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const KANBAN_COLUMN_PILL_STYLES: Record<string, { pillBg: string; text: string; dot: string; countBg: string }> = {
-  "To Do": {
+export const KANBAN_COLUMN_PILL_STYLES: Record<
+  string,
+  { pillBg: string; hex: string; text: string; dot: string; countBg: string }
+> = {
+  Backlog: {
     pillBg: "bg-[#5142D6]",
+    hex: "#5142D6",
+    text: "text-white",
+    dot: "bg-white",
+    countBg: "bg-white/20 text-white",
+  },
+  "To Do": {
+    pillBg: "bg-[#64748B]",
+    hex: "#64748B",
     text: "text-white",
     dot: "bg-white",
     countBg: "bg-white/20 text-white",
   },
   "In Progress": {
     pillBg: "bg-[#B8720E]",
+    hex: "#B8720E",
     text: "text-white",
     dot: "bg-white animate-pulse",
     countBg: "bg-white/20 text-white",
   },
-  "Done": {
-    pillBg: "bg-[#0E8C55]",
-    text: "text-white",
-    dot: "bg-white",
-    countBg: "bg-white/20 text-white",
-  },
-  "Review": {
+  Review: {
     pillBg: "bg-[#0E6E7A]",
+    hex: "#0E6E7A",
     text: "text-white",
     dot: "bg-white",
     countBg: "bg-white/20 text-white",
   },
-  "Blocked": {
+  Done: {
+    pillBg: "bg-[#0E8C55]",
+    hex: "#0E8C55",
+    text: "text-white",
+    dot: "bg-white",
+    countBg: "bg-white/20 text-white",
+  },
+  Blocked: {
     pillBg: "bg-[#B23262]",
+    hex: "#B23262",
     text: "text-white",
     dot: "bg-white",
     countBg: "bg-white/20 text-white",
@@ -197,14 +228,19 @@ export const KANBAN_COLUMN_PILL_STYLES: Record<string, { pillBg: string; text: s
 };
 
 export function getColumnPillStyle(columnName: string, columnIndex: number = 0) {
-  if (KANBAN_COLUMN_PILL_STYLES[columnName]) {
-    return KANBAN_COLUMN_PILL_STYLES[columnName];
+  const normalized = columnName.trim();
+  for (const [key, val] of Object.entries(KANBAN_COLUMN_PILL_STYLES)) {
+    if (key.toLowerCase() === normalized.toLowerCase()) {
+      return val;
+    }
   }
+
   // Default based on index
   const keys = Object.keys(PHASE_TOKENS);
   const phase = PHASE_TOKENS[keys[columnIndex % keys.length]];
   return {
     pillBg: phase.solidBgHex,
+    hex: phase.solidBgHex,
     text: "text-white",
     dot: "bg-white",
     countBg: "bg-white/20 text-white",

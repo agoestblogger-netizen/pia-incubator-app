@@ -192,14 +192,19 @@ function SortableCard({
     : 0;
 
   const pastel =
-    isBacklog && cardIndex !== undefined && !isOverdue && !isDragging
+    cardIndex !== undefined && !isOverdue && !isDragging
       ? getPastelCardVariant(cardIndex)
       : null;
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        ...(pastel && !isDragging && !isOverdue
+          ? { backgroundColor: pastel.hexBg, borderColor: pastel.hexBorder }
+          : {}),
+      }}
       {...attributes}
       className={`group relative rounded-xl p-3.5 border transition-all select-none shadow-2xs ${
         isDragging
@@ -445,30 +450,20 @@ function KanbanColumnDroppable({
           : "bg-gray-50/80 border-gray-200 shadow-2xs"
       }`}
     >
-      {/* Column Header: Pill Berwarna */}
+      {/* Column Header: Pill Berwarna Solid */}
       <div className="flex items-center justify-between px-0.5">
         <div className="flex items-center gap-1.5">
           <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold shadow-2xs ${
-              isBacklogArea
-                ? "bg-slate-800 text-white"
-                : pillStyle.pillBg.startsWith("bg-")
-                ? pillStyle.pillBg
-                : "text-white"
-            }`}
-            style={
-              !isBacklogArea && !pillStyle.pillBg.startsWith("bg-")
-                ? { backgroundColor: pillStyle.pillBg }
-                : undefined
-            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold shadow-sm text-white border border-white/20"
+            style={{ backgroundColor: isBacklogArea ? "#5142D6" : pillStyle.hex }}
           >
             {isBacklogArea ? (
-              <Inbox className="h-3 w-3 text-white" />
+              <Inbox className="h-3.5 w-3.5 text-white" />
             ) : (
               <span className={`h-2 w-2 rounded-full ${pillStyle.dot}`} />
             )}
-            <span className="tracking-wide">{columnTitle}</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-white/25 text-white ml-0.5">
+            <span className="tracking-wide text-white drop-shadow-2xs">{columnTitle}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-white/25 text-white ml-0.5 shadow-2xs">
               {cards.length}
             </span>
           </div>

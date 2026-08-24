@@ -80,56 +80,72 @@ export default async function DashboardPage() {
       {/* Ringkasan Agregat 4 Angka (Khusus Role Global: Admin & Divisi IC) */}
       {isGlobalUser && aggregates.totalTeams > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs space-y-1">
-            <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider block">
+          {/* Card 1: Belum Mulai (Solid Slate) */}
+          <div
+            style={{ background: "linear-gradient(135deg, #475569 0%, #1E293B 100%)" }}
+            className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-slate-700 space-y-1.5"
+          >
+            <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider block">
               Belum Mulai
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-gray-800 font-mono-stats">
+              <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
                 {aggregates.totalBelumMulai}
               </span>
-              <span className="text-xs text-gray-400 font-medium">Tim</span>
+              <span className="text-xs text-slate-300 font-bold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-400">Tim baru / belum isi Charter</p>
+            <p className="text-[11px] text-slate-300/90 font-medium">Tim baru / belum isi Charter</p>
           </div>
 
-          <div className="bg-[#F5F3FF] p-4 rounded-xl border border-[#DDD6FE] shadow-2xs space-y-1">
-            <span className="text-[11px] font-extrabold text-[#5142D6] uppercase tracking-wider block">
+          {/* Card 2: Tahap 1 Setup (Solid Ungu #7B6EF0 → #5142D6) */}
+          <div
+            style={{ background: "linear-gradient(135deg, #7B6EF0 0%, #5142D6 100%)" }}
+            className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#5142D6]/40 space-y-1.5"
+          >
+            <span className="text-[11px] font-extrabold text-purple-200 uppercase tracking-wider block">
               Tahap 1: Setup
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-[#5142D6] font-mono-stats">
+              <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
                 {aggregates.totalInnovationSetup}
               </span>
-              <span className="text-xs text-[#5142D6] font-semibold">Tim</span>
+              <span className="text-xs text-purple-200 font-bold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-600">Charter & Sprint Planning</p>
+            <p className="text-[11px] text-purple-100 font-medium">Charter & Sprint Planning</p>
           </div>
 
-          <div className="bg-[#FFFBEB] p-4 rounded-xl border border-[#FDE68A] shadow-2xs space-y-1">
-            <span className="text-[11px] font-extrabold text-[#B8720E] uppercase tracking-wider block">
+          {/* Card 3: Tahap 2 Cust. Validation (Solid Amber #E29A2E → #B8720E) */}
+          <div
+            style={{ background: "linear-gradient(135deg, #E29A2E 0%, #B8720E 100%)" }}
+            className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#B8720E]/40 space-y-1.5"
+          >
+            <span className="text-[11px] font-extrabold text-amber-200 uppercase tracking-wider block">
               Tahap 2: Cust. Validation
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-[#B8720E] font-mono-stats">
+              <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
                 {aggregates.totalCustomerValidation}
               </span>
-              <span className="text-xs text-[#B8720E] font-semibold">Tim</span>
+              <span className="text-xs text-amber-200 font-bold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-600">Early Adopter & User Testing</p>
+            <p className="text-[11px] text-amber-100 font-medium">Early Adopter & User Testing</p>
           </div>
 
-          <div className="bg-[#ECFDF5] p-4 rounded-xl border border-[#A7F3D0] shadow-2xs space-y-1">
-            <span className="text-[11px] font-extrabold text-[#0E8C55] uppercase tracking-wider block">
+          {/* Card 4: Tahap 3 Market Validation (Solid Emerald #22B06E → #0E8C55) */}
+          <div
+            style={{ background: "linear-gradient(135deg, #22B06E 0%, #0E8C55 100%)" }}
+            className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#0E8C55]/40 space-y-1.5"
+          >
+            <span className="text-[11px] font-extrabold text-emerald-200 uppercase tracking-wider block">
               Tahap 3: Market Validation
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-[#0E8C55] font-mono-stats">
+              <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
                 {aggregates.totalMarketValidation}
               </span>
-              <span className="text-xs text-[#0E8C55] font-semibold">Tim</span>
+              <span className="text-xs text-emerald-200 font-bold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-600">Pilot & Market Launch</p>
+            <p className="text-[11px] text-emerald-100 font-medium">Pilot & Market Launch</p>
           </div>
         </div>
       )}
