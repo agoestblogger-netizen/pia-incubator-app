@@ -212,10 +212,10 @@ export function CharterFormClient({
       }));
     }
     return [
-      { nomorSprint: 1, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 1: Problem Validation & Setup" },
-      { nomorSprint: 2, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 2: Solution Exploration & Prototyping" },
-      { nomorSprint: 3, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 3: MVP Development & Testing" },
-      { nomorSprint: 4, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Sprint 4: Market Validation & Pitch Preparation" },
+      { nomorSprint: 1, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Problem Validation & Setup" },
+      { nomorSprint: 2, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Solution Exploration & Prototyping" },
+      { nomorSprint: 3, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "MVP Development & Testing" },
+      { nomorSprint: 4, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Market Validation & Pitch Preparation" },
     ];
   });
 

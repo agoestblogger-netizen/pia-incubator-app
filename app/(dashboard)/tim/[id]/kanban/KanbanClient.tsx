@@ -947,7 +947,10 @@ export function KanbanClient({
             <div className="space-y-1 max-w-2xl">
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-extrabold text-gray-900">
-                  Sprint {currentSprintObj.nomorSprint}: {currentSprintObj.tujuan || `Sprint ${currentSprintObj.nomorSprint}`}
+                  Sprint {currentSprintObj.nomorSprint}
+                  {currentSprintObj.tujuan
+                    ? `: ${currentSprintObj.tujuan.replace(new RegExp(`^Sprint\\s*${currentSprintObj.nomorSprint}\\s*:\\s*`, 'i'), '')}`
+                    : ''}
                 </h2>
                 <Badge
                   variant={

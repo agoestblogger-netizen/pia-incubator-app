@@ -17,10 +17,10 @@ export async function getSprintsByTimId(timId: string) {
   // If no sprints exist yet, initialize 4 default sprints
   if (list.length === 0) {
     const defaultSprints = [
-      { timInovatorId: timId, nomorSprint: 1, status: "belum_dimulai", tujuan: "Sprint 1: Problem Validation & Setup" },
-      { timInovatorId: timId, nomorSprint: 2, status: "belum_dimulai", tujuan: "Sprint 2: Solution Exploration & Prototyping" },
-      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "Sprint 3: MVP Development & Testing" },
-      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "Sprint 4: Market Validation & Pitch Preparation" },
+      { timInovatorId: timId, nomorSprint: 1, status: "belum_dimulai", tujuan: "Problem Validation & Setup" },
+      { timInovatorId: timId, nomorSprint: 2, status: "belum_dimulai", tujuan: "Solution Exploration & Prototyping" },
+      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "MVP Development & Testing" },
+      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "Market Validation & Pitch Preparation" },
     ];
 
     await db.insert(sprint).values(defaultSprints).onConflictDoNothing();
