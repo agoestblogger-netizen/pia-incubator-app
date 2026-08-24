@@ -339,7 +339,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
                 userId: mUserRes.user.id,
                 jabatan: mJabatan,
                 unitKerja: mUnit,
-                komitmenDukungan: 'Role: Inovator',
+                komitmenDukungan: 'Role: Inisiator',
                 updatedAt: new Date(),
               })
               .where(eq(anggotaTim.id, existingMemberAnggota.id));
@@ -350,7 +350,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
               nama: mNama,
               jabatan: mJabatan,
               unitKerja: mUnit,
-              komitmenDukungan: 'Role: Inovator',
+              komitmenDukungan: 'Role: Inisiator',
             });
           }
         }

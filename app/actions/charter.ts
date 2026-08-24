@@ -451,7 +451,7 @@ export async function getCharterRolesData(timId: string) {
       const hasInisiator = existingAssignments.some((a) => a.roleCode === "inisiator");
       const hasCoCreator = existingAssignments.some((a) => a.roleCode === "co_creator");
 
-      // Auto-suggest Inisiator
+      // Auto-suggest Inisiator (Seluruh anggota tim dari proposal: Pengusul + rawMembers)
       if (!hasInisiator && inisiatorRole) {
         const pengusulNama = cleanText(submisi.pengusul?.nama || submisi.nama_pengusul || submisi.proposer_name);
         const rawEmail = submisi.pengusul?.email || submisi.email_pengusul || submisi.proposer_email;
@@ -485,17 +485,15 @@ export async function getCharterRolesData(timId: string) {
             });
           }
         }
-      }
 
-      // Auto-suggest Co-creators
-      if (!hasCoCreator && coCreatorRole) {
+        // Anggota tim lainnya juga dimasukkan ke Inisiator (multi-orang)
         const rawMembers = submisi.team_members || snap.team_members || submisi.anggota_tim || [];
         if (Array.isArray(rawMembers)) {
           for (let i = 0; i < rawMembers.length; i++) {
             const m = rawMembers[i];
             let mNama = "";
             let mEmail = "";
-            let mJabatan = "Co-creator";
+            let mJabatan = "Anggota Tim";
             let mUnit = "PT Pegadaian";
 
             if (typeof m === "string") {
@@ -504,17 +502,21 @@ export async function getCharterRolesData(timId: string) {
             } else if (typeof m === "object" && m !== null) {
               mNama = cleanText(m.nama || m.name);
               mEmail = (m.email && m.email.includes("@")) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : "");
-              mJabatan = cleanText(m.jabatan || "Co-creator");
+              mJabatan = cleanText(m.jabatan || "Anggota Tim");
               mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian");
+            }
+
+            if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
+              continue;
             }
 
             if (mNama && mEmail) {
               const [foundMemberUser] = await db.select().from(users).where(eq(users.email, mEmail)).limit(1);
               existingAssignments.push({
-                id: `suggested-co-creator-${i}-${foundMemberUser?.id || "new"}`,
-                roleId: coCreatorRole.id,
-                roleCode: "co_creator",
-                roleName: coCreatorRole.namaRole,
+                id: `suggested-inisiator-${i}-${foundMemberUser?.id || "new"}`,
+                roleId: inisiatorRole.id,
+                roleCode: "inisiator",
+                roleName: inisiatorRole.namaRole,
                 userId: foundMemberUser?.id || null,
                 userName: mNama,
                 userEmail: mEmail,
@@ -522,13 +524,13 @@ export async function getCharterRolesData(timId: string) {
 
               if (!existingAnggota.some((a) => a.nama.toLowerCase() === mNama.toLowerCase())) {
                 existingAnggota.push({
-                  id: `suggested-ang-cocreator-${i}`,
+                  id: `suggested-ang-inisiator-${i}`,
                   timInovatorId: timId,
                   userId: foundMemberUser?.id || null,
                   nama: mNama,
                   jabatan: mJabatan,
                   unitKerja: mUnit,
-                  komitmenDukungan: `Role: Co-creator`,
+                  komitmenDukungan: `Role: Inovator`,
                   createdAt: new Date(),
                   updatedAt: new Date(),
                 });
@@ -612,7 +614,7 @@ export async function saveCharterAction(
       const hasInisiator = currentRoleAssignments.some((r) => r.roleCode === "inisiator" && r.userId);
       const hasCoCreator = currentRoleAssignments.some((r) => r.roleCode === "co_creator" && r.userId);
 
-      // A. Inisiator Auto-create
+      // A. Inisiator Auto-create (Seluruh anggota tim dari proposal: Pengusul + rawMembers)
       if (!hasInisiator && inisiatorRole) {
         const pengusulNama = cleanText(submisi.pengusul?.nama || submisi.nama_pengusul || submisi.proposer_name);
         const rawEmail = submisi.pengusul?.email || submisi.email_pengusul || submisi.proposer_email;
@@ -627,7 +629,7 @@ export async function saveCharterAction(
               createdAccounts.push({
                 nama: pengusulNama,
                 email: pengusulEmail,
-                roleName: "Inisiator",
+                roleName: inisiatorRole.namaRole || "Inovator",
               });
             }
 
@@ -644,19 +646,14 @@ export async function saveCharterAction(
             });
           }
         }
-      }
 
-      // B. Co-creators Auto-create
-      if (!hasCoCreator && coCreatorRole) {
+        // Anggota tim lainnya juga dimasukkan ke Inisiator (multi-orang)
         const rawMembers = submisi.team_members || snap.team_members || submisi.anggota_tim || [];
         if (Array.isArray(rawMembers)) {
-          // Remove any placeholder without userId
-          currentRoleAssignments = currentRoleAssignments.filter((r) => r.roleCode !== "co_creator" || r.userId);
-
           for (const m of rawMembers) {
             let mNama = "";
             let mEmail = "";
-            let mJabatan = "Co-creator";
+            let mJabatan = "Anggota Tim";
             let mUnit = "PT Pegadaian";
 
             if (typeof m === "string") {
@@ -665,8 +662,12 @@ export async function saveCharterAction(
             } else if (typeof m === "object" && m !== null) {
               mNama = cleanText(m.nama || m.name);
               mEmail = (m.email && m.email.includes("@")) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : "");
-              mJabatan = cleanText(m.jabatan || "Co-creator");
+              mJabatan = cleanText(m.jabatan || "Anggota Tim");
               mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian");
+            }
+
+            if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
+              continue;
             }
 
             if (mNama && mEmail) {
@@ -676,13 +677,13 @@ export async function saveCharterAction(
                   createdAccounts.push({
                     nama: mNama,
                     email: mEmail,
-                    roleName: "Co-creator",
+                    roleName: inisiatorRole.namaRole || "Inovator",
                   });
                 }
 
                 currentRoleAssignments.push({
-                  id: `auto-co-creator-${memberUserResult.user.id}`,
-                  roleCode: "co_creator",
+                  id: `auto-inisiator-${memberUserResult.user.id}`,
+                  roleCode: "inisiator",
                   userId: memberUserResult.user.id,
                   userName: memberUserResult.user.nama,
                   userEmail: memberUserResult.user.email,
