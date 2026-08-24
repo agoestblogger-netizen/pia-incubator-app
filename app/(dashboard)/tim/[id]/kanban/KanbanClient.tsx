@@ -620,6 +620,13 @@ export function KanbanClient({
       ? sprints[0].nomorSprint
       : 1
   );
+  const [section1SprintNum, setSection1SprintNum] = useState<number>(() =>
+    initialActiveSprint
+      ? initialActiveSprint.nomorSprint
+      : sprints.length > 0
+      ? sprints[0].nomorSprint
+      : 1
+  );
   const [capacities, setCapacities] = useState<MemberCapacityInfo[]>([]);
   const [startingSprint, setStartingSprint] = useState(false);
 
@@ -1432,77 +1439,128 @@ export function KanbanClient({
 
         {/* Section 1 Content */}
         {activeSection === 1 && (
-          <div className="p-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {sprints.map((s) => {
-                const isAktif = s.status === "aktif";
-                const isSelesai = s.status === "selesai";
-                const isBelum = s.status === "belum_dimulai";
-                const sprintCards = cards.filter((c) => c.sprintNumber === s.nomorSprint);
-                const totalHours = sprintCards.reduce((acc, c) => acc + (c.estimasiJam || 0), 0);
+          <div className="p-5 space-y-4">
+            {/* Horizontal Tab Bar */}
+            <div className="border-b border-gray-200 pb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+                {sprints.map((s) => {
+                  const isTabSelected = section1SprintNum === s.nomorSprint;
+                  const isAktif = s.status === "aktif";
+                  const isSelesai = s.status === "selesai";
 
-                return (
-                  <div
-                    key={s.id || s.nomorSprint}
-                    className={`rounded-2xl border p-4 flex flex-col justify-between transition-all ${
-                      isAktif
-                        ? "border-emerald-500 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-400/50"
-                        : isSelesai
-                        ? "border-blue-200 bg-blue-50/20"
-                        : "border-gray-200 bg-white hover:border-gray-300 shadow-2xs"
-                    }`}
-                  >
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-black text-gray-900">
-                          Sprint {s.nomorSprint}
-                        </span>
+                  return (
+                    <button
+                      key={s.id || s.nomorSprint}
+                      type="button"
+                      onClick={() => setSection1SprintNum(s.nomorSprint)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isTabSelected
+                          ? "bg-[#0F5132] text-white shadow-xs"
+                          : "bg-gray-100/90 text-gray-700 hover:bg-gray-200 border border-gray-200/80"
+                      }`}
+                    >
+                      <span>Sprint {s.nomorSprint}</span>
+                      {isAktif && (
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                      )}
+                      {isSelesai && (
+                        <Check className={`h-3.5 w-3.5 ${isTabSelected ? "text-white" : "text-emerald-600"}`} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Sprint Summary Card */}
+            {(() => {
+              const selectedSection1Sprint =
+                sprints.find((s) => s.nomorSprint === section1SprintNum) || sprints[0];
+              if (!selectedSection1Sprint) return null;
+
+              const isAktif = selectedSection1Sprint.status === "aktif";
+              const isSelesai = selectedSection1Sprint.status === "selesai";
+              const isBelum = selectedSection1Sprint.status === "belum_dimulai";
+              const sprintCards = cards.filter(
+                (c) => c.sprintNumber === selectedSection1Sprint.nomorSprint
+              );
+              const totalHours = sprintCards.reduce((acc, c) => acc + (c.estimasiJam || 0), 0);
+
+              return (
+                <div
+                  className={`rounded-2xl border p-5 transition-all ${
+                    isAktif
+                      ? "border-emerald-500 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-400/50"
+                      : isSelesai
+                      ? "border-blue-200 bg-blue-50/20"
+                      : "border-gray-200 bg-gray-50/60"
+                  }`}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-2 max-w-2xl">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h3 className="text-base font-extrabold text-gray-900">
+                          Sprint {selectedSection1Sprint.nomorSprint}
+                          {selectedSection1Sprint.tujuan
+                            ? `: ${selectedSection1Sprint.tujuan.replace(
+                                new RegExp(`^Sprint\\s*${selectedSection1Sprint.nomorSprint}\\s*:\\s*`, "i"),
+                                ""
+                              )}`
+                            : ""}
+                        </h3>
                         <Badge
                           variant={isAktif ? "success" : isSelesai ? "secondary" : "outline"}
                           className="text-[10px] font-bold"
                         >
-                          {isAktif ? "🟢 Aktif" : isSelesai ? "🔵 Selesai" : "⚪ Belum Dimulai"}
+                          {isAktif
+                            ? "🟢 Aktif — Sedang Berjalan"
+                            : isSelesai
+                            ? "🔵 Selesai"
+                            : "⚪ Belum Direncanakan"}
                         </Badge>
                       </div>
 
-                      <p className="text-xs font-medium text-gray-700 line-clamp-2">
-                        {s.tujuan || `Sprint ${s.nomorSprint}`}
-                      </p>
-
-                      <div className="flex items-center gap-3 text-[11px] text-gray-500 pt-1">
-                        <span className="flex items-center gap-1">
-                          <Layers className="h-3 w-3 text-gray-400" />
-                          {sprintCards.length} kartu
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                        <span className="flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5 text-gray-500" />
+                          <strong>{sprintCards.length}</strong> kartu kerja
                         </span>
                         {totalHours > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-gray-400" />
-                            {totalHours} jam
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-gray-500" />
+                            <strong>{totalHours}</strong> jam total estimasi
+                          </span>
+                        )}
+                        {selectedSection1Sprint.tanggalMulaiRencana && (
+                          <span className="flex items-center gap-1.5 font-mono text-[11px] text-gray-500">
+                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                            {formatDateIndo(selectedSection1Sprint.tanggalMulaiRencana)} –{" "}
+                            {formatDateIndo(selectedSection1Sprint.tanggalSelesaiRencana)}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* CTA Actions */}
-                    <div>
+                    {/* Action Button */}
+                    <div className="shrink-0">
                       {isBelum && (
                         <Button
                           size="sm"
-                          onClick={() => handleSelectSprintForPlanning(s.nomorSprint)}
-                          className="w-full text-xs font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-2xs gap-1.5 cursor-pointer"
+                          onClick={() => handleSelectSprintForPlanning(selectedSection1Sprint.nomorSprint)}
+                          className="w-full md:w-auto text-xs font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white px-5 py-2.5 rounded-xl shadow-sm gap-2 cursor-pointer"
                         >
                           <span>Buka Planning</span>
-                          <ArrowRight className="h-3.5 w-3.5" />
+                          <ArrowRight className="h-4 w-4" />
                         </Button>
                       )}
 
                       {isAktif && (
                         <Button
                           size="sm"
-                          onClick={() => handleSelectSprintForBoard(s.nomorSprint)}
-                          className="w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-2xs gap-1.5 cursor-pointer"
+                          onClick={() => handleSelectSprintForBoard(selectedSection1Sprint.nomorSprint)}
+                          className="w-full md:w-auto text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl shadow-sm gap-2 cursor-pointer"
                         >
-                          <PlayCircle className="h-3.5 w-3.5" />
+                          <PlayCircle className="h-4 w-4" />
                           <span>Lanjut ke Board</span>
                         </Button>
                       )}
@@ -1511,18 +1569,18 @@ export function KanbanClient({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleSelectSprintForBoard(s.nomorSprint)}
-                          className="w-full text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-xl gap-1.5 cursor-pointer"
+                          onClick={() => handleSelectSprintForBoard(selectedSection1Sprint.nomorSprint)}
+                          className="w-full md:w-auto text-xs font-bold text-gray-700 hover:bg-gray-100 px-5 py-2.5 rounded-xl gap-2 cursor-pointer"
                         >
-                          <FolderKanban className="h-3.5 w-3.5" />
+                          <FolderKanban className="h-4 w-4" />
                           <span>Lihat Board</span>
                         </Button>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
