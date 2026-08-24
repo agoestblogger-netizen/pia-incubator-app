@@ -1,11 +1,5 @@
-import { PageLoadingSkeleton } from '@/components/ui/PageLoadingSkeleton';
+import { CenteredPageLoader } from '@/components/ui/CenteredPageLoader';
 
 export default function KeuanganLoading() {
-  return (
-    <PageLoadingSkeleton
-      variant="keuangan"
-      title="Manajemen Keuangan & Anggaran Inovasi"
-      subtitle="Memuat ringkasan alokasi dana, pengajuan termin RAB, dan status LPJ..."
-    />
-  );
+  return <CenteredPageLoader />;
 }

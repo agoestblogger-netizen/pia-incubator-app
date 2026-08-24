@@ -1,11 +1,5 @@
-import { PageLoadingSkeleton } from '@/components/ui/PageLoadingSkeleton';
+import { CenteredPageLoader } from '@/components/ui/CenteredPageLoader';
 
 export default function TimMainLoading() {
-  return (
-    <PageLoadingSkeleton
-      variant="kanban"
-      title="Kanban Board & Eksekusi Sprint"
-      subtitle="Memuat kartu kerja, status sprint, dan alur kerja tim..."
-    />
-  );
+  return <CenteredPageLoader />;
 }

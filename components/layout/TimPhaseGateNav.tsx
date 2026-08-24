@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -14,9 +14,6 @@ import {
   Kanban,
   CheckCircle2,
   AlertTriangle,
-  ArrowLeft,
-  Sparkles,
-  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -38,9 +35,6 @@ export function TimPhaseGateNav({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [navigatingTarget, setNavigatingTarget] = useState<string | null>(null);
-
   const [lockedModal, setLockedModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -53,23 +47,6 @@ export function TimPhaseGateNav({
 
   const { timId, namaTim, activeSprint, gates } = phaseGateStatus;
   const isMainKanban = pathname === `/tim/${timId}`;
-
-  // Reset navigating target when path changes
-  useEffect(() => {
-    setNavigatingTarget(null);
-  }, [pathname]);
-
-  const handleNavigate = (href: string, e: React.MouseEvent) => {
-    if (pathname === href) {
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    setNavigatingTarget(href);
-    startTransition(() => {
-      router.push(href);
-    });
-  };
 
   const gateItems = [
     {
@@ -132,22 +109,13 @@ export function TimPhaseGateNav({
         title: item.name,
         reason: item.reason || "Syarat fase sebelumnya belum terpenuhi.",
       });
-    } else {
-      handleNavigate(item.href, e);
     }
   };
 
   return (
     <div className="space-y-4">
       {/* 1. Header Workspace: Nama Tim, Status Sprint, dan Navigasi Ringkas (Overview + Kanban) */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3 relative overflow-hidden">
-        {/* Top Loading Progress Bar when transitioning */}
-        {isPending && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-100 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-[#0F5132] via-emerald-500 to-[#E6CA65] w-full animate-pulse" />
-          </div>
-        )}
-
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0F5132] bg-[#0F5132]/10 px-2.5 py-0.5 rounded-md">
@@ -167,13 +135,6 @@ export function TimPhaseGateNav({
                 ⚪ Belum ada sprint aktif
               </Badge>
             )}
-
-            {isPending && (
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#0F5132] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Memuat Halaman...</span>
-              </span>
-            )}
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">
             {namaTim}
@@ -184,36 +145,26 @@ export function TimPhaseGateNav({
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
           <Link
             href={gates.overview.href}
-            onClick={(e) => handleNavigate(gates.overview.href, e)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
               pathname === gates.overview.href
                 ? "bg-[#0F5132] text-white border-[#0F5132]"
                 : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
-            } ${navigatingTarget === gates.overview.href ? "opacity-75 ring-2 ring-[#0F5132]" : ""}`}
+            }`}
           >
-            {navigatingTarget === gates.overview.href ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <LayoutDashboard className="h-3.5 w-3.5" />
-            )}
-            <span>{navigatingTarget === gates.overview.href ? "Memuat Overview..." : "Overview Tim"}</span>
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            <span>Overview Tim</span>
           </Link>
 
           <Link
             href={`/tim/${timId}`}
-            onClick={(e) => handleNavigate(`/tim/${timId}`, e)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
               isMainKanban
                 ? "bg-[#0F5132] text-white border-[#0F5132]"
                 : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
-            } ${navigatingTarget === `/tim/${timId}` ? "opacity-75 ring-2 ring-[#0F5132]" : ""}`}
+            }`}
           >
-            {navigatingTarget === `/tim/${timId}` ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Kanban className="h-3.5 w-3.5" />
-            )}
-            <span>{navigatingTarget === `/tim/${timId}` ? "Memuat Kanban..." : "Ke Kanban Board & Roadmap"}</span>
+            <Kanban className="h-3.5 w-3.5" />
+            <span>Ke Kanban Board & Roadmap</span>
           </Link>
         </div>
       </div>
@@ -222,7 +173,6 @@ export function TimPhaseGateNav({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
         {gateItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
-          const isNavigatingThis = navigatingTarget === item.href;
           const Icon = item.icon;
 
           if (!item.unlocked) {
@@ -259,11 +209,8 @@ export function TimPhaseGateNav({
             <Link
               key={item.id}
               href={item.href}
-              onClick={(e) => handleBoxClick(item, e)}
               className={`relative p-3.5 rounded-2xl border transition-all flex flex-col justify-between min-h-[90px] shadow-2xs group ${
-                isNavigatingThis
-                  ? "bg-emerald-50/90 border-[#0F5132] ring-2 ring-[#0F5132]/40 scale-[0.98]"
-                  : isActive
+                isActive
                   ? "bg-green-50/80 border-[#0F5132] ring-2 ring-[#0F5132]/20"
                   : "bg-white border-gray-200 hover:border-[#0F5132]/60 hover:shadow-xs"
               }`}
@@ -271,18 +218,12 @@ export function TimPhaseGateNav({
               <div className="flex items-start justify-between gap-1">
                 <div
                   className={`p-1.5 rounded-xl transition-colors ${
-                    isNavigatingThis
-                      ? "bg-[#0F5132] text-white"
-                      : isActive
+                    isActive
                       ? "bg-[#0F5132] text-white"
                       : "bg-[#0F5132]/10 text-[#0F5132] group-hover:bg-[#0F5132] group-hover:text-white"
                   }`}
                 >
-                  {isNavigatingThis ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Icon className="h-4 w-4" />
-                  )}
+                  <Icon className="h-4 w-4" />
                 </div>
 
                 {item.badge && (
@@ -291,24 +232,18 @@ export function TimPhaseGateNav({
                     {item.badge}
                   </span>
                 )}
-
-                {isNavigatingThis && (
-                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-600 text-white animate-pulse">
-                    Memuat...
-                  </span>
-                )}
               </div>
 
               <div className="mt-2 space-y-0.5">
                 <span
                   className={`text-xs font-extrabold block line-clamp-1 ${
-                    isNavigatingThis || isActive ? "text-[#0F5132]" : "text-gray-900"
+                    isActive ? "text-[#0F5132]" : "text-gray-900"
                   }`}
                 >
                   {item.name}
                 </span>
                 <span className="text-[10px] text-gray-400 block line-clamp-1">
-                  {isNavigatingThis ? "Sedang memuat data..." : item.description}
+                  {item.description}
                 </span>
               </div>
             </Link>

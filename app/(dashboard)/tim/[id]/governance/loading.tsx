@@ -1,11 +1,5 @@
-import { PageLoadingSkeleton } from '@/components/ui/PageLoadingSkeleton';
+import { CenteredPageLoader } from '@/components/ui/CenteredPageLoader';
 
 export default function GovernanceLoading() {
-  return (
-    <PageLoadingSkeleton
-      variant="table"
-      title="Governance & Kepatuhan Inovasi"
-      subtitle="Memuat tinjauan kepatuhan, matriks risiko, dan dokumen governance tim..."
-    />
-  );
+  return <CenteredPageLoader />;
 }
