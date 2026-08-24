@@ -1344,9 +1344,39 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         });
       }
 
+      if (snap.data_submisi) {
+        const sub = snap.data_submisi as any;
+        if (sub.dokumen_proposal_url && !dossierDocs.some((d) => d.fileUrl === sub.dokumen_proposal_url)) {
+          dossierDocs.push({
+            fileName: 'Dokumen Proposal.pdf',
+            fileUrl: sub.dokumen_proposal_url,
+            fileType: 'application/pdf',
+            fileSize: 0,
+          });
+        }
+        if (sub.proposal_resubmission_url && !dossierDocs.some((d) => d.fileUrl === sub.proposal_resubmission_url)) {
+          dossierDocs.push({
+            fileName: 'Proposal Resubmission.pdf',
+            fileUrl: sub.proposal_resubmission_url,
+            fileType: 'application/pdf',
+            fileSize: 0,
+          });
+        }
+        if (sub.surat_originalitas_url && !dossierDocs.some((d) => d.fileUrl === sub.surat_originalitas_url)) {
+          dossierDocs.push({
+            fileName: 'Surat Originalitas.pdf',
+            fileUrl: sub.surat_originalitas_url,
+            fileType: 'application/pdf',
+            fileSize: 0,
+          });
+        }
+      }
+
       if (dossierDocs.length > 0) {
         const roadmapCards = insertedCards.filter(
-          (c) => c.tahap === 'innovation_setup' && c.label !== 'Template Baku CV' && c.label !== 'Template Baku MV'
+          (c) =>
+            c.label === 'Draf Roadmap' ||
+            (c.tahap === 'innovation_setup' && c.label !== 'Template Baku CV' && c.label !== 'Template Baku MV')
         );
 
         const attachmentsToInsert: Array<typeof taskAttachment.$inferInsert> = [];

@@ -940,6 +940,8 @@ export function KanbanClient({
   const handleSelectReferenceCardInModal = (refCardId: string) => {
     setSelectedRefCardId(refCardId);
     if (!refCardId) {
+      setAttachments([]);
+      setLinks([]);
       return;
     }
 
@@ -950,6 +952,9 @@ export function KanbanClient({
       setDetailAcceptanceCriteria(ref.acceptanceCriteria || "");
       setDetailTahap(ref.tahap || "innovation_setup");
       setDetailLabel(ref.label || "Draf Roadmap");
+      // Fetch attachments & links from selected reference card
+      fetchTaskAttachments(ref.id);
+      fetchTaskLinks(ref.id);
     }
   };
 
