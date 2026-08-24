@@ -61,11 +61,13 @@ import {
   Video,
   HardDrive,
   Download,
+  Target,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
 import {
   getColumnPillStyle,
   getPastelCardVariant,
+  getPhaseTokenBySlug,
   PHASE_TOKENS,
 } from "@/lib/theme/tokens";
 
@@ -1634,192 +1636,217 @@ export function KanbanClient({
         }}
       >
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-2 pr-4">
-              <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <KanbanIcon className="h-4 w-4 text-[#0F5132]" />
-                Detail & Sunting Kartu Task
-              </DialogTitle>
-              {selectedCardForDetail?.sprintNumber ? (
-                <Badge variant="secondary" className="text-[10px]">
-                  Sprint {selectedCardForDetail.sprintNumber}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px] text-slate-500">
-                  📦 Backlog
-                </Badge>
-              )}
-            </div>
-          </DialogHeader>
+          {(() => {
+            const currentPhaseToken = getPhaseTokenBySlug(detailTahap);
+            const modalColumnName = detailStatusKolom || (selectedCardForDetail?.sprintNumber ? "To Do" : "Backlog");
+            const modalPillStyle = getColumnPillStyle(modalColumnName);
 
-          <form onSubmit={handleSaveCardDetail} className="space-y-4 py-2 text-xs">
-            {/* Judul */}
-            <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Judul Kartu / Task *
-              </label>
-              <Input
-                value={detailJudul}
-                disabled={!canEdit}
-                onChange={(e) => setDetailJudul(e.target.value)}
-                required
-                className="text-xs font-semibold"
-              />
-            </div>
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center justify-between gap-2 pr-4">
+                    <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                      <KanbanIcon className="h-4 w-4 text-[#0F5132]" />
+                      Detail & Sunting Kartu Task
+                    </DialogTitle>
+                    <div
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold text-white shadow-2xs border border-white/20"
+                      style={{ backgroundColor: modalPillStyle.hex }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      <span>{modalColumnName}</span>
+                    </div>
+                  </div>
+                </DialogHeader>
 
-            {/* Deskripsi Lengkap */}
-            <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Deskripsi Lengkap
-              </label>
-              <Textarea
-                rows={5}
-                value={detailDeskripsi}
-                disabled={!canEdit}
-                placeholder="Rincian lengkap aktivitas, acceptance criteria, atau langkah implementasi..."
-                onChange={(e) => setDetailDeskripsi(e.target.value)}
-                className="text-xs leading-relaxed font-normal"
-              />
-            </div>
+                <form onSubmit={handleSaveCardDetail} className="space-y-4 py-2 text-xs">
+                  {/* Judul Kartu / Task — Beraksen Token Fase (Border 2px + Tint 5%) */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">
+                      Judul Kartu / Task *
+                    </label>
+                    <Input
+                      value={detailJudul}
+                      disabled={!canEdit}
+                      onChange={(e) => setDetailJudul(e.target.value)}
+                      required
+                      style={{
+                        border: `2px solid ${currentPhaseToken.accentColor}`,
+                        backgroundColor: `${currentPhaseToken.accentColor}0D`,
+                      }}
+                      className="text-xs font-bold transition-all shadow-2xs"
+                    />
+                  </div>
 
-            {/* Grid 1: Tahap Inkubasi & Penugasan Sprint */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Tahap Inkubasi
-                </label>
-                <select
-                  value={detailTahap}
-                  disabled={!canEdit}
-                  onChange={(e) => setDetailTahap(e.target.value)}
-                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
-                >
-                  <option value="innovation_setup">Innovation Setup</option>
-                  <option value="customer_validation">Customer Validation</option>
-                  <option value="market_validation">Market Validation</option>
-                  <option value="umum">Umum</option>
-                </select>
-              </div>
+                  {/* Deskripsi Lengkap */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">
+                      Deskripsi Lengkap
+                    </label>
+                    <Textarea
+                      rows={5}
+                      value={detailDeskripsi}
+                      disabled={!canEdit}
+                      placeholder="Rincian lengkap aktivitas, acceptance criteria, atau langkah implementasi..."
+                      onChange={(e) => setDetailDeskripsi(e.target.value)}
+                      className="text-xs leading-relaxed font-normal"
+                    />
+                  </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Penugasan Sprint
-                </label>
-                <select
-                  value={detailSprintNumber === null ? "backlog" : String(detailSprintNumber)}
-                  disabled={!canEdit}
-                  onChange={(e) => {
-                    const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
-                    setDetailSprintNumber(val);
-                  }}
-                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
-                >
-                  <option value="backlog">📦 Backlog (Tanpa Sprint)</option>
-                  {sprints.map((s) => (
-                    <option key={s.nomorSprint} value={s.nomorSprint}>
-                      Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                  {/* Grid 1: Tahap Inkubasi & Penugasan Sprint */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label
+                        className="text-xs font-bold block mb-1 flex items-center gap-1.5"
+                        style={{ color: currentPhaseToken.accentColor }}
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full inline-block transition-colors"
+                          style={{ backgroundColor: currentPhaseToken.accentColor }}
+                        />
+                        <span>Tahap Inkubasi</span>
+                      </label>
+                      <select
+                        value={detailTahap}
+                        disabled={!canEdit}
+                        onChange={(e) => setDetailTahap(e.target.value)}
+                        style={{
+                          border: `1.5px solid ${currentPhaseToken.accentColor}`,
+                          backgroundColor: `${currentPhaseToken.accentColor}08`,
+                        }}
+                        className="w-full text-xs bg-white rounded-md p-2 text-gray-800 font-semibold transition-all shadow-2xs"
+                      >
+                        <option value="innovation_setup">Innovation Setup</option>
+                        <option value="customer_validation">Customer Validation</option>
+                        <option value="market_validation">Market Validation</option>
+                        <option value="umum">Umum</option>
+                      </select>
+                    </div>
 
-            {/* Grid 2: Status Kolom & PIC Owner */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Status Kolom
-                </label>
-                <select
-                  value={detailStatusKolom}
-                  disabled={!canEdit}
-                  onChange={(e) => setDetailStatusKolom(e.target.value)}
-                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
-                >
-                  {columns.map((c) => (
-                    <option key={c.namaKolom} value={c.namaKolom}>
-                      {c.namaKolom}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Penugasan Sprint
+                      </label>
+                      <select
+                        value={detailSprintNumber === null ? "backlog" : String(detailSprintNumber)}
+                        disabled={!canEdit}
+                        onChange={(e) => {
+                          const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
+                          setDetailSprintNumber(val);
+                        }}
+                        className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                      >
+                        <option value="backlog">📦 Backlog (Tanpa Sprint)</option>
+                        {sprints.map((s) => (
+                          <option key={s.nomorSprint} value={s.nomorSprint}>
+                            Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Owner / PIC Anggota Tim
-                </label>
-                <select
-                  value={detailOwnerAnggotaId || ""}
-                  disabled={!canEdit}
-                  onChange={(e) => setDetailOwnerAnggotaId(e.target.value || null)}
-                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
-                >
-                  <option value="">-- Belum Ditugaskan --</option>
-                  {anggotaTim.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nama} ({a.jabatan || a.unitKerja || "Anggota"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                  {/* Grid 2: Status Kolom & PIC Owner */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Status Kolom
+                      </label>
+                      <select
+                        value={detailStatusKolom}
+                        disabled={!canEdit}
+                        onChange={(e) => setDetailStatusKolom(e.target.value)}
+                        className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                      >
+                        {columns.map((c) => (
+                          <option key={c.namaKolom} value={c.namaKolom}>
+                            {c.namaKolom}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-            {/* Label / Tag */}
-            <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Label / Tag
-              </label>
-              <Input
-                placeholder="Draf Roadmap, Template Baku CV, MVP, SME, dll"
-                value={detailLabel}
-                disabled={!canEdit}
-                onChange={(e) => setDetailLabel(e.target.value)}
-                className="text-xs"
-              />
-            </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Owner / PIC Anggota Tim
+                      </label>
+                      <select
+                        value={detailOwnerAnggotaId || ""}
+                        disabled={!canEdit}
+                        onChange={(e) => setDetailOwnerAnggotaId(e.target.value || null)}
+                        className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
+                      >
+                        <option value="">-- Belum Ditugaskan --</option>
+                        {anggotaTim.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.nama} ({a.jabatan || a.unitKerja || "Anggota"})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-            {/* Dates: Mulai & Selesai */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Tanggal Mulai
-                </label>
-                <Input
-                  type="date"
-                  value={detailTanggalMulai}
-                  disabled={!canEdit}
-                  onChange={(e) => setDetailTanggalMulai(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Target Selesai
-                </label>
-                <Input
-                  type="date"
-                  value={detailTanggalSelesai}
-                  disabled={!canEdit}
-                  onChange={(e) => setDetailTanggalSelesai(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-            </div>
+                  {/* Label / Tag */}
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">
+                      Label / Tag
+                    </label>
+                    <Input
+                      placeholder="Draf Roadmap, Template Baku CV, MVP, SME, dll"
+                      value={detailLabel}
+                      disabled={!canEdit}
+                      onChange={(e) => setDetailLabel(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
 
-            {/* Acceptance Criteria */}
-            <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Acceptance Criteria / Tolok Ukur Keberhasilan
-              </label>
-              <Textarea
-                rows={2}
-                value={detailAcceptanceCriteria}
-                disabled={!canEdit}
-                placeholder="Kriteria task dianggap tuntas..."
-                onChange={(e) => setDetailAcceptanceCriteria(e.target.value)}
-                className="text-xs"
-              />
-            </div>
+                  {/* Dates: Mulai & Selesai */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Tanggal Mulai
+                      </label>
+                      <Input
+                        type="date"
+                        value={detailTanggalMulai}
+                        disabled={!canEdit}
+                        onChange={(e) => setDetailTanggalMulai(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">
+                        Target Selesai
+                      </label>
+                      <Input
+                        type="date"
+                        value={detailTanggalSelesai}
+                        disabled={!canEdit}
+                        onChange={(e) => setDetailTanggalSelesai(e.target.value)}
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Acceptance Criteria — Beraksen Emerald (#0E8C55) Tetap */}
+                  <div>
+                    <label className="text-xs font-bold text-[#0E8C55] block mb-1 flex items-center gap-1.5">
+                      <Target className="h-3.5 w-3.5 text-[#0E8C55]" />
+                      <span>Acceptance Criteria / Tolok Ukur Keberhasilan</span>
+                    </label>
+                    <Textarea
+                      rows={3}
+                      value={detailAcceptanceCriteria}
+                      disabled={!canEdit}
+                      placeholder="Kriteria task dianggap tuntas..."
+                      onChange={(e) => setDetailAcceptanceCriteria(e.target.value)}
+                      style={{
+                        border: "1.5px solid #0E8C55",
+                        backgroundColor: "#0E8C550D",
+                      }}
+                      className="text-xs font-medium"
+                    />
+                  </div>
 
             {/* Dependency & Risiko */}
             <div>
@@ -2135,8 +2162,11 @@ export function KanbanClient({
               </div>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </>
+      );
+    })()}
+  </DialogContent>
+</Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────── */}
       {/* Modal / Dialog Tambah Kartu Baru */}

@@ -119,6 +119,27 @@ export const PHASE_TOKENS: Record<string, PhaseToken> = {
   },
 };
 
+export function getPhaseTokenBySlug(stageSlug?: string | null): PhaseToken {
+  if (!stageSlug) return PHASE_TOKENS.phase1;
+  const slug = stageSlug.toLowerCase().trim();
+  if (slug.includes("setup") || slug.includes("phase1") || slug.includes("tahap 1") || slug.includes("charter")) {
+    return PHASE_TOKENS.phase1;
+  }
+  if (slug.includes("customer") || slug.includes("cust") || slug.includes("phase2") || slug.includes("tahap 2")) {
+    return PHASE_TOKENS.phase2;
+  }
+  if (slug.includes("market") || slug.includes("phase3") || slug.includes("tahap 3")) {
+    return PHASE_TOKENS.phase3;
+  }
+  if (slug.includes("keuangan") || slug.includes("rab") || slug.includes("lpj") || slug.includes("phase4") || slug.includes("tahap 4")) {
+    return PHASE_TOKENS.phase4;
+  }
+  if (slug.includes("governance") || slug.includes("fmi") || slug.includes("hasil") || slug.includes("phase5") || slug.includes("tahap 5")) {
+    return PHASE_TOKENS.phase5;
+  }
+  return PHASE_TOKENS.phase1;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 3. ALTERNATING PASTEL CARDS (For Kanban Backlog & Lists)
 // ═══════════════════════════════════════════════════════════════════════════════
