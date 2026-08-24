@@ -45,6 +45,8 @@ import {
   Layers,
   Settings2,
   Sparkles,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { RoleProposalHintTooltip } from "./RoleProposalHintTooltip";
 
@@ -223,6 +225,18 @@ export function CharterFormClient({
   const [targetSprintCount, setTargetSprintCount] = useState(sprints.length);
   const [sprintAlasan, setSprintAlasan] = useState("");
   const [savingSprintCount, setSavingSprintCount] = useState(false);
+
+  // Collapsible Sections State (All 4 collapsed by default)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    roles: false,
+    problem: false,
+    solution: false,
+    governance: false,
+  });
+
+  const toggleSection = (key: string) => {
+    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Auto-created Accounts Dialog State
   const [newlyCreatedAccounts, setNewlyCreatedAccounts] = useState<
@@ -468,591 +482,704 @@ export function CharterFormClient({
       {/* BAGIAN 0: STRUKTUR ROLE & AKUNTABILITAS TIM (MULTI-PERSON SUPPORT) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-gray-50 via-white to-gray-50/50 border-b border-gray-100 pb-4">
+        <CardHeader
+          onClick={() => toggleSection("roles")}
+          className="bg-gradient-to-r from-gray-50 via-white to-gray-50/50 border-b border-gray-100 p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-100/60 transition-colors"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Users className="h-5 w-5 text-[#0F5132]" />
-                Struktur Role & Akuntabilitas Tim
-              </CardTitle>
-              <CardDescription className="text-xs text-gray-500 mt-1">
-                Pilih atau buat akun pengguna untuk setiap peran tim. Role Inisiator, Co-creators, dan SME mendukung banyak orang (multi-person).
-              </CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                {expandedSections.roles ? (
+                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-500" />
+                )}
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-[#0F5132]" />
+                  Struktur Role & Akuntabilitas Tim
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Pilih atau buat akun pengguna untuk setiap peran tim (Inisiator, Co-creators, SME, Promotor, PO, Coach, Sponsor).
+                </CardDescription>
+              </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F5132]/10 text-[#0F5132] text-xs font-bold border border-[#0F5132]/20">
-              <UserCheck className="h-3.5 w-3.5" />
-              Integrasi Akun User Otomatis
-            </span>
+
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+                <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <span>{roleAssignments.filter((r) => r.userId || r.userName).length} Akun Terdaftar</span>
+              </span>
+              <span className="text-xs text-gray-400 font-medium">
+                {expandedSections.roles ? "Tutup" : "Buka"}
+              </span>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-600 font-bold">
-                  <th className="p-3.5 w-64">Peran & Akuntabilitas</th>
-                  <th className="p-3.5 min-w-[280px]">Nama / Akun User (Searchable)</th>
-                  <th className="p-3.5 min-w-[180px]">Jabatan Organisasi</th>
-                  <th className="p-3.5 min-w-[180px]">Unit Kerja / Divisi</th>
-                  <th className="p-3.5 w-12 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {ROLES_CONFIG.map((config) => {
-                  const roleItems = roleAssignments.filter(
-                    (item) => item.roleCode === config.roleCode
-                  );
+        {expandedSections.roles && (
+          <CardContent className="p-0 animate-in fade-in duration-150">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-600 font-bold">
+                    <th className="p-3.5 w-64">Peran & Akuntabilitas</th>
+                    <th className="p-3.5 min-w-[280px]">Nama / Akun User (Searchable)</th>
+                    <th className="p-3.5 min-w-[180px]">Jabatan Organisasi</th>
+                    <th className="p-3.5 min-w-[180px]">Unit Kerja / Divisi</th>
+                    <th className="p-3.5 w-12 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {ROLES_CONFIG.map((config) => {
+                    const roleItems = roleAssignments.filter(
+                      (item) => item.roleCode === config.roleCode
+                    );
 
-                  return (
-                    <tr key={config.roleCode} className="hover:bg-gray-50/40 transition-colors">
-                      {/* Role & Accountability Info Header */}
-                      <td className="p-3.5 align-top">
-                        <div className="space-y-1.5">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="font-bold text-gray-900 text-xs">{config.title}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${config.badgeColor}`}>
-                              {config.badge}
-                            </span>
-                            {/* Inline Hint Badge & Tooltip */}
-                            {config.roleCode === 'promotor' && usulanPromotorHint && (
-                              <RoleProposalHintTooltip
-                                title="Usulan Promotor dari Proposal"
-                                content={usulanPromotorHint}
-                                badgeLabel="Ada usulan"
-                                color="amber"
-                              />
-                            )}
-                            {config.roleCode === 'project_owner' && usulanPoHint && (
-                              <RoleProposalHintTooltip
-                                title="Saran Project Owner"
-                                content={usulanPoHint}
-                                badgeLabel="Saran PO"
-                                color="emerald"
-                              />
+                    return (
+                      <tr key={config.roleCode} className="hover:bg-gray-50/40 transition-colors">
+                        {/* Role & Accountability Info Header */}
+                        <td className="p-3.5 align-top">
+                          <div className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-bold text-gray-900 text-xs">{config.title}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${config.badgeColor}`}>
+                                {config.badge}
+                              </span>
+                              {/* Inline Hint Badge & Tooltip */}
+                              {config.roleCode === 'promotor' && usulanPromotorHint && (
+                                <RoleProposalHintTooltip
+                                  title="Usulan Promotor dari Proposal"
+                                  content={usulanPromotorHint}
+                                  badgeLabel="Ada usulan"
+                                  color="amber"
+                                />
+                              )}
+                              {config.roleCode === 'project_owner' && usulanPoHint && (
+                                <RoleProposalHintTooltip
+                                  title="Saran Project Owner"
+                                  content={usulanPoHint}
+                                  badgeLabel="Saran PO"
+                                  color="emerald"
+                                />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-gray-500 leading-relaxed">
+                              {config.accountability}
+                            </p>
+                            {config.isMulti ? (
+                              <span className="inline-block text-[10px] text-[#0F5132] font-semibold bg-[#0F5132]/5 px-2 py-0.5 rounded-md border border-[#0F5132]/20">
+                                * Multi-orang ({roleItems.length} Orang)
+                              </span>
+                            ) : (
+                              <span className="inline-block text-[10px] text-gray-400">
+                                * 1 Orang (Lead)
+                              </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-gray-500 leading-relaxed">
-                            {config.accountability}
-                          </p>
-                          {config.isMulti ? (
-                            <span className="inline-block text-[10px] text-[#0F5132] font-semibold bg-[#0F5132]/5 px-2 py-0.5 rounded-md border border-[#0F5132]/20">
-                              * Multi-orang ({roleItems.length} Orang)
-                            </span>
-                          ) : (
-                            <span className="inline-block text-[10px] text-gray-400">
-                              * 1 Orang (Lead)
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Inputs Column: Single row or Multi-Person Stack */}
-                      <td colSpan={4} className="p-0 align-top">
-                        <div className="divide-y divide-gray-100">
-                          {roleItems.length === 0 ? (
-                            <div className="p-3 text-center text-gray-400 italic text-xs">
-                              Belum ada orang ditugaskan.
-                            </div>
-                          ) : (
-                            roleItems.map((item, index) => {
-                              const selectedUser = item.userId
-                                ? {
-                                    id: item.userId,
-                                    nama: item.userName || "",
-                                    email: item.userEmail || "",
-                                  }
-                                : null;
+                        {/* Inputs Column: Single row or Multi-Person Stack */}
+                        <td colSpan={4} className="p-0 align-top">
+                          <div className="divide-y divide-gray-100">
+                            {roleItems.length === 0 ? (
+                              <div className="p-3 text-center text-gray-400 italic text-xs">
+                                Belum ada orang ditugaskan.
+                              </div>
+                            ) : (
+                              roleItems.map((item, index) => {
+                                const selectedUser = item.userId
+                                  ? {
+                                      id: item.userId,
+                                      nama: item.userName || "",
+                                      email: item.userEmail || "",
+                                    }
+                                  : null;
 
-                              return (
-                                <div
-                                  key={item.id}
-                                  className="grid grid-cols-[minmax(280px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_48px] items-center p-3 gap-2"
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="grid grid-cols-[minmax(280px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_48px] items-center p-3 gap-2"
+                                  >
+                                    {/* User Combobox */}
+                                    <div>
+                                      <UserSelectCombobox
+                                        value={item.userId || null}
+                                        selectedUserData={selectedUser}
+                                        disabled={isReadOnly}
+                                        onChange={(user) =>
+                                          handlePersonUserChange(item.id!, user)
+                                        }
+                                        placeholder={`Pilih akun untuk ${config.title}${
+                                          config.isMulti ? ` #${index + 1}` : ""
+                                        }...`}
+                                      />
+                                    </div>
+
+                                    {/* Jabatan */}
+                                    <div>
+                                      <Input
+                                        disabled={isReadOnly}
+                                        placeholder="Contoh: Dept Head Digital"
+                                        value={item.jabatan || ""}
+                                        onChange={(e) =>
+                                          handlePersonDetailChange(
+                                            item.id!,
+                                            "jabatan",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="disabled:bg-gray-50 text-xs h-9"
+                                      />
+                                    </div>
+
+                                    {/* Unit Kerja */}
+                                    <div>
+                                      <Input
+                                        disabled={isReadOnly}
+                                        placeholder="Contoh: Divisi Bisnis Digital"
+                                        value={item.unitKerja || ""}
+                                        onChange={(e) =>
+                                          handlePersonDetailChange(
+                                            item.id!,
+                                            "unitKerja",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="disabled:bg-gray-50 text-xs h-9"
+                                      />
+                                    </div>
+
+                                    {/* Action Delete */}
+                                    <div className="text-center">
+                                      {config.isMulti && !isReadOnly && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemovePerson(item.id)}
+                                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                          title="Hapus baris orang"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+
+                            {/* Multi-add Button for multi-person roles */}
+                            {config.isMulti && !isReadOnly && (
+                              <div className="p-2.5 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddPerson(config.roleCode)}
+                                  className="h-8 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5"
                                 >
-                                  {/* User Combobox */}
-                                  <div>
-                                    <UserSelectCombobox
-                                      value={item.userId || null}
-                                      selectedUserData={selectedUser}
-                                      disabled={isReadOnly}
-                                      onChange={(user) =>
-                                        handlePersonUserChange(item.id!, user)
-                                      }
-                                      placeholder={`Pilih akun untuk ${config.title}${
-                                        config.isMulti ? ` #${index + 1}` : ""
-                                      }...`}
-                                    />
-                                  </div>
-
-                                  {/* Jabatan */}
-                                  <div>
-                                    <Input
-                                      disabled={isReadOnly}
-                                      placeholder="Contoh: Dept Head Digital"
-                                      value={item.jabatan || ""}
-                                      onChange={(e) =>
-                                        handlePersonDetailChange(
-                                          item.id!,
-                                          "jabatan",
-                                          e.target.value
-                                        )
-                                      }
-                                      className="disabled:bg-gray-50 text-xs h-9"
-                                    />
-                                  </div>
-
-                                  {/* Unit Kerja */}
-                                  <div>
-                                    <Input
-                                      disabled={isReadOnly}
-                                      placeholder="Contoh: Divisi Bisnis Digital"
-                                      value={item.unitKerja || ""}
-                                      onChange={(e) =>
-                                        handlePersonDetailChange(
-                                          item.id!,
-                                          "unitKerja",
-                                          e.target.value
-                                        )
-                                      }
-                                      className="disabled:bg-gray-50 text-xs h-9"
-                                    />
-                                  </div>
-
-                                  {/* Action Delete */}
-                                  <div className="text-center">
-                                    {config.isMulti && !isReadOnly && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemovePerson(item.id)}
-                                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                                        title="Hapus baris orang"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-
-                          {/* Multi-add Button for multi-person roles */}
-                          {config.isMulti && !isReadOnly && (
-                            <div className="p-2.5 bg-gray-50/50 border-t border-gray-100 flex justify-end">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleAddPerson(config.roleCode)}
-                                className="h-8 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                <span>+ Tambah {config.title}</span>
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
+                                  <Plus className="h-3.5 w-3.5" />
+                                  <span>+ Tambah {config.title}</span>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 1: PROBLEM & CUSTOMER FOCUS */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-base font-bold text-gray-900">
-            1. Problem & Customer Focus
-          </CardTitle>
-          <CardDescription className="text-xs text-gray-500">
-            Definisi misi proyek, target pengguna awal, dan masalah yang layak diselesaikan
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">
-              Project Mission (Misi Proyek)
-            </label>
-            <Textarea
-              disabled={isReadOnly}
-              rows={2}
-              placeholder="Jelaskan tujuan akhir dari inisiatif inovasi ini..."
-              value={formData.projectMission}
-              onChange={(e) => handleChange("projectMission", e.target.value)}
-              className="disabled:bg-gray-50"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-gray-700">
-                  Customer & Early Adopters
-                </label>
-                {autoFilledFields.includes("customerEarlyAdopters") && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
-                    Terisi otomatis dari proposal
-                  </span>
+      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader
+          onClick={() => toggleSection("problem")}
+          className="p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/60 transition-colors"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                {expandedSections.problem ? (
+                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-500" />
                 )}
               </div>
-              <Textarea
-                disabled={isReadOnly}
-                rows={2}
-                placeholder="Siapa pengguna sasaran awal yang paling merasakan masalah ini?"
-                value={formData.customerEarlyAdopters}
-                onChange={(e) => handleChange("customerEarlyAdopters", e.target.value)}
-                className={`disabled:bg-gray-50 ${autoFilledFields.includes("customerEarlyAdopters") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-gray-700">
-                  Context & Area Bantuan
-                </label>
-                {autoFilledFields.includes("contextAreaBantuan") && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
-                    Terisi otomatis dari proposal
-                  </span>
-                )}
+              <div>
+                <CardTitle className="text-base font-bold text-gray-900">
+                  1. Problem & Customer Focus
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Definisi misi proyek, target pengguna awal, dan masalah yang layak diselesaikan
+                </CardDescription>
               </div>
-              <Textarea
-                disabled={isReadOnly}
-                rows={2}
-                placeholder="Di mana dan dalam konteks operasional apa solusi ini diterapkan?"
-                value={formData.contextAreaBantuan}
-                onChange={(e) => handleChange("contextAreaBantuan", e.target.value)}
-                className={`disabled:bg-gray-50 ${autoFilledFields.includes("contextAreaBantuan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
-              />
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold text-gray-700">
-                Problem Worth Solving (Masalah yang Layak Diselesaikan)
-              </label>
-              {autoFilledFields.includes("problemWorthSolving") && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+            <div className="flex items-center gap-2.5">
+              {autoFilledFields.some((f) =>
+                ["customerEarlyAdopters", "contextAreaBantuan", "problemWorthSolving"].includes(f)
+              ) && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  <Sparkles className="h-3 w-3 text-emerald-600" />
                   Terisi otomatis dari proposal
                 </span>
               )}
+              <span className="text-xs text-gray-400 font-medium">
+                {expandedSections.problem ? "Tutup" : "Buka"}
+              </span>
             </div>
-            <Textarea
-              disabled={isReadOnly}
-              rows={3}
-              placeholder="Deskripsikan akar masalah utama beserta dampaknya jika tidak diselesaikan..."
-              value={formData.problemWorthSolving}
-              onChange={(e) => handleChange("problemWorthSolving", e.target.value)}
-              className={`disabled:bg-gray-50 ${autoFilledFields.includes("problemWorthSolving") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
-            />
           </div>
+        </CardHeader>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">
-              How Might We (HMW Statement)
-            </label>
-            <Input
-              disabled={isReadOnly}
-              placeholder="Bagaimana kita dapat membantu [target pengguna] untuk [mencapai tujuan] tanpa [kendala utama]?"
-              value={formData.hmw}
-              onChange={(e) => handleChange("hmw", e.target.value)}
-              className="disabled:bg-gray-50"
-            />
-          </div>
-        </CardContent>
+        {expandedSections.problem && (
+          <CardContent className="space-y-4 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">
+                Project Mission (Misi Proyek)
+              </label>
+              <Textarea
+                disabled={isReadOnly}
+                rows={2}
+                placeholder="Jelaskan tujuan akhir dari inisiatif inovasi ini..."
+                value={formData.projectMission}
+                onChange={(e) => handleChange("projectMission", e.target.value)}
+                className="disabled:bg-gray-50"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Customer & Early Adopters
+                  </label>
+                  {autoFilledFields.includes("customerEarlyAdopters") && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                      Terisi otomatis dari proposal
+                    </span>
+                  )}
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={2}
+                  placeholder="Siapa pengguna sasaran awal yang paling merasakan masalah ini?"
+                  value={formData.customerEarlyAdopters}
+                  onChange={(e) => handleChange("customerEarlyAdopters", e.target.value)}
+                  className={`disabled:bg-gray-50 ${autoFilledFields.includes("customerEarlyAdopters") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Context & Area Bantuan
+                  </label>
+                  {autoFilledFields.includes("contextAreaBantuan") && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                      Terisi otomatis dari proposal
+                    </span>
+                  )}
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={2}
+                  placeholder="Di mana dan dalam konteks operasional apa solusi ini diterapkan?"
+                  value={formData.contextAreaBantuan}
+                  onChange={(e) => handleChange("contextAreaBantuan", e.target.value)}
+                  className={`disabled:bg-gray-50 ${autoFilledFields.includes("contextAreaBantuan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Problem Worth Solving (Masalah yang Layak Diselesaikan)
+                </label>
+                {autoFilledFields.includes("problemWorthSolving") && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                    Terisi otomatis dari proposal
+                  </span>
+                )}
+              </div>
+              <Textarea
+                disabled={isReadOnly}
+                rows={3}
+                placeholder="Deskripsikan akar masalah utama beserta dampaknya jika tidak diselesaikan..."
+                value={formData.problemWorthSolving}
+                onChange={(e) => handleChange("problemWorthSolving", e.target.value)}
+                className={`disabled:bg-gray-50 ${autoFilledFields.includes("problemWorthSolving") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">
+                How Might We (HMW Statement)
+              </label>
+              <Input
+                disabled={isReadOnly}
+                placeholder="Bagaimana kita dapat membantu [target pengguna] untuk [mencapai tujuan] tanpa [kendala utama]?"
+                value={formData.hmw}
+                onChange={(e) => handleChange("hmw", e.target.value)}
+                className="disabled:bg-gray-50"
+              />
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 2: SOLUSI & DFV HYPOTHESES */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-base font-bold text-gray-900">
-            2. Solusi Awal & Hipotesis DFV (Desirability, Feasibility, Viability)
-          </CardTitle>
-          <CardDescription className="text-xs text-gray-500">
-            Asumsi kritis yang harus diuji dan dibuktikan selama masa inkubasi
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold text-gray-700">
-                Solusi Awal yang Diusulkan
-              </label>
-              {autoFilledFields.includes("solusiAwal") && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader
+          onClick={() => toggleSection("solution")}
+          className="p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/60 transition-colors"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                {expandedSections.solution ? (
+                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-500" />
+                )}
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold text-gray-900">
+                  2. Solusi Awal & Hipotesis DFV (Desirability, Feasibility, Viability)
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Asumsi kritis yang harus diuji dan dibuktikan selama masa inkubasi
+                </CardDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              {autoFilledFields.some((f) =>
+                ["solusiAwal", "desirabilityHypothesis", "feasibilityHypothesis", "viabilityHypothesis"].includes(f)
+              ) && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  <Sparkles className="h-3 w-3 text-emerald-600" />
                   Terisi otomatis dari proposal
                 </span>
               )}
-            </div>
-            <Textarea
-              disabled={isReadOnly}
-              rows={3}
-              placeholder="Bentuk prototype atau solusi minimum yang akan dibangun..."
-              value={formData.solusiAwal}
-              onChange={(e) => handleChange("solusiAwal", e.target.value)}
-              className={`disabled:bg-gray-50 ${autoFilledFields.includes("solusiAwal") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
-              <div className="flex items-center justify-between gap-1">
-                <label className="text-xs font-bold text-blue-900 block">
-                  🎯 Desirability Hypothesis
-                </label>
-                {autoFilledFields.includes("desirabilityHypothesis") && (
-                  <span className="text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
-                    Auto-fill
-                  </span>
-                )}
-              </div>
-              <Textarea
-                disabled={isReadOnly}
-                rows={3}
-                placeholder="Apakah pengguna benar-benar menginginkan dan membutuhkan solusi ini?"
-                value={formData.desirabilityHypothesis}
-                onChange={(e) => handleChange("desirabilityHypothesis", e.target.value)}
-                className="disabled:bg-white"
-              />
-            </div>
-
-            <div className="p-3.5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-1.5">
-              <div className="flex items-center justify-between gap-1">
-                <label className="text-xs font-bold text-amber-900 block">
-                  ⚙️ Feasibility Hypothesis
-                </label>
-                {autoFilledFields.includes("feasibilityHypothesis") && (
-                  <span className="text-[9px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded">
-                    Auto-fill
-                  </span>
-                )}
-              </div>
-              <Textarea
-                disabled={isReadOnly}
-                rows={3}
-                placeholder="Apakah kita mampu membangun solusi ini secara teknis & operasional?"
-                value={formData.feasibilityHypothesis}
-                onChange={(e) => handleChange("feasibilityHypothesis", e.target.value)}
-                className="disabled:bg-white"
-              />
-            </div>
-
-            <div className="p-3.5 bg-green-50/50 rounded-xl border border-green-100 space-y-1.5">
-              <div className="flex items-center justify-between gap-1">
-                <label className="text-xs font-bold text-green-900 block">
-                  💰 Viability Hypothesis
-                </label>
-                {autoFilledFields.includes("viabilityHypothesis") && (
-                  <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
-                    Auto-fill
-                  </span>
-                )}
-              </div>
-              <Textarea
-                disabled={isReadOnly}
-                rows={3}
-                placeholder="Apakah solusi ini memberikan dampak bisnis/efisiensi berkelanjutan?"
-                value={formData.viabilityHypothesis}
-                onChange={(e) => handleChange("viabilityHypothesis", e.target.value)}
-                className="disabled:bg-white"
-              />
+              <span className="text-xs text-gray-400 font-medium">
+                {expandedSections.solution ? "Tutup" : "Buka"}
+              </span>
             </div>
           </div>
-        </CardContent>
+        </CardHeader>
+
+        {expandedSections.solution && (
+          <CardContent className="space-y-4 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Solusi Awal yang Diusulkan
+                </label>
+                {autoFilledFields.includes("solusiAwal") && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                    Terisi otomatis dari proposal
+                  </span>
+                )}
+              </div>
+              <Textarea
+                disabled={isReadOnly}
+                rows={3}
+                placeholder="Bentuk prototype atau solusi minimum yang akan dibangun..."
+                value={formData.solusiAwal}
+                onChange={(e) => handleChange("solusiAwal", e.target.value)}
+                className={`disabled:bg-gray-50 ${autoFilledFields.includes("solusiAwal") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <label className="text-xs font-bold text-blue-900 block">
+                    🎯 Desirability Hypothesis
+                  </label>
+                  {autoFilledFields.includes("desirabilityHypothesis") && (
+                    <span className="text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
+                      Auto-fill
+                    </span>
+                  )}
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={3}
+                  placeholder="Apakah pengguna benar-benar menginginkan dan membutuhkan solusi ini?"
+                  value={formData.desirabilityHypothesis}
+                  onChange={(e) => handleChange("desirabilityHypothesis", e.target.value)}
+                  className="disabled:bg-white"
+                />
+              </div>
+
+              <div className="p-3.5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <label className="text-xs font-bold text-amber-900 block">
+                    ⚙️ Feasibility Hypothesis
+                  </label>
+                  {autoFilledFields.includes("feasibilityHypothesis") && (
+                    <span className="text-[9px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded">
+                      Auto-fill
+                    </span>
+                  )}
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={3}
+                  placeholder="Apakah kita mampu membangun solusi ini secara teknis & operasional?"
+                  value={formData.feasibilityHypothesis}
+                  onChange={(e) => handleChange("feasibilityHypothesis", e.target.value)}
+                  className="disabled:bg-white"
+                />
+              </div>
+
+              <div className="p-3.5 bg-green-50/50 rounded-xl border border-green-100 space-y-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <label className="text-xs font-bold text-green-900 block">
+                    💰 Viability Hypothesis
+                  </label>
+                  {autoFilledFields.includes("viabilityHypothesis") && (
+                    <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                      Auto-fill
+                    </span>
+                  )}
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={3}
+                  placeholder="Apakah solusi ini memberikan dampak bisnis/efisiensi berkelanjutan?"
+                  value={formData.viabilityHypothesis}
+                  onChange={(e) => handleChange("viabilityHypothesis", e.target.value)}
+                  className="disabled:bg-white"
+                />
+              </div>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 3: TATA KELOLA, RITME KERJA & MILESTONE SPRINT TERSTRUKTUR */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl">
-        <CardHeader>
+      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader
+          onClick={() => toggleSection("governance")}
+          className="p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/60 transition-colors"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Layers className="h-5 w-5 text-[#0F5132]" />
-                3. Tata Kelola, Ritme Kerja & Rencana Milestone Sprint
-              </CardTitle>
-              <CardDescription className="text-xs text-gray-500">
-                Pacing monitoring, jadwal rencana sprint, dan kebutuhan dukungan selama masa inkubasi
-              </CardDescription>
-            </div>
-
-            {!isReadOnly && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setTargetSprintCount(sprints.length);
-                  setSprintAlasan("");
-                  setIsSprintModalOpen(true);
-                }}
-                className="text-xs gap-1.5 font-semibold text-gray-700 hover:text-[#0F5132]"
-              >
-                <Settings2 className="h-3.5 w-3.5" />
-                <span>Ubah Jumlah Sprint ({sprints.length})</span>
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
-                Ritme Kerja & Standup
-              </label>
-              <Input
-                disabled={isReadOnly}
-                value={formData.ritmeKerja}
-                onChange={(e) => handleChange("ritmeKerja", e.target.value)}
-                className="disabled:bg-gray-50"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
-                Pacing Monitoring Bersama Coach
-              </label>
-              <Input
-                disabled={isReadOnly}
-                value={formData.pacingMonitoring}
-                onChange={(e) => handleChange("pacingMonitoring", e.target.value)}
-                className="disabled:bg-gray-50"
-              />
-            </div>
-          </div>
-
-          {/* Structured Sprint Milestones */}
-          <div className="space-y-3 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                  Rencana Milestone per Sprint
-                </h4>
-                <p className="text-[11px] text-gray-500">
-                  Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Kanban).
-                </p>
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+                {expandedSections.governance ? (
+                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-500" />
+                )}
               </div>
-              <span className="text-[11px] font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
-                {sprints.length} Iterasi Sprint
+              <div>
+                <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-[#0F5132]" />
+                  3. Tata Kelola, Ritme Kerja & Rencana Milestone Sprint
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Pacing monitoring, jadwal rencana sprint, dan kebutuhan dukungan selama masa inkubasi
+                </CardDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-bold border border-blue-200">
+                <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                <span>{sprints.length} Milestone Sprint</span>
+              </span>
+
+              {!isReadOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTargetSprintCount(sprints.length);
+                    setSprintAlasan("");
+                    setIsSprintModalOpen(true);
+                  }}
+                  className="text-xs gap-1.5 font-semibold text-gray-700 hover:text-[#0F5132] h-8"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Ubah Jumlah Sprint ({sprints.length})</span>
+                </Button>
+              )}
+
+              <span className="text-xs text-gray-400 font-medium">
+                {expandedSections.governance ? "Tutup" : "Buka"}
               </span>
             </div>
+          </div>
+        </CardHeader>
 
-            <div className="space-y-3">
-              {sprints.map((s) => (
-                <div
-                  key={s.nomorSprint}
-                  className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <Badge variant="default" className="text-xs bg-[#0F5132] font-bold">
-                      Sprint {s.nomorSprint}
-                    </Badge>
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      {s.status === 'aktif' ? '🟢 Sedang Aktif' : s.status === 'selesai' ? '🔵 Selesai' : '⚪ Belum Dimulai'}
-                    </span>
-                  </div>
+        {expandedSections.governance && (
+          <CardContent className="space-y-6 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-700">
+                  Ritme Kerja & Standup
+                </label>
+                <Input
+                  disabled={isReadOnly}
+                  value={formData.ritmeKerja}
+                  onChange={(e) => handleChange("ritmeKerja", e.target.value)}
+                  className="disabled:bg-gray-50"
+                />
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                    <div className="md:col-span-3 space-y-1">
-                      <label className="text-[10px] font-semibold text-gray-600 block">
-                        Tanggal Mulai Rencana
-                      </label>
-                      <Input
-                        type="date"
-                        disabled={isReadOnly}
-                        value={s.tanggalMulaiRencana || ""}
-                        onChange={(e) =>
-                          handleSprintChange(s.nomorSprint, "tanggalMulaiRencana", e.target.value)
-                        }
-                        className="text-xs h-8 disabled:bg-white"
-                      />
-                    </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-700">
+                  Pacing Monitoring Bersama Coach
+                </label>
+                <Input
+                  disabled={isReadOnly}
+                  value={formData.pacingMonitoring}
+                  onChange={(e) => handleChange("pacingMonitoring", e.target.value)}
+                  className="disabled:bg-gray-50"
+                />
+              </div>
+            </div>
 
-                    <div className="md:col-span-3 space-y-1">
-                      <label className="text-[10px] font-semibold text-gray-600 block">
-                        Target Selesai Rencana
-                      </label>
-                      <Input
-                        type="date"
-                        disabled={isReadOnly}
-                        value={s.tanggalSelesaiRencana || ""}
-                        onChange={(e) =>
-                          handleSprintChange(s.nomorSprint, "tanggalSelesaiRencana", e.target.value)
-                        }
-                        className="text-xs h-8 disabled:bg-white"
-                      />
-                    </div>
-
-                    <div className="md:col-span-6 space-y-1">
-                      <label className="text-[10px] font-semibold text-gray-600 block">
-                        Tujuan / Sasaran Milestone Sprint
-                      </label>
-                      <Input
-                        disabled={isReadOnly}
-                        placeholder={`Contoh: Problem validation dengan 10 customer...`}
-                        value={s.tujuan || ""}
-                        onChange={(e) =>
-                          handleSprintChange(s.nomorSprint, "tujuan", e.target.value)
-                        }
-                        className="text-xs h-8 disabled:bg-white"
-                      />
-                    </div>
-                  </div>
+            {/* Structured Sprint Milestones */}
+            <div className="space-y-3 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    Rencana Milestone per Sprint
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Kanban).
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold text-gray-700">
-                Kebutuhan Dukungan (Data / SME / Akses Sistem)
-              </label>
-              {autoFilledFields.includes("kebutuhanDukungan") && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
-                  Terisi otomatis dari proposal
+                <span className="text-[11px] font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
+                  {sprints.length} Iterasi Sprint
                 </span>
-              )}
-            </div>
-            <Textarea
-              disabled={isReadOnly}
-              rows={2}
-              placeholder="Sebutkan dukungan divisi atau data yang dibutuhkan untuk validasi..."
-              value={formData.kebutuhanDukungan}
-              onChange={(e) => handleChange("kebutuhanDukungan", e.target.value)}
-              className={`disabled:bg-gray-50 ${autoFilledFields.includes("kebutuhanDukungan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
-            />
-          </div>
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-700">
-              Risiko Awal & Rencana Mitigasi
-            </label>
-            <Textarea
-              disabled={isReadOnly}
-              rows={2}
-              placeholder="Potensi hambatan yang mungkin dihadapi dan solusinya..."
-              value={formData.risikoAwal}
-              onChange={(e) => handleChange("risikoAwal", e.target.value)}
-              className="disabled:bg-gray-50"
-            />
-          </div>
-        </CardContent>
+              <div className="space-y-3">
+                {sprints.map((s) => (
+                  <div
+                    key={s.nomorSprint}
+                    className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <Badge variant="default" className="text-xs bg-[#0F5132] font-bold">
+                        Sprint {s.nomorSprint}
+                      </Badge>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {s.status === 'aktif' ? '🟢 Sedang Aktif' : s.status === 'selesai' ? '🔵 Selesai' : '⚪ Belum Dimulai'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                      <div className="md:col-span-3 space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-600 block">
+                          Tanggal Mulai Rencana
+                        </label>
+                        <Input
+                          type="date"
+                          disabled={isReadOnly}
+                          value={s.tanggalMulaiRencana || ""}
+                          onChange={(e) =>
+                            handleSprintChange(s.nomorSprint, "tanggalMulaiRencana", e.target.value)
+                          }
+                          className="text-xs h-8 disabled:bg-white"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-600 block">
+                          Target Selesai Rencana
+                        </label>
+                        <Input
+                          type="date"
+                          disabled={isReadOnly}
+                          value={s.tanggalSelesaiRencana || ""}
+                          onChange={(e) =>
+                            handleSprintChange(s.nomorSprint, "tanggalSelesaiRencana", e.target.value)
+                          }
+                          className="text-xs h-8 disabled:bg-white"
+                        />
+                      </div>
+
+                      <div className="md:col-span-6 space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-600 block">
+                          Tujuan / Sasaran Milestone Sprint
+                        </label>
+                        <Input
+                          disabled={isReadOnly}
+                          placeholder={`Contoh: Problem validation dengan 10 customer...`}
+                          value={s.tujuan || ""}
+                          onChange={(e) =>
+                            handleSprintChange(s.nomorSprint, "tujuan", e.target.value)
+                          }
+                          className="text-xs h-8 disabled:bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Kebutuhan Dukungan (Data / SME / Akses Sistem)
+                </label>
+                {autoFilledFields.includes("kebutuhanDukungan") && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                    Terisi otomatis dari proposal
+                  </span>
+                )}
+              </div>
+              <Textarea
+                disabled={isReadOnly}
+                rows={2}
+                placeholder="Sebutkan dukungan divisi atau data yang dibutuhkan untuk validasi..."
+                value={formData.kebutuhanDukungan}
+                onChange={(e) => handleChange("kebutuhanDukungan", e.target.value)}
+                className={`disabled:bg-gray-50 ${autoFilledFields.includes("kebutuhanDukungan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">
+                Risiko Awal & Rencana Mitigasi
+              </label>
+              <Textarea
+                disabled={isReadOnly}
+                rows={2}
+                placeholder="Potensi hambatan yang mungkin dihadapi dan solusinya..."
+                value={formData.risikoAwal}
+                onChange={(e) => handleChange("risikoAwal", e.target.value)}
+                className="disabled:bg-gray-50"
+              />
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
