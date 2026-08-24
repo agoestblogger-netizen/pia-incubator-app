@@ -6,7 +6,7 @@ import { timInovator, anggotaTim, dossierPiaArchive, auditLogs, roles, userRoleT
 import { eq, inArray, and } from 'drizzle-orm';
 import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ensureUserAccount } from '@/app/actions/charter';
+import { ensureUserAccount, seedInitialKanbanCardsForTeam } from '@/app/actions/charter';
 
 export interface PreviewProposalItem {
   proposal_id: string;
@@ -351,6 +351,13 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
         }
       }
     }
+  }
+
+  // 5. Auto-seed Initial Kanban Backlog (AI Scrum tasks + 15 Baku CV/MV cards)
+  try {
+    await seedInitialKanbanCardsForTeam(teamId);
+  } catch (kErr: any) {
+    console.warn(`[saveImportedProposal] Failed to auto-seed initial cards for ${proposalId}:`, kErr.message);
   }
 
   console.log(`[saveImportedProposal] Finished ${proposalId}. Total accounts created: ${createdAccounts.length}`);

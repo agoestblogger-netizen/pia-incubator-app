@@ -17,6 +17,7 @@ import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAiCharterFields } from "@/lib/ai/charter-generator";
+import { generateAiBacklogFromRoadmap, AiBacklogTask } from "@/lib/ai/backlog-generator";
 
 export type RoleAssignmentItem = {
   id?: string; // local temporary id for UI list keys
@@ -794,173 +795,7 @@ export async function saveCharterAction(
     }
 
     // 4. Auto-generate Initial Backlog on first Charter save (Roadmap + 15 Baku CV/MV Tasks)
-    const existingCards = await db
-      .select({ id: kanbanCard.id })
-      .from(kanbanCard)
-      .where(eq(kanbanCard.timInovatorId, timId))
-      .limit(1);
-
-    if (existingCards.length === 0) {
-      const cardsToInsert: Array<typeof kanbanCard.$inferInsert> = [];
-      let cardUrutan = 1;
-
-      // A. Draf Roadmap Cards (from Proposal Data if dossier exists)
-      if (teamDossier && teamDossier.snapshotData) {
-        const snap = teamDossier.snapshotData as any;
-        const submisi = snap.data_submisi || snap;
-        const formDetail = submisi.form_detail || {};
-
-        const judulSolusi = cleanText(submisi.judul || snap.judul_inovasi || "Inovasi");
-
-        cardsToInsert.push({
-          timInovatorId: timId,
-          judul: `Kickoff & Penyelarasan Problem Space — ${judulSolusi.substring(0, 40)}`,
-          deskripsi: `Memvalidasi ulang temuan masalah, HMW, dan sasaran pengguna awal bersama Inisiator dan Promotor.`,
-          statusKolom: "To Do",
-          tahap: "innovation_setup",
-          sprintNumber: null,
-          label: "Draf Roadmap",
-          urutan: cardUrutan++,
-        });
-
-        cardsToInsert.push({
-          timInovatorId: timId,
-          judul: `Penyusunan Desain Konseptual & Arsitektur Solusi MVP`,
-          deskripsi: `Merumuskan cakupan fitur inti yang akan diuji pada fase Customer Validation & Market Validation.`,
-          statusKolom: "To Do",
-          tahap: "innovation_setup",
-          sprintNumber: null,
-          label: "Draf Roadmap",
-          urutan: cardUrutan++,
-        });
-
-        if (formDetail.kebutuhan_dukungan || formDetail.bi_sumber_daya || formDetail.bc_sumber_daya_diperlukan) {
-          cardsToInsert.push({
-            timInovatorId: timId,
-            judul: `Konsolidasi Kebutuhan Resource & Koordinasi SME`,
-            deskripsi: cleanText(formDetail.kebutuhan_dukungan || formDetail.bi_sumber_daya || formDetail.bc_sumber_daya_diperlukan),
-            statusKolom: "To Do",
-            tahap: "innovation_setup",
-            sprintNumber: null,
-            label: "Draf Roadmap",
-            urutan: cardUrutan++,
-          });
-        }
-      }
-
-      // B. 7 Baku Customer Validation Tasks
-      const bakuCVTasks = [
-        {
-          judul: "Susun Perencanaan Customer Validation",
-          deskripsi: "Menentukan hipotesis value proposition yang akan diuji, profil early adopters sasaran, dan metodologi pengujian (interview / usability testing / survey).",
-          tahap: "customer_validation" as const,
-        },
-        {
-          judul: "Siapkan prototype untuk testing",
-          deskripsi: "Menyiapkan mockup, clickable prototype, atau instrumen demonstrasi solusi yang siap diuji ke responden.",
-          tahap: "customer_validation" as const,
-        },
-        {
-          judul: "Rekrut early adopters/responden",
-          deskripsi: "Menghubungi dan menjadwalkan sesi interaksi dengan minimal 5-10 target pengguna representatif.",
-          tahap: "customer_validation" as const,
-        },
-        {
-          judul: "Lakukan sesi user testing",
-          deskripsi: "Menjalankan sesi testing, mencatat feedback kualitatif 4 dimensi (problem, solution, usability, willingness to use/pay).",
-          tahap: "customer_validation" as const,
-        },
-        {
-          judul: "Analisis hasil & isi Laporan Customer Validation",
-          deskripsi: "Merekap skor dimensi, temuan kualitatif utama, dan mengukur ketercapaian target metrik PSF.",
-          tahap: "customer_validation" as const,
-        },
-        {
-          judul: "Preliminary Review (SME)",
-          deskripsi: "Meminta review dan catatan rekomendasi dari Subject Matter Expert / Coach terhadap hasil Customer Validation.",
-          tahap: "customer_validation" as const,
-        },
-        {
-          judul: "Tentukan keputusan Fit/Tidak Fit",
-          deskripsi: "Menetapkan keputusan fase CV: 'Lanjut ke Market Validation' (Fit), 'Iterasi Customer Validation' (Iterasi), atau 'Pivot/Drop'.",
-          tahap: "customer_validation" as const,
-        },
-      ];
-
-      for (const t of bakuCVTasks) {
-        cardsToInsert.push({
-          timInovatorId: timId,
-          judul: t.judul,
-          deskripsi: t.deskripsi,
-          statusKolom: "To Do",
-          tahap: t.tahap,
-          sprintNumber: null,
-          label: "Template Baku CV",
-          urutan: cardUrutan++,
-        });
-      }
-
-      // C. 8 Baku Market Validation Tasks
-      const bakuMVTasks = [
-        {
-          judul: "Susun Perencanaan Market Validation",
-          deskripsi: "Menentukan parameter pilot project, target adopsi pasar, dan metrik Product-Market Fit (PMF).",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "MVP Planning",
-          deskripsi: "Mendefinisikan spesifikasi fitur MVP versi rilis dan alokasi resource kebutuhan implementasi.",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "MVP Development",
-          deskripsi: "Pengembangan teknis/operasional solusi MVP siap pakai untuk lingkungan pilot uji coba.",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "MVP Release",
-          deskripsi: "Meluncurkan versi MVP ke kelompok pengguna pilot dan mencatat release log resmi.",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "Market Testing (ukur metrik DFV)",
-          deskripsi: "Memantau adopsi riil pengguna dan merekapitulasi metrik Desirability, Feasibility, dan Viability.",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "Preliminary Review (SME)",
-          deskripsi: "Sesi review evaluasi berkala bersama SME & Coach mengenai temuan performa pasar MVP.",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "Analisis hasil & isi Laporan Market Validation",
-          deskripsi: "Menyusun evaluasi komprehensif PMF, sprint review retrospektif, dan rekomendasi skala implementasi.",
-          tahap: "market_validation" as const,
-        },
-        {
-          judul: "Persiapan Forum Manajemen Inovasi",
-          deskripsi: "Menyiapkan materi paparan executive summary DFV dan rekomendasi tindak lanjut untuk Dewan Direksi / FMI.",
-          tahap: "market_validation" as const,
-        },
-      ];
-
-      for (const t of bakuMVTasks) {
-        cardsToInsert.push({
-          timInovatorId: timId,
-          judul: t.judul,
-          deskripsi: t.deskripsi,
-          statusKolom: "To Do",
-          tahap: t.tahap,
-          sprintNumber: null,
-          label: "Template Baku MV",
-          urutan: cardUrutan++,
-        });
-      }
-
-      if (cardsToInsert.length > 0) {
-        await db.insert(kanbanCard).values(cardsToInsert);
-      }
-    }
+    await seedInitialKanbanCardsForTeam(timId, teamDossier);
 
     // 5. Log audit
     await logAudit({
@@ -1155,5 +990,245 @@ export async function revokeCharterApprovalAction(timId: string) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal membatalkan persetujuan Charter." };
+  }
+}
+
+const bakuCVTasks = [
+  {
+    judul: "Susun Perencanaan Customer Validation",
+    deskripsi: "Menentukan hipotesis value proposition yang akan diuji, profil early adopters sasaran, dan metodologi pengujian (interview / usability testing / survey).",
+    tahap: "customer_validation" as const,
+  },
+  {
+    judul: "Siapkan prototype untuk testing",
+    deskripsi: "Menyiapkan mockup, clickable prototype, atau instrumen demonstrasi solusi yang siap diuji ke responden.",
+    tahap: "customer_validation" as const,
+  },
+  {
+    judul: "Rekrut early adopters/responden",
+    deskripsi: "Menghubungi dan menjadwalkan sesi interaksi dengan minimal 5-10 target pengguna representatif.",
+    tahap: "customer_validation" as const,
+  },
+  {
+    judul: "Lakukan sesi user testing",
+    deskripsi: "Menjalankan sesi testing, mencatat feedback kualitatif 4 dimensi (problem, solution, usability, willingness to use/pay).",
+    tahap: "customer_validation" as const,
+  },
+  {
+    judul: "Analisis hasil & isi Laporan Customer Validation",
+    deskripsi: "Merekap skor dimensi, temuan kualitatif utama, dan mengukur ketercapaian target metrik PSF.",
+    tahap: "customer_validation" as const,
+  },
+  {
+    judul: "Preliminary Review (SME)",
+    deskripsi: "Meminta review dan catatan rekomendasi dari Subject Matter Expert / Coach terhadap hasil Customer Validation.",
+    tahap: "customer_validation" as const,
+  },
+  {
+    judul: "Tentukan keputusan Fit/Tidak Fit",
+    deskripsi: "Menetapkan keputusan fase CV: 'Lanjut ke Market Validation' (Fit), 'Iterasi Customer Validation' (Iterasi), atau 'Pivot/Drop'.",
+    tahap: "customer_validation" as const,
+  },
+];
+
+const bakuMVTasks = [
+  {
+    judul: "Susun Perencanaan Market Validation",
+    deskripsi: "Menentukan parameter pilot project, target adopsi pasar, dan metrik Product-Market Fit (PMF).",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "MVP Planning",
+    deskripsi: "Mendefinisikan spesifikasi fitur MVP versi rilis dan alokasi resource kebutuhan implementasi.",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "MVP Development",
+    deskripsi: "Pengembangan teknis/operasional solusi MVP siap pakai untuk lingkungan pilot uji coba.",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "MVP Release",
+    deskripsi: "Meluncurkan versi MVP ke kelompok pengguna pilot dan mencatat release log resmi.",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "Market Testing (ukur metrik DFV)",
+    deskripsi: "Memantau adopsi riil pengguna dan merekapitulasi metrik Desirability, Feasibility, dan Viability.",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "Preliminary Review (SME)",
+    deskripsi: "Sesi review evaluasi berkala bersama SME & Coach mengenai temuan performa pasar MVP.",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "Analisis hasil & isi Laporan Market Validation",
+    deskripsi: "Menyusun evaluasi komprehensif PMF, sprint review retrospektif, dan rekomendasi skala implementasi.",
+    tahap: "market_validation" as const,
+  },
+  {
+    judul: "Persiapan Forum Manajemen Inovasi",
+    deskripsi: "Menyiapkan materi paparan executive summary DFV dan rekomendasi tindak lanjut untuk Dewan Direksi / FMI.",
+    tahap: "market_validation" as const,
+  },
+];
+
+export async function seedInitialKanbanCardsForTeam(timId: string, customDossier?: any) {
+  const existingCards = await db
+    .select({ id: kanbanCard.id })
+    .from(kanbanCard)
+    .where(eq(kanbanCard.timInovatorId, timId))
+    .limit(1);
+
+  if (existingCards.length > 0) {
+    return;
+  }
+
+  let teamDossier = customDossier;
+  if (!teamDossier) {
+    const [found] = await db
+      .select()
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+    teamDossier = found;
+  }
+
+  const cardsToInsert: Array<typeof kanbanCard.$inferInsert> = [];
+  let cardUrutan = 1;
+
+  if (teamDossier && teamDossier.snapshotData) {
+    const snap = teamDossier.snapshotData as any;
+    const submisi = snap.data_submisi || snap;
+    const formDetail = submisi.form_detail || {};
+    const proposalId = teamDossier.proposalIdAsli || snap.proposal_id || timId;
+    const namaProyek = submisi.judul || snap.judul_inovasi || "Inovasi";
+    const kategoriPia = submisi.kategori_pia || "BI";
+
+    const roadmapText = cleanText(
+      formDetail.bi_diwujudkan_dengan_cara ||
+      formDetail.bc_diwujudkan_dengan_cara ||
+      formDetail.cara_mewujudkan ||
+      formDetail.diwujudkan_dengan_cara ||
+      formDetail.cara_inovasi_diwujudkan ||
+      formDetail.langkah_implementasi ||
+      formDetail.roadmap ||
+      ""
+    );
+
+    let aiTasks: AiBacklogTask[] | null = Array.isArray(snap.ai_generated_backlog) ? snap.ai_generated_backlog : null;
+
+    if (!aiTasks && process.env.OPENAI_API_KEY && roadmapText) {
+      try {
+        aiTasks = await generateAiBacklogFromRoadmap({
+          teamId: timId,
+          proposalId,
+          namaProyek,
+          kategoriPia,
+          roadmapText,
+          rawProposalData: {
+            judul: submisi.judul || snap.judul_inovasi,
+            form_detail: formDetail,
+          },
+        });
+
+        if (aiTasks && aiTasks.length > 0) {
+          await db
+            .update(dossierPiaArchive)
+            .set({
+              snapshotData: {
+                ...snap,
+                ai_generated_backlog: aiTasks,
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(dossierPiaArchive.id, teamDossier.id));
+        }
+      } catch (aiErr: any) {
+        console.warn(`[seedInitialKanbanCardsForTeam] AI generation failed for ${proposalId}:`, aiErr.message);
+      }
+    }
+
+    if (aiTasks && aiTasks.length > 0) {
+      for (const t of aiTasks) {
+        cardsToInsert.push({
+          timInovatorId: timId,
+          judul: t.judul,
+          deskripsi: t.deskripsi || null,
+          statusKolom: "To Do",
+          tahap: "innovation_setup",
+          sprintNumber: null,
+          label: "Draf Roadmap",
+          urutan: cardUrutan++,
+        });
+      }
+    } else {
+      const judulSolusi = cleanText(submisi.judul || snap.judul_inovasi || "Inovasi");
+      cardsToInsert.push({
+        timInovatorId: timId,
+        judul: `Susun penyelarasan problem space — ${judulSolusi.substring(0, 40)}`,
+        deskripsi: `Memvalidasi ulang temuan masalah, HMW, dan sasaran pengguna awal bersama Inisiator dan Promotor.`,
+        statusKolom: "To Do",
+        tahap: "innovation_setup",
+        sprintNumber: null,
+        label: "Draf Roadmap",
+        urutan: cardUrutan++,
+      });
+
+      cardsToInsert.push({
+        timInovatorId: timId,
+        judul: `Rancang desain konseptual & arsitektur solusi MVP`,
+        deskripsi: `Merumuskan cakupan fitur inti yang akan diuji pada fase Customer Validation & Market Validation.`,
+        statusKolom: "To Do",
+        tahap: "innovation_setup",
+        sprintNumber: null,
+        label: "Draf Roadmap",
+        urutan: cardUrutan++,
+      });
+
+      if (formDetail.kebutuhan_dukungan || formDetail.bi_sumber_daya || formDetail.bc_sumber_daya_diperlukan) {
+        cardsToInsert.push({
+          timInovatorId: timId,
+          judul: `Konsolidasikan kebutuhan resource & koordinasi SME`,
+          deskripsi: cleanText(formDetail.kebutuhan_dukungan || formDetail.bi_sumber_daya || formDetail.bc_sumber_daya_diperlukan),
+          statusKolom: "To Do",
+          tahap: "innovation_setup",
+          sprintNumber: null,
+          label: "Draf Roadmap",
+          urutan: cardUrutan++,
+        });
+      }
+    }
+  }
+
+  for (const t of bakuCVTasks) {
+    cardsToInsert.push({
+      timInovatorId: timId,
+      judul: t.judul,
+      deskripsi: t.deskripsi,
+      statusKolom: "To Do",
+      tahap: t.tahap,
+      sprintNumber: null,
+      label: "Template Baku CV",
+      urutan: cardUrutan++,
+    });
+  }
+
+  for (const t of bakuMVTasks) {
+    cardsToInsert.push({
+      timInovatorId: timId,
+      judul: t.judul,
+      deskripsi: t.deskripsi,
+      statusKolom: "To Do",
+      tahap: t.tahap,
+      sprintNumber: null,
+      label: "Template Baku MV",
+      urutan: cardUrutan++,
+    });
+  }
+
+  if (cardsToInsert.length > 0) {
+    await db.insert(kanbanCard).values(cardsToInsert);
   }
 }
