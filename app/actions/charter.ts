@@ -9,6 +9,7 @@ import {
   users,
   dossierPiaArchive,
   kanbanCard,
+  taskAttachment,
   timInovator,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -1250,6 +1251,77 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
   }
 
   if (cardsToInsert.length > 0) {
-    await db.insert(kanbanCard).values(cardsToInsert);
+    const insertedCards = await db.insert(kanbanCard).values(cardsToInsert).returning();
+
+    // Auto-attach proposal dossier documents to innovation_setup roadmap cards
+    if (teamDossier && teamDossier.snapshotData) {
+      const snap = teamDossier.snapshotData as any;
+      const proposalId = teamDossier.proposalIdAsli || snap.proposal_id || timId;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
+      const lampiranUrls: Record<string, string> = { ...(snap.lampiran_urls || {}) };
+      const daftarLampiran: string[] = Array.isArray(snap.daftar_lampiran) ? snap.daftar_lampiran : [];
+
+      const dossierDocs: Array<{ fileName: string; fileUrl: string; fileType: string; fileSize: number }> = [];
+
+      for (const file of daftarLampiran) {
+        const url = lampiranUrls[file] || `${supabaseUrl}/storage/v1/object/public/dossier-lampiran/${proposalId}/${file}`;
+        dossierDocs.push({
+          fileName: file,
+          fileUrl: url,
+          fileType: file.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream',
+          fileSize: 0,
+        });
+      }
+
+      if (snap.dokumen_proposal_url && !dossierDocs.some((d) => d.fileUrl === snap.dokumen_proposal_url)) {
+        dossierDocs.push({
+          fileName: 'Dokumen Proposal.pdf',
+          fileUrl: snap.dokumen_proposal_url,
+          fileType: 'application/pdf',
+          fileSize: 0,
+        });
+      }
+      if (snap.proposal_resubmission_url && !dossierDocs.some((d) => d.fileUrl === snap.proposal_resubmission_url)) {
+        dossierDocs.push({
+          fileName: 'Proposal Resubmission.pdf',
+          fileUrl: snap.proposal_resubmission_url,
+          fileType: 'application/pdf',
+          fileSize: 0,
+        });
+      }
+      if (snap.surat_originalitas_url && !dossierDocs.some((d) => d.fileUrl === snap.surat_originalitas_url)) {
+        dossierDocs.push({
+          fileName: 'Surat Originalitas.pdf',
+          fileUrl: snap.surat_originalitas_url,
+          fileType: 'application/pdf',
+          fileSize: 0,
+        });
+      }
+
+      if (dossierDocs.length > 0) {
+        const roadmapCards = insertedCards.filter(
+          (c) => c.tahap === 'innovation_setup' && c.label !== 'Template Baku CV' && c.label !== 'Template Baku MV'
+        );
+
+        const attachmentsToInsert: Array<typeof taskAttachment.$inferInsert> = [];
+        for (const card of roadmapCards) {
+          for (const doc of dossierDocs) {
+            attachmentsToInsert.push({
+              taskId: card.id,
+              fileName: doc.fileName,
+              fileUrl: doc.fileUrl,
+              fileType: doc.fileType,
+              fileSize: doc.fileSize,
+              source: 'proposal_dossier',
+              uploadedBy: null,
+            });
+          }
+        }
+
+        if (attachmentsToInsert.length > 0) {
+          await db.insert(taskAttachment).values(attachmentsToInsert);
+        }
+      }
+    }
   }
 }

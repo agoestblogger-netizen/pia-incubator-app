@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   createKanbanCardAction,
   updateKanbanCardStatusAction,
   updateKanbanCardSprintAction,
   updateKanbanCardFullAction,
   deleteKanbanCardAction,
+  getTaskAttachmentsAction,
+  addTaskAttachmentAction,
+  deleteTaskAttachmentAction,
+  getTaskLinksAction,
+  addTaskLinkAction,
+  deleteTaskLinkAction,
 } from "@/app/actions/kanban";
 import {
   startSprintAction,
@@ -45,8 +51,59 @@ import {
   Trash2,
   User,
   ExternalLink,
+  Paperclip,
+  Link2,
+  FileText,
+  FileSpreadsheet,
+  Image as ImageIcon,
+  UploadCloud,
+  Globe,
+  Video,
+  HardDrive,
+  Download,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Attachment & Link Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatFileSize(bytes: number) {
+  if (!bytes || bytes === 0) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getDomainIcon(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes("drive.google.com") || host.includes("docs.google.com")) {
+      return <HardDrive className="h-3.5 w-3.5 text-blue-600 shrink-0" />;
+    }
+    if (host.includes("youtube.com") || host.includes("youtu.be")) {
+      return <Video className="h-3.5 w-3.5 text-red-600 shrink-0" />;
+    }
+    return <Globe className="h-3.5 w-3.5 text-emerald-600 shrink-0" />;
+  } catch {
+    return <Link2 className="h-3.5 w-3.5 text-gray-500 shrink-0" />;
+  }
+}
+
+function getFileIcon(fileName: string, fileType?: string) {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext) || fileType?.startsWith("image/")) {
+    return <ImageIcon className="h-4 w-4 text-purple-600 shrink-0" />;
+  }
+  if (ext === "pdf" || fileType?.includes("pdf")) {
+    return <FileText className="h-4 w-4 text-red-600 shrink-0" />;
+  }
+  if (["xls", "xlsx", "csv"].includes(ext) || fileType?.includes("spreadsheet") || fileType?.includes("excel")) {
+    return <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />;
+  }
+  return <FileText className="h-4 w-4 text-blue-600 shrink-0" />;
+}
 
 // dnd-kit imports
 import {
@@ -185,6 +242,30 @@ function SortableCard({
             {card.deskripsi}
           </p>
         )}
+
+        {/* Attachment & Link Count Badges */}
+        {(Boolean(card.attachmentsCount) || Boolean(card.linksCount)) && (
+          <div className="flex items-center gap-1.5 pt-1 text-[10px] text-gray-600 font-medium">
+            {Boolean(card.attachmentsCount) && (
+              <span
+                className="inline-flex items-center gap-1 bg-gray-100/90 hover:bg-gray-200/90 border border-gray-200/60 px-1.5 py-0.5 rounded text-gray-700 transition-colors"
+                title={`${card.attachmentsCount} Lampiran`}
+              >
+                <Paperclip className="h-3 w-3 text-gray-500" />
+                <span>{card.attachmentsCount}</span>
+              </span>
+            )}
+            {Boolean(card.linksCount) && (
+              <span
+                className="inline-flex items-center gap-1 bg-gray-100/90 hover:bg-gray-200/90 border border-gray-200/60 px-1.5 py-0.5 rounded text-gray-700 transition-colors"
+                title={`${card.linksCount} Tautan`}
+              >
+                <Link2 className="h-3 w-3 text-gray-500" />
+                <span>{card.linksCount}</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card Footer: Sprint selector, Due date, Status selector */}
@@ -264,6 +345,22 @@ function DraggingCardOverlay({ card }: { card: any }) {
         <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
           {card.deskripsi}
         </p>
+      )}
+      {(Boolean(card.attachmentsCount) || Boolean(card.linksCount)) && (
+        <div className="flex items-center gap-1.5 pt-1 text-[10px] text-gray-600 font-medium">
+          {Boolean(card.attachmentsCount) && (
+            <span className="inline-flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
+              <Paperclip className="h-3 w-3 text-gray-500" />
+              <span>{card.attachmentsCount}</span>
+            </span>
+          )}
+          {Boolean(card.linksCount) && (
+            <span className="inline-flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
+              <Link2 className="h-3 w-3 text-gray-500" />
+              <span>{card.linksCount}</span>
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
@@ -459,6 +556,200 @@ export function KanbanClient({
   const [savingDetailCard, setSavingDetailCard] = useState(false);
   const [deletingCard, setDeletingCard] = useState(false);
 
+  // Task Attachments & Links State
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [links, setLinks] = useState<any[]>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [loadingLinks, setLoadingLinks] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [newLinkLabel, setNewLinkLabel] = useState("");
+  const [addingLink, setAddingLink] = useState(false);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+  const [deletingLinkId, setDeletingLinkId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOverDropzone, setIsDragOverDropzone] = useState(false);
+
+  const fetchTaskAttachments = async (taskId: string) => {
+    setLoadingAttachments(true);
+    const res = await getTaskAttachmentsAction(taskId);
+    if (res.success && res.data) {
+      setAttachments(res.data);
+      setCards((prev) =>
+        prev.map((c) => (c.id === taskId ? { ...c, attachmentsCount: res.data.length } : c))
+      );
+    }
+    setLoadingAttachments(false);
+  };
+
+  const fetchTaskLinks = async (taskId: string) => {
+    setLoadingLinks(true);
+    const res = await getTaskLinksAction(taskId);
+    if (res.success && res.data) {
+      setLinks(res.data);
+      setCards((prev) =>
+        prev.map((c) => (c.id === taskId ? { ...c, linksCount: res.data.length } : c))
+      );
+    }
+    setLoadingLinks(false);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!selectedCardForDetail) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const allowed = ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx", "xls", "xlsx"];
+    if (!allowed.includes(ext)) {
+      toast.error(
+        `Format file .${ext} tidak diizinkan. Tipe yang didukung: Gambar (jpg, jpeg, png, webp), PDF, Word (doc, docx), dan Excel (xls, xlsx).`,
+        "Format Ditolak"
+      );
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(
+        `Ukuran file melebihi batas 10MB (${(file.size / (1024 * 1024)).toFixed(2)} MB).`,
+        "File Terlalu Besar"
+      );
+      return;
+    }
+
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("taskId", selectedCardForDetail.id);
+      formData.append("timId", timId);
+      formData.append("file", file);
+
+      const res = await fetch("/api/tasks/upload-attachment", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Gagal mengunggah lampiran.");
+      }
+
+      const addRes = await addTaskAttachmentAction(selectedCardForDetail.id, timId, {
+        fileName: data.fileName,
+        fileUrl: data.publicUrl,
+        fileType: data.fileType,
+        fileSize: data.fileSize,
+        source: "upload",
+      });
+
+      if (addRes.success && addRes.data) {
+        setAttachments((prev) => [...prev, addRes.data]);
+        setCards((prev) =>
+          prev.map((c) =>
+            c.id === selectedCardForDetail.id
+              ? { ...c, attachmentsCount: (c.attachmentsCount || 0) + 1 }
+              : c
+          )
+        );
+        toast.success(`Lampiran "${data.fileName}" berhasil diunggah.`, "Lampiran Ditambahkan");
+      } else {
+        throw new Error(addRes.error || "Gagal menyimpan data lampiran.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mengunggah file.", "Upload Gagal");
+    } finally {
+      setUploadingAttachment(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteAttachment = async (att: any) => {
+    if (!selectedCardForDetail) return;
+    const isProposal = att.source === "proposal_dossier";
+    const confirmMsg = isProposal
+      ? `Hapus referensi dokumen "${att.fileName}" dari kartu ini? (Dokumen asli di Proposal tetap aman)`
+      : `Hapus lampiran "${att.fileName}" secara permanen?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    setDeletingAttachmentId(att.id);
+    const res = await deleteTaskAttachmentAction(att.id, timId);
+    if (res.success) {
+      setAttachments((prev) => prev.filter((a) => a.id !== att.id));
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === selectedCardForDetail.id
+            ? { ...c, attachmentsCount: Math.max(0, (c.attachmentsCount || 1) - 1) }
+            : c
+        )
+      );
+      toast.success(
+        isProposal
+          ? `Referensi proposal berhasil dihapus dari kartu.`
+          : `Lampiran file berhasil dihapus.`,
+        "Lampiran Dihapus"
+      );
+    } else {
+      toast.error(res.error || "Gagal menghapus lampiran.", "Gagal Menghapus");
+    }
+    setDeletingAttachmentId(null);
+  };
+
+  const handleAddLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCardForDetail) return;
+
+    let url = newLinkUrl.trim();
+    if (!url) return;
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      toast.error("Format URL harus diawali dengan http:// atau https://", "URL Tidak Valid");
+      return;
+    }
+
+    setAddingLink(true);
+    const res = await addTaskLinkAction(selectedCardForDetail.id, timId, {
+      url,
+      label: newLinkLabel.trim() || undefined,
+    });
+
+    if (res.success && res.data) {
+      setLinks((prev) => [...prev, res.data]);
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === selectedCardForDetail.id
+            ? { ...c, linksCount: (c.linksCount || 0) + 1 }
+            : c
+        )
+      );
+      setNewLinkUrl("");
+      setNewLinkLabel("");
+      toast.success("Tautan terkait berhasil ditambahkan.", "Tautan Ditambahkan");
+    } else {
+      toast.error(res.error || "Gagal menambahkan tautan.", "Gagal Menambahkan");
+    }
+    setAddingLink(false);
+  };
+
+  const handleDeleteLink = async (linkId: string) => {
+    if (!selectedCardForDetail) return;
+    if (!confirm("Hapus tautan ini?")) return;
+
+    setDeletingLinkId(linkId);
+    const res = await deleteTaskLinkAction(linkId, timId);
+    if (res.success) {
+      setLinks((prev) => prev.filter((l) => l.id !== linkId));
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === selectedCardForDetail.id
+            ? { ...c, linksCount: Math.max(0, (c.linksCount || 1) - 1) }
+            : c
+        )
+      );
+      toast.success("Tautan berhasil dihapus.", "Tautan Dihapus");
+    } else {
+      toast.error(res.error || "Gagal menghapus tautan.", "Gagal Menghapus");
+    }
+    setDeletingLinkId(null);
+  };
+
   // New Card Form State
   const [judul, setJudul] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
@@ -538,6 +829,14 @@ export function KanbanClient({
     );
     setDetailAcceptanceCriteria(card.acceptanceCriteria || "");
     setDetailDependencyRisiko(card.dependencyRisiko || "");
+
+    // Fetch attachments and links
+    setAttachments([]);
+    setLinks([]);
+    setNewLinkUrl("");
+    setNewLinkLabel("");
+    fetchTaskAttachments(card.id);
+    fetchTaskLinks(card.id);
   };
 
   const handleSaveCardDetail = async (e: React.FormEvent) => {
@@ -1498,6 +1797,264 @@ export function KanbanClient({
                 onChange={(e) => setDetailDependencyRisiko(e.target.value)}
                 className="text-xs"
               />
+            </div>
+
+            {/* ───────────────────────────────────────────────────────────────── */}
+            {/* Section 1: Lampiran File (Upload & Dari Proposal) */}
+            {/* ───────────────────────────────────────────────────────────────── */}
+            <div className="pt-2 border-t border-gray-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Paperclip className="h-3.5 w-3.5 text-[#0F5132]" />
+                  <span>Lampiran File</span>
+                  {attachments.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {attachments.length}
+                    </Badge>
+                  )}
+                </label>
+              </div>
+
+              {canEdit && (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOverDropzone(true);
+                  }}
+                  onDragLeave={() => setIsDragOverDropzone(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOverDropzone(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleFileUpload(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors ${
+                    isDragOverDropzone
+                      ? "border-[#0F5132] bg-[#0F5132]/5"
+                      : "border-gray-200 hover:border-[#0F5132]/60 hover:bg-gray-50/80"
+                  }`}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileUpload(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    {uploadingAttachment ? (
+                      <div className="flex items-center gap-2 text-xs font-semibold text-[#0F5132]">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Mengunggah lampiran file...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                          <UploadCloud className="h-4 w-4 text-[#0F5132]" />
+                          <span>Klik atau seret file ke sini untuk mengunggah</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400">
+                          Maks 10MB • Gambar (JPG, PNG, WEBP), Dokumen (PDF, DOCX, XLSX)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {loadingAttachments ? (
+                <div className="flex items-center justify-center py-3 text-xs text-gray-400 gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0F5132]" />
+                  <span>Memuat daftar lampiran...</span>
+                </div>
+              ) : attachments.length === 0 ? (
+                <p className="text-[11px] text-gray-400 italic py-1">
+                  Belum ada lampiran file pada kartu ini.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {attachments.map((att) => {
+                    const isProposal = att.source === "proposal_dossier";
+                    return (
+                      <div
+                        key={att.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200/80 hover:bg-gray-100/70 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {getFileIcon(att.fileName, att.fileType)}
+                          <div className="min-w-0 flex-1">
+                            <a
+                              href={att.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-gray-800 hover:text-[#0F5132] hover:underline truncate block"
+                              title={att.fileName}
+                            >
+                              {att.fileName}
+                            </a>
+                            <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                              <span>{formatFileSize(att.fileSize)}</span>
+                              {isProposal && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[9px] px-1.5 py-0 h-4 bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold"
+                                >
+                                  ✨ Dari Proposal
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <a
+                            href={att.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200/60 transition-colors"
+                            title="Buka / Unduh file"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              disabled={deletingAttachmentId === att.id}
+                              onClick={() => handleDeleteAttachment(att)}
+                              className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                              title={isProposal ? "Hapus referensi dari kartu" : "Hapus lampiran"}
+                            >
+                              {deletingAttachmentId === att.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ───────────────────────────────────────────────────────────────── */}
+            {/* Section 2: Tautan Terkait (External Web Links) */}
+            {/* ───────────────────────────────────────────────────────────────── */}
+            <div className="pt-2 border-t border-gray-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Link2 className="h-3.5 w-3.5 text-[#0F5132]" />
+                  <span>Tautan Terkait</span>
+                  {links.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {links.length}
+                    </Badge>
+                  )}
+                </label>
+              </div>
+
+              {canEdit && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 bg-gray-50/80 p-2 rounded-xl border border-gray-200">
+                  <Input
+                    placeholder="https://drive.google.com/... atau https://youtube.com/..."
+                    value={newLinkUrl}
+                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                    className="text-xs bg-white h-8 flex-1"
+                  />
+                  <Input
+                    placeholder="Label (opsional)"
+                    value={newLinkLabel}
+                    onChange={(e) => setNewLinkLabel(e.target.value)}
+                    className="text-xs bg-white h-8 sm:w-40"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={addingLink || !newLinkUrl.trim()}
+                    onClick={handleAddLink}
+                    className="text-xs h-8 px-3 bg-[#0F5132] hover:bg-[#1B7A4D] text-white shrink-0 font-semibold gap-1"
+                  >
+                    {addingLink ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Plus className="h-3 w-3" />
+                    )}
+                    <span>Tambah</span>
+                  </Button>
+                </div>
+              )}
+
+              {loadingLinks ? (
+                <div className="flex items-center justify-center py-3 text-xs text-gray-400 gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0F5132]" />
+                  <span>Memuat daftar tautan...</span>
+                </div>
+              ) : links.length === 0 ? (
+                <p className="text-[11px] text-gray-400 italic py-1">
+                  Belum ada tautan terkait pada kartu ini.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {links.map((link) => (
+                    <div
+                      key={link.id}
+                      className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200/80 hover:bg-gray-100/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {getDomainIcon(link.url)}
+                        <div className="min-w-0 flex-1">
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-gray-800 hover:text-[#0F5132] hover:underline truncate block"
+                          >
+                            {link.label || link.url}
+                          </a>
+                          {link.label && (
+                            <p className="text-[10px] text-gray-400 truncate">{link.url}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200/60 transition-colors"
+                          title="Buka tautan di tab baru"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            disabled={deletingLinkId === link.id}
+                            onClick={() => handleDeleteLink(link.id)}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                            title="Hapus tautan"
+                          >
+                            {deletingLinkId === link.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <DialogFooter className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-gray-100">

@@ -164,6 +164,32 @@ export const kanbanCard = pgTable('kanban_card', {
   index('kanban_card_tahap_idx').on(t.tahap),
 ]);
 
+export const taskAttachment = pgTable('task_attachment', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => kanbanCard.id, { onDelete: 'cascade' }),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type').notNull(),
+  fileSize: integer('file_size').notNull().default(0),
+  source: text('source').notNull().default('upload'), // 'upload' | 'proposal_dossier'
+  uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+  uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('task_attachment_task_idx').on(t.taskId),
+  index('task_attachment_source_idx').on(t.source),
+]);
+
+export const taskLink = pgTable('task_link', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => kanbanCard.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  label: text('label'),
+  addedBy: uuid('added_by').references(() => users.id, { onDelete: 'set null' }),
+  addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('task_link_task_idx').on(t.taskId),
+]);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GRUP D — CUSTOMER VALIDATION
 // ═══════════════════════════════════════════════════════════════════════════════
