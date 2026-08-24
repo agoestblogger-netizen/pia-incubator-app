@@ -32,6 +32,7 @@ export async function getKanbanData(timId: string) {
       urutan: kanbanCard.urutan,
       label: kanbanCard.label,
       reviewStatus: kanbanCard.reviewStatus,
+      estimasiJam: kanbanCard.estimasiJam,
       createdAt: kanbanCard.createdAt,
       updatedAt: kanbanCard.updatedAt,
       attachmentsCount: sql<number>`cast(count(distinct ${taskAttachment.id}) as int)`,
@@ -82,6 +83,7 @@ export async function createKanbanCardAction(
         dependencyRisiko: cardData.dependencyRisiko,
         urutan: cardData.urutan || 0,
         reviewStatus: 'adopted', // kartu manual selalu adopted
+        estimasiJam: cardData.estimasiJam ?? null,
       })
       .returning();
 
@@ -244,6 +246,7 @@ export async function updateKanbanCardFullAction(
     if (cardData.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardData.acceptanceCriteria;
     if (cardData.dependencyRisiko !== undefined) updatePayload.dependencyRisiko = cardData.dependencyRisiko;
     if (cardData.reviewStatus !== undefined) updatePayload.reviewStatus = cardData.reviewStatus;
+    if (cardData.estimasiJam !== undefined) updatePayload.estimasiJam = cardData.estimasiJam;
 
     const [updated] = await db
       .update(kanbanCard)

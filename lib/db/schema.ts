@@ -158,6 +158,7 @@ export const kanbanCard = pgTable('kanban_card', {
   urutan: integer('urutan').notNull().default(0),
   label: text('label'), // e.g. 'Backlog Charter', 'SME Review', 'MVP Task', etc.
   reviewStatus: text('review_status').notNull().default('adopted'), // 'ai_reference' | 'adopted'
+  estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (nullable)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -189,6 +190,19 @@ export const taskLink = pgTable('task_link', {
   addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('task_link_task_idx').on(t.taskId),
+]);
+
+export const teamMemberCapacity = pgTable('team_member_capacity', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  anggotaTimId: uuid('anggota_tim_id').notNull().references(() => anggotaTim.id, { onDelete: 'cascade' }),
+  sprintNumber: integer('sprint_number').notNull(),
+  kapasitasJam: integer('kapasitas_jam').notNull().default(80),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('tmc_anggota_sprint_unique').on(t.anggotaTimId, t.sprintNumber),
+  index('tmc_tim_sprint_idx').on(t.timInovatorId, t.sprintNumber),
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════════

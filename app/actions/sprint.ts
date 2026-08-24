@@ -203,7 +203,15 @@ export async function updateSprintCountAction(
   }
 }
 
-export async function startSprintAction(timId: string, sprintId: string) {
+export async function startSprintAction(
+  timId: string,
+  sprintId: string,
+  cardAssignments?: Array<{
+    cardId: string;
+    estimasiJam?: number | null;
+    ownerAnggotaId?: string | null;
+  }>
+) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -242,6 +250,7 @@ export async function startSprintAction(timId: string, sprintId: string) {
       return { success: false, error: "Sprint tidak ditemukan." };
     }
 
+    // Update target sprint status
     await db
       .update(sprint)
       .set({
@@ -251,15 +260,37 @@ export async function startSprintAction(timId: string, sprintId: string) {
       })
       .where(eq(sprint.id, sprintId));
 
+    // Update card assignments if provided
+    if (cardAssignments && cardAssignments.length > 0) {
+      for (const item of cardAssignments) {
+        const updateData: any = {
+          sprintNumber: targetSprint.nomorSprint,
+          updatedAt: new Date(),
+        };
+        if (item.estimasiJam !== undefined) updateData.estimasiJam = item.estimasiJam;
+        if (item.ownerAnggotaId !== undefined) updateData.ownerAnggotaId = item.ownerAnggotaId;
+
+        await db
+          .update(kanbanCard)
+          .set(updateData)
+          .where(and(eq(kanbanCard.id, item.cardId), eq(kanbanCard.timInovatorId, timId)));
+      }
+    }
+
     await logAudit({
       userId: user.id,
       userName: user.nama,
       action: "SPRINT_START",
       entity: "sprint",
       entityId: sprintId,
-      details: { timId, nomorSprint: targetSprint.nomorSprint },
+      details: {
+        timId,
+        nomorSprint: targetSprint.nomorSprint,
+        cardsCount: cardAssignments?.length || 0,
+      },
     });
 
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/kanban`);
     revalidatePath(`/dashboard`);
     return { success: true };
