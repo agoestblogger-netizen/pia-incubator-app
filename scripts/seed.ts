@@ -205,6 +205,13 @@ const SAMPLE_USERS = [
     isGlobal: true,
   },
   {
+    email: 'admin@pegadaian.co.id',
+    password: 'password123',
+    nama: 'Administrator Utama',
+    roleKode: 'admin_ic',
+    isGlobal: true,
+  },
+  {
     email: 'project.owner@pegadaian.co.id',
     password: 'Password123!',
     nama: 'Budi Santoso (Project Owner)',

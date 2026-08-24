@@ -377,3 +377,81 @@ export function getCategoryBadgeToken(category: string) {
     }
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 7. MEDAL PALETTE TOKENS (Bronze, Silver, Gold, Platinum, Diamond)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface MedalToken {
+  name: string;
+  color: string;
+  borderColor: string;
+  bgGradient: string;
+  shadowColor: string;
+  badgeBg: string;
+  badgeText: string;
+  iconType: "bronze" | "silver" | "gold" | "platinum" | "diamond";
+}
+
+export const MEDAL_TOKENS: Record<string, MedalToken> = {
+  bronze: {
+    name: "Bronze",
+    color: "#8C5A2B",
+    borderColor: "#8C5A2B",
+    bgGradient: "linear-gradient(135deg, #8C5A2B 0%, #6E441F 100%)",
+    shadowColor: "rgba(140, 90, 43, 0.16)",
+    badgeBg: "bg-[#8C5A2B]",
+    badgeText: "text-white",
+    iconType: "bronze",
+  },
+  silver: {
+    name: "Silver",
+    color: "#8A93A8",
+    borderColor: "#8A93A8",
+    bgGradient: "linear-gradient(135deg, #8A93A8 0%, #69738A 100%)",
+    shadowColor: "rgba(138, 147, 168, 0.18)",
+    badgeBg: "bg-[#8A93A8]",
+    badgeText: "text-white",
+    iconType: "silver",
+  },
+  gold: {
+    name: "Gold",
+    color: "#D4AF37",
+    borderColor: "#D4AF37",
+    bgGradient: "linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #B89025 100%)",
+    shadowColor: "rgba(212, 175, 55, 0.22)",
+    badgeBg: "bg-[#D4AF37]",
+    badgeText: "text-white",
+    iconType: "gold",
+  },
+  platinum: {
+    name: "Platinum",
+    color: "#6E5E8C",
+    borderColor: "#6E5E8C",
+    bgGradient: "linear-gradient(135deg, #8874AB 0%, #6E5E8C 100%)",
+    shadowColor: "rgba(110, 94, 140, 0.22)",
+    badgeBg: "bg-[#6E5E8C]",
+    badgeText: "text-white",
+    iconType: "platinum",
+  },
+  diamond: {
+    name: "Diamond",
+    color: "#5AC8D8",
+    borderColor: "#5AC8D8",
+    bgGradient: "linear-gradient(135deg, #5AC8D8 0%, #8E7CF0 100%)",
+    shadowColor: "rgba(90, 200, 216, 0.24)",
+    badgeBg: "bg-gradient-to-r from-[#5AC8D8] to-[#8E7CF0]",
+    badgeText: "text-white",
+    iconType: "diamond",
+  },
+};
+
+export function getMedalToken(classification?: string | null): MedalToken {
+  if (!classification) return MEDAL_TOKENS.gold;
+  const key = classification.trim().toLowerCase();
+  if (key.includes("diamond") || key.includes("berlian")) return MEDAL_TOKENS.diamond;
+  if (key.includes("platinum")) return MEDAL_TOKENS.platinum;
+  if (key.includes("silver") || key.includes("perak")) return MEDAL_TOKENS.silver;
+  if (key.includes("bronze") || key.includes("perunggu")) return MEDAL_TOKENS.bronze;
+  return MEDAL_TOKENS.gold;
+}

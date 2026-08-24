@@ -13,13 +13,19 @@ import {
   Layers,
   Activity,
   Calendar,
+  Award,
+  Gem,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { formatDateIndo } from "@/lib/utils";
 
-import { PEGADAIAN_HEADER_GRADIENT_STYLE, PHASE_TOKENS } from "@/lib/theme/tokens";
+import {
+  PEGADAIAN_HEADER_GRADIENT_STYLE,
+  PHASE_TOKENS,
+  getMedalToken,
+} from "@/lib/theme/tokens";
 
 export const dynamic = 'force-dynamic';
 
@@ -202,55 +208,72 @@ export default async function DashboardPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {teams.map(({ tim, fase, activeSprint, activeCardsCount, overdueTasksCount, latestActivityText }) => (
-              <Card
-                key={tim.id}
-                className="hover:shadow-md transition-all border-gray-200 bg-white group flex flex-col justify-between overflow-hidden"
-              >
-                <CardHeader className="pb-3 space-y-2.5">
-                  {/* Top Badges */}
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0F5132]/10 text-[#0F5132]">
-                      {tim.kategoriPia === 'BI' ? 'Breakthrough Innovation' : 'Business Case'}
-                    </span>
+            {teams.map(({ tim, fase, activeSprint, activeCardsCount, overdueTasksCount, latestActivityText }) => {
+              const medal = getMedalToken(tim.klasifikasiInovasi);
 
-                    <div className="flex items-center gap-1.5">
-                      {overdueTasksCount > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse">
-                          <AlertTriangle className="h-3 w-3" />
-                          <span>{overdueTasksCount} task terlambat</span>
+              return (
+                <Card
+                  key={tim.id}
+                  style={{
+                    borderTop: `5px solid ${medal.borderColor}`,
+                    boxShadow: `0 4px 14px ${medal.shadowColor}`,
+                  }}
+                  className="hover:shadow-lg transition-all border-gray-200 bg-white group flex flex-col justify-between overflow-hidden rounded-2xl"
+                >
+                  <CardHeader className="pb-3 space-y-2.5">
+                    {/* Top Badges */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0F5132]/10 text-[#0F5132]">
+                        {tim.kategoriPia === 'BI' ? 'Breakthrough Innovation' : 'Business Case'}
+                      </span>
+
+                      <div className="flex items-center gap-1.5">
+                        {overdueTasksCount > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>{overdueTasksCount} task terlambat</span>
+                          </span>
+                        )}
+
+                        <Badge
+                          variant={
+                            tim.status === 'aktif'
+                              ? 'success'
+                              : tim.status === 'selesai'
+                              ? 'gold'
+                              : 'secondary'
+                          }
+                          className="capitalize text-[10px]"
+                        >
+                          {tim.status}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Title & Classification */}
+                    <div>
+                      <CardTitle className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[#0F5132] transition-colors line-clamp-2">
+                        {tim.namaProyekInovasi}
+                      </CardTitle>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] text-gray-500">
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white shadow-2xs"
+                          style={{ background: medal.bgGradient }}
+                        >
+                          {medal.iconType === "diamond" ? (
+                            <Gem className="h-3 w-3 text-white" />
+                          ) : (
+                            <Award className="h-3 w-3 text-white" />
+                          )}
+                          <span>{medal.name}</span>
                         </span>
-                      )}
-
-                      <Badge
-                        variant={
-                          tim.status === 'aktif'
-                            ? 'success'
-                            : tim.status === 'selesai'
-                            ? 'gold'
-                            : 'secondary'
-                        }
-                        className="capitalize text-[10px]"
-                      >
-                        {tim.status}
-                      </Badge>
+                        <span className="text-gray-300">&bull;</span>
+                        <Badge variant={getPhaseBadgeVariant(fase.stageNumber)} className="text-[9px] py-0 font-bold">
+                          {fase.label}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Title & Classification */}
-                  <div>
-                    <CardTitle className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[#0F5132] transition-colors line-clamp-2">
-                      {tim.namaProyekInovasi}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
-                      <span>Klasifikasi: {tim.klasifikasiInovasi || 'Gold'}</span>
-                      <span>&bull;</span>
-                      <Badge variant={getPhaseBadgeVariant(fase.stageNumber)} className="text-[9px] py-0">
-                        {fase.label}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
 
                 <CardContent className="space-y-4 pt-0">
                   {/* Active Sprint Section & Progress Bar */}
@@ -326,7 +349,8 @@ export default async function DashboardPage() {
                   </Link>
                 </CardContent>
               </Card>
-            ))}
+            );
+          })}
           </div>
         )}
       </div>
