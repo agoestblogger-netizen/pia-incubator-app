@@ -923,15 +923,19 @@ export function KanbanClient({
 
   const isCvUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
   const isMvUnlocked = Boolean(phaseGateStatus?.gates?.marketValidation?.unlocked);
+  const currentModalSprintNum = detailSprintNumber !== null ? detailSprintNumber : selectedSprintNum;
 
   const availableRefCardsForDropdown = useMemo(() => {
     return cards.filter((c) => {
       if (c.reviewStatus !== "ai_reference") return false;
+      const cardSuggestedSprint = c.suggestedSprintNumber || 1;
+      const isCurrentlySelected = selectedRefCardId === c.id || selectedCardForDetail?.id === c.id;
+      if (cardSuggestedSprint !== currentModalSprintNum && !isCurrentlySelected) return false;
       if (c.tahap === "customer_validation" && !isCvUnlocked) return false;
       if (c.tahap === "market_validation" && !isMvUnlocked) return false;
       return true;
     });
-  }, [cards, isCvUnlocked, isMvUnlocked]);
+  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail, isCvUnlocked, isMvUnlocked]);
 
   const handleSelectReferenceCardInModal = (refCardId: string) => {
     setSelectedRefCardId(refCardId);
@@ -2167,7 +2171,7 @@ export function KanbanClient({
                         <option value="">-- Kosongkan untuk buat backlog sendiri --</option>
                         {availableRefCardsForDropdown.map((rc) => (
                           <option key={rc.id} value={rc.id}>
-                            [Sprint {rc.suggestedSprintNumber || 1}] {rc.judul} ({rc.label || "Referensi"})
+                            {rc.judul} ({rc.label || "Referensi"})
                           </option>
                         ))}
                       </select>
