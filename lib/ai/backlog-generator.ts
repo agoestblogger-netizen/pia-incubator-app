@@ -59,8 +59,12 @@ ATURAN GRANULARITAS TASK (SANGAT PENTING):
 ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
 1. JUDUL TASK: Wajib diawali KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
 2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap (misal IBMA, Divisi Bullion, nasabah korporasi, dll). JANGAN menambahkan nama vendor, instansi, atau detail teknologi baru di luar data sumber.
-3. DESKRIPSI (deskripsi): HANYA berisi 1-2 kalimat ringkas mengenai konteks aktivitas yang dikerjakan. DILARANG memasukkan kalimat "Hasil atau output dari task/aktivitas ini adalah..." ke dalam field deskripsi!
-4. ACCEPTANCE CRITERIA (acceptanceCriteria): Berisi definisi luaran konkret / tolok ukur hasil kerja task tersebut (misal: "Dokumen panduan FGD yang ditinjau tim", "Spesifikasi API koneksi data Bullion", "Hasil notulensi FGD dan daftar kebutuhan pengguna"), TANPA awalan "Hasil atau output dari task/aktivitas ini adalah".
+3. DESKRIPSI (deskripsi):
+   - WAJIB DIAWALI KATA KERJA IMPERATIF / AKTIF (contoh: "Definisikan...", "Susun...", "Rancang...", "Petakan...", "Siapkan...", "Lakukan...", "Koordinasikan...", "Identifikasi...").
+   - DILARANG KERAS MENGGUNAKAN KATA SUBJEK "Tim", "Tim inovator", atau subjek orang ketiga lainnya di kalimat manapun dalam deskripsi (karena task di-assign ke PIC/Owner individual).
+   - Tulis sebagai instruksi langsung 1-2 kalimat mengenai aktivitas yang dikerjakan.
+   - DILARANG memasukkan kalimat hasil/output ("Hasil atau output dari task/aktivitas ini adalah...") ke dalam deskripsi.
+4. ACCEPTANCE CRITERIA (acceptanceCriteria): Berisi definisi luaran konkret / tolok ukur hasil kerja task tersebut (misal: "Dokumen spesifikasi integrasi Bullion yang disepakati", "Spesifikasi API koneksi data", "Hasil notulensi FGD dan daftar kebutuhan pengguna"), TANPA awalan "Hasil atau output dari task/aktivitas ini adalah".
 5. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
 
     const userPrompt = `PROPOSAL METADATA:
@@ -76,12 +80,12 @@ ${roadmapText}
 KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
 ${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
 
-Pecah roadmap di atas menjadi daftar Backlog Task atomik dengan memisahkan 'deskripsi' (konteks aktivitas) dan 'acceptanceCriteria' (luaran/tolok ukur konkret) ke dalam format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik dengan memisahkan 'deskripsi' (diawali kata kerja imperatif, TANPA kata "Tim") dan 'acceptanceCriteria' (luaran konkret) ke dalam format JSON:
 {
   "tasks": [
     {
       "judul": "Kata Kerja Aktif + Target dan Konteks Aksi Atomik",
-      "deskripsi": "1-2 kalimat konteks aktivitas yang dikerjakan tim (bersih dari kalimat output).",
+      "deskripsi": "Kata Kerja Imperatif + penjelasan konteks aktivitas langsung tanpa subjek 'Tim'.",
       "acceptanceCriteria": "Luaran konkret / dokumen / deliverable / tolok ukur selesai."
     }
   ]
