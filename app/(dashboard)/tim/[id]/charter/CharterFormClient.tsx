@@ -827,8 +827,9 @@ export function CharterFormClient({
               <label className="text-xs font-semibold text-gray-700">
                 How Might We (HMW Statement)
               </label>
-              <Input
+              <Textarea
                 disabled={isReadOnly}
+                minHeight={70}
                 placeholder="Bagaimana kita dapat membantu [target pengguna] untuk [mencapai tujuan] tanpa [kendala utama]?"
                 value={formData.hmw}
                 onChange={(e) => handleChange("hmw", e.target.value)}
