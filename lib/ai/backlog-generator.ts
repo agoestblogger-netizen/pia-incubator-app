@@ -4,6 +4,7 @@ export interface AiBacklogTask {
   judul: string;
   deskripsi: string;
   acceptanceCriteria: string;
+  suggestedSprintNumber?: number;
 }
 
 export interface AiBacklogResponse {
@@ -16,9 +17,10 @@ export async function generateAiBacklogFromRoadmap(params: {
   namaProyek: string;
   kategoriPia: string;
   roadmapText: string;
+  totalSprints?: number;
   rawProposalData?: Record<string, any>;
 }): Promise<AiBacklogTask[] | null> {
-  const { teamId, proposalId, namaProyek, kategoriPia, roadmapText, rawProposalData } = params;
+  const { teamId, proposalId, namaProyek, kategoriPia, roadmapText, rawProposalData, totalSprints = 4 } = params;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -31,7 +33,7 @@ export async function generateAiBacklogFromRoadmap(params: {
     return null;
   }
 
-  console.log(`[AI Backlog] 🚀 Starting AI-powered Backlog generation for Team ID: ${teamId}, Proposal ID: ${proposalId} (${namaProyek})`);
+  console.log(`[AI Backlog] 🚀 Starting AI-powered Backlog generation for Team ID: ${teamId}, Proposal ID: ${proposalId} (${namaProyek}) - Total Sprints: ${totalSprints}`);
 
   try {
     const openai = new OpenAI({ apiKey });
@@ -56,6 +58,12 @@ ATURAN GRANULARITAS TASK (SANGAT PENTING):
    Jika deskripsi aktivitas di proposal sangat ringkas:
    Gunakan pola prosedural wajar: (1) Rencanakan/Petakan kebutuhan -> (2) Susun/Siapkan materi -> (3) Kembangkan/Lakukan aktivitas -> (4) Uji coba/Validasi -> (5) Dokumentasikan/Evaluasi hasil.
 
+ATURAN SPRINT ASSIGNMENT (suggestedSprintNumber):
+Petakan setiap task ke nomor sprint yang paling tepat (integer dari 1 sampai ${totalSprints}) berdasarkan urutan sekuensial tahapan di roadmap/proposal:
+- Sprint 1: Persiapan awal, penyelarasan stakeholder, riset dasar, desain konsep awal.
+- Sprint 2 s.d. ${Math.max(2, totalSprints - 1)}: Eksekusi pengembangan prototipe, integrasi, pengujian bertahap.
+- Sprint ${totalSprints}: Uji coba akhir, rilis rintisan, pelaporan performa.
+
 ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
 1. JUDUL TASK: Wajib diawali KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
 2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap (misal IBMA, Divisi Bullion, nasabah korporasi, dll). JANGAN menambahkan nama vendor, instansi, atau detail teknologi baru di luar data sumber.
@@ -65,12 +73,14 @@ ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
    - Tulis sebagai instruksi langsung 1-2 kalimat mengenai aktivitas yang dikerjakan.
    - DILARANG memasukkan kalimat hasil/output ("Hasil atau output dari task/aktivitas ini adalah...") ke dalam deskripsi.
 4. ACCEPTANCE CRITERIA (acceptanceCriteria): Berisi definisi luaran konkret / tolok ukur hasil kerja task tersebut (misal: "Dokumen spesifikasi integrasi Bullion yang disepakati", "Spesifikasi API koneksi data", "Hasil notulensi FGD dan daftar kebutuhan pengguna"), TANPA awalan "Hasil atau output dari task/aktivitas ini adalah".
-5. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
+5. suggestedSprintNumber: Angka integer antara 1 sampai ${totalSprints}.
+6. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
 
     const userPrompt = `PROPOSAL METADATA:
 - Proposal ID: ${proposalId}
 - Nama Inovasi: ${namaProyek}
 - Kategori PIA: ${kategoriPia}
+- Total Sprint Tersedia: ${totalSprints}
 
 TEKS ROADMAP LENGKAP DARI PROPOSAL ("Cara Mewujudkan Ide Inovasi"):
 """
@@ -80,13 +90,14 @@ ${roadmapText}
 KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
 ${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
 
-Pecah roadmap di atas menjadi daftar Backlog Task atomik dengan memisahkan 'deskripsi' (diawali kata kerja imperatif, TANPA kata "Tim") dan 'acceptanceCriteria' (luaran konkret) ke dalam format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik dengan memisahkan 'deskripsi' (diawali kata kerja imperatif, TANPA kata "Tim"), 'acceptanceCriteria' (luaran konkret), dan 'suggestedSprintNumber' (1 s.d. ${totalSprints}) ke dalam format JSON:
 {
   "tasks": [
     {
       "judul": "Kata Kerja Aktif + Target dan Konteks Aksi Atomik",
       "deskripsi": "Kata Kerja Imperatif + penjelasan konteks aktivitas langsung tanpa subjek 'Tim'.",
-      "acceptanceCriteria": "Luaran konkret / dokumen / deliverable / tolok ukur selesai."
+      "acceptanceCriteria": "Luaran konkret / dokumen / deliverable / tolok ukur selesai.",
+      "suggestedSprintNumber": 1
     }
   ]
 }`;
@@ -128,17 +139,25 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik dengan memisahkan 'desk
     const rawTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
 
     const validatedTasks: AiBacklogTask[] = [];
-    for (const t of rawTasks) {
+    for (let i = 0; i < rawTasks.length; i++) {
+      const t = rawTasks[i];
       if (t && typeof t.judul === 'string' && t.judul.trim().length > 0) {
+        let sprintNum = typeof t.suggestedSprintNumber === 'number' ? Math.round(t.suggestedSprintNumber) : null;
+        if (!sprintNum || sprintNum < 1 || sprintNum > totalSprints) {
+          // Heuristic fallback proportional distribution across sprints
+          sprintNum = Math.min(totalSprints, Math.max(1, Math.floor((i / Math.max(1, rawTasks.length)) * totalSprints) + 1));
+        }
+
         validatedTasks.push({
           judul: t.judul.trim(),
           deskripsi: typeof t.deskripsi === 'string' ? t.deskripsi.trim() : '',
           acceptanceCriteria: typeof t.acceptanceCriteria === 'string' ? t.acceptanceCriteria.trim() : '',
+          suggestedSprintNumber: sprintNum,
         });
       }
     }
 
-    console.log(`[AI Backlog] ✅ Successfully generated ${validatedTasks.length} Scrum Backlog tasks for Proposal ID: ${proposalId} using model: ${modelName}`);
+    console.log(`[AI Backlog] ✅ Successfully generated ${validatedTasks.length} Scrum Backlog tasks with suggested sprint numbers for Proposal ID: ${proposalId} using model: ${modelName}`);
     return validatedTasks.length > 0 ? validatedTasks : null;
   } catch (err: any) {
     console.error(`[AI Backlog] ❌ Error during AI Backlog generation for Proposal ID ${proposalId}:`, err.message);

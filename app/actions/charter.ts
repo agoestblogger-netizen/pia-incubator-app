@@ -1112,6 +1112,13 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     teamDossier = found;
   }
 
+  const { sprint: sprintTable } = await import("@/lib/db/schema");
+  const existingSprints = await db
+    .select({ nomorSprint: sprintTable.nomorSprint })
+    .from(sprintTable)
+    .where(eq(sprintTable.timInovatorId, timId));
+  const totalSprints = existingSprints.length > 0 ? existingSprints.length : 4;
+
   const cardsToInsert: Array<typeof kanbanCard.$inferInsert> = [];
   let cardUrutan = 1;
 
@@ -1144,6 +1151,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           namaProyek,
           kategoriPia,
           roadmapText,
+          totalSprints,
           rawProposalData: {
             judul: submisi.judul || snap.judul_inovasi,
             form_detail: formDetail,
@@ -1168,7 +1176,13 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     }
 
     if (aiTasks && aiTasks.length > 0) {
-      for (const t of aiTasks) {
+      for (let i = 0; i < aiTasks.length; i++) {
+        const t = aiTasks[i];
+        let sprintNum = t.suggestedSprintNumber;
+        if (!sprintNum || sprintNum < 1 || sprintNum > totalSprints) {
+          sprintNum = Math.min(totalSprints, Math.max(1, Math.floor((i / Math.max(1, aiTasks.length)) * totalSprints) + 1));
+        }
+
         cardsToInsert.push({
           timInovatorId: timId,
           judul: t.judul,
@@ -1177,8 +1191,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           statusKolom: "To Do",
           tahap: "innovation_setup",
           sprintNumber: null,
+          suggestedSprintNumber: sprintNum,
           label: "Draf Roadmap",
-          reviewStatus: 'ai_reference', // kartu AI belum ditinjau
+          reviewStatus: 'ai_reference', // Backlog Referensi
           urutan: cardUrutan++,
         });
       }
@@ -1192,6 +1207,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         statusKolom: "To Do",
         tahap: "innovation_setup",
         sprintNumber: null,
+        suggestedSprintNumber: 1,
         label: "Draf Roadmap",
         reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
@@ -1205,6 +1221,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         statusKolom: "To Do",
         tahap: "innovation_setup",
         sprintNumber: null,
+        suggestedSprintNumber: 1,
         label: "Draf Roadmap",
         reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
@@ -1219,6 +1236,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           statusKolom: "To Do",
           tahap: "innovation_setup",
           sprintNumber: null,
+          suggestedSprintNumber: Math.min(totalSprints, 2),
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
@@ -1227,7 +1245,14 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     }
   }
 
-  for (const t of bakuCVTasks) {
+  // 15 Template Baku (7 CV + 8 MV) dengan suggestedSprintNumber proporsional
+  for (let cvIdx = 0; cvIdx < bakuCVTasks.length; cvIdx++) {
+    const t = bakuCVTasks[cvIdx];
+    // Heuristik CV: sebar di sprint pertengahan (misal Sprint 2 atau 3 pada 4 sprint)
+    const cvSprint = totalSprints <= 2
+      ? 1
+      : Math.min(totalSprints, Math.max(1, Math.round(1 + (cvIdx / Math.max(1, bakuCVTasks.length - 1)) * (totalSprints * 0.5))));
+
     cardsToInsert.push({
       timInovatorId: timId,
       judul: t.judul,
@@ -1236,13 +1261,20 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       statusKolom: "To Do",
       tahap: t.tahap,
       sprintNumber: null,
+      suggestedSprintNumber: cvSprint,
       label: "Template Baku CV",
-      reviewStatus: 'adopted', // template baku adalah task resmi
+      reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
       urutan: cardUrutan++,
     });
   }
 
-  for (const t of bakuMVTasks) {
+  for (let mvIdx = 0; mvIdx < bakuMVTasks.length; mvIdx++) {
+    const t = bakuMVTasks[mvIdx];
+    // Heuristik MV: sebar di sprint akhir (misal Sprint 3 & 4 pada 4 sprint)
+    const mvSprint = totalSprints <= 2
+      ? totalSprints
+      : Math.min(totalSprints, Math.max(1, Math.round((totalSprints * 0.5) + (mvIdx / Math.max(1, bakuMVTasks.length - 1)) * (totalSprints * 0.5))));
+
     cardsToInsert.push({
       timInovatorId: timId,
       judul: t.judul,
@@ -1251,8 +1283,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       statusKolom: "To Do",
       tahap: t.tahap,
       sprintNumber: null,
+      suggestedSprintNumber: mvSprint,
       label: "Template Baku MV",
-      reviewStatus: 'adopted', // template baku adalah task resmi
+      reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
       urutan: cardUrutan++,
     });
   }

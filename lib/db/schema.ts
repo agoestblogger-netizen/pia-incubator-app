@@ -159,6 +159,7 @@ export const kanbanCard = pgTable('kanban_card', {
   label: text('label'), // e.g. 'Backlog Charter', 'SME Review', 'MVP Task', etc.
   reviewStatus: text('review_status').notNull().default('adopted'), // 'ai_reference' | 'adopted'
   estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (nullable)
+  suggestedSprintNumber: integer('suggested_sprint_number'), // sprint yang disarankan dari analisa proposal / heuristik
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

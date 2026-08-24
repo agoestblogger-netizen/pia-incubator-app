@@ -33,6 +33,7 @@ export async function getKanbanData(timId: string) {
       label: kanbanCard.label,
       reviewStatus: kanbanCard.reviewStatus,
       estimasiJam: kanbanCard.estimasiJam,
+      suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
       createdAt: kanbanCard.createdAt,
       updatedAt: kanbanCard.updatedAt,
       attachmentsCount: sql<number>`cast(count(distinct ${taskAttachment.id}) as int)`,
@@ -247,6 +248,7 @@ export async function updateKanbanCardFullAction(
     if (cardData.dependencyRisiko !== undefined) updatePayload.dependencyRisiko = cardData.dependencyRisiko;
     if (cardData.reviewStatus !== undefined) updatePayload.reviewStatus = cardData.reviewStatus;
     if (cardData.estimasiJam !== undefined) updatePayload.estimasiJam = cardData.estimasiJam;
+    if (cardData.suggestedSprintNumber !== undefined) updatePayload.suggestedSprintNumber = cardData.suggestedSprintNumber;
 
     const [updated] = await db
       .update(kanbanCard)
@@ -268,6 +270,69 @@ export async function updateKanbanCardFullAction(
     return { success: true, data: updated };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal mengupdate kartu." };
+  }
+}
+
+export async function adoptAiCardAction(
+  timId: string,
+  cardId: string,
+  targetSprintNumber?: number | null,
+  cardOverrides?: {
+    judul?: string;
+    deskripsi?: string;
+    acceptanceCriteria?: string;
+    estimasiJam?: number | null;
+    ownerAnggotaId?: string | null;
+  }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk mengadopsi kartu backlog.",
+      };
+    }
+
+    const updatePayload: any = {
+      reviewStatus: 'adopted',
+      updatedAt: new Date(),
+    };
+
+    if (targetSprintNumber !== undefined) {
+      updatePayload.sprintNumber = targetSprintNumber;
+    }
+    if (cardOverrides?.judul) updatePayload.judul = cardOverrides.judul;
+    if (cardOverrides?.deskripsi !== undefined) updatePayload.deskripsi = cardOverrides.deskripsi;
+    if (cardOverrides?.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardOverrides.acceptanceCriteria;
+    if (cardOverrides?.estimasiJam !== undefined) updatePayload.estimasiJam = cardOverrides.estimasiJam;
+    if (cardOverrides?.ownerAnggotaId !== undefined) updatePayload.ownerAnggotaId = cardOverrides.ownerAnggotaId;
+
+    const [updated] = await db
+      .update(kanbanCard)
+      .set(updatePayload)
+      .where(eq(kanbanCard.id, cardId))
+      .returning();
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "KANBAN_CARD_ADOPT",
+      entity: "kanban_card",
+      entityId: cardId,
+      details: { timId, judul: updated?.judul, targetSprintNumber },
+    });
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal mengadopsi kartu." };
   }
 }
 
@@ -549,75 +614,3 @@ export async function deleteTaskLinkAction(linkId: string, timId: string) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// AI REFERENCE ADOPTION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Adopsi kartu AI Reference ke Backlog Kerja Resmi:
- * - Simpan semua perubahan field (jika ada)
- * - Ubah reviewStatus jadi 'adopted'
- * Dalam satu operasi atomik.
- */
-export async function adoptAiCardAction(
-  timId: string,
-  cardId: string,
-  cardData: Partial<typeof kanbanCard.$inferInsert>
-) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
-    }
-
-    const allowed = await hasPermission(user, "kanban.edit", timId);
-    if (!allowed) {
-      return {
-        success: false,
-        error: "Forbidden: Anda tidak memiliki izin mengadopsi kartu AI di tim ini.",
-      };
-    }
-
-    const updatePayload: any = {
-      reviewStatus: 'adopted',
-      updatedAt: new Date(),
-    };
-
-    if (cardData.judul !== undefined) updatePayload.judul = cardData.judul;
-    if (cardData.deskripsi !== undefined) updatePayload.deskripsi = cardData.deskripsi;
-    if (cardData.statusKolom !== undefined) updatePayload.statusKolom = cardData.statusKolom;
-    if (cardData.tahap !== undefined) updatePayload.tahap = cardData.tahap;
-    if (cardData.sprintNumber !== undefined) updatePayload.sprintNumber = cardData.sprintNumber;
-    if (cardData.ownerAnggotaId !== undefined) updatePayload.ownerAnggotaId = cardData.ownerAnggotaId;
-    if (cardData.label !== undefined) updatePayload.label = cardData.label;
-    if (cardData.tanggalMulai !== undefined) {
-      updatePayload.tanggalMulai = cardData.tanggalMulai ? new Date(cardData.tanggalMulai) : null;
-    }
-    if (cardData.tanggalSelesai !== undefined) {
-      updatePayload.tanggalSelesai = cardData.tanggalSelesai ? new Date(cardData.tanggalSelesai) : null;
-    }
-    if (cardData.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardData.acceptanceCriteria;
-    if (cardData.dependencyRisiko !== undefined) updatePayload.dependencyRisiko = cardData.dependencyRisiko;
-
-    const [updated] = await db
-      .update(kanbanCard)
-      .set(updatePayload)
-      .where(eq(kanbanCard.id, cardId))
-      .returning();
-
-    await logAudit({
-      userId: user.id,
-      userName: user.nama,
-      action: "KANBAN_CARD_AI_ADOPTED",
-      entity: "kanban_card",
-      entityId: cardId,
-      details: { timId, judul: updated?.judul, sebelumnya: 'ai_reference', sesudahnya: 'adopted' },
-    });
-
-    revalidatePath(`/tim/${timId}`);
-    revalidatePath(`/tim/${timId}/kanban`);
-    return { success: true, data: updated };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Gagal mengadopsi kartu AI." };
-  }
-}

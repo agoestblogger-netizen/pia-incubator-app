@@ -535,6 +535,7 @@ export function KanbanClient({
   anggotaTim,
   canEdit = true,
   currentUser,
+  phaseGateStatus,
 }: {
   timId: string;
   initialColumns: any[];
@@ -543,6 +544,7 @@ export function KanbanClient({
   anggotaTim: any[];
   canEdit?: boolean;
   currentUser?: any;
+  phaseGateStatus?: any;
 }) {
   const [viewMode, setViewMode] = useState<"board" | "timeline">("board");
   const [cards, setCards] = useState<any[]>(initialCards);
@@ -594,6 +596,7 @@ export function KanbanClient({
 
   // Card Detail Modal State
   const [selectedCardForDetail, setSelectedCardForDetail] = useState<any | null>(null);
+  const [selectedRefCardId, setSelectedRefCardId] = useState<string>("");
   const [detailJudul, setDetailJudul] = useState("");
   const [detailDeskripsi, setDetailDeskripsi] = useState("");
   const [detailTahap, setDetailTahap] = useState("umum");
@@ -875,7 +878,16 @@ export function KanbanClient({
     });
   }, [cards, tahapFilter]);
 
-  // Backlog Cards — HANYA kartu adopted (bukan ai_reference)
+  // Backlog Cards yang sudah diadopsi untuk Sprint Terpilih
+  const plannedCardsForSelectedSprint = useMemo(() => {
+    return filteredCards.filter(
+      (c) =>
+        c.sprintNumber === selectedSprintNum &&
+        c.reviewStatus === 'adopted'
+    );
+  }, [filteredCards, selectedSprintNum]);
+
+  // Backlog Cards umum (tanpa sprint)
   const backlogCards = useMemo(() => {
     return filteredCards.filter(
       (c) =>
@@ -901,20 +913,59 @@ export function KanbanClient({
 
   // Incomplete cards for completion dialog
   const incompleteCardsInCurrentSprint = useMemo(() => {
-    if (!currentSprintObj) return [];
+    if (!currentPlanningSprintObj) return [];
     return activeSprintCards.filter((c) => c.statusKolom !== "Done");
-  }, [activeSprintCards, currentSprintObj]);
+  }, [activeSprintCards, currentPlanningSprintObj]);
 
   // ───────────────────────────────────────────────────────────────────────────
   // Card Detail Handlers
   // ───────────────────────────────────────────────────────────────────────────
 
-  const handleOpenCardDetail = (card: any) => {
+  const isCvUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
+  const isMvUnlocked = Boolean(phaseGateStatus?.gates?.marketValidation?.unlocked);
+
+  const availableRefCardsForDropdown = useMemo(() => {
+    return cards.filter((c) => {
+      if (c.reviewStatus !== "ai_reference") return false;
+      if (c.tahap === "customer_validation" && !isCvUnlocked) return false;
+      if (c.tahap === "market_validation" && !isMvUnlocked) return false;
+      return true;
+    });
+  }, [cards, isCvUnlocked, isMvUnlocked]);
+
+  const handleSelectReferenceCardInModal = (refCardId: string) => {
+    setSelectedRefCardId(refCardId);
+    if (!refCardId) {
+      setDetailJudul("");
+      setDetailDeskripsi("");
+      setDetailAcceptanceCriteria("");
+      setDetailTahap("innovation_setup");
+      setDetailLabel("");
+      return;
+    }
+
+    const ref = cards.find((c) => c.id === refCardId);
+    if (ref) {
+      setDetailJudul(ref.judul || "");
+      setDetailDeskripsi(ref.deskripsi || "");
+      setDetailAcceptanceCriteria(ref.acceptanceCriteria || "");
+      setDetailTahap(ref.tahap || "innovation_setup");
+      setDetailLabel(ref.label || "Draf Roadmap");
+    }
+  };
+
+  const handleOpenCardDetail = (card: any, forceSprintNum?: number) => {
     setSelectedCardForDetail(card);
     setDetailJudul(card.judul || "");
     setDetailDeskripsi(card.deskripsi || "");
     setDetailTahap(card.tahap || "umum");
-    setDetailSprintNumber(card.sprintNumber !== undefined ? card.sprintNumber : null);
+    setDetailSprintNumber(
+      forceSprintNum !== undefined
+        ? forceSprintNum
+        : card.sprintNumber !== undefined
+        ? card.sprintNumber
+        : null
+    );
     setDetailStatusKolom(card.statusKolom || "To Do");
     setDetailOwnerAnggotaId(card.ownerAnggotaId || null);
     setDetailEstimasiJam(card.estimasiJam !== undefined ? card.estimasiJam : null);
@@ -928,13 +979,48 @@ export function KanbanClient({
     setDetailAcceptanceCriteria(card.acceptanceCriteria || "");
     setDetailDependencyRisiko(card.dependencyRisiko || "");
 
+    if (card.reviewStatus === "ai_reference") {
+      setSelectedRefCardId(card.id);
+    } else {
+      setSelectedRefCardId("");
+    }
+
     // Fetch attachments and links
     setAttachments([]);
     setLinks([]);
     setNewLinkUrl("");
     setNewLinkLabel("");
-    fetchTaskAttachments(card.id);
-    fetchTaskLinks(card.id);
+    if (card.id && !card.isNewBacklog) {
+      fetchTaskAttachments(card.id);
+      fetchTaskLinks(card.id);
+    }
+  };
+
+  const handleOpenCreateBacklogModal = (sprintNum: number) => {
+    const dummyCard = {
+      id: `new-backlog-${Date.now()}`,
+      isNewBacklog: true,
+      reviewStatus: "adopted",
+      sprintNumber: sprintNum,
+      statusKolom: "To Do",
+      tahap: "innovation_setup",
+    };
+    setSelectedCardForDetail(dummyCard);
+    setSelectedRefCardId("");
+    setDetailJudul("");
+    setDetailDeskripsi("");
+    setDetailTahap("innovation_setup");
+    setDetailSprintNumber(sprintNum);
+    setDetailStatusKolom("To Do");
+    setDetailOwnerAnggotaId(null);
+    setDetailEstimasiJam(null);
+    setDetailLabel("");
+    setDetailTanggalMulai("");
+    setDetailTanggalSelesai("");
+    setDetailAcceptanceCriteria("");
+    setDetailDependencyRisiko("");
+    setAttachments([]);
+    setLinks([]);
   };
 
   const handleSaveCardDetail = async (e: React.FormEvent) => {
@@ -943,38 +1029,138 @@ export function KanbanClient({
     setSavingDetailCard(true);
     setErrorMessage(null);
 
-    const payload = {
-      judul: detailJudul,
-      deskripsi: detailDeskripsi,
-      tahap: detailTahap,
-      sprintNumber: detailSprintNumber,
-      statusKolom: detailStatusKolom,
-      ownerAnggotaId: detailOwnerAnggotaId,
-      estimasiJam: detailEstimasiJam,
-      label: detailLabel,
-      tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
-      tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
-      acceptanceCriteria: detailAcceptanceCriteria,
-      dependencyRisiko: detailDependencyRisiko,
-    };
+    const targetSprint =
+      detailSprintNumber !== null ? detailSprintNumber : selectedSprintNum;
 
-    const res = await updateKanbanCardFullAction(timId, selectedCardForDetail.id, payload);
-    if (res.success && res.data) {
-      setCards((prev) =>
-        prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
+    // Case 1: Created from "+ Tambah Backlog"
+    if (selectedCardForDetail.isNewBacklog) {
+      if (selectedRefCardId) {
+        // Adopt selected reference card
+        const res = await adoptAiCardAction(
+          timId,
+          selectedRefCardId,
+          targetSprint,
+          {
+            judul: detailJudul,
+            deskripsi: detailDeskripsi,
+            acceptanceCriteria: detailAcceptanceCriteria,
+            estimasiJam: detailEstimasiJam,
+            ownerAnggotaId: detailOwnerAnggotaId,
+          }
+        );
+        if (res.success && res.data) {
+          setCards((prev) =>
+            prev.map((c) => (c.id === selectedRefCardId ? { ...c, ...res.data } : c))
+          );
+          toast.success(
+            `Backlog referensi "${detailJudul}" berhasil diadopsi ke Sprint ${targetSprint}!`,
+            "Backlog Ditambahkan ✓"
+          );
+          setSelectedCardForDetail(null);
+        } else {
+          const errMsg = res.error || "Gagal mengadopsi backlog.";
+          toast.error(errMsg, "Gagal");
+          setErrorMessage(errMsg);
+        }
+      } else {
+        // Create manual card
+        const res = await createKanbanCardAction(timId, {
+          judul: detailJudul,
+          deskripsi: detailDeskripsi,
+          tahap: detailTahap,
+          sprintNumber: targetSprint,
+          statusKolom: detailStatusKolom || "To Do",
+          ownerAnggotaId: detailOwnerAnggotaId,
+          estimasiJam: detailEstimasiJam,
+          label: detailLabel,
+          tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
+          tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
+          acceptanceCriteria: detailAcceptanceCriteria,
+          dependencyRisiko: detailDependencyRisiko,
+          reviewStatus: "adopted",
+        });
+        if (res.success && res.data) {
+          setCards((prev) => [...prev, res.data]);
+          toast.success(
+            `Backlog "${detailJudul}" berhasil ditambahkan ke Sprint ${targetSprint}!`,
+            "Backlog Dibuat ✓"
+          );
+          setSelectedCardForDetail(null);
+        } else {
+          const errMsg = res.error || "Gagal membuat backlog.";
+          toast.error(errMsg, "Gagal");
+          setErrorMessage(errMsg);
+        }
+      }
+    }
+    // Case 2: Direct adoption of an ai_reference card
+    else if (selectedCardForDetail.reviewStatus === "ai_reference") {
+      const res = await adoptAiCardAction(
+        timId,
+        selectedCardForDetail.id,
+        targetSprint,
+        {
+          judul: detailJudul,
+          deskripsi: detailDeskripsi,
+          acceptanceCriteria: detailAcceptanceCriteria,
+          estimasiJam: detailEstimasiJam,
+          ownerAnggotaId: detailOwnerAnggotaId,
+        }
       );
-      toast.success("Perubahan detail kartu berhasil disimpan!", "Kartu Diperbarui");
-      setSelectedCardForDetail(null);
-    } else {
-      const errMsg = res.error || "Gagal menyimpan perubahan kartu.";
-      toast.error(errMsg, "Gagal Menyimpan Kartu");
-      setErrorMessage(errMsg);
+      if (res.success && res.data) {
+        setCards((prev) =>
+          prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
+        );
+        toast.success(
+          `Kartu "${detailJudul}" berhasil diadopsi ke Sprint ${targetSprint}!`,
+          "Adopsi Berhasil ✓"
+        );
+        setSelectedCardForDetail(null);
+      } else {
+        const errMsg = res.error || "Gagal mengadopsi kartu.";
+        toast.error(errMsg, "Gagal");
+        setErrorMessage(errMsg);
+      }
+    }
+    // Case 3: Regular update of existing card
+    else {
+      const payload = {
+        judul: detailJudul,
+        deskripsi: detailDeskripsi,
+        tahap: detailTahap,
+        sprintNumber: detailSprintNumber,
+        statusKolom: detailStatusKolom,
+        ownerAnggotaId: detailOwnerAnggotaId,
+        estimasiJam: detailEstimasiJam,
+        label: detailLabel,
+        tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
+        tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
+        acceptanceCriteria: detailAcceptanceCriteria,
+        dependencyRisiko: detailDependencyRisiko,
+      };
+
+      const res = await updateKanbanCardFullAction(timId, selectedCardForDetail.id, payload);
+      if (res.success && res.data) {
+        setCards((prev) =>
+          prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
+        );
+        toast.success("Perubahan detail kartu berhasil disimpan!", "Kartu Diperbarui");
+        setSelectedCardForDetail(null);
+      } else {
+        const errMsg = res.error || "Gagal menyimpan perubahan kartu.";
+        toast.error(errMsg, "Gagal Menyimpan Kartu");
+        setErrorMessage(errMsg);
+      }
     }
     setSavingDetailCard(false);
   };
 
   const handleDeleteCard = async () => {
     if (!selectedCardForDetail) return;
+    if (selectedCardForDetail.isNewBacklog) {
+      setSelectedCardForDetail(null);
+      return;
+    }
     if (!confirm(`Hapus kartu "${selectedCardForDetail.judul}" secara permanen?`)) return;
     setDeletingCard(true);
     setErrorMessage(null);
@@ -997,33 +1183,32 @@ export function KanbanClient({
     setAdoptingCardId(selectedCardForDetail.id);
     setErrorMessage(null);
 
-    const payload = {
-      judul: detailJudul,
-      deskripsi: detailDeskripsi,
-      tahap: detailTahap,
-      sprintNumber: detailSprintNumber,
-      statusKolom: detailStatusKolom,
-      ownerAnggotaId: detailOwnerAnggotaId,
-      estimasiJam: detailEstimasiJam,
-      label: detailLabel,
-      tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
-      tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
-      acceptanceCriteria: detailAcceptanceCriteria,
-      dependencyRisiko: detailDependencyRisiko,
-    };
+    const targetSprint =
+      detailSprintNumber !== null ? detailSprintNumber : selectedSprintNum;
 
-    const res = await adoptAiCardAction(timId, selectedCardForDetail.id, payload);
+    const res = await adoptAiCardAction(
+      timId,
+      selectedCardForDetail.id,
+      targetSprint,
+      {
+        judul: detailJudul,
+        deskripsi: detailDeskripsi,
+        acceptanceCriteria: detailAcceptanceCriteria,
+        estimasiJam: detailEstimasiJam,
+        ownerAnggotaId: detailOwnerAnggotaId,
+      }
+    );
     if (res.success && res.data) {
       setCards((prev) =>
         prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
       );
       toast.success(
-        `Kartu "${detailJudul}" berhasil diadopsi ke Backlog Kerja!`,
+        `Kartu "${detailJudul}" berhasil diadopsi ke Sprint ${targetSprint}!`,
         "Adopsi Berhasil ✓"
       );
       setSelectedCardForDetail(null);
     } else {
-      const errMsg = res.error || "Gagal mengadopsi kartu AI.";
+      const errMsg = res.error || "Gagal mengadopsi kartu.";
       toast.error(errMsg, "Gagal Adopsi");
       setErrorMessage(errMsg);
     }
@@ -1620,7 +1805,7 @@ export function KanbanClient({
                 )}
               </h2>
               <p className="text-xs text-gray-500 hidden sm:block">
-                Tinjau usulan AI Roadmap, pantau kapasitas jam tim, dan assign backlog sebelum memulai sprint.
+                Tinjau Backlog Referensi, pantau kapasitas jam tim, dan alokasikan backlog sebelum memulai sprint.
               </p>
             </div>
           </div>
@@ -1641,12 +1826,15 @@ export function KanbanClient({
             <SprintPlanningSection
               timId={timId}
               sprint={currentPlanningSprintObj}
+              sprints={sprints}
               anggotaTim={anggotaTim}
               aiReferenceCards={aiReferenceCards}
-              backlogCards={backlogCards}
+              backlogCards={plannedCardsForSelectedSprint}
               capacities={capacities}
               canEdit={canEdit}
+              phaseGateStatus={phaseGateStatus}
               onOpenCardDetail={handleOpenCardDetail}
+              onOpenCreateBacklogModal={handleOpenCreateBacklogModal}
               onRefreshCapacities={() => fetchCapacities(selectedSprintNum)}
               onStartSprint={handleStartSprintFromPlanning}
               startingSprint={startingSprint}
@@ -1968,6 +2156,32 @@ export function KanbanClient({
                 </DialogHeader>
 
                 <form onSubmit={handleSaveCardDetail} className="space-y-4 py-2 text-xs">
+                  {/* Dropdown Referensi: Muncul saat tambah backlog baru atau meninjau kartu referensi */}
+                  {(selectedCardForDetail?.isNewBacklog || selectedCardForDetail?.reviewStatus === "ai_reference") && (
+                    <div className="space-y-1.5 bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 shadow-2xs">
+                      <label className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                        <span>Pilih dari Backlog Referensi (opsional)</span>
+                      </label>
+                      <select
+                        value={selectedRefCardId}
+                        disabled={!canEdit}
+                        onChange={(e) => handleSelectReferenceCardInModal(e.target.value)}
+                        className="w-full text-xs bg-white border border-purple-200 rounded-lg p-2 text-gray-800 font-semibold focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
+                      >
+                        <option value="">-- Kosongkan untuk buat backlog sendiri --</option>
+                        {availableRefCardsForDropdown.map((rc) => (
+                          <option key={rc.id} value={rc.id}>
+                            [Sprint {rc.suggestedSprintNumber || 1}] {rc.judul} ({rc.label || "Referensi"})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-purple-700 leading-tight">
+                        Memilih kartu referensi akan otomatis mengisi Judul, Deskripsi, Acceptance Criteria, dan Tahap Inkubasi.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Judul Kartu / Task — Beraksen Token Fase (Border 2px + Tint 5%) */}
                   <div>
                     <label className="text-xs font-semibold text-gray-700 block mb-1">

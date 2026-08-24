@@ -40,6 +40,7 @@ export default async function TimMainWorkspacePage({
         anggotaTim={tim.anggota}
         canEdit={canEdit}
         currentUser={user}
+        phaseGateStatus={phaseGateStatus}
       />
     </div>
   );
