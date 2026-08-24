@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDateIndo } from "@/lib/utils";
+import { CenteredPageLoader } from "@/components/ui/CenteredPageLoader";
 import type { PhaseGateStatus } from "@/app/actions/phase-gate";
 
 export function TimPhaseGateNav({
@@ -35,6 +36,8 @@ export function TimPhaseGateNav({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
   const [lockedModal, setLockedModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -47,6 +50,17 @@ export function TimPhaseGateNav({
 
   const { timId, namaTim, activeSprint, gates } = phaseGateStatus;
   const isMainKanban = pathname === `/tim/${timId}`;
+
+  const handleNavigate = (href: string, e: React.MouseEvent) => {
+    if (pathname === href) {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    startTransition(() => {
+      router.push(href);
+    });
+  };
 
   const gateItems = [
     {
@@ -109,11 +123,16 @@ export function TimPhaseGateNav({
         title: item.name,
         reason: item.reason || "Syarat fase sebelumnya belum terpenuhi.",
       });
+    } else {
+      handleNavigate(item.href, e);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Client-Side Transition Floating Loader */}
+      {isPending && <CenteredPageLoader text="Sedang proses....." />}
+
       {/* 1. Header Workspace: Nama Tim, Status Sprint, dan Navigasi Ringkas (Overview + Kanban) */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3">
         <div className="space-y-1">
@@ -145,6 +164,7 @@ export function TimPhaseGateNav({
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
           <Link
             href={gates.overview.href}
+            onClick={(e) => handleNavigate(gates.overview.href, e)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
               pathname === gates.overview.href
                 ? "bg-[#0F5132] text-white border-[#0F5132]"
@@ -157,6 +177,7 @@ export function TimPhaseGateNav({
 
           <Link
             href={`/tim/${timId}`}
+            onClick={(e) => handleNavigate(`/tim/${timId}`, e)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
               isMainKanban
                 ? "bg-[#0F5132] text-white border-[#0F5132]"
@@ -209,6 +230,7 @@ export function TimPhaseGateNav({
             <Link
               key={item.id}
               href={item.href}
+              onClick={(e) => handleBoxClick(item, e)}
               className={`relative p-3.5 rounded-2xl border transition-all flex flex-col justify-between min-h-[90px] shadow-2xs group ${
                 isActive
                   ? "bg-green-50/80 border-[#0F5132] ring-2 ring-[#0F5132]/20"
