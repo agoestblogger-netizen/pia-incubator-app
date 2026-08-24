@@ -52,16 +52,6 @@ export function TimPhaseGateNav({
 
   const gateItems = [
     {
-      id: "overview",
-      name: "Overview",
-      description: "Profil & ringkasan tim",
-      href: gates.overview.href,
-      icon: LayoutDashboard,
-      unlocked: gates.overview.unlocked,
-      reason: gates.overview.reason,
-      badge: null,
-    },
-    {
       id: "innovation_setup",
       name: "Innovation Setup",
       description: "Charter & hipotesis DFV",
@@ -126,10 +116,10 @@ export function TimPhaseGateNav({
 
   return (
     <div className="space-y-4">
-      {/* 1. Header Workspace: Nama Tim & Status Sprint Aktif */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 1. Header Workspace: Nama Tim, Status Sprint, dan Navigasi Ringkas (Overview + Kanban) */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0F5132] bg-[#0F5132]/10 px-2.5 py-0.5 rounded-md">
               Workspace Tim Inovasi
             </span>
@@ -153,20 +143,36 @@ export function TimPhaseGateNav({
           </h1>
         </div>
 
-        {/* Action Button: Kembali ke Kanban jika sedang di subhalaman */}
-        {!isMainKanban && (
+        {/* Baris Tombol Navigasi Cepat: Overview Tim & Ke Kanban Board & Roadmap */}
+        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+          <Link
+            href={gates.overview.href}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
+              pathname === gates.overview.href
+                ? "bg-[#0F5132] text-white border-[#0F5132]"
+                : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+            }`}
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            <span>Overview Tim</span>
+          </Link>
+
           <Link
             href={`/tim/${timId}`}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#0F5132] text-white hover:bg-[#1B7A4D] transition-all shadow-xs shrink-0 self-start sm:self-center"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
+              isMainKanban
+                ? "bg-[#0F5132] text-white border-[#0F5132]"
+                : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+            }`}
           >
-            <Kanban className="h-4 w-4" />
+            <Kanban className="h-3.5 w-3.5" />
             <span>Ke Kanban Board & Roadmap</span>
           </Link>
-        )}
+        </div>
       </div>
 
-      {/* 2. Grid 6 Kotak Menu Gerbang Fase */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+      {/* 2. Grid 5 Kotak Menu Gerbang Fase (Dimulai dari Innovation Setup di Paling Kiri) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
         {gateItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
