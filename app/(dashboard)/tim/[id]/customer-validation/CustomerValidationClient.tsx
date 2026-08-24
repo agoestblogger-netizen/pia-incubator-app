@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Save, CheckCircle2, FileCheck, ClipboardList } from "lucide-react";
+import { toast } from "@/components/ui/ToastProvider";
 
 export function CustomerValidationClient({
   timId,
@@ -54,20 +55,32 @@ export function CustomerValidationClient({
     setSaving(true);
     setMsg(null);
     const res = await saveCustomerValidationPlanAction(timId, planForm);
-    if (res.success) setMsg("Customer Validation Plan berhasil disimpan!");
+    if (res.success) {
+      toast.success("Customer Validation Plan berhasil disimpan!", "Plan Tersimpan");
+      setMsg("Customer Validation Plan berhasil disimpan!");
+    } else {
+      const errMsg = (res as any).error || "Gagal menyimpan Validation Plan.";
+      toast.error(errMsg, "Gagal Menyimpan");
+    }
     setSaving(false);
   };
 
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!initialData?.plan?.id) {
-      alert("Harap simpan Customer Validation Plan terlebih dahulu.");
+      toast.error("Harap simpan Customer Validation Plan terlebih dahulu sebelum mengisi laporan.", "Validasi Diperlukan");
       return;
     }
     setSaving(true);
     setMsg(null);
     const res = await saveCustomerValidationReportAction(initialData.plan.id, timId, reportForm);
-    if (res.success) setMsg("Customer Validation Report berhasil disimpan!");
+    if (res.success) {
+      toast.success("Customer Validation Report berhasil disimpan!", "Laporan Tersimpan");
+      setMsg("Customer Validation Report berhasil disimpan!");
+    } else {
+      const errMsg = (res as any).error || "Gagal menyimpan Validation Report.";
+      toast.error(errMsg, "Gagal Menyimpan");
+    }
     setSaving(false);
   };
 

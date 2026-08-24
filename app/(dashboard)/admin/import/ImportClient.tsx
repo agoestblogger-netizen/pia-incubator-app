@@ -28,11 +28,16 @@ import {
   XCircle,
   ArrowRight,
   RefreshCw,
+  Info,
+  Layers,
+  Sparkles,
+  Users,
+  ShieldAlert,
+  Loader2,
   FileText,
   Check,
-  ShieldAlert,
-  Sparkles,
 } from 'lucide-react';
+import { toast } from '@/components/ui/ToastProvider';
 import Link from 'next/link';
 
 export function ImportClient() {
@@ -378,9 +383,9 @@ export function ImportClient() {
 
       setLoadingConfirm(false);
       setProgressText('');
-      setSuccessMsg(
-        `Proses import selesai: ${importedCount} tim calon peserta berhasil diproses ke database & storage, ${skippedCount} di-skip.`
-      );
+      const successText = `Proses import selesai: ${importedCount} tim calon peserta berhasil diproses ke database & storage, ${skippedCount} di-skip.`;
+      toast.success(successText, "Import Berhasil");
+      setSuccessMsg(successText);
       setImportResult({ imported: importedCount, skipped: skippedCount });
 
       if (allCreatedAccounts.length > 0) {
@@ -390,7 +395,9 @@ export function ImportClient() {
       console.error('Import processing error:', err);
       setLoadingConfirm(false);
       setProgressText('');
-      setErrorMsg(`Terjadi kesalahan saat memproses import: ${err.message}`);
+      const errText = `Terjadi kesalahan saat memproses import: ${err.message}`;
+      toast.error(errText, "Gagal Import");
+      setErrorMsg(errText);
     }
   };
 

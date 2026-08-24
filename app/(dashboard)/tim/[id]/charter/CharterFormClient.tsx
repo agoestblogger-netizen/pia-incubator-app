@@ -11,6 +11,7 @@ import {
   saveCharterSprintsAction,
   updateSprintCountAction,
 } from "@/app/actions/sprint";
+import { toast } from "@/components/ui/ToastProvider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -248,7 +249,7 @@ export function CharterFormClient({
 
   const handleApplySprintCountChange = async () => {
     if (!sprintAlasan.trim()) {
-      alert("Alasan perubahan jumlah sprint wajib diisi.");
+      toast.error("Alasan perubahan jumlah sprint wajib diisi.", "Validasi Diperlukan");
       return;
     }
     setSavingSprintCount(true);
@@ -256,6 +257,7 @@ export function CharterFormClient({
     if (res.success) {
       setIsSprintModalOpen(false);
       setSprintAlasan("");
+      toast.success(`Jumlah sprint berhasil diubah menjadi ${targetSprintCount} sprint!`, "Konfigurasi Sprint");
       if (targetSprintCount > sprints.length) {
         const added = [];
         for (let i = sprints.length + 1; i <= targetSprintCount; i++) {
@@ -271,7 +273,7 @@ export function CharterFormClient({
         setSprints(sprints.slice(0, targetSprintCount));
       }
     } else {
-      alert(res.error || "Gagal mengubah jumlah sprint.");
+      toast.error(res.error || "Gagal mengubah jumlah sprint.", "Gagal Mengubah Sprint");
     }
     setSavingSprintCount(false);
   };
@@ -378,14 +380,17 @@ export function CharterFormClient({
         setRoleAssignments(newItems);
       }
 
+      toast.success("Innovation Charter & Penugasan Tim berhasil disimpan!", "Penyimpanan Berhasil");
       setStatusMsg({
         type: "success",
         text: "Innovation Charter & Penugasan Tim Inovator berhasil disimpan!",
       });
     } else {
+      const errMsg = resCharter.error || resSprints.error || "Gagal menyimpan Charter.";
+      toast.error(errMsg, "Gagal Menyimpan");
       setStatusMsg({
         type: "error",
-        text: resCharter.error || resSprints.error || "Gagal menyimpan Charter.",
+        text: errMsg,
       });
     }
     setSaving(false);
@@ -398,12 +403,15 @@ export function CharterFormClient({
     const res = await approveCharterAction(timId);
     if (res.success && res.ttdDisetujui) {
       setTtdDisetujui(res.ttdDisetujui);
+      toast.success("Innovation Charter berhasil disetujui & diotorisasi secara formal oleh Promotor!", "Persetujuan Berhasil");
       setStatusMsg({
         type: "success",
         text: "Innovation Charter berhasil disetujui secara formal oleh Promotor!",
       });
     } else {
-      setStatusMsg({ type: "error", text: res.error || "Gagal menyetujui Innovation Charter." });
+      const errMsg = res.error || "Gagal menyetujui Innovation Charter.";
+      toast.error(errMsg, "Gagal Menyetujui");
+      setStatusMsg({ type: "error", text: errMsg });
     }
     setApproving(false);
   };
@@ -416,12 +424,15 @@ export function CharterFormClient({
     const res = await revokeCharterApprovalAction(timId);
     if (res.success) {
       setTtdDisetujui(null);
+      toast.info("Persetujuan formal Innovation Charter telah dibatalkan untuk revisi tim.", "Persetujuan Dibatalkan");
       setStatusMsg({
         type: "success",
         text: "Persetujuan formal Innovation Charter telah dibatalkan untuk revisi tim.",
       });
     } else {
-      setStatusMsg({ type: "error", text: res.error || "Gagal membatalkan persetujuan." });
+      const errMsg = res.error || "Gagal membatalkan persetujuan.";
+      toast.error(errMsg, "Gagal Membatalkan");
+      setStatusMsg({ type: "error", text: errMsg });
     }
     setApproving(false);
   };

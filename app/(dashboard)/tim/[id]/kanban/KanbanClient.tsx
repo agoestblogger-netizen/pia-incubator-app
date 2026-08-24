@@ -13,6 +13,7 @@ import {
   completeSprintAction,
   updateSprintCountAction,
 } from "@/app/actions/sprint";
+import { toast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -564,9 +565,12 @@ export function KanbanClient({
       setCards((prev) =>
         prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
       );
+      toast.success("Perubahan detail kartu berhasil disimpan!", "Kartu Diperbarui");
       setSelectedCardForDetail(null);
     } else {
-      setErrorMessage(res.error || "Gagal menyimpan perubahan kartu.");
+      const errMsg = res.error || "Gagal menyimpan perubahan kartu.";
+      toast.error(errMsg, "Gagal Menyimpan Kartu");
+      setErrorMessage(errMsg);
     }
     setSavingDetailCard(false);
   };
@@ -580,9 +584,12 @@ export function KanbanClient({
     const res = await deleteKanbanCardAction(timId, selectedCardForDetail.id);
     if (res.success) {
       setCards((prev) => prev.filter((c) => c.id !== selectedCardForDetail.id));
+      toast.success("Kartu task berhasil dihapus.", "Kartu Dihapus");
       setSelectedCardForDetail(null);
     } else {
-      setErrorMessage(res.error || "Gagal menghapus kartu.");
+      const errMsg = res.error || "Gagal menghapus kartu.";
+      toast.error(errMsg, "Gagal Menghapus");
+      setErrorMessage(errMsg);
     }
     setDeletingCard(false);
   };
@@ -610,10 +617,12 @@ export function KanbanClient({
 
     if (res.success && res.data) {
       setCards((prev) => [...prev, res.data]);
+      toast.success("Kartu task baru berhasil dibuat!", "Task Dibuat");
       setIsNewCardOpen(false);
       setJudul("");
       setDeskripsi("");
     } else if (res.error) {
+      toast.error(res.error, "Gagal Membuat Task");
       setErrorMessage(res.error);
     }
     setSavingCard(false);
@@ -628,7 +637,9 @@ export function KanbanClient({
     const res = await updateKanbanCardStatusAction(timId, cardId, newCol, 0);
     if (!res.success) {
       setCards(previousCards);
-      setErrorMessage(res.error || "Gagal memindahkan kartu.");
+      const errMsg = res.error || "Gagal memindahkan kartu.";
+      toast.error(errMsg, "Gagal Pindah Kolom");
+      setErrorMessage(errMsg);
     }
   };
 
@@ -641,7 +652,9 @@ export function KanbanClient({
     const res = await updateKanbanCardSprintAction(timId, cardId, sprintNum);
     if (!res.success) {
       setCards(previousCards);
-      setErrorMessage(res.error || "Gagal memindahkan kartu ke sprint.");
+      const errMsg = res.error || "Gagal memindahkan kartu ke sprint.";
+      toast.error(errMsg, "Gagal Ubah Sprint");
+      setErrorMessage(errMsg);
     }
   };
 
@@ -664,8 +677,11 @@ export function KanbanClient({
             : s
         )
       );
+      toast.success(`Sprint berhasil dimulai!`, "Sprint Aktif");
     } else {
-      setErrorMessage(res.error || "Gagal memulai sprint.");
+      const errMsg = res.error || "Gagal memulai sprint.";
+      toast.error(errMsg, "Gagal Memulai Sprint");
+      setErrorMessage(errMsg);
     }
     setActionLoading(false);
   };
@@ -721,16 +737,19 @@ export function KanbanClient({
         })
       );
 
+      toast.success(`Sprint ${currentSprintObj.nomorSprint} berhasil diselesaikan!`, "Sprint Selesai");
       setIsCompleteModalOpen(false);
     } else {
-      setErrorMessage(res.error || "Gagal menyelesaikan sprint.");
+      const errMsg = res.error || "Gagal menyelesaikan sprint.";
+      toast.error(errMsg, "Gagal Menyelesaikan Sprint");
+      setErrorMessage(errMsg);
     }
     setActionLoading(false);
   };
 
   const handleApplySprintCountChange = async () => {
     if (!sprintCountReason.trim()) {
-      alert("Alasan perubahan jumlah sprint wajib diisi.");
+      toast.error("Alasan perubahan jumlah sprint wajib diisi.", "Validasi Diperlukan");
       return;
     }
     setActionLoading(true);
@@ -738,6 +757,7 @@ export function KanbanClient({
     if (res.success) {
       setIsSprintCountModalOpen(false);
       setSprintCountReason("");
+      toast.success(`Jumlah sprint berhasil diubah menjadi ${targetSprintCount} sprint!`, "Konfigurasi Sprint");
       if (targetSprintCount > sprints.length) {
         const added = [];
         for (let i = sprints.length + 1; i <= targetSprintCount; i++) {
@@ -754,7 +774,7 @@ export function KanbanClient({
         setSprints(sprints.slice(0, targetSprintCount));
       }
     } else {
-      alert(res.error || "Gagal mengubah jumlah sprint.");
+      toast.error(res.error || "Gagal mengubah jumlah sprint.", "Gagal Mengubah Sprint");
     }
     setActionLoading(false);
   };

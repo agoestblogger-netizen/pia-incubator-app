@@ -16,6 +16,7 @@ import {
   toggleUserStatusAction,
   checkUserReferencesAction,
 } from "@/app/actions/user";
+import { toast } from "@/components/ui/ToastProvider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -156,14 +157,16 @@ export function RolesClient({ initialData }: { initialData: any }) {
             : rp
         )
       );
-      alert(res.error || "Gagal mengubah hak akses.");
+      toast.error(res.error || "Gagal mengubah hak akses.", "Gagal Ubah Izin");
+    } else {
+      toast.success("Hak akses role berhasil diperbarui.", "Izin Diperbarui", 2000);
     }
   };
 
   const handleAssignRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId || !selectedRoleId) {
-      alert("Harap pilih pengguna dan role.");
+      toast.error("Harap pilih pengguna dan role terlebih dahulu.", "Validasi Diperlukan");
       return;
     }
 
@@ -194,13 +197,15 @@ export function RolesClient({ initialData }: { initialData: any }) {
         ...prev,
       ]);
 
+      toast.success("Role pengguna berhasil ditetapkan!", "Penugasan Role");
       setMsg({ type: "success", text: "Role pengguna berhasil ditetapkan!" });
       setIsAssignOpen(false);
       setSelectedUserId("");
       setSelectedRoleId("");
       setSelectedTimId("");
     } else {
-      alert(res.error || "Gagal menetapkan role.");
+      const errMsg = res.error || "Gagal menetapkan role.";
+      toast.error(errMsg, "Gagal Penugasan");
     }
 
     setSavingAssign(false);
@@ -211,9 +216,11 @@ export function RolesClient({ initialData }: { initialData: any }) {
     const res = await removeUserRoleTimAction(id);
     if (res.success) {
       setUserRoles(userRoles.filter((ur) => ur.id !== id));
+      toast.success("Penugasan role berhasil dihapus.", "Role Dihapus");
       setMsg({ type: "success", text: "Penugasan role berhasil dihapus!" });
     } else {
-      alert(res.error || "Gagal menghapus penugasan role.");
+      const errMsg = res.error || "Gagal menghapus penugasan role.";
+      toast.error(errMsg, "Gagal Hapus Role");
     }
   };
 
@@ -237,13 +244,16 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
     if (res.success && res.role) {
       setRolesList((prev) => [...prev, res.role]);
+      toast.success(`Role kustom "${res.role.namaRole}" berhasil dibuat!`, "Role Baru");
       setMsg({ type: "success", text: `Role kustom "${res.role.namaRole}" berhasil dibuat dengan seluruh izin awal Tanpa Akses.` });
       setIsCreateRoleOpen(false);
       setNewRoleName("");
       setNewRoleScope("per_tim");
       setNewRoleDeskripsi("");
     } else {
-      setCreateRoleError(res.error || "Gagal membuat role kustom.");
+      const errMsg = res.error || "Gagal membuat role kustom.";
+      toast.error(errMsg, "Gagal Membuat Role");
+      setCreateRoleError(errMsg);
     }
     setCreatingRole(false);
   };
@@ -257,9 +267,11 @@ export function RolesClient({ initialData }: { initialData: any }) {
     if (res.success) {
       setRolesList((prev) => prev.filter((r) => r.id !== role.id));
       setUserRoles((prev) => prev.filter((ur) => ur.roleId !== role.id));
+      toast.success(res.message || `Role "${role.namaRole}" berhasil dihapus.`, "Role Dihapus");
       setMsg({ type: "success", text: res.message || `Role "${role.namaRole}" berhasil dihapus.` });
     } else {
-      alert(res.error || "Gagal menghapus role.");
+      const errMsg = res.error || "Gagal menghapus role.";
+      toast.error(errMsg, "Gagal Menghapus Role");
     }
     setDeletingRoleId(null);
   };
@@ -295,6 +307,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
     if (res.success && res.user) {
       setUsersList((prev) => [res.user, ...prev]);
+      toast.success(`Pengguna ${res.user.nama} berhasil dibuat!`, "User Ditambahkan");
       setMsg({ type: "success", text: `User ${res.user.nama} berhasil dibuat!` });
       setIsCreateUserOpen(false);
       setNewNama("");
@@ -302,7 +315,9 @@ export function RolesClient({ initialData }: { initialData: any }) {
       setNewPassword("password123");
       setNewConfirmPassword("password123");
     } else {
-      setCreateUserError(res.error || "Gagal membuat user.");
+      const errMsg = res.error || "Gagal membuat user.";
+      toast.error(errMsg, "Gagal Membuat User");
+      setCreateUserError(errMsg);
     }
     setCreatingUser(false);
   };
@@ -329,9 +344,12 @@ export function RolesClient({ initialData }: { initialData: any }) {
         prev.map((u) => (u.id === editingUser.id ? { ...u, nama: res.user.nama } : u))
       );
       setEditingUser((prev: any) => ({ ...prev, nama: res.user.nama }));
+      toast.success("Nama pengguna berhasil diperbarui!", "Pembaruan Berhasil");
       setEditNameMsg({ type: "success", text: "Nama pengguna berhasil diperbarui!" });
     } else {
-      setEditNameMsg({ type: "error", text: res.error || "Gagal memperbarui nama." });
+      const errMsg = res.error || "Gagal memperbarui nama.";
+      toast.error(errMsg, "Gagal Update Nama");
+      setEditNameMsg({ type: "error", text: errMsg });
     }
     setSavingEditName(false);
   };
@@ -342,22 +360,29 @@ export function RolesClient({ initialData }: { initialData: any }) {
     setResetPasswordMsg(null);
 
     if (resetPasswordVal.length < 6) {
-      setResetPasswordMsg({ type: "error", text: "Password baru minimal 6 karakter." });
+      const errMsg = "Password baru minimal 6 karakter.";
+      toast.error(errMsg, "Validasi Password");
+      setResetPasswordMsg({ type: "error", text: errMsg });
       return;
     }
     if (resetPasswordVal !== resetConfirmPasswordVal) {
-      setResetPasswordMsg({ type: "error", text: "Konfirmasi password tidak cocok." });
+      const errMsg = "Konfirmasi password tidak cocok.";
+      toast.error(errMsg, "Validasi Password");
+      setResetPasswordMsg({ type: "error", text: errMsg });
       return;
     }
 
     setSavingResetPassword(true);
     const res = await resetUserPasswordAction(editingUser.id, resetPasswordVal);
     if (res.success) {
+      toast.success("Kata sandi berhasil di-reset!", "Reset Password");
       setResetPasswordMsg({ type: "success", text: "Password berhasil di-reset!" });
       setResetPasswordVal("");
       setResetConfirmPasswordVal("");
     } else {
-      setResetPasswordMsg({ type: "error", text: res.error || "Gagal me-reset password." });
+      const errMsg = res.error || "Gagal me-reset password.";
+      toast.error(errMsg, "Gagal Reset Password");
+      setResetPasswordMsg({ type: "error", text: errMsg });
     }
     setSavingResetPassword(false);
   };
@@ -382,16 +407,19 @@ export function RolesClient({ initialData }: { initialData: any }) {
     if (res.success) {
       if (res.mode === "hard_deleted") {
         setUsersList((prev) => prev.filter((u) => u.id !== deletingUser.id));
+        toast.success(res.message || "User berhasil dihapus permanen.", "Hapus User");
         setMsg({ type: "success", text: res.message || "User berhasil dihapus permanen." });
       } else {
         setUsersList((prev) =>
           prev.map((u) => (u.id === deletingUser.id ? { ...u, statusAktif: false } : u))
         );
+        toast.info(res.message || "User berhasil dinonaktifkan.", "Non-Aktifkan User");
         setMsg({ type: "info", text: res.message || "User berhasil dinonaktifkan." });
       }
       setDeletingUser(null);
     } else {
-      alert(res.error || "Gagal memproses penghapusan user.");
+      const errMsg = res.error || "Gagal memproses penghapusan user.";
+      toast.error(errMsg, "Gagal Hapus User");
     }
     setDeletingLoading(false);
   };
@@ -404,12 +432,14 @@ export function RolesClient({ initialData }: { initialData: any }) {
       setUsersList((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, statusAktif: nextStatus } : u))
       );
+      toast.success(`Status user ${user.nama} berhasil diubah menjadi ${nextStatus ? "Aktif" : "Non-Aktif"}.`, "Status Diperbarui");
       setMsg({
         type: "success",
         text: `Status user ${user.nama} berhasil diubah menjadi ${nextStatus ? "Aktif" : "Non-Aktif"}.`,
       });
     } else {
-      alert(res.error || "Gagal mengubah status user.");
+      const errMsg = res.error || "Gagal mengubah status user.";
+      toast.error(errMsg, "Gagal Ubah Status");
     }
     setTogglingUserId(null);
   };

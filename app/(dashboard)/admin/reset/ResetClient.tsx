@@ -25,6 +25,7 @@ import {
   Square,
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from '@/components/ui/ToastProvider';
 
 interface TeamOption {
   id: string;
@@ -132,8 +133,10 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
     setLoadingExecute(false);
 
     if (!res.success) {
+      toast.error(res.message || "Gagal mengeksekusi reset data.", "Reset Gagal");
       setErrorMsg(res.message);
     } else {
+      toast.success(res.message || "Reset data sistem berhasil dieksekusi.", "Reset Selesai");
       setSuccessMsg(res.message);
       setDeletedResult(res.deletedCounts || null);
       setConfirmationWord('');

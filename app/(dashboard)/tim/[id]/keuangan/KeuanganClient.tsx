@@ -9,6 +9,7 @@ import {
   authorizeAnggaranAction,
   approveLpjAction,
 } from "@/app/actions/keuangan";
+import { toast } from "@/components/ui/ToastProvider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,9 +123,11 @@ export function KeuanganClient({
     if (res.success && res.data) {
       setList([res.data, ...list]);
       setIsSubmitOpen(false);
+      toast.success("Pengajuan anggaran RAB berhasil dikirim!", "Pengajuan Berhasil");
       setMsg({ type: "success", text: "Pengajuan anggaran berhasil dikirim!" });
     } else {
-      alert(res.error || "Gagal mengajukan anggaran.");
+      const errMsg = res.error || "Gagal mengajukan anggaran.";
+      toast.error(errMsg, "Gagal Pengajuan Anggaran");
     }
     setSaving(false);
   };
@@ -155,9 +158,11 @@ export function KeuanganClient({
         prev.map((item) => (item.id === editModal.id ? { ...item, ...res.data } : item))
       );
       setEditModal((prev) => ({ ...prev, open: false }));
+      toast.success("Perubahan pengajuan anggaran berhasil disimpan!", "Pembaruan Berhasil");
       setMsg({ type: "success", text: "Pengajuan anggaran berhasil diperbarui!" });
     } else {
-      alert(res.error || "Gagal mengubah pengajuan anggaran.");
+      const errMsg = res.error || "Gagal mengubah pengajuan anggaran.";
+      toast.error(errMsg, "Gagal Memperbarui Anggaran");
     }
     setSavingEdit(false);
   };
@@ -181,9 +186,11 @@ export function KeuanganClient({
     if (res.success) {
       setList((prev) => prev.filter((item) => item.id !== deleteModal.id));
       setDeleteModal({ open: false, id: "", nominal: 0, fase: "" });
+      toast.success("Pengajuan anggaran berhasil dibatalkan & dihapus.", "Penghapusan Berhasil");
       setMsg({ type: "success", text: "Pengajuan anggaran berhasil dibatalkan / dihapus!" });
     } else {
-      alert(res.error || "Gagal membatalkan pengajuan anggaran.");
+      const errMsg = res.error || "Gagal membatalkan pengajuan anggaran.";
+      toast.error(errMsg, "Gagal Menghapus Anggaran");
     }
     setDeleting(false);
   };
@@ -201,10 +208,12 @@ export function KeuanganClient({
 
     if (res.success) {
       setIsLpjOpen(false);
+      toast.success("Laporan Pertanggungjawaban (LPJ) berhasil dikirim!", "Pengiriman LPJ");
       setMsg({ type: "success", text: "Laporan Pertanggungjawaban (LPJ) berhasil dikirim!" });
       window.location.reload();
     } else {
-      alert(res.error || "Gagal mengirim LPJ.");
+      const errMsg = res.error || "Gagal mengirim LPJ.";
+      toast.error(errMsg, "Gagal Mengirim LPJ");
     }
     setSaving(false);
   };
@@ -227,14 +236,21 @@ export function KeuanganClient({
         setList((prev) =>
           prev.map((item) => (item.id === approvalModal.targetId ? { ...item, ...res.data } : item))
         );
+        const actionLabel = status === "diotorisasi" ? "diotorisasi (disetujui)" : "ditolak";
+        if (status === "diotorisasi") {
+          toast.success("Pengajuan anggaran RAB berhasil diotorisasi!", "Otorisasi Berhasil");
+        } else {
+          toast.warning("Pengajuan anggaran RAB telah ditolak.", "Penolakan Selesai");
+        }
         setMsg({
           type: "success",
-          text: `Pengajuan anggaran berhasil ${status === "diotorisasi" ? "diotorisasi (disetujui)" : "ditolak"}.`,
+          text: `Pengajuan anggaran berhasil ${actionLabel}.`,
         });
         setApprovalModal({ open: false, type: "anggaran", targetId: "", action: "approve" });
         setApprovalNotes("");
       } else {
-        alert(res.error || "Gagal memproses otorisasi anggaran.");
+        const errMsg = res.error || "Gagal memproses otorisasi anggaran.";
+        toast.error(errMsg, "Gagal Otorisasi");
       }
     } else {
       const status = approvalModal.action === "approve" ? "disetujui" : "ditolak";
@@ -253,14 +269,21 @@ export function KeuanganClient({
               : item
           )
         );
+        const actionLabel = status === "disetujui" ? "disetujui" : "ditolak";
+        if (status === "disetujui") {
+          toast.success("Laporan Pertanggungjawaban (LPJ) berhasil disetujui!", "Persetujuan LPJ");
+        } else {
+          toast.warning("Laporan Pertanggungjawaban (LPJ) telah ditolak.", "Penolakan LPJ");
+        }
         setMsg({
           type: "success",
-          text: `Laporan Pertanggungjawaban (LPJ) berhasil ${status === "disetujui" ? "disetujui" : "ditolak"}.`,
+          text: `Laporan Pertanggungjawaban (LPJ) berhasil ${actionLabel}.`,
         });
         setApprovalModal({ open: false, type: "lpj", targetId: "", action: "approve" });
         setApprovalNotes("");
       } else {
-        alert(res.error || "Gagal memproses persetujuan LPJ.");
+        const errMsg = res.error || "Gagal memproses persetujuan LPJ.";
+        toast.error(errMsg, "Gagal Persetujuan LPJ");
       }
     }
 

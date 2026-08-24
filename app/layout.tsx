@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Portal program inkubasi & akselerasi inovasi Pegadaian Innovation Award (PIA) Season 12 Tahun 2026",
 };
 
+import { ToastProvider } from "@/components/ui/ToastProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +30,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8FAFC] text-gray-900`}
       >
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

@@ -25,6 +25,7 @@ import {
   Briefcase,
   Building2,
 } from "lucide-react";
+import { toast } from "@/components/ui/ToastProvider";
 
 export function MarketValidationClient({
   timId,
@@ -76,9 +77,12 @@ export function MarketValidationClient({
     setMsg(null);
     const res = await saveMarketValidationPlanAction(timId, planForm);
     if (res.success) {
+      toast.success("Market Validation Plan berhasil disimpan!", "Plan Tersimpan");
       setMsg({ type: "success", text: "Market Validation Plan berhasil disimpan!" });
     } else {
-      setMsg({ type: "error", text: res.error || "Gagal menyimpan plan." });
+      const errMsg = res.error || "Gagal menyimpan plan.";
+      toast.error(errMsg, "Gagal Menyimpan");
+      setMsg({ type: "error", text: errMsg });
     }
     setSaving(false);
   };
@@ -87,23 +91,26 @@ export function MarketValidationClient({
     e.preventDefault();
     if (isReadOnly) return;
     if (!initialData?.plan?.id) {
-      alert("Harap simpan Market Validation Plan terlebih dahulu.");
+      toast.error("Harap simpan Market Validation Plan terlebih dahulu sebelum mengisi laporan.", "Validasi Diperlukan");
       return;
     }
     setSaving(true);
     setMsg(null);
     const res = await saveMarketValidationReportAction(initialData.plan.id, timId, reportForm);
     if (res.success) {
+      toast.success("Market Validation Report berhasil disimpan!", "Laporan Tersimpan");
       setMsg({ type: "success", text: "Market Validation Report berhasil disimpan!" });
     } else {
-      setMsg({ type: "error", text: res.error || "Gagal menyimpan report." });
+      const errMsg = res.error || "Gagal menyimpan report.";
+      toast.error(errMsg, "Gagal Menyimpan");
+      setMsg({ type: "error", text: errMsg });
     }
     setSaving(false);
   };
 
   const handleApproveReport = async () => {
     if (!initialData?.report?.id) {
-      alert("Laporan Market Validation belum disimpan oleh tim.");
+      toast.error("Laporan Market Validation belum disimpan oleh tim.", "Laporan Belum Ada");
       return;
     }
     setApproving(true);
@@ -112,12 +119,15 @@ export function MarketValidationClient({
     const res = await approveMarketValidationReportAction(initialData.report.id, timId);
     if (res.success && res.ttdDisetujui) {
       setReportTtdDisetujui(res.ttdDisetujui);
+      toast.success("Laporan Market Validation berhasil disetujui secara formal oleh Promotor!", "Persetujuan Berhasil");
       setMsg({
         type: "success",
         text: "Laporan Market Validation berhasil disetujui secara formal oleh Promotor!",
       });
     } else {
-      setMsg({ type: "error", text: res.error || "Gagal menyetujui laporan." });
+      const errMsg = res.error || "Gagal menyetujui laporan.";
+      toast.error(errMsg, "Gagal Menyetujui");
+      setMsg({ type: "error", text: errMsg });
     }
     setApproving(false);
   };
@@ -131,12 +141,15 @@ export function MarketValidationClient({
     const res = await revokeMarketValidationReportApprovalAction(initialData.report.id, timId);
     if (res.success) {
       setReportTtdDisetujui(null);
+      toast.info("Persetujuan formal Laporan Market Validation telah dibatalkan untuk revisi tim.", "Persetujuan Dibatalkan");
       setMsg({
         type: "success",
         text: "Persetujuan formal Laporan Market Validation telah dibatalkan untuk revisi tim.",
       });
     } else {
-      setMsg({ type: "error", text: res.error || "Gagal membatalkan persetujuan." });
+      const errMsg = res.error || "Gagal membatalkan persetujuan.";
+      toast.error(errMsg, "Gagal Membatalkan");
+      setMsg({ type: "error", text: errMsg });
     }
     setApproving(false);
   };
