@@ -32,6 +32,10 @@ import {
   FileCheck,
 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  PEGADAIAN_HEADER_GRADIENT_STYLE,
+  getCategoryBadgeToken,
+} from '@/lib/theme/tokens';
 
 function formatDateSafe(dateStr?: string | null, options?: Intl.DateTimeFormatOptions) {
   if (!dateStr) return '-';
@@ -106,27 +110,21 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
     : null;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Breadcrumb & Read-only Badge */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/dossier"
-          className="inline-flex items-center text-xs font-bold text-gray-600 hover:text-[#0F5132] transition-colors gap-1.5"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Kembali ke Perpustakaan Dossier PIA</span>
+    <div className="space-y-6">
+      {/* Top Breadcrumb & Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link href="/dossier">
+          <Button variant="ghost" size="sm" className="gap-2 text-xs text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Kembali ke Daftar Dossier</span>
+          </Button>
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200 shadow-2xs">
-            <Lock className="h-3.5 w-3.5 text-gray-500" />
-            Arsip Historis Submisi (Read-Only)
-          </span>
           {dossier.timInovatorId && (
             <Link href={`/tim/${dossier.timInovatorId}`}>
-              <Button size="sm" className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-8 font-semibold shadow-xs">
-                <Users className="h-3.5 w-3.5 mr-1.5" />
-                Buka Dashboard Tim
+              <Button size="sm" className="text-xs bg-[#0F5132] hover:bg-[#146c43] text-white">
+                <span>Buka Workspace Tim</span>
                 <ExternalLink className="h-3 w-3 ml-1.5" />
               </Button>
             </Link>
@@ -136,34 +134,37 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
 
       {/* Header Profile Hero Card */}
       <Card className="border border-gray-200/90 shadow-sm bg-white overflow-hidden rounded-2xl">
-        <div className="bg-gradient-to-r from-[#0F5132] via-[#146c43] to-[#0A3822] p-6 sm:p-8 text-white relative">
+        <div
+          style={PEGADAIAN_HEADER_GRADIENT_STYLE}
+          className="p-6 sm:p-8 text-white relative border-b border-white/10"
+        >
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
             <div className="space-y-3 max-w-4xl">
               {/* Badges Pill Row */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs font-bold bg-white/20 px-3 py-1 rounded-full text-white backdrop-blur-md border border-white/20">
+                <span className="font-mono text-xs font-bold bg-black/25 px-3 py-1 rounded-full text-white backdrop-blur-md border border-white/20">
                   {dossier.proposalIdAsli || snap.proposal_id}
                 </span>
-                <span className="text-xs font-bold bg-[#E6CA65]/20 text-[#E6CA65] border border-[#E6CA65]/40 px-3 py-1 rounded-full">
+                <span className="text-xs font-bold bg-[#E6CA65]/25 text-[#FFF2B2] border border-[#E6CA65]/40 px-3 py-1 rounded-full backdrop-blur-xs">
                   {dossier.seasonAsli || snap.season}
                 </span>
-                <span className="text-xs font-bold bg-blue-500/20 text-blue-200 border border-blue-400/40 px-3 py-1 rounded-full">
+                <span className="text-xs font-bold bg-white/20 text-white border border-white/30 px-3 py-1 rounded-full backdrop-blur-xs">
                   Jalur: {dataSubmisi.kategori_pia || 'PUSAT'}
                 </span>
                 {dataSubmisi.tema && (
-                  <span className="text-xs font-bold bg-purple-500/20 text-purple-200 border border-purple-400/40 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold bg-white/15 text-white border border-white/20 px-3 py-1 rounded-full backdrop-blur-xs">
                     {dataSubmisi.tema}
                   </span>
                 )}
                 {dataSubmisi.tagging && (
-                  <span className="text-xs font-bold bg-emerald-400/20 text-emerald-200 border border-emerald-300/40 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold bg-emerald-950/40 text-emerald-200 border border-emerald-400/30 px-3 py-1 rounded-full backdrop-blur-xs">
                     {dataSubmisi.tagging}
                   </span>
                 )}
               </div>
 
               {/* Title */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold tracking-tight text-white leading-tight drop-shadow-xs">
                 {dataSubmisi.judul || dossier.timNama || 'Tanpa Judul'}
               </h1>
 

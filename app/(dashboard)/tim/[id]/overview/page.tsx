@@ -103,33 +103,33 @@ export default async function TimOverviewPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-4 rounded-xl border border-gray-200 bg-white space-y-2 hover:border-[#0F5132] transition-colors">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+              <div className="p-4 rounded-xl border border-[#DDD6FE] bg-[#F5F3FF] space-y-1.5 shadow-2xs">
+                <span className="text-[10px] font-extrabold text-[#5142D6] uppercase tracking-wider block">
                   Tahap 1
                 </span>
                 <h4 className="text-sm font-bold text-gray-900">Innovation Setup</h4>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-gray-600">
                   Penyusunan Innovation Charter, Backlog, dan Sprint MVP.
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl border border-gray-200 bg-white space-y-2 hover:border-[#0F5132] transition-colors">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+              <div className="p-4 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] space-y-1.5 shadow-2xs">
+                <span className="text-[10px] font-extrabold text-[#B8720E] uppercase tracking-wider block">
                   Tahap 2
                 </span>
                 <h4 className="text-sm font-bold text-gray-900">Customer Validation</h4>
-                <p className="text-[11px] text-gray-500">
-                  Uji coba solusi ke early adopters, metrik PSF, dan feedback kualitatif.
+                <p className="text-[11px] text-gray-600">
+                  Uji Problem-Solution Fit dengan early adopter di unit kerja.
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl border border-gray-200 bg-white space-y-2 hover:border-[#0F5132] transition-colors">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+              <div className="p-4 rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] space-y-1.5 shadow-2xs">
+                <span className="text-[10px] font-extrabold text-[#0E8C55] uppercase tracking-wider block">
                   Tahap 3
                 </span>
                 <h4 className="text-sm font-bold text-gray-900">Market Validation</h4>
-                <p className="text-[11px] text-gray-500">
-                  Rilis MVP pilot, sprint review, evaluasi PMF & rekapitulasi DFV.
+                <p className="text-[11px] text-gray-600">
+                  Uji Product-Market Fit, evaluasi bisnis, dan FMI Decision.
                 </p>
               </div>
             </div>

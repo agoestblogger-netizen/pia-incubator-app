@@ -19,6 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { formatDateIndo } from "@/lib/utils";
 
+import { PEGADAIAN_HEADER_GRADIENT_STYLE, PHASE_TOKENS } from "@/lib/theme/tokens";
+
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
@@ -44,17 +46,20 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#0F5132] to-[#1B7A4D] p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      {/* Header Banner Gradient Pegadaian */}
+      <div
+        style={PEGADAIAN_HEADER_GRADIENT_STYLE}
+        className="rounded-2xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-white/10"
+      >
         <div className="space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-xs border border-white/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 text-white text-xs font-semibold backdrop-blur-xs border border-white/20">
             <Sparkles className="h-3.5 w-3.5 text-[#E6CA65]" />
             Program Inkubasi PIA Season 12 (2026)
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight drop-shadow-xs">
             Dashboard Akselerasi Inovasi
           </h1>
-          <p className="text-sm text-green-100/90 leading-relaxed">
+          <p className="text-sm text-green-100/90 leading-relaxed font-normal">
             Selamat datang di portal inkubasi Pegadaian Innovation Award. Pantau progres sprint berjalan, validasi pelanggan, validasi pasar, dan mitigasi task terlambat.
           </p>
         </div>
@@ -62,9 +67,8 @@ export default async function DashboardPage() {
         {canCreateTeam && (
           <Link href="/dashboard/tim-baru">
             <Button
-              variant="gold"
+              className="flex items-center gap-2 font-bold shadow-lg bg-[#0F5132] hover:bg-[#1B7A4D] text-white border border-white/20"
               size="lg"
-              className="flex items-center gap-2 font-bold shadow-lg shadow-black/20"
             >
               <Plus className="h-5 w-5" />
               <span>Daftarkan Tim Inovator</span>
@@ -77,11 +81,11 @@ export default async function DashboardPage() {
       {isGlobalUser && aggregates.totalTeams > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs space-y-1">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+            <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider block">
               Belum Mulai
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-gray-800">
+              <span className="text-2xl font-extrabold text-gray-800 font-mono-stats">
                 {aggregates.totalBelumMulai}
               </span>
               <span className="text-xs text-gray-400 font-medium">Tim</span>
@@ -89,43 +93,43 @@ export default async function DashboardPage() {
             <p className="text-[10px] text-gray-400">Tim baru / belum isi Charter</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-emerald-100 bg-gradient-to-b from-white to-emerald-50/20 shadow-2xs space-y-1">
-            <span className="text-[11px] font-bold text-[#0F5132] uppercase tracking-wider block">
+          <div className="bg-[#F5F3FF] p-4 rounded-xl border border-[#DDD6FE] shadow-2xs space-y-1">
+            <span className="text-[11px] font-extrabold text-[#5142D6] uppercase tracking-wider block">
               Tahap 1: Setup
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-[#0F5132]">
+              <span className="text-2xl font-extrabold text-[#5142D6] font-mono-stats">
                 {aggregates.totalInnovationSetup}
               </span>
-              <span className="text-xs text-emerald-600 font-medium">Tim</span>
+              <span className="text-xs text-[#5142D6] font-semibold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-500">Charter & Sprint Planning</p>
+            <p className="text-[10px] text-gray-600">Charter & Sprint Planning</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-blue-100 bg-gradient-to-b from-white to-blue-50/20 shadow-2xs space-y-1">
-            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">
+          <div className="bg-[#FFFBEB] p-4 rounded-xl border border-[#FDE68A] shadow-2xs space-y-1">
+            <span className="text-[11px] font-extrabold text-[#B8720E] uppercase tracking-wider block">
               Tahap 2: Cust. Validation
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-blue-700">
+              <span className="text-2xl font-extrabold text-[#B8720E] font-mono-stats">
                 {aggregates.totalCustomerValidation}
               </span>
-              <span className="text-xs text-blue-600 font-medium">Tim</span>
+              <span className="text-xs text-[#B8720E] font-semibold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-500">Early Adopter & User Testing</p>
+            <p className="text-[10px] text-gray-600">Early Adopter & User Testing</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-amber-200 bg-gradient-to-b from-white to-amber-50/30 shadow-2xs space-y-1">
-            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+          <div className="bg-[#ECFDF5] p-4 rounded-xl border border-[#A7F3D0] shadow-2xs space-y-1">
+            <span className="text-[11px] font-extrabold text-[#0E8C55] uppercase tracking-wider block">
               Tahap 3: Market Validation
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-amber-700">
+              <span className="text-2xl font-extrabold text-[#0E8C55] font-mono-stats">
                 {aggregates.totalMarketValidation}
               </span>
-              <span className="text-xs text-amber-700 font-medium">Tim</span>
+              <span className="text-xs text-[#0E8C55] font-semibold">Tim</span>
             </div>
-            <p className="text-[10px] text-gray-500">MVP Pilots & FMI Ready</p>
+            <p className="text-[10px] text-gray-600">Pilot & Market Launch</p>
           </div>
         </div>
       )}

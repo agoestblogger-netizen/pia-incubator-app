@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, FileText, ArrowUpRight, Award, FolderArchive, Users, Filter, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import {
+  PEGADAIAN_HEADER_GRADIENT_STYLE,
+  getCategoryBadgeToken,
+} from '@/lib/theme/tokens';
 
 export function DossierListClient({ initialItems }: { initialItems: DossierListItem[] }) {
   const [search, setSearch] = useState('');
@@ -31,17 +35,20 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#0F5132] via-[#146c43] to-[#0A3822] p-6 text-white shadow-lg relative overflow-hidden">
+      {/* Header Banner Gradient Pegadaian */}
+      <div
+        style={PEGADAIAN_HEADER_GRADIENT_STYLE}
+        className="rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10"
+      >
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-xs font-semibold text-green-100 backdrop-blur-md mb-3 border border-white/10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 text-xs font-semibold text-white backdrop-blur-md mb-3 border border-white/15">
             <FolderArchive className="h-3.5 w-3.5 text-[#E6CA65]" />
             Perpustakaan Arsip Inovasi Resmi
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight drop-shadow-xs">
             Dossier Proposal PIA
           </h1>
-          <p className="text-sm text-green-100/90 mt-2 leading-relaxed">
+          <p className="text-sm text-green-100/90 mt-2 leading-relaxed font-normal">
             Koleksi arsip lengkap seluruh proposal inovasi yang lolos ke program inkubasi, mencakup dokumen submisi asli CIDA, riwayat kurasi, dan penilaian dewan juri.
           </p>
         </div>
@@ -164,9 +171,14 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                       </td>
 
                       <td className="p-3.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                          {item.kategoriPia}
-                        </span>
+                        {(() => {
+                          const catToken = getCategoryBadgeToken(item.kategoriPia);
+                          return (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${catToken.bg} ${catToken.text} border ${catToken.border}`}>
+                              {item.kategoriPia}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td className="p-3.5 text-center whitespace-nowrap">

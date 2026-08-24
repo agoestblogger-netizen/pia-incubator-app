@@ -46,7 +46,12 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react";
+import {
+  PEGADAIAN_HEADER_GRADIENT_STYLE,
+  getRoleBadgeToken,
+} from "@/lib/theme/tokens";
 
 export function RolesClient({ initialData }: { initialData: any }) {
   const [activeTab, setActiveTab] = useState<"matrix" | "users">("matrix");
@@ -453,6 +458,25 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
   return (
     <div className="space-y-6">
+      {/* Header Banner Gradient Pegadaian */}
+      <div
+        style={PEGADAIAN_HEADER_GRADIENT_STYLE}
+        className="rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10"
+      >
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 text-xs font-semibold text-white backdrop-blur-md mb-3 border border-white/15">
+            <ShieldCheck className="h-3.5 w-3.5 text-[#E6CA65]" />
+            Manajemen Pengguna & Hak Akses RBAC
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight drop-shadow-xs">
+            User & Role Management
+          </h1>
+          <p className="text-sm text-green-100/90 mt-2 leading-relaxed font-normal">
+            Kelola pengguna portal inovasi, matriks perizinan 9 peran RBAC, pembuatan custom role, dan penugasan peran tim.
+          </p>
+        </div>
+      </div>
+
       {/* Feedback Alert */}
       {msg && (
         <div
@@ -835,20 +859,23 @@ export function RolesClient({ initialData }: { initialData: any }) {
                               <span className="text-gray-400 italic text-[11px]">Belum ada role</span>
                             ) : (
                               <div className="flex flex-wrap gap-1">
-                                {userAssignedRoles.map((ur: any, idx: number) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="outline"
-                                    className="text-[10px] py-0 px-2 bg-gray-50 border-gray-200 font-medium"
-                                  >
-                                    {ur.roleName}
-                                    {ur.timInovatorId && (
-                                      <span className="text-[9px] text-[#0F5132] ml-1 font-bold">
-                                        (Tim)
-                                      </span>
-                                    )}
-                                  </Badge>
-                                ))}
+                                {userAssignedRoles.map((ur: any, idx: number) => {
+                                  const roleToken = getRoleBadgeToken(ur.roleCode);
+                                  return (
+                                    <span
+                                      key={idx}
+                                      className={`inline-flex items-center text-[10px] py-0.5 px-2 rounded-full font-bold border ${roleToken.bg} ${roleToken.text} ${roleToken.border}`}
+                                    >
+                                      <span className={`h-1.5 w-1.5 rounded-full ${roleToken.dot} mr-1`} />
+                                      {ur.roleName}
+                                      {ur.timInovatorId && (
+                                        <span className="text-[9px] opacity-75 ml-1 font-semibold">
+                                          (Tim)
+                                        </span>
+                                      )}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
                           </td>

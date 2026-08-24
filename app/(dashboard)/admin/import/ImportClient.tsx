@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 import Link from 'next/link';
+import { PEGADAIAN_HEADER_GRADIENT_STYLE } from '@/lib/theme/tokens';
 
 export function ImportClient() {
   const [file, setFile] = useState<File | null>(null);
@@ -403,14 +404,20 @@ export function ImportClient() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <FileArchive className="h-7 w-7 text-[#0F5132]" />
+      {/* Header Banner Gradient Pegadaian */}
+      <div
+        style={PEGADAIAN_HEADER_GRADIENT_STYLE}
+        className="rounded-2xl p-6 text-white shadow-lg relative overflow-hidden border border-white/10"
+      >
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 text-xs font-semibold text-white backdrop-blur-md mb-3 border border-white/15">
+            <FileArchive className="h-3.5 w-3.5 text-[#E6CA65]" />
+            Import Data Otomatis PIA
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight drop-shadow-xs">
             Import Calon Peserta Inkubasi
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-sm text-green-100/90 mt-2 leading-relaxed font-normal">
             Unggah berkas ZIP hasil kurasi Grand Final PIA untuk memasukkan tim inovator, arsip dossier, dan membuat akun anggota tim secara otomatis.
           </p>
         </div>

@@ -47,6 +47,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
+  Target,
 } from "lucide-react";
 import { RoleProposalHintTooltip } from "./RoleProposalHintTooltip";
 
@@ -481,23 +482,18 @@ export function CharterFormClient({
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 0: STRUKTUR ROLE & AKUNTABILITAS TIM (MULTI-PERSON SUPPORT) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+      <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden hover:border-[#5142D6]/40 transition-all">
         <CardHeader
           onClick={() => toggleSection("roles")}
-          className="bg-gradient-to-r from-gray-50 via-white to-gray-50/50 border-b border-gray-100 p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-100/60 transition-colors"
+          className="bg-gradient-to-r from-[#5142D6]/5 via-white to-[#5142D6]/5 border-b border-gray-100 p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/80 transition-colors"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                {expandedSections.roles ? (
-                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-gray-500" />
-                )}
+              <div className="p-2 rounded-xl bg-[#5142D6]/10 text-[#5142D6] border border-[#5142D6]/20">
+                <Users className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-[#0F5132]" />
                   Struktur Role & Akuntabilitas Tim
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -507,13 +503,17 @@ export function CharterFormClient({
             </div>
 
             <div className="flex items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-                <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5142D6]/10 text-[#5142D6] text-xs font-bold border border-[#5142D6]/20">
+                <UserCheck className="h-3.5 w-3.5" />
                 <span>{roleAssignments.filter((r) => r.userId || r.userName).length} Akun Terdaftar</span>
               </span>
-              <span className="text-xs text-gray-400 font-medium">
-                {expandedSections.roles ? "Tutup" : "Buka"}
-              </span>
+              <div className="p-1 rounded-lg text-gray-400 hover:text-gray-700">
+                {expandedSections.roles ? (
+                  <ChevronDown className="h-5 w-5 text-[#5142D6]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -699,19 +699,15 @@ export function CharterFormClient({
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 1: PROBLEM & CUSTOMER FOCUS */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+      <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden hover:border-[#B8720E]/40 transition-all">
         <CardHeader
           onClick={() => toggleSection("problem")}
-          className="p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/60 transition-colors"
+          className="bg-gradient-to-r from-[#B8720E]/5 via-white to-[#B8720E]/5 border-b border-gray-100 p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/80 transition-colors"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                {expandedSections.problem ? (
-                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-gray-500" />
-                )}
+              <div className="p-2 rounded-xl bg-[#B8720E]/10 text-[#B8720E] border border-[#B8720E]/20">
+                <Target className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-gray-900">
@@ -732,9 +728,13 @@ export function CharterFormClient({
                   Terisi otomatis dari proposal
                 </span>
               )}
-              <span className="text-xs text-gray-400 font-medium">
-                {expandedSections.problem ? "Tutup" : "Buka"}
-              </span>
+              <div className="p-1 rounded-lg text-gray-400 hover:text-gray-700">
+                {expandedSections.problem ? (
+                  <ChevronDown className="h-5 w-5 text-[#B8720E]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -843,19 +843,15 @@ export function CharterFormClient({
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 2: SOLUSI & DFV HYPOTHESES */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+      <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden hover:border-[#0E8C55]/40 transition-all">
         <CardHeader
           onClick={() => toggleSection("solution")}
-          className="p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/60 transition-colors"
+          className="bg-gradient-to-r from-[#0E8C55]/5 via-white to-[#0E8C55]/5 border-b border-gray-100 p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/80 transition-colors"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                {expandedSections.solution ? (
-                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-gray-500" />
-                )}
+              <div className="p-2 rounded-xl bg-[#0E8C55]/10 text-[#0E8C55] border border-[#0E8C55]/20">
+                <Sparkles className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-gray-900">
@@ -876,9 +872,13 @@ export function CharterFormClient({
                   Terisi otomatis dari proposal
                 </span>
               )}
-              <span className="text-xs text-gray-400 font-medium">
-                {expandedSections.solution ? "Tutup" : "Buka"}
-              </span>
+              <div className="p-1 rounded-lg text-gray-400 hover:text-gray-700">
+                {expandedSections.solution ? (
+                  <ChevronDown className="h-5 w-5 text-[#0E8C55]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -978,23 +978,18 @@ export function CharterFormClient({
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 3: TATA KELOLA, RITME KERJA & MILESTONE SPRINT TERSTRUKTUR */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+      <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden hover:border-[#0E6E7A]/40 transition-all">
         <CardHeader
           onClick={() => toggleSection("governance")}
-          className="p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/60 transition-colors"
+          className="bg-gradient-to-r from-[#0E6E7A]/5 via-white to-[#0E6E7A]/5 border-b border-gray-100 p-4 sm:p-5 cursor-pointer select-none hover:bg-gray-50/80 transition-colors"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-lg bg-gray-100 text-gray-700">
-                {expandedSections.governance ? (
-                  <ChevronDown className="h-5 w-5 text-[#0F5132]" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-gray-500" />
-                )}
+              <div className="p-2 rounded-xl bg-[#0E6E7A]/10 text-[#0E6E7A] border border-[#0E6E7A]/20">
+                <Layers className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <Layers className="h-5 w-5 text-[#0F5132]" />
                   3. Tata Kelola, Ritme Kerja & Rencana Milestone Sprint
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -1004,8 +999,8 @@ export function CharterFormClient({
             </div>
 
             <div className="flex items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-bold border border-blue-200">
-                <Calendar className="h-3.5 w-3.5 text-blue-600" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0E6E7A]/10 text-[#0E6E7A] text-xs font-bold border border-[#0E6E7A]/20">
+                <Calendar className="h-3.5 w-3.5" />
                 <span>{sprints.length} Milestone Sprint</span>
               </span>
 
@@ -1027,9 +1022,13 @@ export function CharterFormClient({
                 </Button>
               )}
 
-              <span className="text-xs text-gray-400 font-medium">
-                {expandedSections.governance ? "Tutup" : "Buka"}
-              </span>
+              <div className="p-1 rounded-lg text-gray-400 hover:text-gray-700">
+                {expandedSections.governance ? (
+                  <ChevronDown className="h-5 w-5 text-[#0E6E7A]" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>

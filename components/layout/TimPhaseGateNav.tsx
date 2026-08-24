@@ -28,6 +28,11 @@ import { Badge } from "@/components/ui/badge";
 import { formatDateIndo } from "@/lib/utils";
 import type { PhaseGateStatus } from "@/app/actions/phase-gate";
 
+import {
+  PEGADAIAN_HEADER_GRADIENT_STYLE,
+  PHASE_TOKENS,
+} from "@/lib/theme/tokens";
+
 export function TimPhaseGateNav({
   phaseGateStatus,
 }: {
@@ -59,6 +64,7 @@ export function TimPhaseGateNav({
       unlocked: gates.innovationSetup.unlocked,
       reason: gates.innovationSetup.reason,
       badge: gates.innovationSetup.isFilled ? "Terisi" : null,
+      token: PHASE_TOKENS.phase1,
     },
     {
       id: "customer_validation",
@@ -69,6 +75,7 @@ export function TimPhaseGateNav({
       unlocked: gates.customerValidation.unlocked,
       reason: gates.customerValidation.reason,
       badge: null,
+      token: PHASE_TOKENS.phase2,
     },
     {
       id: "market_validation",
@@ -79,6 +86,7 @@ export function TimPhaseGateNav({
       unlocked: gates.marketValidation.unlocked,
       reason: gates.marketValidation.reason,
       badge: null,
+      token: PHASE_TOKENS.phase3,
     },
     {
       id: "keuangan",
@@ -89,6 +97,7 @@ export function TimPhaseGateNav({
       unlocked: gates.keuangan.unlocked,
       reason: gates.keuangan.reason,
       badge: null,
+      token: PHASE_TOKENS.phase4,
     },
     {
       id: "governance",
@@ -99,6 +108,7 @@ export function TimPhaseGateNav({
       unlocked: gates.governance.unlocked,
       reason: gates.governance.reason,
       badge: null,
+      token: PHASE_TOKENS.phase5,
     },
   ];
 
@@ -116,15 +126,18 @@ export function TimPhaseGateNav({
   return (
     <div className="space-y-4">
       {/* 1. Header Workspace: Nama Tim, Status Sprint, dan Navigasi Ringkas (Overview + Kanban) */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-2xs space-y-3">
-        <div className="space-y-1">
+      <div
+        style={PEGADAIAN_HEADER_GRADIENT_STYLE}
+        className="rounded-2xl p-5 text-white shadow-md space-y-4 border border-white/10"
+      >
+        <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0F5132] bg-[#0F5132]/10 px-2.5 py-0.5 rounded-md">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-white bg-black/20 px-2.5 py-0.5 rounded-md border border-white/15 backdrop-blur-xs">
               Workspace Tim Inovasi
             </span>
             {activeSprint ? (
-              <Badge variant="success" className="text-[10px] font-bold gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <Badge className="text-[10px] font-bold gap-1.5 bg-black/25 text-emerald-200 border border-emerald-400/30 backdrop-blur-xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
                 <span>
                   Sprint {activeSprint.nomorSprint} Aktif
                   {activeSprint.tanggalMulaiAktual &&
@@ -132,24 +145,24 @@ export function TimPhaseGateNav({
                 </span>
               </Badge>
             ) : (
-              <Badge variant="secondary" className="text-[10px] text-gray-500 font-semibold">
+              <Badge className="text-[10px] bg-black/20 text-white/80 border border-white/20 font-semibold backdrop-blur-xs">
                 ⚪ Belum ada sprint aktif
               </Badge>
             )}
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">
+          <h1 className="text-xl sm:text-2xl font-display font-extrabold text-white leading-tight tracking-tight drop-shadow-xs">
             {namaTim}
           </h1>
         </div>
 
         {/* Baris Tombol Navigasi Cepat: Overview Tim & Ke Kanban Board & Roadmap */}
-        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/15">
           <Link
             href={gates.overview.href}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
               pathname === gates.overview.href
-                ? "bg-[#0F5132] text-white border-[#0F5132]"
-                : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+                ? "bg-white text-[#0B3D2E] font-extrabold shadow-md"
+                : "bg-white/15 text-white hover:bg-white/25 border border-white/20 backdrop-blur-xs"
             }`}
           >
             <LayoutDashboard className="h-3.5 w-3.5" />
@@ -158,10 +171,10 @@ export function TimPhaseGateNav({
 
           <Link
             href={`/tim/${timId}`}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
               isMainKanban
-                ? "bg-[#0F5132] text-white border-[#0F5132]"
-                : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+                ? "bg-white text-[#0B3D2E] font-extrabold shadow-md"
+                : "bg-white/15 text-white hover:bg-white/25 border border-white/20 backdrop-blur-xs"
             }`}
           >
             <Kanban className="h-3.5 w-3.5" />
@@ -170,11 +183,12 @@ export function TimPhaseGateNav({
         </div>
       </div>
 
-      {/* 2. Grid 5 Kotak Menu Gerbang Fase (Dimulai dari Innovation Setup di Paling Kiri) */}
+      {/* 2. Grid 5 Kotak Menu Gerbang Fase (Solid Pekat + Lock icon saat terkunci) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
         {gateItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
+          const token = item.token;
 
           if (!item.unlocked) {
             return (
@@ -182,24 +196,24 @@ export function TimPhaseGateNav({
                 key={item.id}
                 type="button"
                 onClick={(e) => handleBoxClick(item, e)}
-                className="relative text-left p-3.5 rounded-2xl border border-dashed border-gray-300 bg-gray-100/70 text-gray-400 opacity-60 hover:opacity-80 hover:bg-gray-100 hover:border-gray-400 transition-all cursor-not-allowed group flex flex-col justify-between min-h-[90px]"
+                className={`relative text-left p-3.5 rounded-2xl ${token.solidGradient} text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[96px] border border-white/20`}
                 title="Klik untuk melihat syarat pembukaan fase ini"
               >
                 <div className="flex items-start justify-between gap-1 w-full">
-                  <div className="p-1.5 rounded-lg bg-gray-200/80 text-gray-500">
+                  <div className="p-1.5 rounded-xl bg-black/20 text-white backdrop-blur-xs">
                     <Icon className="h-4 w-4" />
                   </div>
-                  <span className="p-1 rounded-full bg-gray-200 text-gray-600 group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
-                    <Lock className="h-3 w-3" />
+                  <span className="p-1.5 rounded-full bg-black/30 text-white/90 border border-white/30 backdrop-blur-xs group-hover:bg-black/50 transition-colors shadow-xs">
+                    <Lock className="h-3.5 w-3.5" />
                   </span>
                 </div>
 
                 <div className="mt-2 space-y-0.5">
-                  <span className="text-xs font-bold text-gray-600 block line-clamp-1">
+                  <span className="text-xs font-extrabold text-white block line-clamp-1 drop-shadow-2xs">
                     {item.name}
                   </span>
-                  <span className="text-[10px] text-gray-400 block line-clamp-1">
-                    Fase Terkunci
+                  <span className="text-[10px] text-white/80 block line-clamp-1 font-medium">
+                    🔒 Terkunci
                   </span>
                 </div>
               </button>
@@ -210,40 +224,34 @@ export function TimPhaseGateNav({
             <Link
               key={item.id}
               href={item.href}
-              className={`relative p-3.5 rounded-2xl border transition-all flex flex-col justify-between min-h-[90px] shadow-2xs group ${
+              className={`relative p-3.5 rounded-2xl ${token.solidGradient} text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[96px] group border border-white/20 ${
                 isActive
-                  ? "bg-green-50/80 border-[#0F5132] ring-2 ring-[#0F5132]/20"
-                  : "bg-white border-gray-200 hover:border-[#0F5132]/60 hover:shadow-xs"
+                  ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md"
+                  : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
               }`}
             >
               <div className="flex items-start justify-between gap-1">
-                <div
-                  className={`p-1.5 rounded-xl transition-colors ${
-                    isActive
-                      ? "bg-[#0F5132] text-white"
-                      : "bg-[#0F5132]/10 text-[#0F5132] group-hover:bg-[#0F5132] group-hover:text-white"
-                  }`}
-                >
+                <div className="p-1.5 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors">
                   <Icon className="h-4 w-4" />
                 </div>
 
-                {item.badge && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                {item.badge ? (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-xs">
                     <CheckCircle2 className="h-2.5 w-2.5" />
                     {item.badge}
                   </span>
-                )}
+                ) : isActive ? (
+                  <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs">
+                    Aktif
+                  </span>
+                ) : null}
               </div>
 
               <div className="mt-2 space-y-0.5">
-                <span
-                  className={`text-xs font-extrabold block line-clamp-1 ${
-                    isActive ? "text-[#0F5132]" : "text-gray-900"
-                  }`}
-                >
+                <span className="text-xs font-extrabold text-white block line-clamp-1 drop-shadow-2xs">
                   {item.name}
                 </span>
-                <span className="text-[10px] text-gray-400 block line-clamp-1">
+                <span className="text-[10px] text-white/85 block line-clamp-1 font-medium">
                   {item.description}
                 </span>
               </div>

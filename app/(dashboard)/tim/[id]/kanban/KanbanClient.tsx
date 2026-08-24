@@ -63,6 +63,11 @@ import {
   Download,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
+import {
+  getColumnPillStyle,
+  getPastelCardVariant,
+  PHASE_TOKENS,
+} from "@/lib/theme/tokens";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Attachment & Link Helpers
@@ -136,6 +141,8 @@ function SortableCard({
   card,
   columns,
   sprints,
+  isBacklog = false,
+  cardIndex,
   onMoveCard,
   onAssignSprint,
   onSelectCard,
@@ -143,6 +150,8 @@ function SortableCard({
   card: any;
   columns: any[];
   sprints: any[];
+  isBacklog?: boolean;
+  cardIndex?: number;
   onMoveCard: (cardId: string, newCol: string) => void;
   onAssignSprint: (cardId: string, sprintNum: number | null) => void;
   onSelectCard: (card: any) => void;
@@ -182,6 +191,11 @@ function SortableCard({
       )
     : 0;
 
+  const pastel =
+    isBacklog && cardIndex !== undefined && !isOverdue && !isDragging
+      ? getPastelCardVariant(cardIndex)
+      : null;
+
   return (
     <div
       ref={setNodeRef}
@@ -192,6 +206,8 @@ function SortableCard({
           ? "border-[#0F5132] bg-green-50/20 shadow-lg"
           : isOverdue
           ? "border-red-400 bg-red-50/25 hover:border-red-500 hover:shadow-sm ring-1 ring-red-300"
+          : pastel
+          ? `${pastel.bg} ${pastel.border} ${pastel.hover} hover:shadow-xs`
           : "border-gray-200 bg-white hover:border-[#0F5132]/60 hover:shadow-sm"
       }`}
     >
@@ -202,7 +218,11 @@ function SortableCard({
           className="flex flex-wrap items-center gap-1.5 cursor-pointer"
         >
           {card.label && (
-            <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0F5132]/10 text-[#0F5132]">
+            <span
+              className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                pastel ? pastel.badge : "bg-[#0F5132]/10 text-[#0F5132]"
+              }`}
+            >
               {card.label}
             </span>
           )}
@@ -231,7 +251,11 @@ function SortableCard({
       >
         <h4
           className={`text-xs font-bold leading-tight transition-colors ${
-            isOverdue ? "text-red-950" : "text-gray-900 group-hover:text-[#0F5132]"
+            isOverdue
+              ? "text-red-950"
+              : pastel
+              ? "text-gray-900 group-hover:text-gray-950"
+              : "text-gray-900 group-hover:text-[#0F5132]"
           }`}
         >
           {card.judul}
@@ -248,7 +272,7 @@ function SortableCard({
           <div className="flex items-center gap-1.5 pt-1 text-[10px] text-gray-600 font-medium">
             {Boolean(card.attachmentsCount) && (
               <span
-                className="inline-flex items-center gap-1 bg-gray-100/90 hover:bg-gray-200/90 border border-gray-200/60 px-1.5 py-0.5 rounded text-gray-700 transition-colors"
+                className="inline-flex items-center gap-1 bg-white/80 hover:bg-white border border-gray-200/70 px-1.5 py-0.5 rounded text-gray-700 transition-colors shadow-2xs"
                 title={`${card.attachmentsCount} Lampiran`}
               >
                 <Paperclip className="h-3 w-3 text-gray-500" />
@@ -257,7 +281,7 @@ function SortableCard({
             )}
             {Boolean(card.linksCount) && (
               <span
-                className="inline-flex items-center gap-1 bg-gray-100/90 hover:bg-gray-200/90 border border-gray-200/60 px-1.5 py-0.5 rounded text-gray-700 transition-colors"
+                className="inline-flex items-center gap-1 bg-white/80 hover:bg-white border border-gray-200/70 px-1.5 py-0.5 rounded text-gray-700 transition-colors shadow-2xs"
                 title={`${card.linksCount} Tautan`}
               >
                 <Link2 className="h-3 w-3 text-gray-500" />
@@ -269,7 +293,7 @@ function SortableCard({
       </div>
 
       {/* Card Footer: Sprint selector, Due date, Status selector */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 mt-2 border-t border-gray-100 text-[10px] text-gray-400">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 mt-2 border-t border-gray-200/50 text-[10px] text-gray-400">
         {card.tanggalSelesai ? (
           <span
             onClick={() => onSelectCard(card)}
@@ -287,7 +311,7 @@ function SortableCard({
         <div className="flex items-center gap-1">
           {/* Sprint assignment dropdown */}
           <select
-            className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-semibold focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
+            className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-semibold focus:outline-none focus:ring-1 focus:ring-[#0F5132] shadow-2xs"
             value={card.sprintNumber === null ? "backlog" : String(card.sprintNumber)}
             onChange={(e) => {
               const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
@@ -306,7 +330,7 @@ function SortableCard({
 
           {/* Status Column dropdown */}
           <select
-            className="text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
+            className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-[#0F5132] shadow-2xs"
             value={card.statusKolom}
             onChange={(e) => onMoveCard(card.id, e.target.value)}
             onClick={(e) => e.stopPropagation()}
@@ -377,6 +401,7 @@ function KanbanColumnDroppable({
   columns,
   sprints,
   isBacklogArea = false,
+  columnIndex = 0,
   onAddCard,
   onMoveCard,
   onAssignSprint,
@@ -388,6 +413,7 @@ function KanbanColumnDroppable({
   columns: any[];
   sprints: any[];
   isBacklogArea?: boolean;
+  columnIndex?: number;
   onAddCard: (colName: string) => void;
   onMoveCard: (cardId: string, newCol: string) => void;
   onAssignSprint: (cardId: string, sprintNum: number | null) => void;
@@ -403,6 +429,10 @@ function KanbanColumnDroppable({
   });
 
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
+  const pillStyle = useMemo(
+    () => getColumnPillStyle(columnTitle, columnIndex),
+    [columnTitle, columnIndex]
+  );
 
   return (
     <div
@@ -411,34 +441,43 @@ function KanbanColumnDroppable({
         isOver
           ? "bg-green-50/70 border-[#0F5132]/60 ring-2 ring-[#0F5132]/20"
           : isBacklogArea
-          ? "bg-slate-50/90 border-slate-200"
-          : "bg-gray-50/80 border-gray-200"
+          ? "bg-slate-50/90 border-slate-200 shadow-2xs"
+          : "bg-gray-50/80 border-gray-200 shadow-2xs"
       }`}
     >
-      {/* Column Header */}
-      <div className="flex items-center justify-between px-1">
-        <h3
-          className={`text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 ${
-            isBacklogArea ? "text-slate-800" : "text-gray-700"
-          }`}
-        >
-          {isBacklogArea && <Inbox className="h-3.5 w-3.5 text-slate-600" />}
-          <span>{columnTitle}</span>
-          <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold border ${
+      {/* Column Header: Pill Berwarna */}
+      <div className="flex items-center justify-between px-0.5">
+        <div className="flex items-center gap-1.5">
+          <div
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold shadow-2xs ${
               isBacklogArea
-                ? "bg-slate-200 text-slate-800 border-slate-300"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-slate-800 text-white"
+                : pillStyle.pillBg.startsWith("bg-")
+                ? pillStyle.pillBg
+                : "text-white"
             }`}
+            style={
+              !isBacklogArea && !pillStyle.pillBg.startsWith("bg-")
+                ? { backgroundColor: pillStyle.pillBg }
+                : undefined
+            }
           >
-            {cards.length}
-          </span>
-        </h3>
+            {isBacklogArea ? (
+              <Inbox className="h-3 w-3 text-white" />
+            ) : (
+              <span className={`h-2 w-2 rounded-full ${pillStyle.dot}`} />
+            )}
+            <span className="tracking-wide">{columnTitle}</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-white/25 text-white ml-0.5">
+              {cards.length}
+            </span>
+          </div>
+        </div>
 
         <button
           type="button"
           onClick={() => onAddCard(isBacklogArea ? "To Do" : columnTitle)}
-          className="text-gray-400 hover:text-gray-700 p-1 rounded hover:bg-gray-200/60 transition-colors"
+          className="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-200/70 transition-colors"
           title={`Tambah kartu ke ${columnTitle}`}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -448,12 +487,14 @@ function KanbanColumnDroppable({
       {/* Cards List with Sortable Context */}
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
         <div className="space-y-2.5 flex-1">
-          {cards.map((card) => (
+          {cards.map((card, idx) => (
             <SortableCard
               key={card.id}
               card={card}
               columns={columns}
               sprints={sprints}
+              isBacklog={isBacklogArea}
+              cardIndex={idx}
               onMoveCard={onMoveCard}
               onAssignSprint={onAssignSprint}
               onSelectCard={onSelectCard}
@@ -1422,7 +1463,7 @@ export function KanbanClient({
               />
 
               {/* 2-5. Kolom Kerja Sprint (To Do, In Progress, Review, Done) */}
-              {columns.map((col) => {
+              {columns.map((col, colIdx) => {
                 const colCards = activeSprintCards.filter(
                   (c) => c.statusKolom === col.namaKolom
                 );
@@ -1432,6 +1473,7 @@ export function KanbanClient({
                     key={col.id || col.namaKolom}
                     columnId={col.namaKolom}
                     columnTitle={col.namaKolom}
+                    columnIndex={colIdx}
                     isBacklogArea={false}
                     cards={colCards}
                     columns={columns}
