@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { NavigationTransitionProvider } from "@/components/ui/NavigationTransitionProvider";
 
 export default function RootLayout({
   children,
@@ -30,7 +31,11 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8FAFC] text-gray-900`}
       >
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <NavigationTransitionProvider>
+            {children}
+          </NavigationTransitionProvider>
+        </ToastProvider>
       </body>
     </html>
   );
