@@ -157,6 +157,7 @@ export const kanbanCard = pgTable('kanban_card', {
   dependencyRisiko: text('dependency_risiko'),
   urutan: integer('urutan').notNull().default(0),
   label: text('label'), // e.g. 'Backlog Charter', 'SME Review', 'MVP Task', etc.
+  reviewStatus: text('review_status').notNull().default('adopted'), // 'ai_reference' | 'adopted'
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

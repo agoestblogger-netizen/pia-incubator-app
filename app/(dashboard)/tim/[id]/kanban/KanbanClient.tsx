@@ -13,6 +13,7 @@ import {
   getTaskLinksAction,
   addTaskLinkAction,
   deleteTaskLinkAction,
+  adoptAiCardAction,
 } from "@/app/actions/kanban";
 import {
   startSprintAction,
@@ -62,6 +63,9 @@ import {
   HardDrive,
   Download,
   Target,
+  ChevronDown,
+  ChevronUp,
+  BrainCircuit,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
 import {
@@ -594,6 +598,10 @@ export function KanbanClient({
   const [savingDetailCard, setSavingDetailCard] = useState(false);
   const [deletingCard, setDeletingCard] = useState(false);
 
+  // AI Reference Panel State
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
+  const [adoptingCardId, setAdoptingCardId] = useState<string | null>(null);
+
   // Task Attachments & Links State
   const [attachments, setAttachments] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
@@ -829,10 +837,19 @@ export function KanbanClient({
     });
   }, [cards, tahapFilter]);
 
-  // Backlog Cards
+  // Backlog Cards — HANYA kartu adopted (bukan ai_reference)
   const backlogCards = useMemo(() => {
-    return filteredCards.filter((c) => c.sprintNumber === null || c.sprintNumber === undefined);
+    return filteredCards.filter(
+      (c) =>
+        (c.sprintNumber === null || c.sprintNumber === undefined) &&
+        c.reviewStatus !== 'ai_reference'
+    );
   }, [filteredCards]);
+
+  // AI Reference Cards — kartu yang belum ditinjau tim
+  const aiReferenceCards = useMemo(() => {
+    return cards.filter((c) => c.reviewStatus === 'ai_reference');
+  }, [cards]);
 
   // Sprint Cards for currently selected sprint
   const activeSprintCards = useMemo(() => {
@@ -929,6 +946,43 @@ export function KanbanClient({
       setErrorMessage(errMsg);
     }
     setDeletingCard(false);
+  };
+
+  const handleAdoptAiCard = async () => {
+    if (!selectedCardForDetail) return;
+    setAdoptingCardId(selectedCardForDetail.id);
+    setErrorMessage(null);
+
+    const payload = {
+      judul: detailJudul,
+      deskripsi: detailDeskripsi,
+      tahap: detailTahap,
+      sprintNumber: detailSprintNumber,
+      statusKolom: detailStatusKolom,
+      ownerAnggotaId: detailOwnerAnggotaId,
+      label: detailLabel,
+      tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
+      tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
+      acceptanceCriteria: detailAcceptanceCriteria,
+      dependencyRisiko: detailDependencyRisiko,
+    };
+
+    const res = await adoptAiCardAction(timId, selectedCardForDetail.id, payload);
+    if (res.success && res.data) {
+      setCards((prev) =>
+        prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
+      );
+      toast.success(
+        `Kartu "${detailJudul}" berhasil diadopsi ke Backlog Kerja!`,
+        "Adopsi Berhasil ✓"
+      );
+      setSelectedCardForDetail(null);
+    } else {
+      const errMsg = res.error || "Gagal mengadopsi kartu AI.";
+      toast.error(errMsg, "Gagal Adopsi");
+      setErrorMessage(errMsg);
+    }
+    setAdoptingCardId(null);
   };
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1210,6 +1264,77 @@ export function KanbanClient({
               Tutup
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Panel Referensi AI Roadmap ── */}
+      {aiReferenceCards.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 shadow-xs overflow-hidden">
+          {/* Panel Header */}
+          <button
+            type="button"
+            onClick={() => setIsAiPanelOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-amber-100/50 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <BrainCircuit className="h-4.5 w-4.5 text-amber-600" style={{ width: 18, height: 18 }} />
+              <span className="text-sm font-extrabold text-amber-900">
+                Referensi AI Roadmap
+              </span>
+              <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold shadow-xs">
+                {aiReferenceCards.length}
+              </span>
+              <span className="text-[11px] text-amber-700 font-medium hidden sm:inline">
+                — Usulan AI, belum ditinjau tim
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-amber-600">
+              <span className="text-[11px] font-semibold">{isAiPanelOpen ? "Ciutkan" : "Buka"}</span>
+              {isAiPanelOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </div>
+          </button>
+
+          {/* Panel Body — Collapsible */}
+          {isAiPanelOpen && (
+            <div className="px-5 pb-4">
+              <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
+                Kartu berikut adalah usulan roadmap dari analisis AI atas proposal tim. Tinjau dan adopsi ke Backlog Kerja agar tim bisa assign ke Sprint.
+              </p>
+              <div className="space-y-2">
+                {aiReferenceCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="flex items-center justify-between gap-3 bg-white rounded-xl border border-amber-200 px-4 py-2.5 shadow-2xs group hover:border-amber-400 transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[9px] font-extrabold uppercase tracking-wide border border-amber-200 shrink-0">
+                        <BrainCircuit style={{ width: 10, height: 10 }} />
+                        Ref AI
+                      </span>
+                      <span className="text-xs font-semibold text-gray-800 truncate">{card.judul}</span>
+                      {card.tahap && card.tahap !== 'umum' && (
+                        <span className="hidden sm:inline text-[10px] text-gray-400 truncate">
+                          · {card.tahap.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCardDetail(card)}
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-500 hover:text-white border border-amber-300 hover:border-amber-500 transition-all shadow-2xs"
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      <span>Tinjau &amp; Adopsi</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2127,7 +2252,7 @@ export function KanbanClient({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={deletingCard || savingDetailCard}
+                  disabled={deletingCard || savingDetailCard || Boolean(adoptingCardId)}
                   onClick={handleDeleteCard}
                   className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
                 >
@@ -2139,6 +2264,24 @@ export function KanbanClient({
               )}
 
               <div className="flex items-center gap-2">
+                {/* Tombol Adopsi — hanya muncul kalau kartu masih ai_reference */}
+                {canEdit && selectedCardForDetail?.reviewStatus === 'ai_reference' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={Boolean(adoptingCardId) || savingDetailCard || !detailJudul.trim()}
+                    onClick={handleAdoptAiCard}
+                    className="text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                  >
+                    {adoptingCardId === selectedCardForDetail?.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <BrainCircuit className="h-3.5 w-3.5" />
+                    )}
+                    <span>Adopsi ke Backlog Kerja</span>
+                  </Button>
+                )}
+
                 <Button
                   type="button"
                   variant="outline"

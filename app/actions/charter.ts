@@ -1177,6 +1177,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           tahap: "innovation_setup",
           sprintNumber: null,
           label: "Draf Roadmap",
+          reviewStatus: 'ai_reference', // kartu AI belum ditinjau
           urutan: cardUrutan++,
         });
       }
@@ -1191,6 +1192,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         tahap: "innovation_setup",
         sprintNumber: null,
         label: "Draf Roadmap",
+        reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
       });
 
@@ -1203,6 +1205,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         tahap: "innovation_setup",
         sprintNumber: null,
         label: "Draf Roadmap",
+        reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
       });
 
@@ -1216,6 +1219,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           tahap: "innovation_setup",
           sprintNumber: null,
           label: "Draf Roadmap",
+          reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
         });
       }
@@ -1232,6 +1236,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       tahap: t.tahap,
       sprintNumber: null,
       label: "Template Baku CV",
+      reviewStatus: 'adopted', // template baku adalah task resmi
       urutan: cardUrutan++,
     });
   }
@@ -1246,6 +1251,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       tahap: t.tahap,
       sprintNumber: null,
       label: "Template Baku MV",
+      reviewStatus: 'adopted', // template baku adalah task resmi
       urutan: cardUrutan++,
     });
   }
