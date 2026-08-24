@@ -65,7 +65,9 @@ ATURAN GRANULARITAS TASK (SANGAT PENTING):
 ATURAN FORMAT SCRUM & GUARDRAILS:
 1. SETIAP JUDUL TASK HARUS DIAWALI KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
 2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap (misal IBMA, Divisi Bullion, nasabah korporasi, dll). JANGAN menambahkan nama vendor, instansi, atau detail teknologi baru di luar data sumber.
-3. Berikan deskripsi singkat (1-2 kalimat) untuk tiap task yang menjelaskan konteks dan luaran spesifiknya.
+3. DESKRIPSI TASK & OUTPUT: Setiap task WAJIB memiliki deskripsi 1-2 kalimat yang menjelaskan konteks serta luaran/hasilnya.
+   Pola kalimat penutup deskripsi WAJIB menggunakan frasa:
+   "Hasil atau output dari task/aktivitas ini adalah [jelaskan output/hasil/dokumen konkretnya]."
 4. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
 
     const userPrompt = `PROPOSAL METADATA:
@@ -81,12 +83,12 @@ ${roadmapText}
 KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
 ${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
 
-Pecah roadmap di atas menjadi daftar Backlog Task atomik (masing-masing 1 aksi konkret per task, diawali kata kerja) dengan format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik (masing-masing 1 aksi konkret per task, diawali kata kerja aktif, dan deskripsi wajib menyebutkan "Hasil atau output dari task/aktivitas ini adalah...") dengan format JSON:
 {
   "tasks": [
     {
       "judul": "Kata Kerja Aktif + Target dan Konteks Aksi Atomik",
-      "deskripsi": "1-2 kalimat ringkas luaran konkret task"
+      "deskripsi": "Penjelasan konteks singkat. Hasil atau output dari task/aktivitas ini adalah [output/dokumen/hasil konkret]."
     }
   ]
 }`;
