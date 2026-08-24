@@ -1380,59 +1380,6 @@ export function KanbanClient({
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* PERMANENT TOP SPRINT SELECTOR TAB BAR */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mr-1 shrink-0 hidden sm:inline">
-            Pilih Sprint:
-          </span>
-          {sprints.map((s) => {
-            const isTabSelected = selectedSprintNum === s.nomorSprint;
-            const isAktif = s.status === "aktif";
-            const isSelesai = s.status === "selesai";
-
-            return (
-              <button
-                key={s.id || s.nomorSprint}
-                type="button"
-                onClick={() => handleSprintTabClick(s.nomorSprint)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                  isTabSelected
-                    ? "bg-[#0F5132] text-white shadow-xs"
-                    : "bg-gray-100/90 text-gray-700 hover:bg-gray-200 border border-gray-200/80"
-                }`}
-              >
-                <span>Sprint {s.nomorSprint}</span>
-                {isAktif && (
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                )}
-                {isSelesai && (
-                  <Check className={`h-3.5 w-3.5 ${isTabSelected ? "text-white" : "text-emerald-600"}`} />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {canEdit && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setTargetSprintCount(sprints.length);
-              setSprintCountReason("");
-              setIsSprintCountModalOpen(true);
-            }}
-            className="text-xs font-semibold gap-1.5 text-gray-700 hover:text-[#0F5132] rounded-xl shrink-0 cursor-pointer"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            <span>Kelola Jumlah Sprint ({sprints.length})</span>
-          </Button>
-        )}
-      </div>
-
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {/* SECTION 1: DAFTAR SPRINT & ROADMAP */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
@@ -1456,7 +1403,7 @@ export function KanbanClient({
                 </Badge>
               </h2>
               <p className="text-xs text-gray-500 hidden sm:block">
-                Ringkasan milestone dan target capaian untuk sprint yang sedang dipilih.
+                Pilih sprint untuk melakukan perencanaan kapasitas atau melihat eksekusi board.
               </p>
             </div>
           </div>
@@ -1473,7 +1420,55 @@ export function KanbanClient({
 
         {/* Section 1 Content */}
         {activeSection === 1 && (
-          <div className="p-5">
+          <div className="p-5 space-y-4">
+            {/* Baris Tab Sprint Selector + Tombol Kelola Jumlah Sprint */}
+            <div className="border-b border-gray-200 pb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
+                {sprints.map((s) => {
+                  const isTabSelected = selectedSprintNum === s.nomorSprint;
+                  const isAktif = s.status === "aktif";
+                  const isSelesai = s.status === "selesai";
+
+                  return (
+                    <button
+                      key={s.id || s.nomorSprint}
+                      type="button"
+                      onClick={() => handleSprintTabClick(s.nomorSprint)}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        isTabSelected
+                          ? "bg-[#0F5132] text-white shadow-xs"
+                          : "bg-gray-100/90 text-gray-700 hover:bg-gray-200 border border-gray-200/80"
+                      }`}
+                    >
+                      <span>Sprint {s.nomorSprint}</span>
+                      {isAktif && (
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                      )}
+                      {isSelesai && (
+                        <Check className={`h-3.5 w-3.5 ${isTabSelected ? "text-white" : "text-emerald-600"}`} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTargetSprintCount(sprints.length);
+                    setSprintCountReason("");
+                    setIsSprintCountModalOpen(true);
+                  }}
+                  className="text-xs font-semibold gap-1.5 text-gray-700 hover:text-[#0F5132] rounded-xl shrink-0 cursor-pointer"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Kelola Jumlah Sprint ({sprints.length})</span>
+                </Button>
+              )}
+            </div>
+
             {/* Selected Sprint Summary Card */}
             {(() => {
               const selectedSection1Sprint =
