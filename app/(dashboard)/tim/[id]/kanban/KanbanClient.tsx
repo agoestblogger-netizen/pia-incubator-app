@@ -620,13 +620,6 @@ export function KanbanClient({
       ? sprints[0].nomorSprint
       : 1
   );
-  const [section1SprintNum, setSection1SprintNum] = useState<number>(() =>
-    initialActiveSprint
-      ? initialActiveSprint.nomorSprint
-      : sprints.length > 0
-      ? sprints[0].nomorSprint
-      : 1
-  );
   const [capacities, setCapacities] = useState<MemberCapacityInfo[]>([]);
   const [startingSprint, setStartingSprint] = useState(false);
 
@@ -1038,6 +1031,11 @@ export function KanbanClient({
   };
 
   // Section Navigation Handlers
+  const handleSprintTabClick = (sprintNum: number) => {
+    setSelectedSprintNum(sprintNum);
+    setSelectedSprintTab(String(sprintNum));
+  };
+
   const handleSelectSprintForPlanning = (sprintNum: number) => {
     setSelectedSprintNum(sprintNum);
     setSelectedSprintTab(String(sprintNum));
@@ -1444,7 +1442,7 @@ export function KanbanClient({
             <div className="border-b border-gray-200 pb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
                 {sprints.map((s) => {
-                  const isTabSelected = section1SprintNum === s.nomorSprint;
+                  const isTabSelected = selectedSprintNum === s.nomorSprint;
                   const isAktif = s.status === "aktif";
                   const isSelesai = s.status === "selesai";
 
@@ -1452,7 +1450,7 @@ export function KanbanClient({
                     <button
                       key={s.id || s.nomorSprint}
                       type="button"
-                      onClick={() => setSection1SprintNum(s.nomorSprint)}
+                      onClick={() => handleSprintTabClick(s.nomorSprint)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                         isTabSelected
                           ? "bg-[#0F5132] text-white shadow-xs"
@@ -1475,7 +1473,7 @@ export function KanbanClient({
             {/* Selected Sprint Summary Card */}
             {(() => {
               const selectedSection1Sprint =
-                sprints.find((s) => s.nomorSprint === section1SprintNum) || sprints[0];
+                sprints.find((s) => s.nomorSprint === selectedSprintNum) || sprints[0];
               if (!selectedSection1Sprint) return null;
 
               const isAktif = selectedSection1Sprint.status === "aktif";
