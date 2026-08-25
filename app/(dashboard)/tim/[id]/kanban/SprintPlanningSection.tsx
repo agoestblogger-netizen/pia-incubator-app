@@ -24,6 +24,8 @@ import { MemberCapacityInfo, upsertMemberCapacityAction } from "@/app/actions/ca
 import { toast } from "@/components/ui/ToastProvider";
 import { getPhaseTokenBySlug } from "@/lib/theme/tokens";
 
+import { BacklogReferenceDropdown } from "./BacklogReferenceDropdown";
+
 export interface PlanningCardAssignment {
   cardId: string;
   storyPoint: number | null;
@@ -287,15 +289,15 @@ export function SprintPlanningSection({
           </span>
         </div>
 
-        {/* SATU Kotak Putih Menerus dengan Scroll Internal */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+        {/* SATU Kotak Putih Menerus */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs">
           {aiReferenceCards.length === 0 ? (
             <div className="p-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
               <span>Semua kartu Backlog Referensi telah diadopsi ke Backlog Kerja.</span>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 max-h-[420px] overflow-y-auto pr-0.5">
+            <div className="divide-y divide-gray-100">
               {sortedSprints.map((s) => {
                 const isCurrentPlanningSprint = s.nomorSprint === sprint.nomorSprint;
                 const groupCards = aiReferenceCards.filter(
@@ -336,129 +338,18 @@ export function SprintPlanningSection({
                       </span>
                     </div>
 
-                    {/* Daftar Kartu di Grup Ini */}
-                    <div className="p-4 space-y-2.5">
-                      {groupCards.length === 0 ? (
-                        <p className="text-[11px] text-gray-400 italic px-1 py-1">
-                          Tidak ada usulan kartu referensi untuk Sprint {s.nomorSprint}.
-                        </p>
-                      ) : (
-                        groupCards.map((card) => {
-                          // Phase gating check
-                          let isPhaseLocked = false;
-                          let lockReason = "";
-
-                          if (card.tahap === "customer_validation" && !isCvUnlocked) {
-                            isPhaseLocked = true;
-                            lockReason = "🔒 Fase Customer Validation belum terbuka";
-                          } else if (card.tahap === "market_validation" && !isMvUnlocked) {
-                            isPhaseLocked = true;
-                            lockReason = "🔒 Fase Market Validation belum terbuka";
-                          }
-
-                          return (
-                            <div
-                              key={card.id}
-                              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
-                                isCurrentPlanningSprint
-                                  ? "bg-purple-50/40 border-purple-200/90 hover:border-purple-300 shadow-2xs"
-                                  : "bg-gray-50/60 border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              {/* Info Kartu */}
-                              <div className="space-y-1 min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide border shrink-0 ${
-                                      card.label?.includes("CV") || card.tahap === "customer_validation"
-                                        ? "bg-blue-50 text-blue-800 border-blue-200"
-                                        : card.label?.includes("MV") || card.tahap === "market_validation"
-                                        ? "bg-indigo-50 text-indigo-800 border-indigo-200"
-                                        : "bg-purple-100 text-purple-800 border-purple-200"
-                                    }`}
-                                  >
-                                    <Sparkles className="w-2.5 h-2.5" />
-                                    {card.label || "Draf Roadmap"}
-                                  </span>
-
-                                  {/* Story Point Badge */}
-                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200 text-[10px] font-extrabold">
-                                    <Zap className="h-2.5 w-2.5 text-purple-700 fill-purple-700" />
-                                    {card.storyPoint || 3} SP
-                                  </span>
-
-                                  {card.tahap && card.tahap !== "umum" && (
-                                    <span className="text-[10px] text-gray-400 font-medium truncate">
-                                      · {card.tahap.replace(/_/g, " ")}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <p className="text-xs font-bold text-gray-900 leading-snug">
-                                  {card.judul}
-                                </p>
-
-                                {card.deskripsi && (
-                                  <p className="text-[11px] text-gray-500 line-clamp-1 leading-relaxed">
-                                    {card.deskripsi}
-                                  </p>
-                                )}
-
-                                {/* Lock Warning Text */}
-                                {isPhaseLocked && (
-                                  <p className="text-[10px] font-semibold text-amber-700 flex items-center gap-1 pt-0.5">
-                                    <Lock className="h-3 w-3 shrink-0" />
-                                    <span>{lockReason}</span>
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Tombol Aksi: Tinjau & Adopsi (Grup Aktif) atau Promosikan (Grup Pasif) */}
-                              <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
-                                {isCurrentPlanningSprint ? (
-                                  <button
-                                    type="button"
-                                    disabled={!canEdit || isPhaseLocked}
-                                    onClick={() => onOpenCardDetail(card, sprint.nomorSprint)}
-                                    title={
-                                      isPhaseLocked
-                                        ? lockReason
-                                        : "Tinjau dan adopsi kartu ke Sprint Planning saat ini"
-                                    }
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs ${
-                                      isPhaseLocked
-                                        ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60"
-                                        : "bg-purple-600 hover:bg-purple-700 text-white cursor-pointer active:scale-98"
-                                    }`}
-                                  >
-                                    <ArrowRight className="h-3.5 w-3.5" />
-                                    <span>Tinjau &amp; Adopsi</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    disabled={!canEdit || isPhaseLocked}
-                                    onClick={() => onOpenCardDetail(card, sprint.nomorSprint)}
-                                    title={
-                                      isPhaseLocked
-                                        ? lockReason
-                                        : `Promosikan kartu ini ke Sprint ${sprint.nomorSprint}`
-                                    }
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs ${
-                                      isPhaseLocked
-                                        ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60"
-                                        : "bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 hover:border-purple-400 cursor-pointer active:scale-98"
-                                    }`}
-                                  >
-                                    <ArrowUp className="h-3.5 w-3.5" />
-                                    <span>↑ Promosikan</span>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
+                    {/* Dropdown Custom Backlog Referensi per Grup Sprint */}
+                    <div className="p-3.5">
+                      <BacklogReferenceDropdown
+                        sprintNumber={s.nomorSprint}
+                        isCurrentPlanningSprint={isCurrentPlanningSprint}
+                        currentPlanningSprintNumber={sprint.nomorSprint}
+                        cards={groupCards}
+                        canEdit={canEdit}
+                        isCvUnlocked={isCvUnlocked}
+                        isMvUnlocked={isMvUnlocked}
+                        onSelectCard={onOpenCardDetail}
+                      />
                     </div>
                   </div>
                 );
