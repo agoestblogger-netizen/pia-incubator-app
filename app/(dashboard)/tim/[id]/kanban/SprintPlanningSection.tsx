@@ -289,78 +289,16 @@ export function SprintPlanningSection({
           </span>
         </div>
 
-        {/* SATU Kotak Putih Menerus */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs">
-          {aiReferenceCards.length === 0 ? (
-            <div className="p-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>Semua kartu Backlog Referensi telah diadopsi ke Backlog Kerja.</span>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {sortedSprints.map((s) => {
-                const isCurrentPlanningSprint = s.nomorSprint === sprint.nomorSprint;
-                const groupCards = aiReferenceCards.filter(
-                  (c) => (c.suggestedSprintNumber || 1) === s.nomorSprint
-                );
-                const hadAdoptedCards = backlogCards.some(
-                  (c) => (c.suggestedSprintNumber || 1) === s.nomorSprint || c.sprintNumber === s.nomorSprint
-                );
-
-                return (
-                  <div key={s.nomorSprint} className="space-y-0">
-                    {/* Header Teks Kecil + Garis Divider Grup Sprint */}
-                    <div
-                      className={`px-5 py-2 flex items-center justify-between transition-colors ${
-                        isCurrentPlanningSprint
-                          ? "bg-purple-50/80 border-y border-purple-100 text-purple-800"
-                          : "bg-gray-50/70 border-y border-gray-100 text-gray-500"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider">
-                          SPRINT {s.nomorSprint} ·{" "}
-                          {isCurrentPlanningSprint
-                            ? "SEDANG DIRENCANAKAN"
-                            : "BELUM WAKTUNYA"}
-                        </span>
-                        <span
-                          className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                            isCurrentPlanningSprint
-                              ? "bg-purple-200/80 text-purple-900"
-                              : "bg-gray-200 text-gray-600"
-                          }`}
-                        >
-                          {groupCards.length}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-medium hidden sm:inline">
-                        {isCurrentPlanningSprint
-                          ? "Grup Aktif — Siap diadopsi ke Sprint ini"
-                          : "Grup Pasif — Promosikan untuk ditarik ke Sprint ini"}
-                      </span>
-                    </div>
-
-                    {/* Dropdown Custom Backlog Referensi per Grup Sprint */}
-                    <div className="p-3.5">
-                      <BacklogReferenceDropdown
-                        sprintNumber={s.nomorSprint}
-                        isCurrentPlanningSprint={isCurrentPlanningSprint}
-                        currentPlanningSprintNumber={sprint.nomorSprint}
-                        cards={groupCards}
-                        hadAdoptedCards={hadAdoptedCards}
-                        canEdit={canEdit}
-                        isCvUnlocked={isCvUnlocked}
-                        isMvUnlocked={isMvUnlocked}
-                        onSelectCard={onOpenCardDetail}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* SATU Dropdown Tunggal Backlog Referensi dengan Grouping Per Sprint */}
+        <BacklogReferenceDropdown
+          currentPlanningSprintNumber={sprint.nomorSprint}
+          sprints={sprints}
+          aiReferenceCards={aiReferenceCards}
+          canEdit={canEdit}
+          isCvUnlocked={isCvUnlocked}
+          isMvUnlocked={isMvUnlocked}
+          onSelectCard={onOpenCardDetail}
+        />
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
