@@ -359,11 +359,16 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
   }
 
   // 5. Auto-seed Initial Kanban Backlog (AI Scrum tasks + 15 Baku CV/MV cards)
+  // Dibungkus timeout 45 detik — kalau AI hang, tim tetap berhasil diimpor (data DB sudah tersimpan)
   try {
-    await seedInitialKanbanCardsForTeam(teamId);
+    const seedTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('seedInitialKanbanCardsForTeam timeout 45s')), 45_000)
+    );
+    await Promise.race([seedInitialKanbanCardsForTeam(teamId), seedTimeout]);
   } catch (kErr: any) {
-    console.warn(`[saveImportedProposal] Failed to auto-seed initial cards for ${proposalId}:`, kErr.message);
+    console.warn(`[saveImportedProposal] Failed/timeout auto-seed initial cards for ${proposalId}:`, kErr.message);
   }
+
 
   console.log(`[saveImportedProposal] Finished ${proposalId}. Total accounts created: ${createdAccounts.length}`);
   return { success: true, teamId, action, createdAccounts };

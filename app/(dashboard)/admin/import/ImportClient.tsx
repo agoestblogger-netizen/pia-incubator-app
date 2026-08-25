@@ -280,24 +280,39 @@ export function ImportClient() {
       const allCreatedAccounts: CreatedAccountSummaryItem[] = [];
       const failedTeams: string[] = [];
 
+      // ─── Helpers ────────────────────────────────────────────────────────────
+
+      /** Buat promise yang reject setelah `ms` milidetik */
+      const makeTimeout = (ms: number, label: string): Promise<never> =>
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`⏱ Timeout ${ms / 1000}s: ${label}`)), ms)
+        );
+
       // Fungsi pemroses satu tim — terisolasi, aman untuk dijalankan paralel
       const processSingleTeam = async (item: (typeof selectedList)[0]) => {
         const propId = item.proposal_id;
         const isOverride = overrideIds.has(propId);
+        const tag = `[Import:${propId}]`;
 
-        // 1. Read dossier JSON from ZIP with fallback (read-only, thread-safe)
+        // ── Tahap 1: Baca dossier JSON ──────────────────────────────────────
+        console.log(`${tag} ▶ Tahap 1/4: Membaca dossier JSON...`);
         const dossierFile = findZipFile(zip, item.dossier_file || `dossier/${propId}.json`);
         let dossierData: any = null;
         if (dossierFile) {
           try {
             const text = await dossierFile.async('text');
             dossierData = JSON.parse(text);
+            console.log(`${tag} ✓ Dossier JSON terbaca (${text.length} chars)`);
           } catch {
+            console.warn(`${tag} ⚠ Gagal parse dossier JSON, lanjut tanpa dossier`);
             dossierData = null;
           }
+        } else {
+          console.warn(`${tag} ⚠ Dossier JSON tidak ditemukan di ZIP`);
         }
 
-        // 2. Upload attachments in parallel
+        // ── Tahap 2: Upload lampiran (maks 20s per file) ────────────────────
+        console.log(`${tag} ▶ Tahap 2/4: Upload lampiran...`);
         const lampiranUrls: Record<string, string> = {};
         const lampiranPrefix = `lampiran/${propId}/`;
 
@@ -309,9 +324,12 @@ export function ImportClient() {
         });
 
         if (attachmentEntries.length > 0) {
-          await Promise.all(
+          console.log(`${tag} Mengunggah ${attachmentEntries.length} lampiran...`);
+          await Promise.allSettled(
             attachmentEntries.map(async ({ relPath, entry }) => {
               const fileName = pathBasename(relPath);
+              const controller = new AbortController();
+              const uploadTimeoutId = setTimeout(() => controller.abort(), 20_000);
               try {
                 const blob = await entry.async('blob');
                 const uploadFormData = new FormData();
@@ -322,6 +340,7 @@ export function ImportClient() {
                 const uploadRes = await fetch('/api/admin/import/upload-file', {
                   method: 'POST',
                   body: uploadFormData,
+                  signal: controller.signal,
                 });
 
                 if (uploadRes.ok) {
@@ -331,13 +350,19 @@ export function ImportClient() {
                   }
                 }
               } catch (uErr: any) {
-                console.warn(`Gagal mengunggah lampiran ${fileName}:`, uErr.message);
+                console.warn(`${tag} ⚠ Gagal upload lampiran ${fileName}: ${uErr.message}`);
+              } finally {
+                clearTimeout(uploadTimeoutId);
               }
             })
           );
+          console.log(`${tag} ✓ Lampiran selesai (${Object.keys(lampiranUrls).length}/${attachmentEntries.length} berhasil)`);
+        } else {
+          console.log(`${tag} ℹ Tidak ada lampiran`);
         }
 
-        // 3. Save proposal record & dossier to database + Auto-create Accounts
+        // ── Tahap 3: Save ke DB + AI Backlog (via server action) ────────────
+        console.log(`${tag} ▶ Tahap 3/4: saveImportedProposal (DB + AI backlog)...`);
         const saveRes = await saveImportedProposal({
           proposalId: propId,
           season: item.season,
@@ -355,8 +380,17 @@ export function ImportClient() {
           override: isOverride,
         });
 
+        console.log(`${tag} ✅ Tahap 4/4: Selesai — action: ${saveRes.action}`);
         return { propId, namaProyek: item.nama_proyek, saveRes };
       };
+
+      /** Bungkus processSingleTeam dengan timeout 60 detik per tim */
+      const processSingleTeamWithTimeout = (item: (typeof selectedList)[0]) =>
+        Promise.race([
+          processSingleTeam(item),
+          makeTimeout(60_000, `${item.nama_proyek} (${item.proposal_id})`),
+        ]);
+
 
       // Jalankan dalam gelombang (wave) batch paralel
       for (let wave = 0; wave < totalWaves; wave++) {
@@ -369,9 +403,9 @@ export function ImportClient() {
         setProgressText(`Memproses gelombang ${waveNum}/${totalWaves} (tim ${timRange} dari ${total})...`);
         setProgressPercent(Math.round((completedCount / total) * 100));
 
-        // Promise.allSettled: 1 tim gagal tidak menggugurkan yang lain
+        // Promise.allSettled + per-tim timeout 60s: gelombang TIDAK BISA hang selamanya
         const waveResults = await Promise.allSettled(
-          waveItems.map((item) => processSingleTeam(item))
+          waveItems.map((item) => processSingleTeamWithTimeout(item))
         );
 
         // Agregasi hasil gelombang ini
