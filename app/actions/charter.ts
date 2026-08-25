@@ -1213,7 +1213,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         const t = aiTasks[i];
         let sprintNum = t.suggestedSprintNumber;
         if (!sprintNum || sprintNum < 1 || sprintNum > totalSprints) {
-          sprintNum = Math.min(totalSprints, Math.max(1, Math.floor((i / Math.max(1, aiTasks.length)) * totalSprints) + 1));
+          sprintNum = (i % totalSprints) + 1;
         }
 
         cardsToInsert.push({

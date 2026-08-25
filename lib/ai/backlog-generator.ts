@@ -251,7 +251,7 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPo
       if (t && typeof t.judul === 'string' && t.judul.trim().length > 0) {
         let sprintNum = typeof t.suggestedSprintNumber === 'number' ? Math.round(t.suggestedSprintNumber) : null;
         if (!sprintNum || sprintNum < 1 || sprintNum > totalSprints) {
-          sprintNum = Math.min(totalSprints, Math.max(1, Math.floor((i / Math.max(1, rawTasks.length)) * totalSprints) + 1));
+          sprintNum = (i % totalSprints) + 1;
         }
 
         const sp = normalizeToFibonacci(t.storyPoint, estimateStoryPointHeuristic(t.judul, t.deskripsi, t.acceptanceCriteria));
