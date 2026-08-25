@@ -1160,17 +1160,24 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
 
   if (teamDossier && teamDossier.snapshotData) {
     const snap = teamDossier.snapshotData as any;
-    const submisi = snap.submisi_dossier || {};
-    const formDetail = submisi.form_detail || {};
+    const submisi = snap.data_submisi || snap.submisi_dossier || {};
+    const formDetail = submisi.form_detail || snap.form_detail || {};
     const proposalId = teamDossier.proposalIdAsli || snap.proposal_id || timId;
     const namaProyek = submisi.judul || snap.judul_inovasi || tim?.namaProyekInovasi || "Inovasi";
-    const kategoriPia = tim?.kategoriPia || snap.kategori_inovasi || "Umum";
+    const kategoriPia = tim?.kategoriPia || submisi.kategori_pia || snap.kategori_inovasi || "Umum";
 
     const roadmapText = cleanText(
+      formDetail.detil_cara_kerja ||
+      formDetail.bc_detil_cara_kerja ||
+      formDetail.solusi_diusulkan ||
+      formDetail.bi_inovasi_diusulkan ||
+      formDetail.bc_eksplorasi_solusi ||
       formDetail.cara_mewujudkan_ide ||
       formDetail.tahapan_implementasi ||
       formDetail.rencana_implementasi ||
       formDetail.roadmap ||
+      formDetail.keunikan ||
+      snap.resubmit_document_text ||
       ""
     );
 
