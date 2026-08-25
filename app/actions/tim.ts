@@ -35,6 +35,9 @@ export async function getTimInovatorList(currentUser?: UserProfile | null) {
 }
 
 export async function getTimInovatorById(id: string) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (!isUuid) return null;
+
   const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, id)).limit(1);
   if (!tim) return null;
 
