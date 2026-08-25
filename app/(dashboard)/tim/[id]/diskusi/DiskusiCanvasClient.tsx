@@ -836,8 +836,7 @@ export function DiskusiCanvasClient({
           onDoubleClick={(e) => {
             if (e.target === e.currentTarget) handleAddSticky(e);
           }}
-          className="flex-1 relative overflow-auto select-none bg-[#FAFCFB]"
-          style={{ minWidth: 600 }}
+          className="flex-1 relative overflow-auto select-none bg-[#FAFCFB] min-w-0"
         >
           {/* Dot Grid Background */}
           <div
@@ -947,7 +946,7 @@ export function DiskusiCanvasClient({
         {/* ═══════════════════════════════════════════════════════════════════ */}
         {/* KOLOM 2: PANEL SUMBER & REFERENSI (RIGHT SIDEBAR) */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="w-80 bg-white border-l border-[#C9E4D0] flex flex-col z-20 shadow-xs">
+        <div className="w-80 bg-white border-l border-[#C9E4D0] flex flex-col z-20 shadow-xs shrink-0">
           {/* Tab Selector */}
           <div className="flex border-b border-[#C9E4D0] bg-[#F0F7F1]/50 p-1.5 gap-1">
             <button
@@ -1141,34 +1140,43 @@ export function DiskusiCanvasClient({
         {/* KOLOM 3: DOCUMENT PREVIEWER (SLIDE-OVER / IN-PAGE VIEWER) */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
         {previewDoc && (
-          <div className="w-[480px] lg:w-[560px] bg-gray-900 border-l border-gray-700 flex flex-col z-20 shadow-2xl animate-in slide-in-from-right duration-200">
+          <div className="w-[360px] sm:w-[420px] md:w-[480px] lg:w-[540px] max-w-[calc(100vw-40px)] min-w-[320px] shrink-0 bg-gray-900 border-l border-gray-700 flex flex-col z-30 shadow-2xl animate-in slide-in-from-right duration-200">
             {/* Viewer Header */}
-            <div className="p-3 bg-gray-800 text-white flex items-center justify-between border-b border-gray-700">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="px-3 py-2.5 bg-gray-800 text-white flex items-center justify-between gap-2 border-b border-gray-700 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                 <FileText className="h-4 w-4 text-red-400 shrink-0" />
-                <span className="text-xs font-bold truncate max-w-[280px]">{previewDoc.fileName}</span>
+                <span
+                  className="text-xs font-bold truncate block min-w-0 text-gray-200"
+                  title={previewDoc.fileName}
+                >
+                  {previewDoc.fileName}
+                </span>
               </div>
-              <div className="flex items-center gap-1.5">
+
+              {/* Action Buttons: flex-shrink-0 so they never shrink or overflow */}
+              <div className="flex items-center gap-1.5 shrink-0">
                 <a
                   href={previewDoc.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700"
+                  className="p-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 transition-colors shrink-0"
                   title="Buka di tab baru"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  <ExternalLink className="h-4 w-4" />
                 </a>
                 <a
                   href={previewDoc.fileUrl}
                   download={previewDoc.fileName}
-                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700"
+                  className="p-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 transition-colors shrink-0"
                   title="Unduh file"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-4 w-4" />
                 </a>
+                <div className="h-4 w-px bg-gray-700 mx-0.5 shrink-0" />
                 <button
+                  type="button"
                   onClick={() => setPreviewDoc(null)}
-                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700"
+                  className="p-1.5 rounded-lg bg-gray-700 hover:bg-red-600 text-white transition-colors cursor-pointer shrink-0 shadow-xs flex items-center justify-center"
                   title="Tutup pratinjau"
                 >
                   <X className="h-4 w-4" />
@@ -1177,7 +1185,7 @@ export function DiskusiCanvasClient({
             </div>
 
             {/* Embedded Iframe */}
-            <div className="flex-1 bg-gray-950 relative">
+            <div className="flex-1 bg-gray-950 relative overflow-hidden">
               <iframe
                 src={`${previewDoc.fileUrl}#toolbar=1&navpanes=0`}
                 title={previewDoc.fileName}
