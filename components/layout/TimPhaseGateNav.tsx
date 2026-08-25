@@ -95,14 +95,13 @@ export function TimPhaseGateNav({
     {
       id: "ruang_diskusi",
       name: "Ruang Diskusi",
-      description: "Diskusi & kolaborasi tim",
-      href: "#",
+      description: "Diskusi & kolaborasi ide",
+      href: `/tim/${timId}/diskusi`,
       icon: MessageSquare,
-      unlocked: false,
-      reason:
-        "Fitur Ruang Diskusi dan Kolaborasi Tim sedang dalam tahap pengembangan (Paket 4) dan akan segera hadir pada pembaruan mendatang.",
-      isComingSoon: true,
-      badge: "Segera Hadir",
+      unlocked: true,
+      reason: null,
+      isComingSoon: false,
+      badge: null,
       token: PHASE_TOKENS.phase4,
     },
     {

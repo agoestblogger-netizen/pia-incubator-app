@@ -660,3 +660,69 @@ export const taskDismissal = pgTable('task_dismissal', {
   index('task_dismissal_user_idx').on(t.userId),
 ]);
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// GRUP RUANG DISKUSI (KOLABORATIF REAL-TIME)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const diskusiBoard = pgTable('diskusi_board', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  nama: text('nama').notNull().default('Ruang Diskusi'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('diskusi_board_tim_unique').on(t.timInovatorId),
+]);
+
+export const diskusiFrame = pgTable('diskusi_frame', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  boardId: uuid('board_id').notNull().references(() => diskusiBoard.id, { onDelete: 'cascade' }),
+  label: text('label').notNull().default('Kelompok Ide'),
+  posX: doublePrecision('pos_x').notNull().default(100),
+  posY: doublePrecision('pos_y').notNull().default(100),
+  width: doublePrecision('width').notNull().default(340),
+  height: doublePrecision('height').notNull().default(280),
+  color: text('color').notNull().default('#F3F4F6'),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('diskusi_frame_board_idx').on(t.boardId),
+]);
+
+export const diskusiNote = pgTable('diskusi_note', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  boardId: uuid('board_id').notNull().references(() => diskusiBoard.id, { onDelete: 'cascade' }),
+  type: text('type').notNull().default('sticky'), // 'sticky' | 'pin'
+  content: text('content'),
+  kanbanCardId: uuid('kanban_card_id').references(() => kanbanCard.id, { onDelete: 'set null' }),
+  posX: doublePrecision('pos_x').notNull().default(100),
+  posY: doublePrecision('pos_y').notNull().default(100),
+  color: text('color').notNull().default('#FEF3C7'),
+  frameId: uuid('frame_id').references(() => diskusiFrame.id, { onDelete: 'set null' }),
+  convertedToSubtaskId: uuid('converted_to_subtask_id').references(() => kanbanSubtask.id, { onDelete: 'set null' }),
+  convertedToCardId: uuid('converted_to_card_id').references(() => kanbanCard.id, { onDelete: 'set null' }),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdByName: text('created_by_name'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('diskusi_note_board_idx').on(t.boardId),
+  index('diskusi_note_frame_idx').on(t.frameId),
+  index('diskusi_note_card_idx').on(t.kanbanCardId),
+]);
+
+export const diskusiDocument = pgTable('diskusi_document', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  boardId: uuid('board_id').notNull().references(() => diskusiBoard.id, { onDelete: 'cascade' }),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type').notNull().default('application/pdf'),
+  source: text('source').notNull().default('upload'), // 'proposal_dossier' | 'upload'
+  uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+  uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('diskusi_document_board_idx').on(t.boardId),
+]);
+
+
