@@ -670,9 +670,7 @@ export function KanbanClient({
 
   // Master Container (Daftar Sprint & Roadmap) & Sub-Accordion Sections State
   const [isDaftarSprintOpen, setIsDaftarSprintOpen] = useState<boolean>(true);
-  const [activeSubSection, setActiveSubSection] = useState<1 | 2 | 0>(() =>
-    initialActiveSprint ? 2 : 1
-  );
+  const [activeSubSection, setActiveSubSection] = useState<1 | 2 | 0>(0);
   const [selectedSprintNum, setSelectedSprintNum] = useState<number>(() =>
     initialActiveSprint
       ? initialActiveSprint.nomorSprint
@@ -1437,12 +1435,7 @@ export function KanbanClient({
   const handleSprintTabClick = (sprintNum: number) => {
     setSelectedSprintNum(sprintNum);
     setSelectedSprintTab(String(sprintNum));
-    const targetSprint = sprints.find((s) => s.nomorSprint === sprintNum);
-    if (targetSprint?.status === "aktif" || targetSprint?.status === "selesai") {
-      setActiveSubSection(2);
-    } else {
-      setActiveSubSection(1);
-    }
+    setActiveSubSection(0);
   };
 
   const handleSelectSprintForPlanning = (sprintNum: number) => {
