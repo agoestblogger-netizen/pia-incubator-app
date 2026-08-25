@@ -84,7 +84,7 @@ export function TimPhaseGateNav({
       id: "sprint_kanban",
       name: "Sprint Planning & Roadmap",
       description: "Kanban board & eksekusi sprint",
-      href: `/tim/${timId}`,
+      href: `/tim/${timId}/kanban`,
       icon: Kanban,
       unlocked: true,
       reason: null,
@@ -196,9 +196,9 @@ export function TimPhaseGateNav({
         {gateItems.map((item) => {
           const isActive =
             item.id === "overview"
-              ? pathname === gates.overview.href || pathname.endsWith("/overview")
+              ? pathname === gates.overview.href || pathname === `/tim/${timId}` || pathname.endsWith("/overview")
               : item.id === "sprint_kanban"
-              ? pathname === `/tim/${timId}` || pathname === `/tim/${timId}/kanban`
+              ? pathname.startsWith(`/tim/${timId}/kanban`)
               : item.id === "ruang_diskusi"
               ? false
               : pathname.startsWith(item.href);
@@ -356,7 +356,7 @@ export function TimPhaseGateNav({
               size="sm"
               onClick={() => {
                 setLockedModal((prev) => ({ ...prev, isOpen: false }));
-                router.push(`/tim/${timId}`);
+                router.push(`/tim/${timId}/kanban`);
               }}
               className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 cursor-pointer"
             >

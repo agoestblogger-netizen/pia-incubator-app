@@ -338,7 +338,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <Link href={`/tim/${tim.id}`} className="block">
+                  <Link href={`/tim/${tim.id}/overview`} className="block">
                     <Button
                       variant="outline"
                       className="w-full justify-between text-xs font-semibold hover:bg-[#0F5132] hover:text-white group-hover:border-[#0F5132] transition-all"
