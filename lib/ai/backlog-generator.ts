@@ -165,81 +165,39 @@ export async function generateAiBacklogFromRoadmap(params: {
   console.log(`[AI Backlog] 🚀 Starting AI-powered Backlog generation for Team ID: ${teamId}, Proposal ID: ${proposalId} (${namaProyek}) - Total Sprints: ${totalSprints}`);
 
   try {
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey, timeout: 25000 });
 
-    const systemPrompt = `Anda adalah Scrum Master & Agile Coach senior ahli metodologi Scrum dan Lean Startup di PT Pegadaian (Persero).
-Tugas Anda adalah membedah dan memecah roadmap implementasi inovasi (bagian "Cara mewujudkan ide inovasi" / tahapan implementasi) dari proposal PIA Season 12 menjadi daftar Backlog Task atomik berstandar Scrum yang tajam, konkret, lengkap dengan estimasi Story Point skala Fibonacci, serta 3-5 SUBTASK teknis/operasional per kartu, siap dikerjakan tim.
+    const systemPrompt = `Anda adalah Scrum Master senior PT Pegadaian (Persero).
+Tugas: Pecah roadmap implementasi proposal PIA menjadi 10-14 Backlog Task atomik standar Scrum lengkap dengan:
+1. Story Point Fibonacci: [1, 2, 3, 5, 8, 13]
+2. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi seimbang dari Sprint 1 s.d ${totalSprints})
+3. subtasks: 3 sampai 4 subtask ringkas dan konkret (title max 12 kata, estimatedHours integer 1-16).
 
-ATURAN GRANULARITAS TASK (SANGAT PENTING):
-1. DILARANG KERAS MEMBUAT TASK SETINGKAT EPIC / MAKRO.
-2. PECAH SETIAP FASE / ELEMEN ROADMAP MENJADI 3 SAMPAI 6 TASK ATOMIK (Single Actionable Work Item).
-   Total hasil pemecahan menghasilkan antara 10 hingga 20 task backlog untuk keseluruhan roadmap proposal.
+ATURAN FORMAT:
+- JUDUL: Diawali KATA KERJA AKTIF (Susun, Siapkan, Rancang, Kembangkan, Hubungkan, Uji coba, Evaluasi).
+- DESKRIPSI: Instruksi aktivitas ringkas tanpa kata subjek "Tim".
+- ACCEPTANCE CRITERIA: Luaran konkret / kriteria selesai.
+- Output HARUS JSON murni tanpa markdown.`;
 
-ATURAN STORY POINT (storyPoint):
-Beri skor kompleksitas kualitatif untuk tiap task menggunakan skala Fibonacci murni: [1, 2, 3, 5, 8, 13]:
-- 1-2 SP: Tugas administratif singkat, brief, penjadwalan, rekap ringan.
-- 3-5 SP: Riset dasar, penyusunan materi/pertanyaan, user testing, analisis kualitatif, review.
-- 8-13 SP: Integrasi teknis multi-sistem, development fitur MVP, arsitektur data.
-
-ATURAN SPRINT ASSIGNMENT (suggestedSprintNumber):
-Petakan setiap task ke nomor sprint yang paling tepat (integer dari 1 sampai ${totalSprints}) berdasarkan urutan sekuensial tahapan di roadmap/proposal:
-- Sprint 1: Persiapan awal, penyelarasan stakeholder, riset dasar, desain konsep awal.
-- Sprint 2 s.d. ${Math.max(2, totalSprints - 1)}: Eksekusi pengembangan prototipe, integrasi, pengujian bertahap.
-- Sprint ${totalSprints}: Uji coba akhir, rilis rintisan, pelaporan performa.
-
-ATURAN SUBTASK (subtasks):
-Untuk setiap task, buat 3 sampai 5 subtask tindakan teknis yang runtut (Persiapan -> Eksekusi -> Validasi/Dokumentasi) beserta estimasi jam (integer 1-16 jam).
-
-ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
-1. JUDUL TASK: Wajib diawali KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
-2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap.
-3. DESKRIPSI (deskripsi):
-   - WAJIB DIAWALI KATA KERJA IMPERATIF / AKTIF.
-   - DILARANG KERAS MENGGUNAKAN KATA SUBJEK "Tim", "Tim inovator", atau subjek orang ketiga lainnya.
-   - Tulis sebagai instruksi langsung 1-2 kalimat mengenai aktivitas yang dikerjakan.
-   - DILARANG memasukkan kalimat hasil/output ke dalam deskripsi.
-4. ACCEPTANCE CRITERIA (acceptanceCriteria): Berisi definisi luaran konkret / tolok ukur hasil kerja task tersebut tanpa awalan "Hasil atau output dari task/aktivitas ini adalah".
-5. storyPoint: Angka integer salah satu dari [1, 2, 3, 5, 8, 13].
-6. suggestedSprintNumber: Angka integer antara 1 sampai ${totalSprints}.
-7. subtasks: Array 3-5 subtask dengan "title" (string) dan "estimatedHours" (integer 1-16).
-8. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
-
-    const userPrompt = `PROPOSAL METADATA:
-- Proposal ID: ${proposalId}
-- Nama Inovasi: ${namaProyek}
-- Kategori PIA: ${kategoriPia}
-- Total Sprint Tersedia: ${totalSprints}
-
-TEKS ROADMAP LENGKAP DARI PROPOSAL ("Cara Mewujudkan Ide Inovasi"):
+    const userPrompt = `PROPOSAL: ${namaProyek} (${kategoriPia}) | Total Sprint: ${totalSprints}
+ROADMAP TEKS:
 """
-${roadmapText}
+${roadmapText.substring(0, 1500)}
 """
 
-KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
-${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
-
-Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPoint' (1, 2, 3, 5, 8, 13) dan 'subtasks' ke dalam format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 'storyPoint', 'suggestedSprintNumber', dan 'subtasks' ke format JSON:
 {
   "tasks": [
     {
-      "judul": "Kata Kerja Aktif + Target dan Konteks Aksi Atomik",
-      "deskripsi": "Kata Kerja Imperatif + penjelasan konteks aktivitas langsung tanpa subjek 'Tim'.",
-      "acceptanceCriteria": "Luaran konkret / dokumen / deliverable / tolok ukur selesai.",
+      "judul": "Kata Kerja Aktif + Sasaran Aksi",
+      "deskripsi": "Aktivitas teknis ringkas.",
+      "acceptanceCriteria": "Luaran selesai yang terukur.",
       "storyPoint": 3,
       "suggestedSprintNumber": 1,
       "subtasks": [
-        {
-          "title": "Subtask aksi spesifik 1",
-          "estimatedHours": 3
-        },
-        {
-          "title": "Subtask aksi spesifik 2",
-          "estimatedHours": 4
-        },
-        {
-          "title": "Subtask aksi spesifik 3",
-          "estimatedHours": 2
-        }
+        { "title": "Subtask tindakan 1", "estimatedHours": 3 },
+        { "title": "Subtask tindakan 2", "estimatedHours": 4 },
+        { "title": "Subtask tindakan 3", "estimatedHours": 2 }
       ]
     }
   ]
@@ -248,6 +206,7 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPo
     // Prefer gpt-5.4-mini, fallback to gpt-4o-mini
     let modelName = 'gpt-5.4-mini';
     let responseText = '';
+    const t0 = performance.now();
 
     try {
       const completion = await openai.chat.completions.create({
@@ -256,11 +215,12 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPo
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        temperature: 0.2,
         response_format: { type: 'json_object' },
       });
       responseText = completion.choices[0]?.message?.content || '';
     } catch (modelErr: any) {
-      console.warn(`[AI Backlog] Model ${modelName} failed (${modelErr.message}), falling back to gpt-4o-mini...`);
+      console.warn(`[AI Backlog] Model ${modelName} failed/timed out (${modelErr.message}), falling back to gpt-4o-mini...`);
       modelName = 'gpt-4o-mini';
       const fallbackCompletion = await openai.chat.completions.create({
         model: modelName,
@@ -268,10 +228,14 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPo
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        temperature: 0.2,
         response_format: { type: 'json_object' },
       });
       responseText = fallbackCompletion.choices[0]?.message?.content || '';
     }
+
+    const t1 = performance.now();
+    const durationSec = ((t1 - t0) / 1000).toFixed(2);
 
     if (!responseText) {
       console.warn(`[AI Backlog] Empty response from OpenAI for proposal ${proposalId}`);

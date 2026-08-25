@@ -293,7 +293,7 @@ export function ImportClient() {
           }
         }
 
-        // 2. Upload attachments if any
+        // 2. Upload attachments in parallel
         const lampiranUrls: Record<string, string> = {};
         const lampiranPrefix = `lampiran/${propId}/`;
 
@@ -304,43 +304,36 @@ export function ImportClient() {
           }
         });
 
-        for (const { relPath, entry } of attachmentEntries) {
-          const fileName = pathBasename(relPath);
-          const blob = await entry.async('blob');
+        if (attachmentEntries.length > 0) {
+          await Promise.all(
+            attachmentEntries.map(async ({ relPath, entry }) => {
+              const fileName = pathBasename(relPath);
+              try {
+                const blob = await entry.async('blob');
+                const uploadFormData = new FormData();
+                uploadFormData.append('proposalId', propId);
+                uploadFormData.append('fileName', fileName);
+                uploadFormData.append('file', blob, fileName);
 
-          const uploadFormData = new FormData();
-          uploadFormData.append('proposalId', propId);
-          uploadFormData.append('fileName', fileName);
-          uploadFormData.append('file', blob, fileName);
+                const uploadRes = await fetch('/api/admin/import/upload-file', {
+                  method: 'POST',
+                  body: uploadFormData,
+                });
 
-          const uploadRes = await fetch('/api/admin/import/upload-file', {
-            method: 'POST',
-            body: uploadFormData,
-          });
-
-          if (!uploadRes.ok) {
-            let errorDetail = `Status HTTP ${uploadRes.status}`;
-            try {
-              const errJson = await uploadRes.json();
-              if (errJson?.message) errorDetail = errJson.message;
-            } catch {
-              const errText = await uploadRes.text().catch(() => '');
-              if (errText) errorDetail = errText.slice(0, 100);
-            }
-            console.warn(`Gagal mengunggah lampiran ${fileName}:`, errorDetail);
-          } else {
-            try {
-              const uploadJson = await uploadRes.json();
-              if (uploadJson.success && uploadJson.publicUrl) {
-                lampiranUrls[fileName] = uploadJson.publicUrl;
+                if (uploadRes.ok) {
+                  const uploadJson = await uploadRes.json();
+                  if (uploadJson.success && uploadJson.publicUrl) {
+                    lampiranUrls[fileName] = uploadJson.publicUrl;
+                  }
+                }
+              } catch (uErr: any) {
+                console.warn(`Gagal mengunggah lampiran ${fileName}:`, uErr.message);
               }
-            } catch (err: any) {
-              console.warn('Gagal membaca JSON respons upload:', err.message);
-            }
-          }
+            })
+          );
         }
 
-        setProgressPercent(Math.round(((i + 0.8) / total) * 100));
+        setProgressPercent(Math.round(((i + 0.5) / total) * 100));
 
         // 3. Save proposal record & dossier to database + Auto-create Accounts
         const saveRes = await saveImportedProposal({
