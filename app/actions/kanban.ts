@@ -886,6 +886,45 @@ export async function updateTaskSubtaskHoursAction(
   }
 }
 
+export async function updateTaskSubtaskTitleAction(
+  subtaskId: string,
+  timId: string,
+  title: string
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin mengubah judul subtask.",
+      };
+    }
+
+    const trimmed = title.trim();
+    if (!trimmed) {
+      return { success: false, error: "Judul subtask tidak boleh kosong." };
+    }
+
+    const [updated] = await db
+      .update(kanbanSubtask)
+      .set({ title: trimmed })
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal memperbarui judul subtask." };
+  }
+}
+
+
 export async function toggleTaskSubtaskAction(
   subtaskId: string,
   timId: string,

@@ -18,6 +18,8 @@ import {
   createTaskSubtaskAction,
   toggleTaskSubtaskAction,
   deleteTaskSubtaskAction,
+  updateTaskSubtaskTitleAction,
+  updateTaskSubtaskHoursAction,
   getTaskCommentsAction,
   createTaskCommentAction,
   getTaskActivityLogsAction,
@@ -744,6 +746,11 @@ export function KanbanClient({
   const [creatingSubtask, setCreatingSubtask] = useState(false);
   const [togglingSubtaskId, setTogglingSubtaskId] = useState<string | null>(null);
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null);
+  // Edit inline state
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingSubtaskField, setEditingSubtaskField] = useState<'title' | 'hours' | null>(null);
+  const [editTitleDraft, setEditTitleDraft] = useState("");
+  const [editHoursDraft, setEditHoursDraft] = useState<number | "">("");
 
   const fetchTaskSubtasks = async (taskId: string) => {
     setLoadingSubtasks(true);
@@ -808,6 +815,64 @@ export function KanbanClient({
     }
     setDeletingSubtaskId(null);
   };
+
+  const handleStartEditTitle = (st: any) => {
+    setEditingSubtaskId(st.id);
+    setEditingSubtaskField('title');
+    setEditTitleDraft(st.title);
+  };
+
+  const handleStartEditHours = (st: any) => {
+    setEditingSubtaskId(st.id);
+    setEditingSubtaskField('hours');
+    setEditHoursDraft(st.estimatedHours ?? "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSubtaskId(null);
+    setEditingSubtaskField(null);
+    setEditTitleDraft("");
+    setEditHoursDraft("");
+  };
+
+  const handleSaveSubtaskTitle = async (subtaskId: string) => {
+    const trimmed = editTitleDraft.trim();
+    // Temukan subtask asli untuk rollback kalau gagal
+    const original = subtasks.find((s) => s.id === subtaskId);
+    if (!trimmed || !original || trimmed === original.title) {
+      handleCancelEdit();
+      return;
+    }
+    // Optimistic update
+    setSubtasks((prev) => prev.map((s) => s.id === subtaskId ? { ...s, title: trimmed } : s));
+    handleCancelEdit();
+    const res = await updateTaskSubtaskTitleAction(subtaskId, timId, trimmed);
+    if (!res.success) {
+      // Rollback
+      setSubtasks((prev) => prev.map((s) => s.id === subtaskId ? { ...s, title: original.title } : s));
+      toast.error(res.error || "Gagal memperbarui judul subtask.");
+    }
+  };
+
+  const handleSaveSubtaskHours = async (subtaskId: string) => {
+    const original = subtasks.find((s) => s.id === subtaskId);
+    const newHours = editHoursDraft === "" ? null : Math.max(0, Number(editHoursDraft));
+    const oldHours = original?.estimatedHours ?? null;
+    if (newHours === oldHours) {
+      handleCancelEdit();
+      return;
+    }
+    // Optimistic update
+    setSubtasks((prev) => prev.map((s) => s.id === subtaskId ? { ...s, estimatedHours: newHours } : s));
+    handleCancelEdit();
+    const res = await updateTaskSubtaskHoursAction(subtaskId, timId, newHours);
+    if (!res.success) {
+      // Rollback
+      setSubtasks((prev) => prev.map((s) => s.id === subtaskId ? { ...s, estimatedHours: oldHours } : s));
+      toast.error(res.error || "Gagal memperbarui jam subtask.");
+    }
+  };
+
 
   // Comments State
   const [comments, setComments] = useState<any[]>([]);
@@ -2491,62 +2556,103 @@ export function KanbanClient({
                             </p>
                           ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                              {subtasks.map((st) => (
-                                <div
-                                  key={st.id}
-                                  className="flex items-start justify-between gap-2.5 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-colors group"
-                                >
+                              {subtasks.map((st) => {
+                                const isEditingTitle = editingSubtaskId === st.id && editingSubtaskField === 'title';
+                                const isEditingHours = editingSubtaskId === st.id && editingSubtaskField === 'hours';
+                                return (
                                   <div
-                                    onClick={() => canEdit && handleToggleSubtask(st.id, st.isDone)}
-                                    className={`flex items-start gap-2 min-w-0 flex-1 ${canEdit ? "cursor-pointer" : ""}`}
+                                    key={st.id}
+                                    className="flex items-start justify-between gap-2.5 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-colors group"
                                   >
-                                    <button
-                                      type="button"
-                                      disabled={!canEdit || togglingSubtaskId === st.id}
-                                      className="text-[#3E9463] focus:outline-none shrink-0 mt-0.5"
-                                    >
-                                      {st.isDone ? (
-                                        <CheckSquare className="h-4 w-4 text-[#3E9463]" />
-                                      ) : (
-                                        <Square className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
-                                      )}
-                                    </button>
-                                    <span
-                                      className={`text-xs break-words leading-relaxed whitespace-normal flex-1 ${
-                                        st.isDone
-                                          ? "line-through text-gray-400"
-                                          : "text-gray-800 font-medium"
-                                      }`}
-                                    >
-                                      {st.title}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                                    {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0 ? (
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37]">
-                                        {st.estimatedHours} jam
-                                      </span>
-                                    ) : null}
-
-                                    {canEdit && (
+                                    <div className="flex items-start gap-2 min-w-0 flex-1">
                                       <button
                                         type="button"
-                                        disabled={deletingSubtaskId === st.id}
-                                        onClick={() => handleDeleteSubtask(st.id)}
-                                        className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                                        title="Hapus subtask"
+                                        disabled={!canEdit || togglingSubtaskId === st.id || isEditingTitle}
+                                        onClick={() => !isEditingTitle && canEdit && handleToggleSubtask(st.id, st.isDone)}
+                                        className={`text-[#3E9463] focus:outline-none shrink-0 mt-0.5 ${canEdit && !isEditingTitle ? 'cursor-pointer' : 'cursor-default'}`}
                                       >
-                                        {deletingSubtaskId === st.id ? (
-                                          <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                        {st.isDone ? (
+                                          <CheckSquare className="h-4 w-4 text-[#3E9463]" />
                                         ) : (
-                                          <Trash2 className="h-3.5 w-3.5" />
+                                          <Square className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
                                         )}
                                       </button>
-                                    )}
+                                      {isEditingTitle ? (
+                                        <input
+                                          autoFocus
+                                          type="text"
+                                          value={editTitleDraft}
+                                          onChange={(e) => setEditTitleDraft(e.target.value)}
+                                          onBlur={() => handleSaveSubtaskTitle(st.id)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskTitle(st.id); }
+                                            if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
+                                          }}
+                                          className="text-xs leading-relaxed font-medium text-gray-900 flex-1 min-w-0 border border-[#3E9463] rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white"
+                                        />
+                                      ) : (
+                                        <span
+                                          onClick={() => { if (canEdit) handleStartEditTitle(st); }}
+                                          title={canEdit ? 'Klik untuk mengedit judul subtask' : undefined}
+                                          className={`text-xs break-words leading-relaxed whitespace-normal flex-1 ${
+                                            st.isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'
+                                          } ${canEdit ? 'cursor-text hover:text-[#0B3D2E]' : ''} transition-colors`}
+                                        >
+                                          {st.title}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                                      {isEditingHours ? (
+                                        <div className="flex items-center gap-1">
+                                          <input
+                                            autoFocus
+                                            type="number"
+                                            min={0}
+                                            max={999}
+                                            value={editHoursDraft}
+                                            onChange={(e) => setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
+                                            onBlur={() => handleSaveSubtaskHours(st.id)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskHours(st.id); }
+                                              if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
+                                            }}
+                                            className="text-[10px] font-bold w-14 text-center border border-[#3E9463] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white text-[#8A6300]"
+                                          />
+                                          <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                                        </div>
+                                      ) : (
+                                        <span
+                                          onClick={() => { if (canEdit) handleStartEditHours(st); }}
+                                          title={canEdit ? 'Klik untuk mengedit estimasi jam' : undefined}
+                                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
+                                            canEdit ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
+                                          } transition-colors`}
+                                        >
+                                          {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
+                                            ? `${st.estimatedHours} jam`
+                                            : canEdit ? '— jam' : ''}
+                                        </span>
+                                      )}
+                                      {canEdit && (
+                                        <button
+                                          type="button"
+                                          disabled={deletingSubtaskId === st.id}
+                                          onClick={() => handleDeleteSubtask(st.id)}
+                                          className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                                          title="Hapus subtask"
+                                        >
+                                          {deletingSubtaskId === st.id ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                          ) : (
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
 
