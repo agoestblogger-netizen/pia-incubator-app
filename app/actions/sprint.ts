@@ -208,6 +208,7 @@ export async function startSprintAction(
   sprintId: string,
   cardAssignments?: Array<{
     cardId: string;
+    storyPoint?: number | null;
     estimasiJam?: number | null;
     ownerAnggotaId?: string | null;
   }>
@@ -267,6 +268,7 @@ export async function startSprintAction(
           sprintNumber: targetSprint.nomorSprint,
           updatedAt: new Date(),
         };
+        if (item.storyPoint !== undefined) updateData.storyPoint = item.storyPoint;
         if (item.estimasiJam !== undefined) updateData.estimasiJam = item.estimasiJam;
         if (item.ownerAnggotaId !== undefined) updateData.ownerAnggotaId = item.ownerAnggotaId;
 

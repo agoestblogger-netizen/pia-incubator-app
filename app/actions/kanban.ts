@@ -1,12 +1,44 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { kanbanCard, kanbanColumn, taskAttachment, taskLink } from "@/lib/db/schema";
-import { eq, asc, sql } from "drizzle-orm";
+import {
+  kanbanCard,
+  kanbanColumn,
+  taskAttachment,
+  taskLink,
+  kanbanSubtask,
+  kanbanComment,
+  kanbanActivityLog,
+  anggotaTim,
+  users,
+} from "@/lib/db/schema";
+import { eq, asc, desc, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+export async function logKanbanActivity(params: {
+  taskId: string;
+  userId?: string | null;
+  actionType: 'status_change' | 'owner_change' | 'estimate_change' | 'sprint_change' | 'created';
+  fieldName: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+}) {
+  try {
+    await db.insert(kanbanActivityLog).values({
+      taskId: params.taskId,
+      userId: params.userId || null,
+      actionType: params.actionType,
+      fieldName: params.fieldName,
+      oldValue: params.oldValue ?? null,
+      newValue: params.newValue ?? null,
+    });
+  } catch (err) {
+    console.error("[logKanbanActivity] Error inserting activity log:", err);
+  }
+}
 
 export async function getKanbanData(timId: string) {
   const columns = await db
@@ -33,6 +65,7 @@ export async function getKanbanData(timId: string) {
       label: kanbanCard.label,
       reviewStatus: kanbanCard.reviewStatus,
       estimasiJam: kanbanCard.estimasiJam,
+      storyPoint: kanbanCard.storyPoint,
       suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
       createdAt: kanbanCard.createdAt,
       updatedAt: kanbanCard.updatedAt,
@@ -85,8 +118,18 @@ export async function createKanbanCardAction(
         urutan: cardData.urutan || 0,
         reviewStatus: 'adopted', // kartu manual selalu adopted
         estimasiJam: cardData.estimasiJam ?? null,
+        storyPoint: cardData.storyPoint ?? 3,
       })
       .returning();
+
+    await logKanbanActivity({
+      taskId: card.id,
+      userId: user.id,
+      actionType: "created",
+      fieldName: "card",
+      oldValue: null,
+      newValue: card.judul,
+    });
 
     await logAudit({
       userId: user.id,
@@ -132,6 +175,12 @@ export async function updateKanbanCardStatusAction(
       };
     }
 
+    const [oldCard] = await db
+      .select()
+      .from(kanbanCard)
+      .where(eq(kanbanCard.id, cardId))
+      .limit(1);
+
     const updatePayload: any = {
       statusKolom: newStatusKolom,
       urutan: newUrutan,
@@ -146,6 +195,29 @@ export async function updateKanbanCardStatusAction(
       .update(kanbanCard)
       .set(updatePayload)
       .where(eq(kanbanCard.id, cardId));
+
+    if (oldCard) {
+      if (oldCard.statusKolom !== newStatusKolom) {
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "status_change",
+          fieldName: "Status Kolom",
+          oldValue: oldCard.statusKolom,
+          newValue: newStatusKolom,
+        });
+      }
+      if (newSprintNumber !== undefined && oldCard.sprintNumber !== newSprintNumber) {
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "sprint_change",
+          fieldName: "Sprint",
+          oldValue: oldCard.sprintNumber !== null && oldCard.sprintNumber !== undefined ? `Sprint ${oldCard.sprintNumber}` : "Backlog",
+          newValue: newSprintNumber !== null && newSprintNumber !== undefined ? `Sprint ${newSprintNumber}` : "Backlog",
+        });
+      }
+    }
 
     await logAudit({
       userId: user.id,
@@ -183,6 +255,12 @@ export async function updateKanbanCardSprintAction(
       };
     }
 
+    const [oldCard] = await db
+      .select()
+      .from(kanbanCard)
+      .where(eq(kanbanCard.id, cardId))
+      .limit(1);
+
     await db
       .update(kanbanCard)
       .set({
@@ -190,6 +268,17 @@ export async function updateKanbanCardSprintAction(
         updatedAt: new Date(),
       })
       .where(eq(kanbanCard.id, cardId));
+
+    if (oldCard && oldCard.sprintNumber !== newSprintNumber) {
+      await logKanbanActivity({
+        taskId: cardId,
+        userId: user.id,
+        actionType: "sprint_change",
+        fieldName: "Sprint",
+        oldValue: oldCard.sprintNumber !== null && oldCard.sprintNumber !== undefined ? `Sprint ${oldCard.sprintNumber}` : "Backlog",
+        newValue: newSprintNumber !== null && newSprintNumber !== undefined ? `Sprint ${newSprintNumber}` : "Backlog",
+      });
+    }
 
     await logAudit({
       userId: user.id,
@@ -227,6 +316,12 @@ export async function updateKanbanCardFullAction(
       };
     }
 
+    const [oldCard] = await db
+      .select()
+      .from(kanbanCard)
+      .where(eq(kanbanCard.id, cardId))
+      .limit(1);
+
     const updatePayload: any = {
       updatedAt: new Date(),
     };
@@ -248,6 +343,7 @@ export async function updateKanbanCardFullAction(
     if (cardData.dependencyRisiko !== undefined) updatePayload.dependencyRisiko = cardData.dependencyRisiko;
     if (cardData.reviewStatus !== undefined) updatePayload.reviewStatus = cardData.reviewStatus;
     if (cardData.estimasiJam !== undefined) updatePayload.estimasiJam = cardData.estimasiJam;
+    if (cardData.storyPoint !== undefined) updatePayload.storyPoint = cardData.storyPoint;
     if (cardData.suggestedSprintNumber !== undefined) updatePayload.suggestedSprintNumber = cardData.suggestedSprintNumber;
 
     const [updated] = await db
@@ -255,6 +351,72 @@ export async function updateKanbanCardFullAction(
       .set(updatePayload)
       .where(eq(kanbanCard.id, cardId))
       .returning();
+
+    // Automatic Activity Logging
+    if (oldCard) {
+      if (cardData.statusKolom !== undefined && oldCard.statusKolom !== cardData.statusKolom) {
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "status_change",
+          fieldName: "Status Kolom",
+          oldValue: oldCard.statusKolom,
+          newValue: cardData.statusKolom,
+        });
+      }
+      if (cardData.sprintNumber !== undefined && oldCard.sprintNumber !== cardData.sprintNumber) {
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "sprint_change",
+          fieldName: "Sprint",
+          oldValue: oldCard.sprintNumber !== null && oldCard.sprintNumber !== undefined ? `Sprint ${oldCard.sprintNumber}` : "Backlog",
+          newValue: cardData.sprintNumber !== null && cardData.sprintNumber !== undefined ? `Sprint ${cardData.sprintNumber}` : "Backlog",
+        });
+      }
+      if (cardData.storyPoint !== undefined && oldCard.storyPoint !== cardData.storyPoint) {
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "estimate_change",
+          fieldName: "Story Point",
+          oldValue: oldCard.storyPoint !== null && oldCard.storyPoint !== undefined ? `${oldCard.storyPoint} SP` : "Belum diisi",
+          newValue: cardData.storyPoint !== null && cardData.storyPoint !== undefined ? `${cardData.storyPoint} SP` : "Belum diisi",
+        });
+      }
+      if (cardData.estimasiJam !== undefined && oldCard.estimasiJam !== cardData.estimasiJam) {
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "estimate_change",
+          fieldName: "Estimasi Jam",
+          oldValue: oldCard.estimasiJam !== null && oldCard.estimasiJam !== undefined ? `${oldCard.estimasiJam} jam` : "0 jam",
+          newValue: cardData.estimasiJam !== null && cardData.estimasiJam !== undefined ? `${cardData.estimasiJam} jam` : "0 jam",
+        });
+      }
+      if (cardData.ownerAnggotaId !== undefined && oldCard.ownerAnggotaId !== cardData.ownerAnggotaId) {
+        let oldOwnerName = "Belum Ditugaskan";
+        let newOwnerName = "Belum Ditugaskan";
+        const ownerIds = [oldCard.ownerAnggotaId, cardData.ownerAnggotaId].filter(Boolean) as string[];
+        if (ownerIds.length > 0) {
+          const members = await db
+            .select({ id: anggotaTim.id, nama: anggotaTim.nama })
+            .from(anggotaTim)
+            .where(inArray(anggotaTim.id, ownerIds));
+          const map = new Map(members.map((m) => [m.id, m.nama]));
+          if (oldCard.ownerAnggotaId) oldOwnerName = map.get(oldCard.ownerAnggotaId) || "Anggota Tim";
+          if (cardData.ownerAnggotaId) newOwnerName = map.get(cardData.ownerAnggotaId) || "Anggota Tim";
+        }
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "owner_change",
+          fieldName: "Owner / PIC",
+          oldValue: oldOwnerName,
+          newValue: newOwnerName,
+        });
+      }
+    }
 
     await logAudit({
       userId: user.id,
@@ -282,6 +444,7 @@ export async function adoptAiCardAction(
     deskripsi?: string;
     acceptanceCriteria?: string;
     estimasiJam?: number | null;
+    storyPoint?: number | null;
     ownerAnggotaId?: string | null;
   }
 ) {
@@ -311,6 +474,7 @@ export async function adoptAiCardAction(
     if (cardOverrides?.deskripsi !== undefined) updatePayload.deskripsi = cardOverrides.deskripsi;
     if (cardOverrides?.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardOverrides.acceptanceCriteria;
     if (cardOverrides?.estimasiJam !== undefined) updatePayload.estimasiJam = cardOverrides.estimasiJam;
+    if (cardOverrides?.storyPoint !== undefined) updatePayload.storyPoint = cardOverrides.storyPoint;
     if (cardOverrides?.ownerAnggotaId !== undefined) updatePayload.ownerAnggotaId = cardOverrides.ownerAnggotaId;
 
     const [updated] = await db
@@ -318,6 +482,15 @@ export async function adoptAiCardAction(
       .set(updatePayload)
       .where(eq(kanbanCard.id, cardId))
       .returning();
+
+    await logKanbanActivity({
+      taskId: cardId,
+      userId: user.id,
+      actionType: "created",
+      fieldName: "Adopsi Backlog",
+      oldValue: "Backlog Referensi",
+      newValue: targetSprintNumber ? `Sprint ${targetSprintNumber}` : "Backlog",
+    });
 
     await logAudit({
       userId: user.id,
@@ -613,4 +786,267 @@ export async function deleteTaskLinkAction(linkId: string, timId: string) {
     return { success: false, error: error.message || "Gagal menghapus tautan." };
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUBTASKS ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getTaskSubtasksAction(taskId: string) {
+  try {
+    const subtasks = await db
+      .select()
+      .from(kanbanSubtask)
+      .where(eq(kanbanSubtask.taskId, taskId))
+      .orderBy(asc(kanbanSubtask.orderIndex), asc(kanbanSubtask.createdAt));
+
+    return { success: true, data: subtasks };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal mengambil subtask." };
+  }
+}
+
+export async function createTaskSubtaskAction(
+  taskId: string,
+  timId: string,
+  title: string,
+  estimatedHours?: number | null
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin menambah subtask pada kartu tim ini.",
+      };
+    }
+
+    const trimmed = title.trim();
+    if (!trimmed) {
+      return { success: false, error: "Judul subtask tidak boleh kosong." };
+    }
+
+    const [subtask] = await db
+      .insert(kanbanSubtask)
+      .values({
+        taskId,
+        title: trimmed,
+        estimatedHours: typeof estimatedHours === 'number' ? Math.max(0, estimatedHours) : null,
+        isDone: false,
+        createdBy: user.id,
+      })
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: subtask };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal membuat subtask." };
+  }
+}
+
+export async function updateTaskSubtaskHoursAction(
+  subtaskId: string,
+  timId: string,
+  estimatedHours: number | null
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin mengubah estimasi jam subtask.",
+      };
+    }
+
+    const parsedHours = typeof estimatedHours === 'number' ? Math.max(0, estimatedHours) : null;
+
+    const [updated] = await db
+      .update(kanbanSubtask)
+      .set({ estimatedHours: parsedHours })
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal memperbarui jam subtask." };
+  }
+}
+
+export async function toggleTaskSubtaskAction(
+  subtaskId: string,
+  timId: string,
+  isDone: boolean
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin mengubah status subtask.",
+      };
+    }
+
+    const [updated] = await db
+      .update(kanbanSubtask)
+      .set({ isDone })
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal memperbarui status subtask." };
+  }
+}
+
+export async function deleteTaskSubtaskAction(subtaskId: string, timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin menghapus subtask.",
+      };
+    }
+
+    await db.delete(kanbanSubtask).where(eq(kanbanSubtask.id, subtaskId));
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menghapus subtask." };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMMENTS ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getTaskCommentsAction(taskId: string) {
+  try {
+    const comments = await db
+      .select({
+        id: kanbanComment.id,
+        taskId: kanbanComment.taskId,
+        userId: kanbanComment.userId,
+        content: kanbanComment.content,
+        createdAt: kanbanComment.createdAt,
+        userNama: users.nama,
+        userEmail: users.email,
+        userAvatarUrl: users.avatarUrl,
+      })
+      .from(kanbanComment)
+      .leftJoin(users, eq(users.id, kanbanComment.userId))
+      .where(eq(kanbanComment.taskId, taskId))
+      .orderBy(asc(kanbanComment.createdAt));
+
+    return { success: true, data: comments };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal mengambil komentar." };
+  }
+}
+
+export async function createTaskCommentAction(
+  taskId: string,
+  timId: string,
+  content: string
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin mengirim komentar.",
+      };
+    }
+
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return { success: false, error: "Komentar tidak boleh kosong." };
+    }
+
+    const [comment] = await db
+      .insert(kanbanComment)
+      .values({
+        taskId,
+        userId: user.id,
+        content: trimmed,
+      })
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return {
+      success: true,
+      data: {
+        ...comment,
+        userNama: user.nama,
+        userEmail: user.email,
+        userAvatarUrl: user.avatarUrl,
+      },
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal mengirim komentar." };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACTIVITY LOG ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getTaskActivityLogsAction(taskId: string) {
+  try {
+    const logs = await db
+      .select({
+        id: kanbanActivityLog.id,
+        taskId: kanbanActivityLog.taskId,
+        userId: kanbanActivityLog.userId,
+        actionType: kanbanActivityLog.actionType,
+        fieldName: kanbanActivityLog.fieldName,
+        oldValue: kanbanActivityLog.oldValue,
+        newValue: kanbanActivityLog.newValue,
+        createdAt: kanbanActivityLog.createdAt,
+        userNama: users.nama,
+        userAvatarUrl: users.avatarUrl,
+      })
+      .from(kanbanActivityLog)
+      .leftJoin(users, eq(users.id, kanbanActivityLog.userId))
+      .where(eq(kanbanActivityLog.taskId, taskId))
+      .orderBy(desc(kanbanActivityLog.createdAt));
+
+    return { success: true, data: logs };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal mengambil log aktivitas." };
+  }
+}
+
 

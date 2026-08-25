@@ -11,6 +11,7 @@ import {
   kanbanCard,
   taskAttachment,
   timInovator,
+  sprint,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -1001,42 +1002,49 @@ const bakuCVTasks = [
     deskripsi: "Tentukan hipotesis value proposition yang akan diuji, profil early adopters sasaran, dan metodologi pengujian (interview / usability testing / survey).",
     acceptanceCriteria: "Dokumen rencana Customer Validation lengkap dengan hipotesis PSF, profil responden, dan metodologi pengujian yang disepakati.",
     tahap: "customer_validation" as const,
+    storyPoint: 3,
   },
   {
     judul: "Siapkan prototype untuk testing",
     deskripsi: "Siapkan mockup, clickable prototype, atau instrumen demonstrasi solusi yang siap diuji ke responden.",
     acceptanceCriteria: "Prototype clickable / instrumen demonstrasi solusi yang siap diujicobakan kepada calon pengguna.",
     tahap: "customer_validation" as const,
+    storyPoint: 5,
   },
   {
     judul: "Rekrut early adopters/responden",
     deskripsi: "Hubungi dan jadwalkan sesi interaksi dengan minimal 5-10 target pengguna representatif.",
     acceptanceCriteria: "Jadwal dan konfirmasi kehadiran minimal 5-10 responden early adopters yang sesuai kriteria target.",
     tahap: "customer_validation" as const,
+    storyPoint: 3,
   },
   {
     judul: "Lakukan sesi user testing",
     deskripsi: "Jalankan sesi testing serta catat feedback kualitatif 4 dimensi (problem, solution, usability, willingness to use/pay).",
     acceptanceCriteria: "Catatan verbatim dan rekaman/log feedback pengujian dari seluruh sesi responden.",
     tahap: "customer_validation" as const,
+    storyPoint: 5,
   },
   {
     judul: "Analisis hasil & isi Laporan Customer Validation",
     deskripsi: "Rekap skor dimensi, temuan kualitatif utama, dan ukur ketercapaian target metrik PSF.",
     acceptanceCriteria: "Laporan Customer Validation terisi lengkap dengan analisis skor PSF dan kesimpulan validasi pengguna.",
     tahap: "customer_validation" as const,
+    storyPoint: 3,
   },
   {
     judul: "Preliminary Review (SME)",
     deskripsi: "Minta review dan catatan rekomendasi dari Subject Matter Expert / Coach terhadap hasil Customer Validation.",
     acceptanceCriteria: "Catatan review, feedback, dan rekomendasi tertulis dari SME / Coach Inovasi.",
     tahap: "customer_validation" as const,
+    storyPoint: 2,
   },
   {
     judul: "Tentukan keputusan Fit/Tidak Fit",
     deskripsi: "Tetapkan keputusan fase CV: 'Lanjut ke Market Validation' (Fit), 'Iterasi Customer Validation' (Iterasi), atau 'Pivot/Drop'.",
     acceptanceCriteria: "Dokumen kesepakatan keputusan fase CV (Fit / Iterasi / Pivot) yang disetujui.",
     tahap: "customer_validation" as const,
+    storyPoint: 2,
   },
 ];
 
@@ -1046,48 +1054,56 @@ const bakuMVTasks = [
     deskripsi: "Tentukan parameter pilot project, target adopsi pasar, dan metrik Product-Market Fit (PMF).",
     acceptanceCriteria: "Dokumen rencana Market Validation lengkap dengan parameter pilot, metrik PMF, dan target pengguna aktif.",
     tahap: "market_validation" as const,
+    storyPoint: 3,
   },
   {
     judul: "MVP Planning",
     deskripsi: "Definisikan spesifikasi fitur MVP versi rilis dan alokasi kebutuhan resource implementasi.",
     acceptanceCriteria: "Dokumen spesifikasi backlog fitur MVP versi rilis dan alokasi sumber daya implementasi.",
     tahap: "market_validation" as const,
+    storyPoint: 3,
   },
   {
     judul: "MVP Development",
     deskripsi: "Kembangkan solusi MVP secara teknis dan operasional agar siap pakai di lingkungan uji coba pilot.",
     acceptanceCriteria: "Build / versi sistem MVP yang terpasang dan siap digunakan di lingkungan uji coba pilot.",
     tahap: "market_validation" as const,
+    storyPoint: 8,
   },
   {
     judul: "MVP Release",
     deskripsi: "Luncurkan versi MVP ke kelompok pengguna pilot dan catat release log resmi.",
     acceptanceCriteria: "Rilis resmi MVP ke segmen pengguna pilot disertai catatan release log dan panduan akses.",
     tahap: "market_validation" as const,
+    storyPoint: 5,
   },
   {
     judul: "Market Testing (ukur metrik DFV)",
     deskripsi: "Pantau adopsi riil pengguna dan rekapitulasi metrik Desirability, Feasibility, dan Viability.",
     acceptanceCriteria: "Data metrik adopsi riil, tingkat keaktifan pengguna, dan evaluasi DFV selama periode pilot.",
     tahap: "market_validation" as const,
+    storyPoint: 5,
   },
   {
     judul: "Preliminary Review (SME)",
     deskripsi: "Lakukan sesi review evaluasi berkala bersama SME & Coach mengenai temuan performa pasar MVP.",
     acceptanceCriteria: "Catatan review berkala dan rekomendasi strategis dari SME / Coach terkait performa pasar MVP.",
     tahap: "market_validation" as const,
+    storyPoint: 2,
   },
   {
     judul: "Analisis hasil & isi Laporan Market Validation",
     deskripsi: "Susun evaluasi komprehensif PMF, sprint review retrospektif, dan rekomendasi skala implementasi.",
     acceptanceCriteria: "Laporan Market Validation lengkap dengan skor PMF dan rekomendasi tindak lanjut implementasi.",
     tahap: "market_validation" as const,
+    storyPoint: 3,
   },
   {
     judul: "Persiapan Forum Manajemen Inovasi",
     deskripsi: "Siapkan materi paparan executive summary DFV dan rekomendasi tindak lanjut untuk Dewan Direksi / FMI.",
     acceptanceCriteria: "Materi paparan slide executive summary DFV dan rekomendasi implementasi untuk sidang FMI.",
     tahap: "market_validation" as const,
+    storyPoint: 2,
   },
 ];
 
@@ -1099,44 +1115,31 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     .limit(1);
 
   if (existingCards.length > 0) {
-    return;
+    return { success: true, message: "Cards already initialized" };
   }
 
-  let teamDossier = customDossier;
-  if (!teamDossier) {
-    const [found] = await db
-      .select()
-      .from(dossierPiaArchive)
-      .where(eq(dossierPiaArchive.timInovatorId, timId))
-      .limit(1);
-    teamDossier = found;
-  }
-
-  const { sprint: sprintTable } = await import("@/lib/db/schema");
-  const existingSprints = await db
-    .select({ nomorSprint: sprintTable.nomorSprint })
-    .from(sprintTable)
-    .where(eq(sprintTable.timInovatorId, timId));
-  const totalSprints = existingSprints.length > 0 ? existingSprints.length : 4;
+  const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId));
+  const teamDossier = customDossier || (await db.select().from(dossierPiaArchive).where(eq(dossierPiaArchive.timInovatorId, timId)).limit(1))[0];
 
   const cardsToInsert: Array<typeof kanbanCard.$inferInsert> = [];
-  let cardUrutan = 1;
+  let cardUrutan = 0;
+
+  // Sprints count
+  const sprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
+  const totalSprints = Math.max(1, sprints.length);
 
   if (teamDossier && teamDossier.snapshotData) {
     const snap = teamDossier.snapshotData as any;
-    const submisi = snap.data_submisi || snap;
+    const submisi = snap.submisi_dossier || {};
     const formDetail = submisi.form_detail || {};
     const proposalId = teamDossier.proposalIdAsli || snap.proposal_id || timId;
-    const namaProyek = submisi.judul || snap.judul_inovasi || "Inovasi";
-    const kategoriPia = submisi.kategori_pia || "BI";
+    const namaProyek = submisi.judul || snap.judul_inovasi || tim?.namaProyekInovasi || "Inovasi";
+    const kategoriPia = tim?.kategoriPia || snap.kategori_inovasi || "Umum";
 
     const roadmapText = cleanText(
-      formDetail.bi_diwujudkan_dengan_cara ||
-      formDetail.bc_diwujudkan_dengan_cara ||
-      formDetail.cara_mewujudkan ||
-      formDetail.diwujudkan_dengan_cara ||
-      formDetail.cara_inovasi_diwujudkan ||
-      formDetail.langkah_implementasi ||
+      formDetail.cara_mewujudkan_ide ||
+      formDetail.tahapan_implementasi ||
+      formDetail.rencana_implementasi ||
       formDetail.roadmap ||
       ""
     );
@@ -1192,6 +1195,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           tahap: "innovation_setup",
           sprintNumber: null,
           suggestedSprintNumber: sprintNum,
+          storyPoint: t.storyPoint || 3,
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference', // Backlog Referensi
           urutan: cardUrutan++,
@@ -1208,6 +1212,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         tahap: "innovation_setup",
         sprintNumber: null,
         suggestedSprintNumber: 1,
+        storyPoint: 3,
         label: "Draf Roadmap",
         reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
@@ -1222,6 +1227,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         tahap: "innovation_setup",
         sprintNumber: null,
         suggestedSprintNumber: Math.min(totalSprints, 2),
+        storyPoint: 5,
         label: "Draf Roadmap",
         reviewStatus: 'ai_reference',
         urutan: cardUrutan++,
@@ -1237,6 +1243,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           tahap: "innovation_setup",
           sprintNumber: null,
           suggestedSprintNumber: Math.min(totalSprints, 3),
+          storyPoint: 3,
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
@@ -1266,6 +1273,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       tahap: t.tahap,
       sprintNumber: null,
       suggestedSprintNumber: cvSprint,
+      storyPoint: t.storyPoint,
       label: "Template Baku CV",
       reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
       urutan: cardUrutan++,
@@ -1290,6 +1298,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       tahap: t.tahap,
       sprintNumber: null,
       suggestedSprintNumber: mvSprint,
+      storyPoint: t.storyPoint,
       label: "Template Baku MV",
       reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
       urutan: cardUrutan++,

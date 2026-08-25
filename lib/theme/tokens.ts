@@ -212,8 +212,8 @@ export const KANBAN_COLUMN_PILL_STYLES: Record<
     countBg: "bg-white/20 text-white",
   },
   "To Do": {
-    pillBg: "bg-[#64748B]",
-    hex: "#64748B",
+    pillBg: "bg-[#9B9BB0]",
+    hex: "#9B9BB0",
     text: "text-white",
     dot: "bg-white",
     countBg: "bg-white/20 text-white",

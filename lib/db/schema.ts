@@ -158,7 +158,8 @@ export const kanbanCard = pgTable('kanban_card', {
   urutan: integer('urutan').notNull().default(0),
   label: text('label'), // e.g. 'Backlog Charter', 'SME Review', 'MVP Task', etc.
   reviewStatus: text('review_status').notNull().default('adopted'), // 'ai_reference' | 'adopted'
-  estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (nullable)
+  estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (deprecated/historis)
+  storyPoint: integer('story_point'), // story point kartu skala Fibonacci: 1, 2, 3, 5, 8, 13
   suggestedSprintNumber: integer('suggested_sprint_number'), // sprint yang disarankan dari analisa proposal / heuristik
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -193,12 +194,49 @@ export const taskLink = pgTable('task_link', {
   index('task_link_task_idx').on(t.taskId),
 ]);
 
+export const kanbanSubtask = pgTable('kanban_subtask', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => kanbanCard.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  estimatedHours: integer('estimated_hours'), // estimasi jam spesifik untuk subtask ini
+  isDone: boolean('is_done').notNull().default(false),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('kanban_subtask_task_idx').on(t.taskId),
+]);
+
+export const kanbanComment = pgTable('kanban_comment', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => kanbanCard.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('kanban_comment_task_idx').on(t.taskId),
+]);
+
+export const kanbanActivityLog = pgTable('kanban_activity_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id').notNull().references(() => kanbanCard.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  actionType: text('action_type').notNull(), // 'status_change' | 'owner_change' | 'estimate_change' | 'sprint_change' | 'created'
+  fieldName: text('field_name').notNull(),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('kanban_activity_log_task_idx').on(t.taskId),
+]);
+
 export const teamMemberCapacity = pgTable('team_member_capacity', {
   id: uuid('id').primaryKey().defaultRandom(),
   timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
   anggotaTimId: uuid('anggota_tim_id').notNull().references(() => anggotaTim.id, { onDelete: 'cascade' }),
   sprintNumber: integer('sprint_number').notNull(),
-  kapasitasJam: integer('kapasitas_jam').notNull().default(80),
+  kapasitasJam: integer('kapasitas_jam').notNull().default(80), // historis/backward compatibility
+  kapasitasSp: integer('kapasitas_sp'), // kapasitas Story Point sprint (disarankan AI / diubah user)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

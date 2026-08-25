@@ -14,6 +14,13 @@ import {
   addTaskLinkAction,
   deleteTaskLinkAction,
   adoptAiCardAction,
+  getTaskSubtasksAction,
+  createTaskSubtaskAction,
+  toggleTaskSubtaskAction,
+  deleteTaskSubtaskAction,
+  getTaskCommentsAction,
+  createTaskCommentAction,
+  getTaskActivityLogsAction,
 } from "@/app/actions/kanban";
 import {
   startSprintAction,
@@ -76,6 +83,13 @@ import {
   PlayCircle,
   FolderKanban,
   Check,
+  CheckSquare,
+  Square,
+  MessageSquare,
+  History,
+  Send,
+  Zap,
+  ListTodo,
 } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
 import {
@@ -84,6 +98,41 @@ import {
   getPhaseTokenBySlug,
   PHASE_TOKENS,
 } from "@/lib/theme/tokens";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Format Helpers for Activity & Comments
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatDateTimeIndo(dateStr: string | Date | null | undefined): string {
+  if (!dateStr) return "-";
+  const date = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+  if (isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatActivityLogText(log: any): string {
+  const actor = log.userNama || "Pengguna";
+  switch (log.actionType) {
+    case "created":
+      return `${actor} membuat kartu ini`;
+    case "status_change":
+      return `${actor} mengubah Status Kolom dari "${log.oldValue || "-"}" ke "${log.newValue || "-"}"`;
+    case "owner_change":
+      return `${actor} mengubah Owner / PIC dari "${log.oldValue || "Belum Ditugaskan"}" ke "${log.newValue || "Belum Ditugaskan"}"`;
+    case "estimate_change":
+      return `${actor} mengubah Estimasi Jam dari "${log.oldValue || "0 jam"}" ke "${log.newValue || "0 jam"}"`;
+    case "sprint_change":
+      return `${actor} mengubah Penugasan Sprint dari "${log.oldValue || "Backlog"}" ke "${log.newValue || "Backlog"}"`;
+    default:
+      return `${actor} mengubah ${log.fieldName || "kartu"} dari "${log.oldValue || "-"}" ke "${log.newValue || "-"}"`;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Attachment & Link Helpers
@@ -247,6 +296,12 @@ function SortableCard({
               {card.label}
             </span>
           )}
+
+          {/* Story Point Badge */}
+          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100/90 text-purple-900 border border-purple-200/70 shadow-2xs">
+            <Zap className="h-2.5 w-2.5 text-purple-700 fill-purple-700" />
+            {card.storyPoint || 3} SP
+          </span>
 
           {isOverdue && (
             <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
@@ -604,6 +659,7 @@ export function KanbanClient({
   const [detailStatusKolom, setDetailStatusKolom] = useState("To Do");
   const [detailOwnerAnggotaId, setDetailOwnerAnggotaId] = useState<string | null>(null);
   const [detailEstimasiJam, setDetailEstimasiJam] = useState<number | null>(null);
+  const [detailStoryPoint, setDetailStoryPoint] = useState<number | null>(3);
   const [detailLabel, setDetailLabel] = useState("");
   const [detailTanggalMulai, setDetailTanggalMulai] = useState("");
   const [detailTanggalSelesai, setDetailTanggalSelesai] = useState("");
@@ -681,8 +737,132 @@ export function KanbanClient({
     setLoadingLinks(false);
   };
 
+  // Subtasks State
+  const [subtasks, setSubtasks] = useState<any[]>([]);
+  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [newSubtaskHours, setNewSubtaskHours] = useState<number | "">("");
+  const [creatingSubtask, setCreatingSubtask] = useState(false);
+  const [togglingSubtaskId, setTogglingSubtaskId] = useState<string | null>(null);
+  const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null);
+
+  const fetchTaskSubtasks = async (taskId: string) => {
+    setLoadingSubtasks(true);
+    const res = await getTaskSubtasksAction(taskId);
+    if (res.success && res.data) {
+      setSubtasks(res.data);
+    }
+    setLoadingSubtasks(false);
+  };
+
+  const handleCreateSubtask = async () => {
+    if (!selectedCardForDetail || !newSubtaskTitle.trim()) return;
+    if (selectedCardForDetail.isNewBacklog) {
+      toast.error("Simpan kartu terlebih dahulu untuk menambah subtask.", "Kartu Belum Disimpan");
+      return;
+    }
+    setCreatingSubtask(true);
+    const parsedHours = newSubtaskHours === "" ? null : Math.max(0, Number(newSubtaskHours));
+    const res = await createTaskSubtaskAction(
+      selectedCardForDetail.id,
+      timId,
+      newSubtaskTitle.trim(),
+      parsedHours
+    );
+    if (res.success && res.data) {
+      setSubtasks((prev) => [...prev, res.data]);
+      setNewSubtaskTitle("");
+      setNewSubtaskHours("");
+      toast.success("Subtask berhasil ditambahkan.");
+    } else {
+      toast.error(res.error || "Gagal membuat subtask.");
+    }
+    setCreatingSubtask(false);
+  };
+
+  const handleToggleSubtask = async (subtaskId: string, currentStatus: boolean) => {
+    if (!selectedCardForDetail || selectedCardForDetail.isNewBacklog) return;
+    setTogglingSubtaskId(subtaskId);
+    const newStatus = !currentStatus;
+    setSubtasks((prev) =>
+      prev.map((st) => (st.id === subtaskId ? { ...st, isDone: newStatus } : st))
+    );
+    const res = await toggleTaskSubtaskAction(subtaskId, timId, newStatus);
+    if (!res.success) {
+      setSubtasks((prev) =>
+        prev.map((st) => (st.id === subtaskId ? { ...st, isDone: currentStatus } : st))
+      );
+      toast.error(res.error || "Gagal mengubah status subtask.");
+    }
+    setTogglingSubtaskId(null);
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    if (!selectedCardForDetail || selectedCardForDetail.isNewBacklog) return;
+    setDeletingSubtaskId(subtaskId);
+    const res = await deleteTaskSubtaskAction(subtaskId, timId);
+    if (res.success) {
+      setSubtasks((prev) => prev.filter((st) => st.id !== subtaskId));
+      toast.success("Subtask berhasil dihapus.");
+    } else {
+      toast.error(res.error || "Gagal menghapus subtask.");
+    }
+    setDeletingSubtaskId(null);
+  };
+
+  // Comments State
+  const [comments, setComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [creatingComment, setCreatingComment] = useState(false);
+
+  const fetchTaskComments = async (taskId: string) => {
+    setLoadingComments(true);
+    const res = await getTaskCommentsAction(taskId);
+    if (res.success && res.data) {
+      setComments(res.data);
+    }
+    setLoadingComments(false);
+  };
+
+  const handleCreateComment = async () => {
+    if (!selectedCardForDetail || !newCommentText.trim()) return;
+    if (selectedCardForDetail.isNewBacklog) {
+      toast.error("Simpan kartu terlebih dahulu untuk menulis komentar.", "Kartu Belum Disimpan");
+      return;
+    }
+    setCreatingComment(true);
+    const res = await createTaskCommentAction(selectedCardForDetail.id, timId, newCommentText.trim());
+    if (res.success && res.data) {
+      setComments((prev) => [...prev, res.data]);
+      setNewCommentText("");
+      toast.success("Komentar berhasil dikirim.");
+    } else {
+      toast.error(res.error || "Gagal mengirim komentar.");
+    }
+    setCreatingComment(false);
+  };
+
+  // Activity Logs State
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [loadingActivityLogs, setLoadingActivityLogs] = useState(false);
+  const [activityTab, setActivityTab] = useState<"komentar" | "riwayat">("komentar");
+
+  const fetchTaskActivityLogs = async (taskId: string) => {
+    setLoadingActivityLogs(true);
+    const res = await getTaskActivityLogsAction(taskId);
+    if (res.success && res.data) {
+      setActivityLogs(res.data);
+    }
+    setLoadingActivityLogs(false);
+  };
+
   const handleFileUpload = async (file: File) => {
     if (!selectedCardForDetail) return;
+    if (selectedCardForDetail.isNewBacklog) {
+      toast.error("Simpan kartu terlebih dahulu untuk mengunggah lampiran file.", "Kartu Belum Disimpan");
+      return;
+    }
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
     const allowed = ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx", "xls", "xlsx"];
@@ -749,7 +929,7 @@ export function KanbanClient({
   };
 
   const handleDeleteAttachment = async (att: any) => {
-    if (!selectedCardForDetail) return;
+    if (!selectedCardForDetail || selectedCardForDetail.isNewBacklog) return;
     const isProposal = att.source === "proposal_dossier";
     const confirmMsg = isProposal
       ? `Hapus referensi dokumen "${att.fileName}" dari kartu ini? (Dokumen asli di Proposal tetap aman)`
@@ -783,6 +963,10 @@ export function KanbanClient({
   const handleAddLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCardForDetail) return;
+    if (selectedCardForDetail.isNewBacklog) {
+      toast.error("Simpan kartu terlebih dahulu untuk menambah tautan terkait.", "Kartu Belum Disimpan");
+      return;
+    }
 
     let url = newLinkUrl.trim();
     if (!url) return;
@@ -878,14 +1062,14 @@ export function KanbanClient({
     });
   }, [cards, tahapFilter]);
 
-  // Backlog Cards yang sudah diadopsi untuk Sprint Terpilih
+  // Backlog Cards yang sudah terdaftar untuk Sprint Terpilih (bukan AI Reference yang belum diadopsi)
   const plannedCardsForSelectedSprint = useMemo(() => {
-    return filteredCards.filter(
+    return cards.filter(
       (c) =>
         c.sprintNumber === selectedSprintNum &&
-        c.reviewStatus === 'adopted'
+        c.reviewStatus !== 'ai_reference'
     );
-  }, [filteredCards, selectedSprintNum]);
+  }, [cards, selectedSprintNum]);
 
   // Backlog Cards umum (tanpa sprint)
   const backlogCards = useMemo(() => {
@@ -973,6 +1157,7 @@ export function KanbanClient({
     setDetailStatusKolom(card.statusKolom || "To Do");
     setDetailOwnerAnggotaId(card.ownerAnggotaId || null);
     setDetailEstimasiJam(card.estimasiJam !== undefined ? card.estimasiJam : null);
+    setDetailStoryPoint(card.storyPoint !== undefined && card.storyPoint !== null ? card.storyPoint : 3);
     setDetailLabel(card.label || "");
     setDetailTanggalMulai(
       card.tanggalMulai ? new Date(card.tanggalMulai).toISOString().split("T")[0] : ""
@@ -989,14 +1174,24 @@ export function KanbanClient({
       setSelectedRefCardId("");
     }
 
-    // Fetch attachments and links
+    // Fetch attachments, links, subtasks, comments, and activity logs
     setAttachments([]);
     setLinks([]);
+    setSubtasks([]);
+    setComments([]);
+    setActivityLogs([]);
     setNewLinkUrl("");
     setNewLinkLabel("");
+    setNewSubtaskTitle("");
+    setNewSubtaskHours("");
+    setNewCommentText("");
+    setActivityTab("komentar");
     if (card.id && !card.isNewBacklog) {
       fetchTaskAttachments(card.id);
       fetchTaskLinks(card.id);
+      fetchTaskSubtasks(card.id);
+      fetchTaskComments(card.id);
+      fetchTaskActivityLogs(card.id);
     }
   };
 
@@ -1018,6 +1213,7 @@ export function KanbanClient({
     setDetailStatusKolom("To Do");
     setDetailOwnerAnggotaId(null);
     setDetailEstimasiJam(null);
+    setDetailStoryPoint(3);
     setDetailLabel("");
     setDetailTanggalMulai("");
     setDetailTanggalSelesai("");
@@ -1025,6 +1221,15 @@ export function KanbanClient({
     setDetailDependencyRisiko("");
     setAttachments([]);
     setLinks([]);
+    setSubtasks([]);
+    setComments([]);
+    setActivityLogs([]);
+    setNewLinkUrl("");
+    setNewLinkLabel("");
+    setNewSubtaskTitle("");
+    setNewSubtaskHours("");
+    setNewCommentText("");
+    setActivityTab("komentar");
   };
 
   const handleSaveCardDetail = async (e: React.FormEvent) => {
@@ -1049,6 +1254,7 @@ export function KanbanClient({
             deskripsi: detailDeskripsi,
             acceptanceCriteria: detailAcceptanceCriteria,
             estimasiJam: detailEstimasiJam,
+            storyPoint: detailStoryPoint ?? 3,
             ownerAnggotaId: detailOwnerAnggotaId,
           }
         );
@@ -1076,6 +1282,7 @@ export function KanbanClient({
           statusKolom: detailStatusKolom || "To Do",
           ownerAnggotaId: detailOwnerAnggotaId,
           estimasiJam: detailEstimasiJam,
+          storyPoint: detailStoryPoint ?? 3,
           label: detailLabel,
           tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
           tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
@@ -1108,6 +1315,7 @@ export function KanbanClient({
           deskripsi: detailDeskripsi,
           acceptanceCriteria: detailAcceptanceCriteria,
           estimasiJam: detailEstimasiJam,
+          storyPoint: detailStoryPoint ?? 3,
           ownerAnggotaId: detailOwnerAnggotaId,
         }
       );
@@ -1136,6 +1344,7 @@ export function KanbanClient({
         statusKolom: detailStatusKolom,
         ownerAnggotaId: detailOwnerAnggotaId,
         estimasiJam: detailEstimasiJam,
+        storyPoint: detailStoryPoint ?? 3,
         label: detailLabel,
         tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
         tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
@@ -1172,11 +1381,14 @@ export function KanbanClient({
     const res = await deleteKanbanCardAction(timId, selectedCardForDetail.id);
     if (res.success) {
       setCards((prev) => prev.filter((c) => c.id !== selectedCardForDetail.id));
-      toast.success("Kartu task berhasil dihapus.", "Kartu Dihapus");
+      toast.success(
+        `Kartu "${selectedCardForDetail.judul}" berhasil dihapus dari Kanban board.`,
+        "Kartu Dihapus"
+      );
       setSelectedCardForDetail(null);
     } else {
       const errMsg = res.error || "Gagal menghapus kartu.";
-      toast.error(errMsg, "Gagal Menghapus");
+      toast.error(errMsg, "Gagal Menghapus Kartu");
       setErrorMessage(errMsg);
     }
     setDeletingCard(false);
@@ -1199,6 +1411,7 @@ export function KanbanClient({
         deskripsi: detailDeskripsi,
         acceptanceCriteria: detailAcceptanceCriteria,
         estimasiJam: detailEstimasiJam,
+        storyPoint: detailStoryPoint ?? 3,
         ownerAnggotaId: detailOwnerAnggotaId,
       }
     );
@@ -1241,6 +1454,7 @@ export function KanbanClient({
     sprintId: string,
     assignments: Array<{
       cardId: string;
+      storyPoint?: number | null;
       estimasiJam?: number | null;
       ownerAnggotaId?: string | null;
     }>
@@ -1265,6 +1479,7 @@ export function KanbanClient({
             return {
               ...c,
               sprintNumber: selectedSprintNum,
+              storyPoint: asg.storyPoint !== undefined ? asg.storyPoint : c.storyPoint,
               estimasiJam: asg.estimasiJam !== undefined ? asg.estimasiJam : c.estimasiJam,
               ownerAnggotaId: asg.ownerAnggotaId !== undefined ? asg.ownerAnggotaId : c.ownerAnggotaId,
             };
@@ -1570,6 +1785,9 @@ export function KanbanClient({
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* DAFTAR SPRINT, PLANNING & KANBAN BOARD (UNIFIED) */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
       {/* SECTION 1: DAFTAR SPRINT & ROADMAP */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
@@ -1670,7 +1888,7 @@ export function KanbanClient({
               const sprintCards = cards.filter(
                 (c) => c.sprintNumber === selectedSection1Sprint.nomorSprint
               );
-              const totalHours = sprintCards.reduce((acc, c) => acc + (c.estimasiJam || 0), 0);
+              const totalSp = sprintCards.reduce((acc, c) => acc + (c.storyPoint || 3), 0);
 
               return (
                 <div
@@ -1711,10 +1929,10 @@ export function KanbanClient({
                           <Layers className="h-3.5 w-3.5 text-gray-500" />
                           <strong>{sprintCards.length}</strong> kartu kerja
                         </span>
-                        {totalHours > 0 && (
+                        {totalSp > 0 && (
                           <span className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5 text-gray-500" />
-                            <strong>{totalHours}</strong> jam total estimasi
+                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                            <strong>{totalSp}</strong> Story Point
                           </span>
                         )}
                         {selectedSection1Sprint.tanggalMulaiRencana && (
@@ -1877,10 +2095,10 @@ export function KanbanClient({
                     className="text-[10px] font-bold"
                   >
                     {currentPlanningSprintObj.status === "aktif"
-                      ? "🟢 Sedang Aktif"
+                      ? "🟢 Aktif"
                       : currentPlanningSprintObj.status === "selesai"
                       ? "🔵 Selesai"
-                      : "⚪ Belum Dimulai"}
+                      : "Belum Dimulai"}
                   </Badge>
                 )}
               </h2>
@@ -2106,7 +2324,7 @@ export function KanbanClient({
                                 {c.judul}
                               </span>
                               <span className="text-[11px] text-gray-500">
-                                {c.statusKolom} &bull; {c.estimasiJam ? `${c.estimasiJam} jam` : "Belum ada estimasi"}
+                                {c.statusKolom} &bull; {c.storyPoint ? `${c.storyPoint} SP` : "3 SP"}
                               </span>
                             </div>
                             <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
@@ -2135,19 +2353,20 @@ export function KanbanClient({
           if (!open) setSelectedCardForDetail(null);
         }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl w-full max-h-[92vh] overflow-y-auto p-6 bg-[#F0F7F1] border-2 border-[#C9E4D0] shadow-2xl">
           {(() => {
+            const isCardPersisted = Boolean(selectedCardForDetail?.id && !selectedCardForDetail?.isNewBacklog);
             const currentPhaseToken = getPhaseTokenBySlug(detailTahap);
             const modalColumnName = detailStatusKolom || (selectedCardForDetail?.sprintNumber ? "To Do" : "Backlog");
             const modalPillStyle = getColumnPillStyle(modalColumnName);
 
             return (
               <>
-                <DialogHeader>
-                  <div className="flex items-center justify-between gap-2 pr-4">
-                    <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                      <KanbanIcon className="h-4 w-4 text-[#0F5132]" />
-                      Detail & Sunting Kartu Task
+                <DialogHeader className="pb-3 border-b border-[#C9E4D0]">
+                  <div className="flex items-center justify-between gap-3 pr-4">
+                    <DialogTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                      <KanbanIcon className="h-4 w-4 text-[#3E9463]" />
+                      <span>Detail &amp; Sunting Kartu Task</span>
                     </DialogTitle>
                     <div
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold text-white shadow-2xs border border-white/20"
@@ -2159,19 +2378,19 @@ export function KanbanClient({
                   </div>
                 </DialogHeader>
 
-                <form onSubmit={handleSaveCardDetail} className="space-y-4 py-2 text-xs">
+                <form onSubmit={handleSaveCardDetail} className="space-y-5 py-3 text-xs">
                   {/* Dropdown Referensi: Muncul saat tambah backlog baru atau meninjau kartu referensi */}
                   {(selectedCardForDetail?.isNewBacklog || selectedCardForDetail?.reviewStatus === "ai_reference") && (
-                    <div className="space-y-1.5 bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 shadow-2xs">
-                      <label className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                    <div className="space-y-1.5 bg-[#FBF3DD] p-3.5 rounded-xl border-2 border-[#D4AF37] shadow-2xs">
+                      <label className="text-xs font-bold text-[#8A6300] flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-[#B8860B]" />
                         <span>Pilih dari Backlog Referensi (opsional)</span>
                       </label>
                       <select
                         value={selectedRefCardId}
                         disabled={!canEdit}
                         onChange={(e) => handleSelectReferenceCardInModal(e.target.value)}
-                        className="w-full text-xs bg-white border border-purple-200 rounded-lg p-2 text-gray-800 font-semibold focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
+                        className="w-full text-xs bg-white border border-[#D4AF37] rounded-lg p-2 text-gray-800 font-semibold focus:ring-2 focus:ring-[#D4AF37] focus:border-[#B8860B] focus:outline-hidden"
                       >
                         <option value="">-- Kosongkan untuk buat backlog sendiri --</option>
                         {availableRefCardsForDropdown.map((rc) => (
@@ -2180,15 +2399,15 @@ export function KanbanClient({
                           </option>
                         ))}
                       </select>
-                      <p className="text-[10px] text-purple-700 leading-tight">
+                      <p className="text-[10px] text-[#8A6300] leading-tight font-medium">
                         Memilih kartu referensi akan otomatis mengisi Judul, Deskripsi, Acceptance Criteria, dan Tahap Inkubasi.
                       </p>
                     </div>
                   )}
 
-                  {/* Judul Kartu / Task — Beraksen Token Fase (Border 2px + Tint 5%) */}
+                  {/* Judul Kartu / Task di Header Modal — Full Width */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-700 block mb-1">
+                    <label className="text-xs font-bold text-[#0B3D2E] block mb-1">
                       Judul Kartu / Task *
                     </label>
                     <Input
@@ -2197,546 +2416,917 @@ export function KanbanClient({
                       placeholder="Contoh: Susun materi pengujian awal..."
                       onChange={(e) => setDetailJudul(e.target.value)}
                       required
-                      style={{
-                        border: `2px solid ${currentPhaseToken.accentColor}`,
-                        backgroundColor: `${currentPhaseToken.accentColor}0D`,
-                      }}
-                      className="text-xs font-bold transition-all shadow-2xs focus:bg-white"
+                      className="text-sm font-bold transition-all shadow-2xs h-10 border-2 border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] bg-white text-gray-900"
                     />
                   </div>
 
-                  {/* Deskripsi Lengkap */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      Deskripsi Lengkap
-                    </label>
-                    <Textarea
-                      rows={5}
-                      value={detailDeskripsi}
-                      disabled={!canEdit}
-                      placeholder="Rincian lengkap aktivitas, acceptance criteria, atau langkah implementasi..."
-                      onChange={(e) => setDetailDeskripsi(e.target.value)}
-                      className="text-xs leading-relaxed font-normal"
-                    />
-                  </div>
-
-                  {/* Grid 1: Tahap Inkubasi & Penugasan Sprint */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label
-                        className="text-xs font-bold block mb-1 flex items-center gap-1.5"
-                        style={{ color: currentPhaseToken.accentColor }}
-                      >
-                        <span
-                          className="h-2 w-2 rounded-full inline-block transition-colors"
-                          style={{ backgroundColor: currentPhaseToken.accentColor }}
+                  {/* ───────────────────────────────────────────────────────── */}
+                  {/* Grid 2 Kolom ala Jira: Kiri ~60% (7 cols), Kanan ~40% (5 cols) */}
+                  {/* ───────────────────────────────────────────────────────── */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* ═══════════════════════════════════════════════════════ */}
+                    {/* KOLOM KIRI (Konten Kerja) */}
+                    {/* ═══════════════════════════════════════════════════════ */}
+                    <div className="lg:col-span-7 space-y-5">
+                      {/* 1. Deskripsi Lengkap */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-800 block mb-1">
+                          Deskripsi Lengkap
+                        </label>
+                        <Textarea
+                          rows={4}
+                          value={detailDeskripsi}
+                          disabled={!canEdit}
+                          placeholder="Rincian lengkap aktivitas, acceptance criteria, atau langkah implementasi..."
+                          onChange={(e) => setDetailDeskripsi(e.target.value)}
+                          className="text-xs leading-relaxed font-normal bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
                         />
-                        <span>Tahap Inkubasi</span>
-                      </label>
-                      <select
-                        value={detailTahap}
-                        disabled={!canEdit}
-                        onChange={(e) => setDetailTahap(e.target.value)}
-                        style={{
-                          border: `1.5px solid ${currentPhaseToken.accentColor}`,
-                          backgroundColor: `${currentPhaseToken.accentColor}08`,
-                        }}
-                        className="w-full text-xs bg-white rounded-md p-2 text-gray-800 font-semibold transition-all shadow-2xs"
-                      >
-                        <option value="innovation_setup">Innovation Setup</option>
-                        <option value="customer_validation">Customer Validation</option>
-                        <option value="market_validation">Market Validation</option>
-                        <option value="umum">Umum</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 block mb-1">
-                        Penugasan Sprint
-                      </label>
-                      <select
-                        value={detailSprintNumber === null ? "backlog" : String(detailSprintNumber)}
-                        disabled={!canEdit}
-                        onChange={(e) => {
-                          const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
-                          setDetailSprintNumber(val);
-                        }}
-                        className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
-                      >
-                        <option value="backlog">📦 Backlog (Tanpa Sprint)</option>
-                        {sprints.map((s) => (
-                          <option key={s.nomorSprint} value={s.nomorSprint}>
-                            Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Grid 2: Status Kolom & PIC Owner */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 block mb-1">
-                        Status Kolom
-                      </label>
-                      <select
-                        value={detailStatusKolom}
-                        disabled={!canEdit}
-                        onChange={(e) => setDetailStatusKolom(e.target.value)}
-                        className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
-                      >
-                        {columns.map((c) => (
-                          <option key={c.namaKolom} value={c.namaKolom}>
-                            {c.namaKolom}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 block mb-1">
-                        Owner / PIC Anggota Tim
-                      </label>
-                      <select
-                        value={detailOwnerAnggotaId || ""}
-                        disabled={!canEdit}
-                        onChange={(e) => setDetailOwnerAnggotaId(e.target.value || null)}
-                        className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
-                      >
-                        <option value="">-- Belum Ditugaskan --</option>
-                        {anggotaTim.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.nama} ({a.jabatan || a.unitKerja || "Anggota"})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Estimasi Jam Kerja */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 block mb-1 flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-gray-500" />
-                      <span>Estimasi Jam Kerja</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={999}
-                        placeholder="Contoh: 16"
-                        value={detailEstimasiJam !== null && detailEstimasiJam !== undefined ? detailEstimasiJam : ""}
-                        disabled={!canEdit}
-                        onChange={(e) =>
-                          setDetailEstimasiJam(
-                            e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0)
-                          )
-                        }
-                        className="text-xs w-32"
-                      />
-                      <span className="text-xs text-gray-500">jam</span>
-                    </div>
-                  </div>
-
-                  {/* Label / Tag */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      Label / Tag
-                    </label>
-                    <Input
-                      placeholder="Draf Roadmap, Template Baku CV, MVP, SME, dll"
-                      value={detailLabel}
-                      disabled={!canEdit}
-                      onChange={(e) => setDetailLabel(e.target.value)}
-                      className="text-xs"
-                    />
-                  </div>
-
-                  {/* Dates: Mulai & Selesai */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 block mb-1">
-                        Tanggal Mulai
-                      </label>
-                      <Input
-                        type="date"
-                        value={detailTanggalMulai}
-                        disabled={!canEdit}
-                        onChange={(e) => setDetailTanggalMulai(e.target.value)}
-                        className="text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 block mb-1">
-                        Target Selesai
-                      </label>
-                      <Input
-                        type="date"
-                        value={detailTanggalSelesai}
-                        disabled={!canEdit}
-                        onChange={(e) => setDetailTanggalSelesai(e.target.value)}
-                        className="text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Acceptance Criteria — Beraksen Emerald (#0E8C55) Tetap */}
-                  <div>
-                    <label className="text-xs font-bold text-[#0E8C55] block mb-1 flex items-center gap-1.5">
-                      <Target className="h-3.5 w-3.5 text-[#0E8C55]" />
-                      <span>Acceptance Criteria / Tolok Ukur Keberhasilan</span>
-                    </label>
-                    <Textarea
-                      rows={3}
-                      value={detailAcceptanceCriteria}
-                      disabled={!canEdit}
-                      placeholder="Kriteria task dianggap tuntas..."
-                      onChange={(e) => setDetailAcceptanceCriteria(e.target.value)}
-                      style={{
-                        border: "1.5px solid #0E8C55",
-                        backgroundColor: "#0E8C550D",
-                      }}
-                      className="text-xs font-medium"
-                    />
-                  </div>
-
-            {/* Dependency & Risiko */}
-            <div>
-              <label className="text-xs font-semibold text-gray-700 block mb-1">
-                Ketergantungan / Risiko
-              </label>
-              <Textarea
-                rows={2}
-                value={detailDependencyRisiko}
-                disabled={!canEdit}
-                placeholder="Ketergantungan terhadap divisi lain, SME, akses sistem..."
-                onChange={(e) => setDetailDependencyRisiko(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-
-            {/* ───────────────────────────────────────────────────────────────── */}
-            {/* Section 1: Lampiran File (Upload & Dari Proposal) */}
-            {/* ───────────────────────────────────────────────────────────────── */}
-            <div className="pt-2 border-t border-gray-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                  <Paperclip className="h-3.5 w-3.5 text-[#0F5132]" />
-                  <span>Lampiran File</span>
-                  {attachments.length > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      {attachments.length}
-                    </Badge>
-                  )}
-                </label>
-              </div>
-
-              {canEdit && (
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragOverDropzone(true);
-                  }}
-                  onDragLeave={() => setIsDragOverDropzone(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragOverDropzone(false);
-                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                      handleFileUpload(e.dataTransfer.files[0]);
-                    }
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors ${
-                    isDragOverDropzone
-                      ? "border-[#0F5132] bg-[#0F5132]/5"
-                      : "border-gray-200 hover:border-[#0F5132]/60 hover:bg-gray-50/80"
-                  }`}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleFileUpload(e.target.files[0]);
-                      }
-                    }}
-                  />
-                  <div className="flex flex-col items-center justify-center gap-1">
-                    {uploadingAttachment ? (
-                      <div className="flex items-center gap-2 text-xs font-semibold text-[#0F5132]">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Mengunggah lampiran file...</span>
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
-                          <UploadCloud className="h-4 w-4 text-[#0F5132]" />
-                          <span>Klik atau seret file ke sini untuk mengunggah</span>
-                        </div>
-                        <p className="text-[10px] text-gray-400">
-                          Maks 10MB • Gambar (JPG, PNG, WEBP), Dokumen (PDF, DOCX, XLSX)
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {loadingAttachments ? (
-                <div className="flex items-center justify-center py-3 text-xs text-gray-400 gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0F5132]" />
-                  <span>Memuat daftar lampiran...</span>
-                </div>
-              ) : attachments.length === 0 ? (
-                <p className="text-[11px] text-gray-400 italic py-1">
-                  Belum ada lampiran file pada kartu ini.
-                </p>
-              ) : (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {attachments.map((att) => {
-                    const isProposal = att.source === "proposal_dossier";
-                    return (
-                      <div
-                        key={att.id}
-                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200/80 hover:bg-gray-100/70 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {getFileIcon(att.fileName, att.fileType)}
-                          <div className="min-w-0 flex-1">
-                            <a
-                              href={att.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-semibold text-gray-800 hover:text-[#0F5132] hover:underline truncate block"
-                              title={att.fileName}
-                            >
-                              {att.fileName}
-                            </a>
-                            <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                              <span>{formatFileSize(att.fileSize)}</span>
-                              {isProposal && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[9px] px-1.5 py-0 h-4 bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold"
+                      {/* 2. Subtasks (BARU) */}
+                      {!isCardPersisted ? (
+                        <div className="space-y-2 p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0]">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <ListTodo className="h-3.5 w-3.5 text-[#3E9463]" />
+                              <span>Subtasks</span>
+                            </label>
+                          </div>
+                          <div className="p-3 bg-[#FBF3DD] rounded-lg border border-[#D4AF37] text-center">
+                            <p className="text-[11px] font-medium text-[#8A6300]">
+                              💡 Simpan kartu terlebih dahulu untuk menambah dan mengelola subtask.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0]">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <ListTodo className="h-3.5 w-3.5 text-[#3E9463]" />
+                              <span>Subtasks</span>
+                              <span className="text-[11px] font-semibold text-gray-600">
+                                · {subtasks.filter((st) => st.isDone).length}/{subtasks.length} selesai
+                                {" · "}
+                                <span className="text-[#3E9463] font-bold">
+                                  Total estimasi: {subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0)} jam
+                                </span>
+                              </span>
+                            </label>
+                            {subtasks.length > 0 && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E3F0E6] text-[#0B3D2E] border border-[#C9E4D0]">
+                                {Math.round((subtasks.filter((st) => st.isDone).length / subtasks.length) * 100)}%
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Daftar Subtask */}
+                          {loadingSubtasks ? (
+                            <div className="flex items-center justify-center py-3 text-xs text-gray-400 gap-1.5">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                              <span>Memuat subtask...</span>
+                            </div>
+                          ) : subtasks.length === 0 ? (
+                            <p className="text-[11px] text-gray-400 italic py-1">
+                              Belum ada subtask pada kartu ini.
+                            </p>
+                          ) : (
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                              {subtasks.map((st) => (
+                                <div
+                                  key={st.id}
+                                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-colors group"
                                 >
-                                  ✨ Dari Proposal
+                                  <div
+                                    onClick={() => canEdit && handleToggleSubtask(st.id, st.isDone)}
+                                    className={`flex items-center gap-2 min-w-0 flex-1 ${canEdit ? "cursor-pointer" : ""}`}
+                                  >
+                                    <button
+                                      type="button"
+                                      disabled={!canEdit || togglingSubtaskId === st.id}
+                                      className="text-[#3E9463] focus:outline-none shrink-0"
+                                    >
+                                      {st.isDone ? (
+                                        <CheckSquare className="h-4 w-4 text-[#3E9463]" />
+                                      ) : (
+                                        <Square className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                                      )}
+                                    </button>
+                                    <span
+                                      className={`text-xs truncate ${
+                                        st.isDone
+                                          ? "line-through text-gray-400"
+                                          : "text-gray-800 font-medium"
+                                      }`}
+                                    >
+                                      {st.title}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0 ? (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37]">
+                                        {st.estimatedHours} jam
+                                      </span>
+                                    ) : null}
+
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        disabled={deletingSubtaskId === st.id}
+                                        onClick={() => handleDeleteSubtask(st.id)}
+                                        className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                                        title="Hapus subtask"
+                                      >
+                                        {deletingSubtaskId === st.id ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                        ) : (
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Inline Tambah Subtask */}
+                          {canEdit && (
+                            <div className="flex items-center gap-1.5 pt-1">
+                              <Input
+                                placeholder="+ Tambah subtask baru..."
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleCreateSubtask();
+                                  }
+                                }}
+                                className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 flex-1 text-gray-900"
+                              />
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={999}
+                                  placeholder="Jam"
+                                  value={newSubtaskHours}
+                                  onChange={(e) =>
+                                    setNewSubtaskHours(
+                                      e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0)
+                                    )
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleCreateSubtask();
+                                    }
+                                  }}
+                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 w-16 px-1.5 text-center text-gray-900"
+                                />
+                                <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={creatingSubtask || !newSubtaskTitle.trim()}
+                                onClick={handleCreateSubtask}
+                                className="text-xs h-8 px-3 bg-[#3E9463] hover:bg-[#0B3D2E] text-white shrink-0 font-semibold gap-1 shadow-xs"
+                              >
+                                {creatingSubtask ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Plus className="h-3 w-3" />
+                                )}
+                                <span>Tambah</span>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 3. Lampiran & Tautan (GABUNGAN) */}
+                      {!isCardPersisted ? (
+                        <div className="space-y-2 p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0]">
+                          <div className="flex items-center justify-between border-b border-[#C9E4D0] pb-2">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <Paperclip className="h-3.5 w-3.5 text-[#3E9463]" />
+                              <span>Lampiran &amp; Tautan</span>
+                            </label>
+                          </div>
+                          <div className="p-3 bg-[#FBF3DD] rounded-lg border border-[#D4AF37] text-center">
+                            <p className="text-[11px] font-medium text-[#8A6300]">
+                              💡 Simpan kartu terlebih dahulu untuk mengunggah lampiran file atau menambah tautan.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0]">
+                          <div className="flex items-center justify-between border-b border-[#C9E4D0] pb-2">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <Paperclip className="h-3.5 w-3.5 text-[#3E9463]" />
+                              <span>Lampiran &amp; Tautan</span>
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              {attachments.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-[#E3F0E6] text-[#0B3D2E] border border-[#C9E4D0]">
+                                  {attachments.length} Lampiran
+                                </Badge>
+                              )}
+                              {links.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-[#E3F0E6] text-[#0B3D2E] border border-[#C9E4D0]">
+                                  {links.length} Tautan
                                 </Badge>
                               )}
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          <a
-                            href={att.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200/60 transition-colors"
-                            title="Buka / Unduh file"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                          {canEdit && (
-                            <button
-                              type="button"
-                              disabled={deletingAttachmentId === att.id}
-                              onClick={() => handleDeleteAttachment(att)}
-                              className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
-                              title={isProposal ? "Hapus referensi dari kartu" : "Hapus lampiran"}
-                            >
-                              {deletingAttachmentId === att.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                          {/* Sub-bagian A: Lampiran File */}
+                          <div className="space-y-2">
+                            <span className="text-[11px] font-bold text-gray-700 block">
+                              Lampiran File
+                            </span>
 
-            {/* ───────────────────────────────────────────────────────────────── */}
-            {/* Section 2: Tautan Terkait (External Web Links) */}
-            {/* ───────────────────────────────────────────────────────────────── */}
-            <div className="pt-2 border-t border-gray-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5 text-[#0F5132]" />
-                  <span>Tautan Terkait</span>
-                  {links.length > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      {links.length}
-                    </Badge>
-                  )}
-                </label>
-              </div>
-
-              {canEdit && (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 bg-gray-50/80 p-2 rounded-xl border border-gray-200">
-                  <Input
-                    placeholder="https://drive.google.com/... atau https://youtube.com/..."
-                    value={newLinkUrl}
-                    onChange={(e) => setNewLinkUrl(e.target.value)}
-                    className="text-xs bg-white h-8 flex-1"
-                  />
-                  <Input
-                    placeholder="Label (opsional)"
-                    value={newLinkLabel}
-                    onChange={(e) => setNewLinkLabel(e.target.value)}
-                    className="text-xs bg-white h-8 sm:w-40"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={addingLink || !newLinkUrl.trim()}
-                    onClick={handleAddLink}
-                    className="text-xs h-8 px-3 bg-[#0F5132] hover:bg-[#1B7A4D] text-white shrink-0 font-semibold gap-1"
-                  >
-                    {addingLink ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Plus className="h-3 w-3" />
-                    )}
-                    <span>Tambah</span>
-                  </Button>
-                </div>
-              )}
-
-              {loadingLinks ? (
-                <div className="flex items-center justify-center py-3 text-xs text-gray-400 gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0F5132]" />
-                  <span>Memuat daftar tautan...</span>
-                </div>
-              ) : links.length === 0 ? (
-                <p className="text-[11px] text-gray-400 italic py-1">
-                  Belum ada tautan terkait pada kartu ini.
-                </p>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                  {links.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200/80 hover:bg-gray-100/70 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {getDomainIcon(link.url)}
-                        <div className="min-w-0 flex-1">
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-gray-800 hover:text-[#0F5132] hover:underline truncate block"
-                          >
-                            {link.label || link.url}
-                          </a>
-                          {link.label && (
-                            <p className="text-[10px] text-gray-400 truncate">{link.url}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200/60 transition-colors"
-                          title="Buka tautan di tab baru"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            disabled={deletingLinkId === link.id}
-                            onClick={() => handleDeleteLink(link.id)}
-                            className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
-                            title="Hapus tautan"
-                          >
-                            {deletingLinkId === link.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
-                            ) : (
-                              <Trash2 className="h-3.5 w-3.5" />
+                            {canEdit && (
+                              <div
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setIsDragOverDropzone(true);
+                                }}
+                                onDragLeave={() => setIsDragOverDropzone(false)}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  setIsDragOverDropzone(false);
+                                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                                    handleFileUpload(e.dataTransfer.files[0]);
+                                  }
+                                }}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors ${
+                                  isDragOverDropzone
+                                    ? "border-[#3E9463] bg-[#E3F0E6]"
+                                    : "border-[#C9E4D0] bg-white hover:border-[#3E9463] hover:bg-[#F0F7F1]"
+                                }`}
+                              >
+                                <input
+                                  type="file"
+                                  ref={fileInputRef}
+                                  className="hidden"
+                                  accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      handleFileUpload(e.target.files[0]);
+                                    }
+                                  }}
+                                />
+                                <div className="flex flex-col items-center justify-center gap-1">
+                                  {uploadingAttachment ? (
+                                    <div className="flex items-center gap-2 text-xs font-semibold text-[#3E9463]">
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <span>Mengunggah lampiran file...</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                                        <UploadCloud className="h-4 w-4 text-[#3E9463]" />
+                                        <span>Klik atau seret file ke sini untuk mengunggah</span>
+                                      </div>
+                                      <p className="text-[10px] text-gray-400">
+                                        Maks 10MB • Gambar (JPG, PNG, WEBP), Dokumen (PDF, DOCX, XLSX)
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             )}
-                          </button>
-                        )}
+
+                            {loadingAttachments ? (
+                              <div className="flex items-center justify-center py-2 text-xs text-gray-400 gap-1.5">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                                <span>Memuat daftar lampiran...</span>
+                              </div>
+                            ) : attachments.length === 0 ? (
+                              <p className="text-[11px] text-gray-400 italic">
+                                Belum ada lampiran file pada kartu ini.
+                              </p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                                {attachments.map((att) => {
+                                  const isProposal = att.source === "proposal_dossier";
+                                  return (
+                                    <div
+                                      key={att.id}
+                                      className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:bg-[#E3F0E6] transition-colors"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        {getFileIcon(att.fileName, att.fileType)}
+                                        <div className="min-w-0 flex-1">
+                                          <a
+                                            href={att.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs font-semibold text-gray-800 hover:text-[#3E9463] hover:underline truncate block"
+                                            title={att.fileName}
+                                          >
+                                            {att.fileName}
+                                          </a>
+                                          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                                            <span>{formatFileSize(att.fileSize)}</span>
+                                            {isProposal && (
+                                              <Badge
+                                                variant="secondary"
+                                                className="text-[9px] px-1.5 py-0 h-4 bg-[#E3F0E6] text-[#0B3D2E] border border-[#C9E4D0] font-semibold"
+                                              >
+                                                ✨ Dari Proposal
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <a
+                                          href={att.fileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                                          title="Buka / Unduh file"
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                        {canEdit && (
+                                          <button
+                                            type="button"
+                                            disabled={deletingAttachmentId === att.id}
+                                            onClick={() => handleDeleteAttachment(att)}
+                                            className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                                            title={isProposal ? "Hapus referensi dari kartu" : "Hapus lampiran"}
+                                          >
+                                            {deletingAttachmentId === att.id ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                            ) : (
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Sub-bagian B: Tautan Terkait */}
+                          <div className="space-y-2 pt-2.5 border-t border-[#C9E4D0]">
+                            <span className="text-[11px] font-bold text-gray-700 block">
+                              Tautan Terkait
+                            </span>
+
+                            {canEdit && (
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 bg-[#F0F7F1] p-2 rounded-xl border border-[#C9E4D0]">
+                                <Input
+                                  placeholder="https://drive.google.com/... atau https://youtube.com/..."
+                                  value={newLinkUrl}
+                                  onChange={(e) => setNewLinkUrl(e.target.value)}
+                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 flex-1 text-gray-900"
+                                />
+                                <Input
+                                  placeholder="Label (opsional)"
+                                  value={newLinkLabel}
+                                  onChange={(e) => setNewLinkLabel(e.target.value)}
+                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 sm:w-36 text-gray-900"
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={addingLink || !newLinkUrl.trim()}
+                                  onClick={handleAddLink}
+                                  className="text-xs h-8 px-3 bg-[#3E9463] hover:bg-[#1B7A4D] text-white shrink-0 font-semibold gap-1"
+                                >
+                                  {addingLink ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-3 w-3" />
+                                  )}
+                                  <span>Tambah</span>
+                                </Button>
+                              </div>
+                            )}
+
+                            {loadingLinks ? (
+                              <div className="flex items-center justify-center py-2 text-xs text-gray-400 gap-1.5">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                                <span>Memuat daftar tautan...</span>
+                              </div>
+                            ) : links.length === 0 ? (
+                              <p className="text-[11px] text-gray-400 italic">
+                                Belum ada tautan terkait pada kartu ini.
+                              </p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                                {links.map((link) => (
+                                  <div
+                                    key={link.id}
+                                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:bg-[#E3F0E6] transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      {getDomainIcon(link.url)}
+                                      <div className="min-w-0 flex-1">
+                                        <a
+                                          href={link.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs font-semibold text-gray-800 hover:text-[#3E9463] hover:underline truncate block"
+                                        >
+                                          {link.label || link.url}
+                                        </a>
+                                        {link.label && (
+                                          <p className="text-[10px] text-gray-400 truncate">{link.url}</p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <a
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                                        title="Buka tautan di tab baru"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                      </a>
+                                      {canEdit && (
+                                        <button
+                                          type="button"
+                                          disabled={deletingLinkId === link.id}
+                                          onClick={() => handleDeleteLink(link.id)}
+                                          className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                                          title="Hapus tautan"
+                                        >
+                                          {deletingLinkId === link.id ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                          ) : (
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Acceptance Criteria / Tolok Ukur Keberhasilan */}
+                      <div>
+                        <label className="text-xs font-bold text-[#0B3D2E] block mb-1 flex items-center gap-1.5">
+                          <Target className="h-3.5 w-3.5 text-[#3E9463]" />
+                          <span>Acceptance Criteria / Tolok Ukur Keberhasilan</span>
+                        </label>
+                        <Textarea
+                          rows={3}
+                          value={detailAcceptanceCriteria}
+                          disabled={!canEdit}
+                          placeholder="Kriteria task dianggap tuntas..."
+                          onChange={(e) => setDetailAcceptanceCriteria(e.target.value)}
+                          className="text-xs font-medium bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
+                        />
+                      </div>
+
+                      {/* 5. Tanggal Mulai & Target Selesai */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-bold text-[#0B3D2E] block mb-1">
+                            Tanggal Mulai
+                          </label>
+                          <Input
+                            type="date"
+                            value={detailTanggalMulai}
+                            disabled={!canEdit}
+                            onChange={(e) => setDetailTanggalMulai(e.target.value)}
+                            className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] text-gray-900 font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-[#0B3D2E] block mb-1">
+                            Target Selesai
+                          </label>
+                          <Input
+                            type="date"
+                            value={detailTanggalSelesai}
+                            disabled={!canEdit}
+                            onChange={(e) => setDetailTanggalSelesai(e.target.value)}
+                            className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] text-gray-900 font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 6. Ketergantungan / Risiko */}
+                      <div>
+                        <label className="text-xs font-bold text-[#0B3D2E] block mb-1">
+                          Ketergantungan / Risiko
+                        </label>
+                        <Textarea
+                          rows={2}
+                          value={detailDependencyRisiko}
+                          disabled={!canEdit}
+                          placeholder="Ketergantungan terhadap divisi lain, SME, akses sistem..."
+                          onChange={(e) => setDetailDependencyRisiko(e.target.value)}
+                          className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] text-gray-900 leading-relaxed font-normal"
+                        />
+                      </div>
+
+                      {/* 7. Aktivitas (BARU) */}
+                      {!isCardPersisted ? (
+                        <div className="space-y-2 p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0]">
+                          <div className="flex items-center justify-between border-b border-[#C9E4D0] pb-2">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <MessageSquare className="h-3.5 w-3.5 text-[#3E9463]" />
+                              <span>Aktivitas</span>
+                            </label>
+                          </div>
+                          <div className="p-3 bg-[#FBF3DD] rounded-lg border border-[#D4AF37] text-center">
+                            <p className="text-[11px] font-medium text-[#8A6300]">
+                              💡 Simpan kartu terlebih dahulu untuk menulis komentar dan melihat riwayat aktivitas.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0]">
+                          <div className="flex items-center justify-between border-b border-[#C9E4D0] pb-2">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <MessageSquare className="h-3.5 w-3.5 text-[#3E9463]" />
+                              <span>Aktivitas</span>
+                            </label>
+                            {/* Tab Switcher */}
+                            <div className="flex items-center bg-[#E3F0E6] p-0.5 rounded-lg text-xs font-semibold border border-[#C9E4D0]">
+                              <button
+                                type="button"
+                                onClick={() => setActivityTab("komentar")}
+                                className={`px-2.5 py-1 rounded-md transition-colors ${
+                                  activityTab === "komentar"
+                                    ? "bg-[#3E9463] text-white shadow-2xs font-bold"
+                                    : "text-[#0B3D2E] hover:text-[#3E9463]"
+                                }`}
+                              >
+                                Komentar {comments.length > 0 && `(${comments.length})`}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActivityTab("riwayat")}
+                                className={`px-2.5 py-1 rounded-md transition-colors ${
+                                  activityTab === "riwayat"
+                                    ? "bg-[#3E9463] text-white shadow-2xs font-bold"
+                                    : "text-[#0B3D2E] hover:text-[#3E9463]"
+                                }`}
+                              >
+                                Riwayat {activityLogs.length > 0 && `(${activityLogs.length})`}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Tab 1: Komentar */}
+                          {activityTab === "komentar" && (
+                            <div className="space-y-3">
+                              {loadingComments ? (
+                                <div className="flex items-center justify-center py-4 text-xs text-gray-400 gap-1.5">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                                  <span>Memuat komentar...</span>
+                                </div>
+                              ) : comments.length === 0 ? (
+                                <p className="text-[11px] text-gray-400 italic py-1">
+                                  Belum ada komentar pada kartu ini.
+                                </p>
+                              ) : (
+                                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                                  {comments.map((comm) => (
+                                    <div
+                                      key={comm.id}
+                                      className="p-2.5 rounded-xl bg-white border border-[#C9E4D0] space-y-1 shadow-2xs"
+                                    >
+                                      <div className="flex items-center justify-between text-[11px]">
+                                        <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                                          <User className="h-3 w-3 text-gray-500" />
+                                          <span>{comm.userNama || "Pengguna"}</span>
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 font-medium">
+                                          {formatDateTimeIndo(comm.createdAt)}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap pl-4.5">
+                                        {comm.content}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Input Komentar Baru */}
+                              {canEdit && (
+                                <div className="space-y-1.5 pt-1">
+                                  <Textarea
+                                    rows={2}
+                                    placeholder="Tulis komentar atau catatan untuk kartu ini..."
+                                    value={newCommentText}
+                                    onChange={(e) => setNewCommentText(e.target.value)}
+                                    className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] text-gray-900"
+                                  />
+                                  <div className="flex justify-end">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={creatingComment || !newCommentText.trim()}
+                                      onClick={handleCreateComment}
+                                      className="text-xs h-7 px-3 bg-[#3E9463] hover:bg-[#0B3D2E] text-white font-semibold gap-1.5 shadow-xs cursor-pointer"
+                                    >
+                                      {creatingComment ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Send className="h-3 w-3" />
+                                      )}
+                                      <span>Kirim</span>
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Tab 2: Riwayat Activity Log */}
+                          {activityTab === "riwayat" && (
+                            <div className="space-y-2">
+                              {loadingActivityLogs ? (
+                                <div className="flex items-center justify-center py-4 text-xs text-gray-400 gap-1.5">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                                  <span>Memuat riwayat aktivitas...</span>
+                                </div>
+                              ) : activityLogs.length === 0 ? (
+                                <p className="text-[11px] text-gray-400 italic py-1">
+                                  Belum ada riwayat aktivitas pada kartu ini.
+                                </p>
+                              ) : (
+                                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                  {activityLogs.map((log) => (
+                                    <div
+                                      key={log.id}
+                                      className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-[#C9E4D0] text-xs"
+                                    >
+                                      <History className="h-3.5 w-3.5 text-gray-400 shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-gray-800 leading-snug">
+                                          {formatActivityLogText(log)}
+                                        </p>
+                                        <span className="text-[10px] text-gray-400 block mt-0.5">
+                                          {formatDateTimeIndo(log.createdAt)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ═══════════════════════════════════════════════════════ */}
+                    {/* KOLOM KANAN (Metadata & Status Ringkas) */}
+                    {/* ═══════════════════════════════════════════════════════ */}
+                    <div className="lg:col-span-5 space-y-4">
+                      {/* 1. Status Kolom — Akses Cepat di Atas */}
+                      <div className="p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0] space-y-1.5">
+                        <label className="text-xs font-bold text-gray-800 block flex items-center gap-1.5">
+                          <KanbanIcon className="h-4 w-4 text-[#3E9463]" />
+                          <span>Status Kolom</span>
+                        </label>
+                        <select
+                          value={detailStatusKolom}
+                          disabled={!canEdit}
+                          onChange={(e) => setDetailStatusKolom(e.target.value)}
+                          className="w-full text-xs bg-white border border-[#C9E4D0] rounded-lg p-2 text-gray-900 font-bold focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] focus:outline-hidden shadow-2xs"
+                        >
+                          {columns.map((c) => (
+                            <option key={c.namaKolom} value={c.namaKolom}>
+                              {c.namaKolom}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 2. Detail — Format Ringkas Label:Value */}
+                      <div className="p-4 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0] space-y-3.5">
+                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#0B3D2E] border-b border-[#C9E4D0] pb-1.5">
+                          Detail Kartu
+                        </h4>
+
+                        {/* Assignee / Owner PIC */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-800 block flex items-center gap-1.5">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span>Assignee (Owner / PIC)</span>
+                          </label>
+                          <select
+                            value={detailOwnerAnggotaId || ""}
+                            disabled={!canEdit}
+                            onChange={(e) => {
+                              const newOwnerId = e.target.value || null;
+                              if (newOwnerId && detailSprintNumber) {
+                                const targetOwner = anggotaTim.find((a) => a.id === newOwnerId);
+                                const targetCap = capacities.find((c) => c.anggotaTimId === newOwnerId)?.kapasitasSp ?? 15;
+                                const currentOwnedCards = cards.filter(
+                                  (c) =>
+                                    c.ownerAnggotaId === newOwnerId &&
+                                    c.sprintNumber === detailSprintNumber &&
+                                    c.id !== selectedCardForDetail?.id
+                                );
+                                const currentUsedSp = currentOwnedCards.reduce((sum, c) => sum + (c.storyPoint || 3), 0);
+                                const cardSp = detailStoryPoint || 3;
+                                const projectedSp = currentUsedSp + cardSp;
+
+                                if (projectedSp > targetCap || currentUsedSp >= targetCap) {
+                                  toast.error(
+                                    `⚠ ${targetOwner?.nama || "Anggota"} sudah mencapai kapasitas (${projectedSp}/${targetCap} SP) di Sprint ${detailSprintNumber}. Alokasikan ke anggota lain atau sesuaikan kapasitas.`,
+                                    "Kapasitas Penuh / Terlampaui"
+                                  );
+                                  return;
+                                }
+                              }
+                              setDetailOwnerAnggotaId(newOwnerId);
+                            }}
+                            className="w-full text-xs bg-white border border-[#C9E4D0] rounded-lg p-2 text-gray-900 font-semibold focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
+                          >
+                            <option value="">-- Belum Ditugaskan --</option>
+                            {anggotaTim.map((a) => {
+                              const aCap = capacities.find((c) => c.anggotaTimId === a.id)?.kapasitasSp ?? 15;
+                              return (
+                                <option key={a.id} value={a.id}>
+                                  {a.nama} ({a.jabatan || a.unitKerja || "Anggota"}) — Kapasitas {aCap} SP
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        {/* Story Point (Skala Fibonacci) */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-[#8A6300] block flex items-center gap-1.5">
+                            <Zap className="h-4 w-4 text-[#B8860B] fill-[#B8860B]" />
+                            <span>Story Point</span>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={detailStoryPoint ?? 3}
+                              disabled={!canEdit}
+                              onChange={(e) => {
+                                const newSp = parseInt(e.target.value) || 3;
+                                // Check if current owner would exceed capacity with this new SP
+                                if (detailOwnerAnggotaId && detailSprintNumber) {
+                                  const targetOwner = anggotaTim.find((a) => a.id === detailOwnerAnggotaId);
+                                  const targetCap = capacities.find((c) => c.anggotaTimId === detailOwnerAnggotaId)?.kapasitasSp ?? 15;
+                                  const currentOwnedCards = cards.filter(
+                                    (c) =>
+                                      c.ownerAnggotaId === detailOwnerAnggotaId &&
+                                      c.sprintNumber === detailSprintNumber &&
+                                      c.id !== selectedCardForDetail?.id
+                                  );
+                                  const currentUsedSp = currentOwnedCards.reduce((sum, c) => sum + (c.storyPoint || 3), 0);
+                                  const projectedSp = currentUsedSp + newSp;
+
+                                  if (projectedSp > targetCap) {
+                                    toast.error(
+                                      `⚠ Perubahan ke ${newSp} SP akan melebihi kapasitas ${targetOwner?.nama || "Owner"} (${projectedSp}/${targetCap} SP). Sesuaikan kapasitas atau ganti penugasan.`,
+                                      "Kapasitas Melebihi Batas"
+                                    );
+                                    return;
+                                  }
+                                }
+                                setDetailStoryPoint(newSp);
+                              }}
+                              className="w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37]"
+                            >
+                              <option value="1">1 SP (Sangat Sederhana - Admin singkat)</option>
+                              <option value="2">2 SP (Sederhana - Review/Brief)</option>
+                              <option value="3">3 SP (Sedang - Riset/Dokumen)</option>
+                              <option value="5">5 SP (Menengah - Prototype/Testing)</option>
+                              <option value="8">8 SP (Kompleks - MVP Development)</option>
+                              <option value="13">13 SP (Sangat Kompleks - Arsitektur)</option>
+                            </select>
+                            <span className="text-xs text-[#8A6300] bg-[#FBF3DD] font-black px-2.5 py-1.5 rounded-lg border border-[#D4AF37] shrink-0 shadow-2xs">
+                              {detailStoryPoint ?? 3} SP
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Penugasan Sprint */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-800 block flex items-center gap-1.5">
+                            <Layers className="h-4 w-4 text-gray-500" />
+                            <span>Sprint</span>
+                          </label>
+                          <select
+                            value={detailSprintNumber === null ? "backlog" : String(detailSprintNumber)}
+                            disabled={!canEdit}
+                            onChange={(e) => {
+                              const val = e.target.value === "backlog" ? null : parseInt(e.target.value);
+                              setDetailSprintNumber(val);
+                            }}
+                            className="w-full text-xs bg-white border border-[#C9E4D0] rounded-lg p-2 text-gray-900 font-bold focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
+                          >
+                            <option value="backlog">📦 Backlog (Tanpa Sprint)</option>
+                            {sprints.map((s) => (
+                              <option key={s.nomorSprint} value={s.nomorSprint}>
+                                Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Label / Tag */}
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-800 block flex items-center gap-1.5">
+                            <Tag className="h-4 w-4 text-gray-500" />
+                            <span>Label / Tag</span>
+                          </label>
+                          <Input
+                            placeholder="Draf Roadmap, Template Baku CV, MVP, SME, dll"
+                            value={detailLabel}
+                            disabled={!canEdit}
+                            onChange={(e) => setDetailLabel(e.target.value)}
+                            className="text-xs bg-white border border-[#C9E4D0] text-gray-900 font-medium focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
+                          />
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
 
-            <DialogFooter className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-gray-100">
-              {canEdit ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={deletingCard || savingDetailCard || Boolean(adoptingCardId)}
-                  onClick={handleDeleteCard}
-                  className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
-                >
-                  {deletingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  <span>Hapus Kartu</span>
-                </Button>
-              ) : (
-                <div />
-              )}
-
-              <div className="flex items-center gap-2">
-                {/* Tombol Adopsi — hanya muncul kalau kartu masih ai_reference */}
-                {canEdit && selectedCardForDetail?.reviewStatus === 'ai_reference' && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={Boolean(adoptingCardId) || savingDetailCard || !detailJudul.trim()}
-                    onClick={handleAdoptAiCard}
-                    className="text-xs font-bold gap-1.5 bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
-                  >
-                    {adoptingCardId === selectedCardForDetail?.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {/* ───────────────────────────────────────────────────────── */}
+                  {/* Modal Footer */}
+                  {/* ───────────────────────────────────────────────────────── */}
+                  <DialogFooter className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-[#C9E4D0]">
+                    {canEdit ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={deletingCard || savingDetailCard || Boolean(adoptingCardId)}
+                        onClick={handleDeleteCard}
+                        className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5 cursor-pointer"
+                      >
+                        {deletingCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        <span>Hapus Kartu</span>
+                      </Button>
                     ) : (
-                      <BrainCircuit className="h-3.5 w-3.5" />
+                      <div />
                     )}
-                    <span>Adopsi ke Backlog Kerja</span>
-                  </Button>
-                )}
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedCardForDetail(null)}
-                  className="text-xs"
-                >
-                  Tutup
-                </Button>
-                {canEdit && (
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={savingDetailCard || !detailJudul.trim()}
-                    className="text-xs bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold gap-1.5 shadow-sm"
-                  >
-                    {savingDetailCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                    <span>Simpan Perubahan</span>
-                  </Button>
-                )}
-              </div>
-            </DialogFooter>
-          </form>
-        </>
-      );
-    })()}
-  </DialogContent>
-</Dialog>
+                    <div className="flex items-center gap-2">
+                      {/* Tombol Adopsi — hanya muncul kalau kartu masih ai_reference */}
+                      {canEdit && selectedCardForDetail?.reviewStatus === 'ai_reference' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={Boolean(adoptingCardId) || savingDetailCard || !detailJudul.trim()}
+                          onClick={handleAdoptAiCard}
+                          className="text-xs font-bold gap-1.5 bg-[#B8860B] hover:bg-[#8A6300] text-white shadow-sm cursor-pointer"
+                        >
+                          {adoptingCardId === selectedCardForDetail?.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <BrainCircuit className="h-3.5 w-3.5" />
+                          )}
+                          <span>Adopsi Backlog ke Tim</span>
+                        </Button>
+                      )}
+
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={savingDetailCard || Boolean(adoptingCardId) || !detailJudul.trim()}
+                        className="text-xs font-bold bg-[#3E9463] hover:bg-[#0B3D2E] text-white shadow-sm transition-all cursor-pointer px-5"
+                      >
+                        {savingDetailCard ? (
+                          <div className="flex items-center gap-1.5">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Menyimpan...</span>
+                          </div>
+                        ) : (
+                          <span>Simpan</span>
+                        )}
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                </form>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────── */}
       {/* Modal / Dialog Tambah Kartu Baru */}
