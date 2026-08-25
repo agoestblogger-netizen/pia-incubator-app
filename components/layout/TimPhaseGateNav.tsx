@@ -163,27 +163,27 @@ export function TimPhaseGateNav({
           </h1>
         </div>
 
-        {/* Baris Tombol Menu: Dashboard (Segera Hadir - Solid Putih Kontras Tinggi) */}
+        {/* Baris Tombol Menu: Dashboard (Segera Hadir - Solid Emas Pegadaian Kontras Tinggi) */}
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/15">
           <button
             type="button"
             disabled
             style={{
-              backgroundColor: "#FFFFFF",
+              background: "linear-gradient(135deg, #FEE388 0%, #F59E0B 100%)",
               color: "#0B3D2E",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.12)",
             }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-white cursor-not-allowed select-none transition-all opacity-100"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-amber-200/80 cursor-not-allowed select-none transition-all opacity-100"
             title="Fitur Dashboard Ringkasan & Statistik Tim Segera Hadir"
           >
             <BarChart3 className="h-3.5 w-3.5 text-[#0B3D2E] shrink-0" />
             <span className="text-[#0B3D2E]">Dashboard</span>
             <span
               style={{
-                backgroundColor: "#E5E5EA",
-                color: "#4A4A5C",
+                backgroundColor: "#0B3D2E",
+                color: "#FFFFFF",
               }}
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs"
             >
               Segera Hadir
             </span>
