@@ -18,7 +18,7 @@ import { getTimInovatorList } from "./tim";
 export type TeamDashboardMetrics = {
   tim: any;
   fase: {
-    key: "innovation_setup" | "customer_validation" | "market_validation" | "belum_mulai";
+    key: "belum_mulai" | "innovation_setup" | "sprint" | "selesai";
     label: string;
     stageNumber: number;
   };
@@ -41,8 +41,8 @@ export type DashboardData = {
     totalTeams: number;
     totalBelumMulai: number;
     totalInnovationSetup: number;
-    totalCustomerValidation: number;
-    totalMarketValidation: number;
+    totalSprint: number;
+    totalSelesai: number;
   };
 };
 
@@ -74,8 +74,8 @@ export async function getDashboardData(currentUser?: UserProfile | null): Promis
         totalTeams: 0,
         totalBelumMulai: 0,
         totalInnovationSetup: 0,
-        totalCustomerValidation: 0,
-        totalMarketValidation: 0,
+        totalSprint: 0,
+        totalSelesai: 0,
       },
     };
   }
@@ -97,7 +97,14 @@ export async function getDashboardData(currentUser?: UserProfile | null): Promis
 
   // 3. Fetch phase documents to determine phase
   const allCharters = await db
-    .select({ timInovatorId: charter.timInovatorId, updatedAt: charter.updatedAt })
+    .select({
+      timInovatorId: charter.timInovatorId,
+      projectMission: charter.projectMission,
+      problemWorthSolving: charter.problemWorthSolving,
+      solusiAwal: charter.solusiAwal,
+      ttdDisetujui: charter.ttdDisetujui,
+      updatedAt: charter.updatedAt,
+    })
     .from(charter)
     .where(inArray(charter.timInovatorId, teamIds));
 
@@ -131,41 +138,49 @@ export async function getDashboardData(currentUser?: UserProfile | null): Promis
 
   let totalBelumMulai = 0;
   let totalInnovationSetup = 0;
-  let totalCustomerValidation = 0;
-  let totalMarketValidation = 0;
+  let totalSprint = 0;
+  let totalSelesai = 0;
 
   const resultTeams: TeamDashboardMetrics[] = [];
 
   for (const tim of rawTeams) {
     const cards = teamCardsMap.get(tim.id) || [];
     const sprints = teamSprintsMap.get(tim.id) || [];
+    const charterRow = charterMap.get(tim.id);
 
-    // Phase determination
-    let faseInfo: TeamDashboardMetrics["fase"] = {
-      key: "innovation_setup",
-      label: "Innovation Setup",
-      stageNumber: 1,
-    };
+    // Check charter completeness
+    const isCharterComplete = Boolean(
+      charterRow &&
+      (charterRow.projectMission || charterRow.problemWorthSolving || charterRow.ttdDisetujui)
+    );
 
-    const hasMarket = marketMap.has(tim.id);
-    const hasCust = custMap.has(tim.id);
-    const hasCharter = charterMap.has(tim.id);
+    // Sprints status analysis
+    const hasSprints = sprints.length > 0;
+    const allSprintsFinished = hasSprints && sprints.every((s) => s.status === "selesai");
+    const hasActiveSprint = sprints.some((s) => s.status === "aktif");
+    const hasStartedSprint = sprints.some((s) => s.status === "aktif" || s.status === "selesai");
 
-    if (hasMarket) {
+    let faseInfo: TeamDashboardMetrics["fase"];
+
+    // Evaluasi dari kondisi paling akhir (Selesai -> Sprint -> Innovation Setup -> Belum Mulai)
+    if (allSprintsFinished) {
+      // 1. Selesai (Semua sprint selesai)
       faseInfo = {
-        key: "market_validation",
-        label: "Market Validation",
+        key: "selesai",
+        label: "Selesai",
+        stageNumber: 4,
+      };
+      totalSelesai++;
+    } else if (hasActiveSprint || (hasStartedSprint && !allSprintsFinished)) {
+      // 2. Sprint (Sedang menjalankan sprint)
+      faseInfo = {
+        key: "sprint",
+        label: "Sprint",
         stageNumber: 3,
       };
-      totalMarketValidation++;
-    } else if (hasCust) {
-      faseInfo = {
-        key: "customer_validation",
-        label: "Customer Validation",
-        stageNumber: 2,
-      };
-      totalCustomerValidation++;
-    } else if (hasCharter || cards.length > 0) {
+      totalSprint++;
+    } else if (isCharterComplete) {
+      // 3. Innovation Setup (Charter lengkap, belum mulai sprint)
       faseInfo = {
         key: "innovation_setup",
         label: "Innovation Setup",
@@ -173,6 +188,7 @@ export async function getDashboardData(currentUser?: UserProfile | null): Promis
       };
       totalInnovationSetup++;
     } else {
+      // 4. Belum Mulai (Default: Belum lengkap isi charter)
       faseInfo = {
         key: "belum_mulai",
         label: "Belum Mulai",
@@ -251,8 +267,8 @@ export async function getDashboardData(currentUser?: UserProfile | null): Promis
       totalTeams: rawTeams.length,
       totalBelumMulai,
       totalInnovationSetup,
-      totalCustomerValidation,
-      totalMarketValidation,
+      totalSprint,
+      totalSelesai,
     },
   };
 }

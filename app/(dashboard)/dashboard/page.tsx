@@ -39,10 +39,10 @@ export default async function DashboardPage() {
 
   const getPhaseBadgeVariant = (stageNumber: number) => {
     switch (stageNumber) {
-      case 3:
+      case 4:
         return "gold";
-      case 2:
-        return "default";
+      case 3:
+        return "success";
       case 1:
         return "secondary";
       default:
@@ -103,13 +103,13 @@ export default async function DashboardPage() {
             <p className="text-[11px] text-slate-300/90 font-medium">Tim baru / belum isi Charter</p>
           </div>
 
-          {/* Card 2: Tahap 1 Setup (Solid Ungu #7B6EF0 → #5142D6) */}
+          {/* Card 2: Innovation Setup (Solid Ungu #7B6EF0 → #5142D6) */}
           <div
             style={{ background: "linear-gradient(135deg, #7B6EF0 0%, #5142D6 100%)" }}
             className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#5142D6]/40 space-y-1.5"
           >
             <span className="text-[11px] font-extrabold text-purple-200 uppercase tracking-wider block">
-              Tahap 1: Setup
+              Innovation Setup
             </span>
             <div className="flex items-baseline justify-between">
               <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
@@ -117,41 +117,41 @@ export default async function DashboardPage() {
               </span>
               <span className="text-xs text-purple-200 font-bold">Tim</span>
             </div>
-            <p className="text-[11px] text-purple-100 font-medium">Charter & Sprint Planning</p>
+            <p className="text-[11px] text-purple-100 font-medium">Charter lengkap &amp; siap sprint</p>
           </div>
 
-          {/* Card 3: Tahap 2 Cust. Validation (Solid Amber #E29A2E → #B8720E) */}
-          <div
-            style={{ background: "linear-gradient(135deg, #E29A2E 0%, #B8720E 100%)" }}
-            className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#B8720E]/40 space-y-1.5"
-          >
-            <span className="text-[11px] font-extrabold text-amber-200 uppercase tracking-wider block">
-              Tahap 2: Cust. Validation
-            </span>
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
-                {aggregates.totalCustomerValidation}
-              </span>
-              <span className="text-xs text-amber-200 font-bold">Tim</span>
-            </div>
-            <p className="text-[11px] text-amber-100 font-medium">Early Adopter & User Testing</p>
-          </div>
-
-          {/* Card 4: Tahap 3 Market Validation (Solid Emerald #22B06E → #0E8C55) */}
+          {/* Card 3: Sprint (Solid Emerald #22B06E → #0E8C55) */}
           <div
             style={{ background: "linear-gradient(135deg, #22B06E 0%, #0E8C55 100%)" }}
             className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#0E8C55]/40 space-y-1.5"
           >
             <span className="text-[11px] font-extrabold text-emerald-200 uppercase tracking-wider block">
-              Tahap 3: Market Validation
+              Sprint
             </span>
             <div className="flex items-baseline justify-between">
               <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
-                {aggregates.totalMarketValidation}
+                {aggregates.totalSprint}
               </span>
               <span className="text-xs text-emerald-200 font-bold">Tim</span>
             </div>
-            <p className="text-[11px] text-emerald-100 font-medium">Pilot & Market Launch</p>
+            <p className="text-[11px] text-emerald-100 font-medium">Sedang eksekusi sprint aktif</p>
+          </div>
+
+          {/* Card 4: Selesai (Solid Amber/Gold #E29A2E → #B8720E) */}
+          <div
+            style={{ background: "linear-gradient(135deg, #E29A2E 0%, #B8720E 100%)" }}
+            className="p-4 sm:p-5 rounded-2xl text-white shadow-md border border-[#B8720E]/40 space-y-1.5"
+          >
+            <span className="text-[11px] font-extrabold text-amber-200 uppercase tracking-wider block">
+              Selesai
+            </span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-3xl font-extrabold text-white font-mono-stats drop-shadow-xs">
+                {aggregates.totalSelesai}
+              </span>
+              <span className="text-xs text-amber-200 font-bold">Tim</span>
+            </div>
+            <p className="text-[11px] text-amber-100 font-medium">Seluruh sprint telah rampung</p>
           </div>
         </div>
       )}
