@@ -12,6 +12,7 @@ import {
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type PresenceUser = {
+  clientId: string;
   userId: string;
   name: string;
   avatarUrl: string | null;
@@ -40,9 +41,9 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function colorForUser(userId: string): string {
+function colorForUser(seed: string): string {
   let hash = 0;
-  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   return PRESENCE_COLORS[Math.abs(hash) % PRESENCE_COLORS.length];
 }
 
@@ -58,24 +59,25 @@ export function SpikeBoardClient({
   currentUser: CurrentUser;
   initialStickies: SpikeSticky[];
 }) {
+  const [clientId] = useState(() => 'tab-' + Math.random().toString(36).slice(2, 8));
   const [stickies, setStickies] = useState<SpikeSticky[]>(initialStickies);
   const [onlineUsers, setOnlineUsers] = useState<Record<string, PresenceUser>>({});
   const [latencyLog, setLatencyLog] = useState<string[]>([]);
   const supabase = useRef(createClient());
   const channelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
-  const myColor = colorForUser(currentUser.id);
+  const myColor = colorForUser(clientId);
   const pendingTimestamps = useRef<Record<string, number>>({});
 
   // ─── Log latency helper ────────────────────────────────────────────────────
   const log = useCallback((msg: string) => {
     const ts = new Date().toLocaleTimeString('id-ID', { hour12: false });
-    setLatencyLog((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 20));
+    setLatencyLog((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 25));
   }, []);
 
   // ─── Supabase Realtime setup ────────────────────────────────────────────────
   useEffect(() => {
     const channel = supabase.current.channel(`spike-board-${timId}`, {
-      config: { presence: { key: currentUser.id } },
+      config: { presence: { key: clientId } },
     });
     channelRef.current = channel;
 
@@ -118,14 +120,14 @@ export function SpikeBoardClient({
         if (p) users[key] = p;
       }
       setOnlineUsers(users);
-      log(`👥 Presence sync — ${Object.keys(users).length} user(s) online`);
+      log(`👥 Presence sync — ${Object.keys(users).length} tab(s) online`);
     });
 
     channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
       const p = (newPresences as unknown as PresenceUser[])[0];
       if (p) {
         setOnlineUsers((prev) => ({ ...prev, [key]: p }));
-        log(`➕ ${p.name} joined`);
+        log(`➕ ${p.name} (${p.clientId}) joined`);
       }
     });
 
@@ -143,31 +145,34 @@ export function SpikeBoardClient({
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({
+          clientId,
           userId: currentUser.id,
           name: currentUser.nama,
           avatarUrl: currentUser.avatarUrl,
           color: myColor,
           focusedStickyId: null,
         } satisfies PresenceUser);
-        log(`✅ Realtime channel SUBSCRIBED`);
+        log(`✅ Realtime SUBSCRIBED (${clientId})`);
       }
     });
 
     return () => {
       channel.unsubscribe();
     };
-  }, [timId, currentUser.id, currentUser.nama, currentUser.avatarUrl, myColor, log]);
+  }, [timId, currentUser.id, currentUser.nama, currentUser.avatarUrl, clientId, myColor, log]);
 
   // ─── Presence update helper ─────────────────────────────────────────────────
   const updatePresenceFocus = useCallback((stickyId: string | null) => {
+    log(`🎯 Presence focus -> ${stickyId ? stickyId.slice(0, 8) : 'none'}`);
     channelRef.current?.track({
+      clientId,
       userId: currentUser.id,
       name: currentUser.nama,
       avatarUrl: currentUser.avatarUrl,
       color: myColor,
       focusedStickyId: stickyId,
     });
-  }, [currentUser, myColor]);
+  }, [currentUser, myColor, clientId, log]);
 
   // ─── CRUD handlers ──────────────────────────────────────────────────────────
   const handleAddSticky = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -243,7 +248,7 @@ export function SpikeBoardClient({
               key={sticky.id}
               sticky={sticky}
               presenceUsers={onlineUsers}
-              currentUserId={currentUser.id}
+              currentClientId={clientId}
               onUpdateContent={async (id, content) => {
                 pendingTimestamps.current[id] = Date.now();
                 log(`📤 UPDATE content sent...`);
@@ -277,7 +282,7 @@ export function SpikeBoardClient({
 function StickyCard({
   sticky,
   presenceUsers,
-  currentUserId,
+  currentClientId,
   onUpdateContent,
   onUpdatePosition,
   onDelete,
@@ -286,7 +291,7 @@ function StickyCard({
 }: {
   sticky: SpikeSticky;
   presenceUsers: Record<string, PresenceUser>;
-  currentUserId: string;
+  currentClientId: string;
   onUpdateContent: (id: string, content: string) => Promise<void>;
   onUpdatePosition: (id: string, x: number, y: number) => Promise<void>;
   onDelete: (id: string) => void;
@@ -313,7 +318,7 @@ function StickyCard({
 
   // Who else is focused on this sticky?
   const otherFocused = Object.values(presenceUsers).filter(
-    (u) => u.userId !== currentUserId && u.focusedStickyId === sticky.id
+    (u) => u.clientId !== currentClientId && u.focusedStickyId === sticky.id
   );
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -351,6 +356,8 @@ function StickyCard({
 
   return (
     <div
+      id={`sticky-${sticky.id}`}
+      data-sticky-id={sticky.id}
       className="absolute select-none"
       style={{ left: pos.x, top: pos.y, zIndex: editing ? 20 : 10 }}
       onMouseEnter={onFocusEnter}
