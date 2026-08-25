@@ -800,7 +800,24 @@ export async function saveCharterAction(
     // 4. Auto-generate Initial Backlog on first Charter save (Roadmap + 15 Baku CV/MV Tasks)
     await seedInitialKanbanCardsForTeam(timId, teamDossier);
 
-    // 5. Log audit
+    // 5. Update team status from 'calon_peserta' to 'aktif' (Peserta Aktif) upon completing Innovation Setup
+    const [currentTeam] = await db
+      .select({ status: timInovator.status })
+      .from(timInovator)
+      .where(eq(timInovator.id, timId))
+      .limit(1);
+
+    if (currentTeam && currentTeam.status === "calon_peserta") {
+      await db
+        .update(timInovator)
+        .set({
+          status: "aktif",
+          updatedAt: new Date(),
+        })
+        .where(eq(timInovator.id, timId));
+    }
+
+    // 6. Log audit
     await logAudit({
       userId: user.id,
       userName: user.nama,
@@ -817,6 +834,9 @@ export async function saveCharterAction(
     revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/charter`);
     revalidatePath(`/tim/${timId}/overview`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/dashboard`);
+    revalidatePath(`/dossier`);
     revalidatePath(`/admin/roles`);
 
     const updatedRoles = await getCharterRolesData(timId);

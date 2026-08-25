@@ -246,7 +246,7 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                               }`}
                             >
                               <Users className="h-3 w-3" />
-                              {item.timStatus === 'calon_peserta' ? 'Calon Peserta' : 'Tim Aktif'}
+                              {item.timStatus === 'calon_peserta' ? 'Calon Peserta' : 'Peserta Aktif'}
                               <ArrowUpRight className="h-3 w-3 ml-0.5" />
                             </Link>
                           ) : (

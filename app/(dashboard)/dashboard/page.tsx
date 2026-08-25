@@ -243,9 +243,15 @@ export default async function DashboardPage() {
                               ? 'gold'
                               : 'secondary'
                           }
-                          className="capitalize text-[10px]"
+                          className="text-[10px] font-semibold"
                         >
-                          {tim.status}
+                          {tim.status === 'calon_peserta'
+                            ? 'Calon Peserta'
+                            : tim.status === 'aktif'
+                            ? 'Peserta Aktif'
+                            : tim.status === 'selesai'
+                            ? 'Selesai'
+                            : tim.status}
                         </Badge>
                       </div>
                     </div>

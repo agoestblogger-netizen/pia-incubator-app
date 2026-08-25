@@ -1,5 +1,6 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
+import { getSprintsByTimId } from "@/app/actions/sprint";
 import { notFound } from "next/navigation";
 import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +16,48 @@ export default async function TimOverviewPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const [tim, phaseGateStatus] = await Promise.all([
+  const [tim, phaseGateStatus, sprints] = await Promise.all([
     getTimInovatorById(resolvedParams.id),
     getTeamPhaseGateStatus(resolvedParams.id),
+    getSprintsByTimId(resolvedParams.id),
   ]);
 
   if (!tim) return notFound();
+
+  // 1. Target Berakhir dari Sprint Terakhir (nomor sprint tertinggi yang direncanakan)
+  const lastSprint =
+    sprints.length > 0
+      ? sprints.reduce((prev, curr) =>
+          curr.nomorSprint > prev.nomorSprint ? curr : prev,
+        sprints[0])
+      : null;
+
+  const targetBerakhirDate =
+    lastSprint?.tanggalSelesaiRencana || lastSprint?.tanggalSelesaiAktual;
+  const targetBerakhirText = targetBerakhirDate
+    ? formatDateIndo(targetBerakhirDate)
+    : "-";
+
+  // 2. Durasi Inkubasi dinamis dari rentang sprint (Sprint 1 ke Sprint Terakhir)
+  const firstSprint =
+    sprints.length > 0
+      ? sprints.reduce((prev, curr) =>
+          curr.nomorSprint < prev.nomorSprint ? curr : prev,
+        sprints[0])
+      : null;
+
+  const startDate =
+    firstSprint?.tanggalMulaiRencana || firstSprint?.tanggalMulaiAktual;
+  const endDate = targetBerakhirDate;
+
+  let durasiInkubasiText = `${tim.durasiBulan || 3} Bulan`;
+  if (startDate && endDate && new Date(endDate) > new Date(startDate)) {
+    const diffMs = new Date(endDate).getTime() - new Date(startDate).getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const calculatedMonths = diffDays / 30.4375;
+    const roundedMonths = Math.round(calculatedMonths * 2) / 2;
+    durasiInkubasiText = `${roundedMonths.toString().replace(".", ",")} Bulan`;
+  }
 
   return (
     <div className="space-y-6">
@@ -38,8 +75,23 @@ export default async function TimOverviewPage({
               <Badge variant="gold" className="text-xs">
                 {tim.klasifikasiInovasi || 'Gold'} &bull; {tim.seasonAsli}
               </Badge>
-              <Badge variant="success" className="capitalize text-xs">
-                {tim.status}
+              <Badge
+                variant={
+                  tim.status === 'aktif'
+                    ? 'success'
+                    : tim.status === 'selesai'
+                    ? 'gold'
+                    : 'secondary'
+                }
+                className="text-xs font-semibold"
+              >
+                {tim.status === 'calon_peserta'
+                  ? 'Calon Peserta'
+                  : tim.status === 'aktif'
+                  ? 'Peserta Aktif'
+                  : tim.status === 'selesai'
+                  ? 'Selesai'
+                  : tim.status}
               </Badge>
             </div>
             <h2 className="text-xl font-extrabold text-gray-900">
@@ -50,12 +102,12 @@ export default async function TimOverviewPage({
           <div className="flex items-center gap-3 text-xs bg-gray-50 border border-gray-100 p-3 rounded-xl">
             <div>
               <span className="text-gray-400 block text-[10px]">Durasi Inkubasi</span>
-              <span className="font-bold text-gray-800">{tim.durasiBulan} Bulan</span>
+              <span className="font-bold text-gray-800">{durasiInkubasiText}</span>
             </div>
             <div className="h-6 w-px bg-gray-200" />
             <div>
               <span className="text-gray-400 block text-[10px]">Target Berakhir</span>
-              <span className="font-bold text-gray-800">{formatDateIndo(tim.tanggalBerakhir)}</span>
+              <span className="font-bold text-gray-800">{targetBerakhirText}</span>
             </div>
           </div>
         </div>

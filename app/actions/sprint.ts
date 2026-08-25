@@ -97,6 +97,8 @@ export async function saveCharterSprintsAction(
 
     revalidatePath(`/tim/${timId}/charter`);
     revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/overview`);
+    revalidatePath(`/dashboard`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal menyimpan data milestone sprint." };
@@ -196,6 +198,7 @@ export async function updateSprintCountAction(
 
     revalidatePath(`/tim/${timId}/charter`);
     revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/overview`);
     revalidatePath(`/dashboard`);
     return { success: true };
   } catch (error: any) {
@@ -294,6 +297,7 @@ export async function startSprintAction(
 
     revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/overview`);
     revalidatePath(`/dashboard`);
     return { success: true };
   } catch (error: any) {
@@ -364,6 +368,7 @@ export async function completeSprintAction(
     });
 
     revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/overview`);
     revalidatePath(`/dashboard`);
     return { success: true };
   } catch (error: any) {
