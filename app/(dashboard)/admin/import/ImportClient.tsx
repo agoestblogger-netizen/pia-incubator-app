@@ -261,6 +261,7 @@ export function ImportClient() {
     setErrorMsg(null);
     setSuccessMsg(null);
     setProgressPercent(0);
+    setProgressText('');
     setNewlyCreatedAccounts(null);
 
     try {
@@ -268,20 +269,23 @@ export function ImportClient() {
       const selectedList = items.filter((i) => selectedIds.has(i.proposal_id));
       const total = selectedList.length;
 
+      // Batch concurrency: 3 tim paralel per gelombang
+      const BATCH_SIZE = 3;
+      const totalWaves = Math.ceil(total / BATCH_SIZE);
+
       let importedCount = 0;
       let skippedCount = 0;
+      let completedCount = 0;
       const importedIds: string[] = [];
       const allCreatedAccounts: CreatedAccountSummaryItem[] = [];
+      const failedTeams: string[] = [];
 
-      for (let i = 0; i < total; i++) {
-        const item = selectedList[i];
+      // Fungsi pemroses satu tim — terisolasi, aman untuk dijalankan paralel
+      const processSingleTeam = async (item: (typeof selectedList)[0]) => {
         const propId = item.proposal_id;
         const isOverride = overrideIds.has(propId);
 
-        setProgressText(`Mengimpor [${i + 1}/${total}]: ${item.nama_proyek}...`);
-        setProgressPercent(Math.round(((i + 0.2) / total) * 100));
-
-        // 1. Read dossier JSON from ZIP with fallback
+        // 1. Read dossier JSON from ZIP with fallback (read-only, thread-safe)
         const dossierFile = findZipFile(zip, item.dossier_file || `dossier/${propId}.json`);
         let dossierData: any = null;
         if (dossierFile) {
@@ -333,8 +337,6 @@ export function ImportClient() {
           );
         }
 
-        setProgressPercent(Math.round(((i + 0.5) / total) * 100));
-
         // 3. Save proposal record & dossier to database + Auto-create Accounts
         const saveRes = await saveImportedProposal({
           proposalId: propId,
@@ -353,17 +355,52 @@ export function ImportClient() {
           override: isOverride,
         });
 
-        if (saveRes.action === 'skipped') {
-          skippedCount++;
-        } else {
-          importedCount++;
-          importedIds.push(propId);
-          if (saveRes.createdAccounts && saveRes.createdAccounts.length > 0) {
-            allCreatedAccounts.push(...saveRes.createdAccounts);
+        return { propId, namaProyek: item.nama_proyek, saveRes };
+      };
+
+      // Jalankan dalam gelombang (wave) batch paralel
+      for (let wave = 0; wave < totalWaves; wave++) {
+        const waveStart = wave * BATCH_SIZE;
+        const waveEnd = Math.min(waveStart + BATCH_SIZE, total);
+        const waveItems = selectedList.slice(waveStart, waveEnd);
+        const waveNum = wave + 1;
+        const timRange = `${waveStart + 1}–${waveEnd}`;
+
+        setProgressText(`Memproses gelombang ${waveNum}/${totalWaves} (tim ${timRange} dari ${total})...`);
+        setProgressPercent(Math.round((completedCount / total) * 100));
+
+        // Promise.allSettled: 1 tim gagal tidak menggugurkan yang lain
+        const waveResults = await Promise.allSettled(
+          waveItems.map((item) => processSingleTeam(item))
+        );
+
+        // Agregasi hasil gelombang ini
+        for (const result of waveResults) {
+          completedCount++;
+          if (result.status === 'fulfilled') {
+            const { propId, namaProyek, saveRes } = result.value;
+            if (saveRes.action === 'skipped') {
+              skippedCount++;
+            } else {
+              importedCount++;
+              importedIds.push(propId);
+              if (saveRes.createdAccounts && saveRes.createdAccounts.length > 0) {
+                allCreatedAccounts.push(...saveRes.createdAccounts);
+              }
+            }
+          } else {
+            // Tim gagal — catat, tetap lanjut
+            const failedItem = waveItems[waveResults.indexOf(result)];
+            const failedName = failedItem?.nama_proyek || 'Tim tidak diketahui';
+            console.error(`[Import] Tim gagal: ${failedName}`, result.reason);
+            failedTeams.push(failedName);
           }
         }
 
-        setProgressPercent(Math.round(((i + 1) / total) * 100));
+        setProgressPercent(Math.round((completedCount / total) * 100));
+        if (wave < totalWaves - 1) {
+          setProgressText(`Gelombang ${waveNum}/${totalWaves} selesai (${completedCount}/${total} tim diproses). Melanjutkan gelombang ${waveNum + 1}...`);
+        }
       }
 
       // 4. Record single audit log
@@ -377,10 +414,16 @@ export function ImportClient() {
 
       setLoadingConfirm(false);
       setProgressText('');
-      const successText = `Proses import selesai: ${importedCount} tim calon peserta berhasil diproses ke database & storage, ${skippedCount} di-skip.`;
-      toast.success(successText, "Import Berhasil");
+      setProgressPercent(100);
+
+      const successText = `Proses import selesai: ${importedCount} tim berhasil diproses, ${skippedCount} di-skip.${failedTeams.length > 0 ? ` ⚠️ ${failedTeams.length} tim gagal: ${failedTeams.join(', ')}.` : ''}`;
+      toast.success(successText, 'Import Berhasil');
       setSuccessMsg(successText);
       setImportResult({ imported: importedCount, skipped: skippedCount });
+
+      if (failedTeams.length > 0) {
+        toast.error(`${failedTeams.length} tim gagal diproses: ${failedTeams.join(', ')}`, 'Peringatan Import Parsial');
+      }
 
       if (allCreatedAccounts.length > 0) {
         setNewlyCreatedAccounts(allCreatedAccounts);
@@ -390,10 +433,11 @@ export function ImportClient() {
       setLoadingConfirm(false);
       setProgressText('');
       const errText = `Terjadi kesalahan saat memproses import: ${err.message}`;
-      toast.error(errText, "Gagal Import");
+      toast.error(errText, 'Gagal Import');
       setErrorMsg(errText);
     }
   };
+
 
   return (
     <div className="space-y-6">

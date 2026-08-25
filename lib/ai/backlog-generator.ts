@@ -138,7 +138,7 @@ Keluarkan skor Story Point Fibonacci murni.`;
  * menjadi kumpulan Scrum Backlog Tasks atomik lengkap dengan:
  * 1. suggestedSprintNumber (terdistribusi dari Sprint 1 sampai totalSprints)
  * 2. storyPoint skala Fibonacci (1, 2, 3, 5, 8, 13)
- * 3. subtasks (3-5 langkah kerja konkret dengan estimatedHours)
+ * 3. subtasks (3-5 langkah kerja konkret, deskriptif, dan actionable, dengan estimatedHours)
  */
 export async function generateAiBacklogFromRoadmap(params: {
   teamId: string;
@@ -171,7 +171,7 @@ export async function generateAiBacklogFromRoadmap(params: {
 Tugas: Pecah roadmap implementasi proposal PIA menjadi 10-14 Backlog Task atomik standar Scrum lengkap dengan:
 1. Story Point Fibonacci: [1, 2, 3, 5, 8, 13]
 2. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi seimbang dari Sprint 1 s.d ${totalSprints})
-3. subtasks: 3 sampai 4 subtask ringkas dan konkret (title max 12 kata, estimatedHours integer 1-16).
+3. subtasks: 3 sampai 5 subtask konkret dan actionable per task (estimatedHours integer 1-16). Setiap subtask HARUS jelas menggambarkan tindakan spesifik yang dilakukan — deskriptif dan dapat langsung dieksekusi, BUKAN dipotong kaku.
 
 ATURAN FORMAT:
 - JUDUL: Diawali KATA KERJA AKTIF (Susun, Siapkan, Rancang, Kembangkan, Hubungkan, Uji coba, Evaluasi).
@@ -190,14 +190,16 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 's
   "tasks": [
     {
       "judul": "Kata Kerja Aktif + Sasaran Aksi",
-      "deskripsi": "Aktivitas teknis ringkas.",
-      "acceptanceCriteria": "Luaran selesai yang terukur.",
-      "storyPoint": 3,
+      "deskripsi": "Aktivitas teknis ringkas yang menjelaskan apa yang dilakukan.",
+      "acceptanceCriteria": "Luaran selesai yang terukur dan konkret.",
+      "storyPoint": 5,
       "suggestedSprintNumber": 1,
       "subtasks": [
-        { "title": "Subtask tindakan 1", "estimatedHours": 3 },
-        { "title": "Subtask tindakan 2", "estimatedHours": 4 },
-        { "title": "Subtask tindakan 3", "estimatedHours": 2 }
+        { "title": "Identifikasi kebutuhan teknis dan peta risiko awal", "estimatedHours": 3 },
+        { "title": "Koordinasi dengan pemangku kepentingan terkait scope", "estimatedHours": 2 },
+        { "title": "Implementasi komponen utama sesuai desain arsitektur", "estimatedHours": 6 },
+        { "title": "Uji coba fungsional dan perbaikan bug yang ditemukan", "estimatedHours": 4 },
+        { "title": "Dokumentasi hasil dan serah terima luaran kepada tim", "estimatedHours": 2 }
       ]
     }
   ]

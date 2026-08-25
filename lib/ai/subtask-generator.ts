@@ -44,7 +44,7 @@ export async function generateDynamicSubtasksForCard(params: {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const modelName = process.env.OPENAI_MODEL || "gpt-4o-mini";
+    const modelName = process.env.OPENAI_MODEL || "gpt-5.4-mini";
 
     const prompt = `Anda adalah Senior Scrum Master & Innovation Lead di PT Pegadaian.
 Tugas Anda adalah memecah (breakdown) sebuah kartu Kanban Backlog Inovasi menjadi 3 sampai 5 subtask teknis/operasional konkret yang siap dieksekusi oleh tim.
