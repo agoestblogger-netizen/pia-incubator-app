@@ -668,9 +668,10 @@ export function KanbanClient({
   const [savingDetailCard, setSavingDetailCard] = useState(false);
   const [deletingCard, setDeletingCard] = useState(false);
 
-  // Accordion 3 Sections State
-  const [activeSection, setActiveSection] = useState<1 | 2 | 3>(() =>
-    initialActiveSprint ? 3 : 1
+  // Master Container (Daftar Sprint & Roadmap) & Sub-Accordion Sections State
+  const [isDaftarSprintOpen, setIsDaftarSprintOpen] = useState<boolean>(true);
+  const [activeSubSection, setActiveSubSection] = useState<1 | 2 | 0>(() =>
+    initialActiveSprint ? 2 : 1
   );
   const [selectedSprintNum, setSelectedSprintNum] = useState<number>(() =>
     initialActiveSprint
@@ -1436,18 +1437,26 @@ export function KanbanClient({
   const handleSprintTabClick = (sprintNum: number) => {
     setSelectedSprintNum(sprintNum);
     setSelectedSprintTab(String(sprintNum));
+    const targetSprint = sprints.find((s) => s.nomorSprint === sprintNum);
+    if (targetSprint?.status === "aktif" || targetSprint?.status === "selesai") {
+      setActiveSubSection(2);
+    } else {
+      setActiveSubSection(1);
+    }
   };
 
   const handleSelectSprintForPlanning = (sprintNum: number) => {
     setSelectedSprintNum(sprintNum);
     setSelectedSprintTab(String(sprintNum));
-    setActiveSection(2);
+    setIsDaftarSprintOpen(true);
+    setActiveSubSection(1);
   };
 
   const handleSelectSprintForBoard = (sprintNum: number) => {
     setSelectedSprintNum(sprintNum);
     setSelectedSprintTab(String(sprintNum));
-    setActiveSection(3);
+    setIsDaftarSprintOpen(true);
+    setActiveSubSection(2);
   };
 
   const handleStartSprintFromPlanning = async (
@@ -1489,7 +1498,8 @@ export function KanbanClient({
       );
 
       setSelectedSprintTab(String(selectedSprintNum));
-      setActiveSection(3);
+      setIsDaftarSprintOpen(true);
+      setActiveSubSection(2);
       toast.success(
         `Sprint ${selectedSprintNum} resmi dimulai! Melanjutkan ke Kanban Board.`,
         "Sprint Aktif 🚀"
@@ -1788,15 +1798,15 @@ export function KanbanClient({
       {/* DAFTAR SPRINT, PLANNING & KANBAN BOARD (UNIFIED) */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 1: DAFTAR SPRINT & ROADMAP */}
+      {/* MASTER CONTAINER: DAFTAR SPRINT & ROADMAP */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
-        {/* Section 1 Header */}
+        {/* Section 1 Header: Daftar Sprint & Roadmap */}
         <div
           className={`flex items-center justify-between px-5 py-4 cursor-pointer transition-colors ${
-            activeSection === 1 ? "bg-slate-50 border-b border-gray-200" : "hover:bg-gray-50/80"
+            isDaftarSprintOpen ? "bg-slate-50 border-b border-gray-200" : "hover:bg-gray-50/80"
           }`}
-          onClick={() => setActiveSection(activeSection === 1 ? 2 : 1)}
+          onClick={() => setIsDaftarSprintOpen(!isDaftarSprintOpen)}
         >
           <div className="flex items-center gap-3">
             <div>
@@ -1815,16 +1825,16 @@ export function KanbanClient({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="p-1 rounded-lg text-gray-500 hover:bg-gray-200/60"
+              className="p-1 rounded-lg text-gray-500 hover:bg-gray-200/60 cursor-pointer"
             >
-              {activeSection === 1 ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              {isDaftarSprintOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </button>
           </div>
         </div>
 
-        {/* Section 1 Content */}
-        {activeSection === 1 && (
-          <div className="p-5 space-y-4">
+        {/* Master Content (Semua Bar & Panel Termasuk Planning & Board Berada di Dalamnya) */}
+        {isDaftarSprintOpen && (
+          <div className="p-5 space-y-6">
             {/* Baris Tab Sprint Selector + Tombol Kelola Jumlah Sprint */}
             <div className="border-b border-gray-200 pb-3 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
@@ -1982,359 +1992,359 @@ export function KanbanClient({
                 </div>
               );
             })()}
-          </div>
-        )}
-      </div>
 
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 2: SPRINT PLANNING — SPRINT [N] */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
-        {/* Section 2 Header */}
-        <div
-          className={`flex items-center justify-between px-5 py-4 cursor-pointer transition-colors ${
-            activeSection === 2 ? "bg-amber-50/50 border-b border-gray-200" : "hover:bg-gray-50/80"
-          }`}
-          onClick={() => setActiveSection(activeSection === 2 ? 1 : 2)}
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-600 text-white text-xs font-black shadow-xs">
-              1
-            </span>
-            <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
-                <span>Sprint Planning — Sprint {selectedSprintNum}</span>
-                {currentPlanningSprintObj && (
-                  <Badge
-                    variant={
-                      currentPlanningSprintObj.status === "aktif"
-                        ? "success"
-                        : currentPlanningSprintObj.status === "selesai"
-                        ? "secondary"
-                        : "outline"
-                    }
-                    className="text-[10px] font-bold"
-                  >
-                    {currentPlanningSprintObj.status === "aktif"
-                      ? "🟢 Aktif"
-                      : currentPlanningSprintObj.status === "selesai"
-                      ? "🔵 Selesai"
-                      : "Sedang Direncanakan"}
-                  </Badge>
-                )}
-              </h2>
-              <p className="text-xs text-gray-500 hidden sm:block">
-                Tinjau Backlog Referensi, pantau kapasitas jam tim, dan alokasikan backlog sebelum memulai sprint.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="p-1 rounded-lg text-gray-500 hover:bg-gray-200/60"
-            >
-              {activeSection === 2 ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Section 2 Content */}
-        {activeSection === 2 && currentPlanningSprintObj && (
-          <div className="p-5">
-            <SprintPlanningSection
-              timId={timId}
-              sprint={currentPlanningSprintObj}
-              sprints={sprints}
-              anggotaTim={anggotaTim}
-              aiReferenceCards={aiReferenceCards}
-              backlogCards={plannedCardsForSelectedSprint}
-              capacities={capacities}
-              canEdit={canEdit}
-              phaseGateStatus={phaseGateStatus}
-              onOpenCardDetail={handleOpenCardDetail}
-              onOpenCreateBacklogModal={handleOpenCreateBacklogModal}
-              onRefreshCapacities={() => fetchCapacities(selectedSprintNum)}
-              onStartSprint={handleStartSprintFromPlanning}
-              startingSprint={startingSprint}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 3: KANBAN BOARD — SPRINT [N] (EKSEKUSI HARIAN) */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
-        {/* Section 3 Header */}
-        <div
-          className={`flex items-center justify-between px-5 py-4 cursor-pointer transition-colors ${
-            activeSection === 3 ? "bg-emerald-50/40 border-b border-gray-200" : "hover:bg-gray-50/80"
-          }`}
-          onClick={() => setActiveSection(activeSection === 3 ? 1 : 3)}
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#0F5132] text-white text-xs font-black shadow-xs">
-              2
-            </span>
-            <div>
-              <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
-                <span>Kanban Board — Sprint {selectedSprintNum} (Eksekusi Harian)</span>
-                {currentPlanningSprintObj && (
-                  <Badge
-                    variant={
-                      currentPlanningSprintObj.status === "aktif"
-                        ? "success"
-                        : currentPlanningSprintObj.status === "selesai"
-                        ? "secondary"
-                        : "outline"
-                    }
-                    className="text-[10px] font-bold"
-                  >
-                    {currentPlanningSprintObj.status === "aktif"
-                      ? "🟢 Aktif"
-                      : currentPlanningSprintObj.status === "selesai"
-                      ? "🔵 Selesai"
-                      : "Belum Dimulai"}
-                  </Badge>
-                )}
-              </h2>
-              <p className="text-xs text-gray-500 hidden sm:block">
-                Papan kerja harian untuk mengeksekusi kartu kerja sprint (To Do, In Progress, Review, Done).
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="p-1 rounded-lg text-gray-500 hover:bg-gray-200/60"
-            >
-              {activeSection === 3 ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Section 3 Content */}
-        {activeSection === 3 && (
-          <div className="p-5 space-y-6">
-            {/* If Sprint is not started yet, show locked info */}
-            {currentPlanningSprintObj && currentPlanningSprintObj.status === "belum_dimulai" ? (
-              <div className="text-center py-12 px-4 border border-dashed border-amber-300 rounded-2xl bg-amber-50/40 space-y-3">
-                <Lock className="h-8 w-8 text-amber-600 mx-auto" />
-                <h3 className="text-sm font-bold text-amber-950">
-                  Sprint {selectedSprintNum} Belum Dimulai
-                </h3>
-                <p className="text-xs text-amber-800 max-w-md mx-auto">
-                  Selesaikan estimasi Story Point dan penugasan anggota di <strong>Sprint Planning</strong>, lalu klik <strong>&quot;Mulai Sprint {selectedSprintNum}&quot;</strong> untuk membuka papan kerja eksekusi.
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => setActiveSection(2)}
-                  className="text-xs font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-sm gap-1.5 cursor-pointer"
-                >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                  <span>Buka Sprint Planning</span>
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* Sprint Details Header & Complete Action */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            {/* BAR 1: SPRINT PLANNING — SPRINT [N] */}
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
+              {/* Bar 1 Header */}
+              <div
+                className={`flex items-center justify-between px-5 py-4 cursor-pointer transition-colors ${
+                  activeSubSection === 1 ? "bg-amber-50/50 border-b border-gray-200" : "hover:bg-gray-50/80"
+                }`}
+                onClick={() => setActiveSubSection(activeSubSection === 1 ? 0 : 1)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-600 text-white text-xs font-black shadow-xs">
+                    1
+                  </span>
                   <div>
-                    <h3 className="text-base font-extrabold text-gray-900">
-                      Sprint {currentPlanningSprintObj?.nomorSprint}: {currentPlanningSprintObj?.tujuan || `Sprint ${selectedSprintNum}`}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      {activeSprintCards.length} kartu aktif di sprint ini
+                    <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
+                      <span>Sprint Planning — Sprint {selectedSprintNum}</span>
+                      {currentPlanningSprintObj && (
+                        <Badge
+                          variant={
+                            currentPlanningSprintObj.status === "aktif"
+                              ? "success"
+                              : currentPlanningSprintObj.status === "selesai"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-[10px] font-bold"
+                        >
+                          {currentPlanningSprintObj.status === "aktif"
+                            ? "🟢 Aktif"
+                            : currentPlanningSprintObj.status === "selesai"
+                            ? "🔵 Selesai"
+                            : "Sedang Direncanakan"}
+                        </Badge>
+                      )}
+                    </h2>
+                    <p className="text-xs text-gray-500 hidden sm:block">
+                      Tinjau Backlog Referensi, pantau kapasitas jam tim, dan alokasikan backlog sebelum memulai sprint.
                     </p>
                   </div>
-
-                  {canEdit && currentPlanningSprintObj?.status === "aktif" && (
-                    <Button
-                      size="sm"
-                      disabled={actionLoading}
-                      onClick={handleOpenCompleteDialog}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 px-4 h-9 shadow-sm cursor-pointer"
-                    >
-                      {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                      <span>Selesaikan Sprint</span>
-                    </Button>
-                  )}
                 </div>
 
-                {/* Filter & View Switcher Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-2xs">
-                      <button
-                        onClick={() => setViewMode("board")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                          viewMode === "board"
-                            ? "bg-[#0F5132] text-white shadow-xs"
-                            : "text-gray-600 hover:text-gray-900"
-                        }`}
-                      >
-                        <KanbanIcon className="h-3.5 w-3.5" />
-                        <span>Board View</span>
-                      </button>
-                      <button
-                        onClick={() => setViewMode("timeline")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                          viewMode === "timeline"
-                            ? "bg-[#0F5132] text-white shadow-xs"
-                            : "text-gray-600 hover:text-gray-900"
-                        }`}
-                      >
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>Timeline Roadmap</span>
-                      </button>
-                    </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="p-1 rounded-lg text-gray-500 hover:bg-gray-200/60 cursor-pointer"
+                  >
+                    {activeSubSection === 1 ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
 
-                    <div className="h-5 w-px bg-gray-200" />
+              {/* Bar 1 Content */}
+              {activeSubSection === 1 && currentPlanningSprintObj && (
+                <div className="p-5">
+                  <SprintPlanningSection
+                    timId={timId}
+                    sprint={currentPlanningSprintObj}
+                    sprints={sprints}
+                    anggotaTim={anggotaTim}
+                    aiReferenceCards={aiReferenceCards}
+                    backlogCards={plannedCardsForSelectedSprint}
+                    capacities={capacities}
+                    canEdit={canEdit}
+                    phaseGateStatus={phaseGateStatus}
+                    onOpenCardDetail={handleOpenCardDetail}
+                    onOpenCreateBacklogModal={handleOpenCreateBacklogModal}
+                    onRefreshCapacities={() => fetchCapacities(selectedSprintNum)}
+                    onStartSprint={handleStartSprintFromPlanning}
+                    startingSprint={startingSprint}
+                  />
+                </div>
+              )}
+            </div>
 
-                    {/* Filter Tahap */}
-                    <select
-                      className="text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 font-semibold focus:ring-1 focus:ring-[#0F5132]"
-                      value={tahapFilter}
-                      onChange={(e) => setTahapFilter(e.target.value)}
-                    >
-                      <option value="all">Semua Tahap Inkubasi</option>
-                      <option value="innovation_setup">Innovation Setup</option>
-                      <option value="customer_validation">Customer Validation</option>
-                      <option value="market_validation">Market Validation</option>
-                      <option value="umum">Umum</option>
-                    </select>
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            {/* BAR 2: KANBAN BOARD — SPRINT [N] (EKSEKUSI HARIAN) */}
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden transition-all">
+              {/* Bar 2 Header */}
+              <div
+                className={`flex items-center justify-between px-5 py-4 cursor-pointer transition-colors ${
+                  activeSubSection === 2 ? "bg-emerald-50/40 border-b border-gray-200" : "hover:bg-gray-50/80"
+                }`}
+                onClick={() => setActiveSubSection(activeSubSection === 2 ? 0 : 2)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#0F5132] text-white text-xs font-black shadow-xs">
+                    2
+                  </span>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
+                      <span>Kanban Board — Sprint {selectedSprintNum} (Eksekusi Harian)</span>
+                      {currentPlanningSprintObj && (
+                        <Badge
+                          variant={
+                            currentPlanningSprintObj.status === "aktif"
+                              ? "success"
+                              : currentPlanningSprintObj.status === "selesai"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-[10px] font-bold"
+                        >
+                          {currentPlanningSprintObj.status === "aktif"
+                            ? "🟢 Aktif"
+                            : currentPlanningSprintObj.status === "selesai"
+                            ? "🔵 Selesai"
+                            : "Belum Dimulai"}
+                        </Badge>
+                      )}
+                    </h2>
+                    <p className="text-xs text-gray-500 hidden sm:block">
+                      Papan kerja harian untuk mengeksekusi kartu kerja sprint (To Do, In Progress, Review, Done).
+                    </p>
                   </div>
-
-                  {canEdit && (
-                    <Button
-                      onClick={() => {
-                        setTargetColumn("To Do");
-                        setTargetSprintForNewCard(selectedSprintNum);
-                        setIsNewCardOpen(true);
-                      }}
-                      variant="default"
-                      size="sm"
-                      className="text-xs gap-1.5 font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-xs cursor-pointer"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Tambah Kartu Task</span>
-                    </Button>
-                  )}
                 </div>
 
-                {/* View Mode 1: Board Columns (4 Columns: To Do, In Progress, Review, Done) */}
-                {viewMode === "board" && (
-                  isMounted ? (
-                    <DndContext
-                      id="kanban-board-dnd-context"
-                      sensors={sensors}
-                      collisionDetection={closestCorners}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-                        {columns.map((col, colIdx) => {
-                          const colCards = activeSprintCards.filter(
-                            (c) => c.statusKolom === col.namaKolom
-                          );
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="p-1 rounded-lg text-gray-500 hover:bg-gray-200/60 cursor-pointer"
+                  >
+                    {activeSubSection === 2 ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
 
-                          return (
-                            <KanbanColumnDroppable
-                              key={col.id || col.namaKolom}
-                              columnId={col.namaKolom}
-                              columnTitle={col.namaKolom}
-                              columnIndex={colIdx}
-                              isBacklogArea={false}
-                              cards={colCards}
-                              columns={columns}
-                              sprints={sprints}
-                              onAddCard={(colName) => {
-                                setTargetColumn(colName);
-                                setTargetSprintForNewCard(selectedSprintNum);
-                                setIsNewCardOpen(true);
-                              }}
-                              onMoveCard={handleMoveCardDropdown}
-                              onAssignSprint={handleAssignSprint}
-                              onSelectCard={handleOpenCardDetail}
-                            />
-                          );
-                        })}
-                      </div>
-
-                      {/* Floating Drag Overlay */}
-                      <DragOverlay
-                        dropAnimation={{
-                          sideEffects: defaultDropAnimationSideEffects({
-                            styles: {
-                              active: {
-                                opacity: "0.4",
-                              },
-                            },
-                          }),
-                        }}
-                      >
-                        {activeCard ? <DraggingCardOverlay card={activeCard} /> : null}
-                      </DragOverlay>
-                    </DndContext>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-                      {columns.map((col) => (
-                        <div
-                          key={col.id || col.namaKolom}
-                          className="rounded-2xl p-3.5 border bg-gray-50/80 border-gray-200 min-h-[360px] animate-pulse"
-                        />
-                      ))}
-                    </div>
-                  )
-                )}
-
-                {/* View Mode 2: Timeline Roadmap */}
-                {viewMode === "timeline" && (
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 shadow-xs">
-                    <div className="border-b border-gray-100 pb-4">
-                      <h3 className="text-sm font-bold text-gray-900">
-                        Timeline &amp; Roadmap Visualisasi Keterlambatan — Sprint {selectedSprintNum}
+              {/* Bar 2 Content */}
+              {activeSubSection === 2 && (
+                <div className="p-5 space-y-6">
+                  {/* If Sprint is not started yet, show locked info */}
+                  {currentPlanningSprintObj && currentPlanningSprintObj.status === "belum_dimulai" ? (
+                    <div className="text-center py-12 px-4 border border-dashed border-amber-300 rounded-2xl bg-amber-50/40 space-y-3">
+                      <Lock className="h-8 w-8 text-amber-600 mx-auto" />
+                      <h3 className="text-sm font-bold text-amber-950">
+                        Sprint {selectedSprintNum} Belum Dimulai
                       </h3>
-                      <p className="text-xs text-gray-500">
-                        Visualisasi jadwal rencana dan segmen merah otomatis untuk kartu kerja yang melewati batas waktu.
+                      <p className="text-xs text-amber-800 max-w-md mx-auto">
+                        Selesaikan estimasi Story Point dan penugasan anggota di <strong>Sprint Planning</strong>, lalu klik <strong>&quot;Mulai Sprint {selectedSprintNum}&quot;</strong> untuk membuka papan kerja eksekusi.
                       </p>
+                      <Button
+                        size="sm"
+                        onClick={() => setActiveSubSection(1)}
+                        className="text-xs font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-sm gap-1.5 cursor-pointer"
+                      >
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span>Buka Sprint Planning</span>
+                      </Button>
                     </div>
+                  ) : (
+                    <>
+                      {/* Sprint Details Header & Complete Action */}
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                        <div>
+                          <h3 className="text-base font-extrabold text-gray-900">
+                            Sprint {currentPlanningSprintObj?.nomorSprint}: {currentPlanningSprintObj?.tujuan || `Sprint ${selectedSprintNum}`}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            {activeSprintCards.length} kartu aktif di sprint ini
+                          </p>
+                        </div>
 
-                    {/* Render Timeline Cards */}
-                    {activeSprintCards.length === 0 ? (
-                      <div className="text-center py-10 text-xs text-gray-500">
-                        Belum ada kartu kerja dengan jadwal di sprint ini.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {activeSprintCards.map((c) => (
-                          <div
-                            key={c.id}
-                            onClick={() => handleOpenCardDetail(c)}
-                            className="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-gray-300 shadow-2xs cursor-pointer flex items-center justify-between gap-3"
+                        {canEdit && currentPlanningSprintObj?.status === "aktif" && (
+                          <Button
+                            size="sm"
+                            disabled={actionLoading}
+                            onClick={handleOpenCompleteDialog}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 px-4 h-9 shadow-sm cursor-pointer"
                           >
-                            <div className="min-w-0">
-                              <span className="text-xs font-bold text-gray-900 block truncate">
-                                {c.judul}
-                              </span>
-                              <span className="text-[11px] text-gray-500">
-                                {c.statusKolom} &bull; {c.storyPoint ? `${c.storyPoint} SP` : "3 SP"}
-                              </span>
-                            </div>
-                            <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                              {c.statusKolom}
-                            </span>
-                          </div>
-                        ))}
+                            {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                            <span>Selesaikan Sprint</span>
+                          </Button>
+                        )}
                       </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+
+                      {/* Filter & View Switcher Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-2xs">
+                            <button
+                              onClick={() => setViewMode("board")}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                viewMode === "board"
+                                  ? "bg-[#0F5132] text-white shadow-xs"
+                                  : "text-gray-600 hover:text-gray-900"
+                              }`}
+                            >
+                              <KanbanIcon className="h-3.5 w-3.5" />
+                              <span>Board View</span>
+                            </button>
+                            <button
+                              onClick={() => setViewMode("timeline")}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                viewMode === "timeline"
+                                  ? "bg-[#0F5132] text-white shadow-xs"
+                                  : "text-gray-600 hover:text-gray-900"
+                              }`}
+                            >
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>Timeline Roadmap</span>
+                            </button>
+                          </div>
+
+                          <div className="h-5 w-px bg-gray-200" />
+
+                          {/* Filter Tahap */}
+                          <select
+                            className="text-xs bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 font-semibold focus:ring-1 focus:ring-[#0F5132]"
+                            value={tahapFilter}
+                            onChange={(e) => setTahapFilter(e.target.value)}
+                          >
+                            <option value="all">Semua Tahap Inkubasi</option>
+                            <option value="innovation_setup">Innovation Setup</option>
+                            <option value="customer_validation">Customer Validation</option>
+                            <option value="market_validation">Market Validation</option>
+                            <option value="umum">Umum</option>
+                          </select>
+                        </div>
+
+                        {canEdit && (
+                          <Button
+                            onClick={() => {
+                              setTargetColumn("To Do");
+                              setTargetSprintForNewCard(selectedSprintNum);
+                              setIsNewCardOpen(true);
+                            }}
+                            variant="default"
+                            size="sm"
+                            className="text-xs gap-1.5 font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-xs cursor-pointer"
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span>Tambah Kartu Task</span>
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* View Mode 1: Board Columns (4 Columns: To Do, In Progress, Review, Done) */}
+                      {viewMode === "board" && (
+                        isMounted ? (
+                          <DndContext
+                            id="kanban-board-dnd-context"
+                            sensors={sensors}
+                            collisionDetection={closestCorners}
+                            onDragStart={handleDragStart}
+                            onDragOver={handleDragOver}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                              {columns.map((col, colIdx) => {
+                                const colCards = activeSprintCards.filter(
+                                  (c) => c.statusKolom === col.namaKolom
+                                );
+
+                                return (
+                                  <KanbanColumnDroppable
+                                    key={col.id || col.namaKolom}
+                                    columnId={col.namaKolom}
+                                    columnTitle={col.namaKolom}
+                                    columnIndex={colIdx}
+                                    isBacklogArea={false}
+                                    cards={colCards}
+                                    columns={columns}
+                                    sprints={sprints}
+                                    onAddCard={(colName) => {
+                                      setTargetColumn(colName);
+                                      setTargetSprintForNewCard(selectedSprintNum);
+                                      setIsNewCardOpen(true);
+                                    }}
+                                    onMoveCard={handleMoveCardDropdown}
+                                    onAssignSprint={handleAssignSprint}
+                                    onSelectCard={handleOpenCardDetail}
+                                  />
+                                );
+                              })}
+                            </div>
+
+                            {/* Floating Drag Overlay */}
+                            <DragOverlay
+                              dropAnimation={{
+                                sideEffects: defaultDropAnimationSideEffects({
+                                  styles: {
+                                    active: {
+                                      opacity: "0.4",
+                                    },
+                                  },
+                                }),
+                              }}
+                            >
+                              {activeCard ? <DraggingCardOverlay card={activeCard} /> : null}
+                            </DragOverlay>
+                          </DndContext>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                            {columns.map((col) => (
+                              <div
+                                key={col.id || col.namaKolom}
+                                className="rounded-2xl p-3.5 border bg-gray-50/80 border-gray-200 min-h-[360px] animate-pulse"
+                              />
+                            ))}
+                          </div>
+                        )
+                      )}
+
+                      {/* View Mode 2: Timeline Roadmap */}
+                      {viewMode === "timeline" && (
+                        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 shadow-xs">
+                          <div className="border-b border-gray-100 pb-4">
+                            <h3 className="text-sm font-bold text-gray-900">
+                              Timeline &amp; Roadmap Visualisasi Keterlambatan — Sprint {selectedSprintNum}
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                              Visualisasi jadwal rencana dan segmen merah otomatis untuk kartu kerja yang melewati batas waktu.
+                            </p>
+                          </div>
+
+                          {/* Render Timeline Cards */}
+                          {activeSprintCards.length === 0 ? (
+                            <div className="text-center py-10 text-xs text-gray-500">
+                              Belum ada kartu kerja dengan jadwal di sprint ini.
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {activeSprintCards.map((c) => (
+                                <div
+                                  key={c.id}
+                                  onClick={() => handleOpenCardDetail(c)}
+                                  className="p-3.5 rounded-xl border border-gray-200 bg-white hover:border-gray-300 shadow-2xs cursor-pointer flex items-center justify-between gap-3"
+                                >
+                                  <div className="min-w-0">
+                                    <span className="text-xs font-bold text-gray-900 block truncate">
+                                      {c.judul}
+                                    </span>
+                                    <span className="text-[11px] text-gray-500">
+                                      {c.statusKolom} &bull; {c.storyPoint ? `${c.storyPoint} SP` : "3 SP"}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                    {c.statusKolom}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
