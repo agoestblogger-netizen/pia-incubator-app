@@ -485,62 +485,6 @@ export async function adoptAiCardAction(
       .where(eq(kanbanCard.id, cardId))
       .returning();
 
-    // Auto-generate subtasks on adoption if none exist yet
-    if (updated) {
-      try {
-        const existingSubtasks = await db
-          .select({ id: kanbanSubtask.id })
-          .from(kanbanSubtask)
-          .where(eq(kanbanSubtask.taskId, cardId))
-          .limit(1);
-
-        if (existingSubtasks.length === 0) {
-          let subtasksToInsert: Array<{ title: string; estimatedHours: number }> = [];
-
-          // 1. Check if card matches any of the 15 Template Baku (CV/MV)
-          const predefined = getPredefinedSubtasks(updated.judul, updated.tahap);
-          if (predefined && predefined.length > 0) {
-            subtasksToInsert = predefined;
-          } else {
-            // 2. Dynamic generation via OpenAI for AI Draft Roadmap cards
-            subtasksToInsert = await generateDynamicSubtasksForCard({
-              cardTitle: updated.judul,
-              cardDesc: updated.deskripsi,
-              acceptanceCriteria: updated.acceptanceCriteria,
-              storyPoint: updated.storyPoint,
-            });
-          }
-
-          if (subtasksToInsert.length > 0) {
-            const subtaskRows = subtasksToInsert.map((st, idx) => ({
-              taskId: cardId,
-              title: st.title,
-              estimatedHours: st.estimatedHours || 3,
-              isDone: false,
-              orderIndex: idx,
-              createdBy: user.id,
-            }));
-
-            await db.insert(kanbanSubtask).values(subtaskRows);
-
-            // If card estimasiJam was not manually overridden, update it to sum of subtask hours
-            if (!cardOverrides?.estimasiJam && (!updated.estimasiJam || updated.estimasiJam === 0)) {
-              const totalEstHours = subtasksToInsert.reduce((acc, curr) => acc + (curr.estimatedHours || 0), 0);
-              if (totalEstHours > 0) {
-                await db
-                  .update(kanbanCard)
-                  .set({ estimasiJam: totalEstHours })
-                  .where(eq(kanbanCard.id, cardId));
-                updated.estimasiJam = totalEstHours;
-              }
-            }
-          }
-        }
-      } catch (stErr: any) {
-        console.warn(`[adoptAiCardAction] Subtask auto-generation warning for card ${cardId}:`, stErr.message);
-      }
-    }
-
     await logKanbanActivity({
       taskId: cardId,
       userId: user.id,

@@ -9,6 +9,7 @@ import {
   users,
   dossierPiaArchive,
   kanbanCard,
+  kanbanSubtask,
   taskAttachment,
   timInovator,
   sprint,
@@ -20,6 +21,7 @@ import { logAudit } from "@/lib/db/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAiCharterFields } from "@/lib/ai/charter-generator";
 import { generateAiBacklogFromRoadmap, AiBacklogTask } from "@/lib/ai/backlog-generator";
+import { getPredefinedSubtasks } from "@/lib/data/subtask-templates";
 
 export type RoleAssignmentItem = {
   id?: string; // local temporary id for UI list keys
@@ -1223,6 +1225,17 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           sprintNum = (i % totalSprints) + 1;
         }
 
+        const sp = t.storyPoint || 3;
+        const subtasks = (t.subtasks && t.subtasks.length > 0)
+          ? t.subtasks
+          : [
+              { title: `Persiapan, riset kebutuhan, & koordinasi: ${t.judul.substring(0, 45)}`, estimatedHours: Math.max(2, Math.round(sp * 1.2)) },
+              { title: `Implementasi teknis & eksekusi aktivitas utama`, estimatedHours: Math.max(3, Math.round(sp * 2.0)) },
+              { title: `Validasi, pengujian hasil, & dokumentasi luaran`, estimatedHours: Math.max(2, Math.round(sp * 1.0)) },
+            ];
+
+        const totalEstHours = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+
         cardsToInsert.push({
           timInovatorId: timId,
           judul: t.judul,
@@ -1232,59 +1245,76 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           tahap: "innovation_setup",
           sprintNumber: null,
           suggestedSprintNumber: sprintNum,
-          storyPoint: t.storyPoint || 3,
+          storyPoint: sp,
+          estimasiJam: totalEstHours > 0 ? totalEstHours : null,
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference', // Backlog Referensi
           urutan: cardUrutan++,
-        });
+          _initialSubtasks: subtasks,
+        } as any);
       }
     } else {
       const judulSolusi = cleanText(submisi.judul || snap.judul_inovasi || "Inovasi");
-      cardsToInsert.push({
-        timInovatorId: timId,
-        judul: `Susun penyelarasan problem space — ${judulSolusi.substring(0, 40)}`,
-        deskripsi: `Validasi ulang temuan masalah, HMW, dan sasaran pengguna awal bersama Inisiator dan Promotor.`,
-        acceptanceCriteria: `Dokumen penyelarasan problem space dan target profil pengguna awal yang disepakati bersama.`,
-        statusKolom: "To Do",
-        tahap: "innovation_setup",
-        sprintNumber: null,
-        suggestedSprintNumber: 1,
-        storyPoint: 3,
-        label: "Draf Roadmap",
-        reviewStatus: 'ai_reference',
-        urutan: cardUrutan++,
-      });
-
-      cardsToInsert.push({
-        timInovatorId: timId,
-        judul: `Rancang desain konseptual & arsitektur solusi MVP`,
-        deskripsi: `Rumuskan cakupan fitur inti yang akan diuji pada fase Customer Validation & Market Validation.`,
-        acceptanceCriteria: `Dokumen arsitektur solusi konseptual dan daftar fitur MVP yang siap diimplementasikan.`,
-        statusKolom: "To Do",
-        tahap: "innovation_setup",
-        sprintNumber: null,
-        suggestedSprintNumber: Math.min(totalSprints, 2),
-        storyPoint: 5,
-        label: "Draf Roadmap",
-        reviewStatus: 'ai_reference',
-        urutan: cardUrutan++,
-      });
+      const fallbackTasks = [
+        {
+          judul: `Susun penyelarasan problem space — ${judulSolusi.substring(0, 40)}`,
+          deskripsi: `Validasi ulang temuan masalah, HMW, dan sasaran pengguna awal bersama Inisiator dan Promotor.`,
+          acceptanceCriteria: `Dokumen penyelarasan problem space dan target profil pengguna awal yang disepakati bersama.`,
+          sprint: 1,
+          sp: 3,
+          subtasks: [
+            { title: "Identifikasi kembali temuan masalah & sasaran pengguna", estimatedHours: 3 },
+            { title: "Sesi penyelarasan bersama Inisiator dan Promotor", estimatedHours: 3 },
+            { title: "Dokumentasikan profil target pengguna yang disepakati", estimatedHours: 2 },
+          ],
+        },
+        {
+          judul: `Rancang desain konseptual & arsitektur solusi MVP`,
+          deskripsi: `Rumuskan cakupan fitur inti yang akan diuji pada fase Customer Validation & Market Validation.`,
+          acceptanceCriteria: `Dokumen arsitektur solusi konseptual dan daftar fitur MVP yang siap diimplementasikan.`,
+          sprint: Math.min(totalSprints, 2),
+          sp: 5,
+          subtasks: [
+            { title: "Petakan cakupan fitur inti & user journey", estimatedHours: 4 },
+            { title: "Susun rancangan arsitektur sistem & integrasi data", estimatedHours: 6 },
+            { title: "Review kelayakan teknis bersama tim", estimatedHours: 3 },
+          ],
+        },
+      ];
 
       if (formDetail.kebutuhan_dukungan || formDetail.bi_sumber_daya || formDetail.bc_sumber_daya_diperlukan) {
-        cardsToInsert.push({
-          timInovatorId: timId,
+        fallbackTasks.push({
           judul: `Konsolidasikan kebutuhan resource & koordinasi SME`,
           deskripsi: `Konsolidasikan kebutuhan anggaran, teknologi, dan koordinasi bersama Subject Matter Expert.`,
           acceptanceCriteria: `Rencana alokasi sumber daya dan jadwal koordinasi dengan SME yang telah dikonfirmasi.`,
+          sprint: Math.min(totalSprints, 3),
+          sp: 3,
+          subtasks: [
+            { title: "Inventarisir kebutuhan teknologi & anggaran", estimatedHours: 3 },
+            { title: "Jadwalkan sesi konsultasi dengan SME terkait", estimatedHours: 2 },
+            { title: "Finalisasi rencana alokasi sumber daya proyek", estimatedHours: 2 },
+          ],
+        });
+      }
+
+      for (const ft of fallbackTasks) {
+        const totalEstHours = ft.subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+        cardsToInsert.push({
+          timInovatorId: timId,
+          judul: ft.judul,
+          deskripsi: ft.deskripsi,
+          acceptanceCriteria: ft.acceptanceCriteria,
           statusKolom: "To Do",
           tahap: "innovation_setup",
           sprintNumber: null,
-          suggestedSprintNumber: Math.min(totalSprints, 3),
-          storyPoint: 3,
+          suggestedSprintNumber: ft.sprint,
+          storyPoint: ft.sp,
+          estimasiJam: totalEstHours > 0 ? totalEstHours : null,
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
-        });
+          _initialSubtasks: ft.subtasks,
+        } as any);
       }
     }
   }
@@ -1301,6 +1331,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       ? 2
       : Math.min(totalSprints, 3);
 
+    const predefined = getPredefinedSubtasks(t.judul, t.tahap) || [];
+    const totalEstHours = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+
     cardsToInsert.push({
       timInovatorId: timId,
       judul: t.judul,
@@ -1311,10 +1344,12 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       sprintNumber: null,
       suggestedSprintNumber: cvSprint,
       storyPoint: t.storyPoint,
+      estimasiJam: totalEstHours > 0 ? totalEstHours : null,
       label: "Template Baku CV",
       reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
       urutan: cardUrutan++,
-    });
+      _initialSubtasks: predefined,
+    } as any);
   }
 
   for (let mvIdx = 0; mvIdx < bakuMVTasks.length; mvIdx++) {
@@ -1326,6 +1361,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       ? Math.min(totalSprints, Math.max(1, totalSprints - 1))
       : totalSprints;
 
+    const predefined = getPredefinedSubtasks(t.judul, t.tahap) || [];
+    const totalEstHours = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+
     cardsToInsert.push({
       timInovatorId: timId,
       judul: t.judul,
@@ -1336,14 +1374,45 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       sprintNumber: null,
       suggestedSprintNumber: mvSprint,
       storyPoint: t.storyPoint,
+      estimasiJam: totalEstHours > 0 ? totalEstHours : null,
       label: "Template Baku MV",
       reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
       urutan: cardUrutan++,
-    });
+      _initialSubtasks: predefined,
+    } as any);
   }
 
   if (cardsToInsert.length > 0) {
-    const insertedCards = await db.insert(kanbanCard).values(cardsToInsert).returning();
+    const insertPayload = cardsToInsert.map(c => {
+      const { _initialSubtasks, ...rest } = c as any;
+      return rest;
+    });
+
+    const insertedCards = await db.insert(kanbanCard).values(insertPayload).returning();
+
+    // Bulk insert initial subtasks into kanbanSubtask table for all initial cards
+    const subtaskRowsToInsert: Array<typeof kanbanSubtask.$inferInsert> = [];
+    for (let i = 0; i < insertedCards.length; i++) {
+      const card = insertedCards[i];
+      const initialSubtasks = (cardsToInsert[i] as any)?._initialSubtasks as Array<{ title: string; estimatedHours: number }> | undefined;
+      if (initialSubtasks && initialSubtasks.length > 0) {
+        for (let sIdx = 0; sIdx < initialSubtasks.length; sIdx++) {
+          const st = initialSubtasks[sIdx];
+          subtaskRowsToInsert.push({
+            taskId: card.id,
+            title: st.title,
+            estimatedHours: st.estimatedHours || 3,
+            isDone: false,
+            orderIndex: sIdx,
+            createdBy: null,
+          });
+        }
+      }
+    }
+
+    if (subtaskRowsToInsert.length > 0) {
+      await db.insert(kanbanSubtask).values(subtaskRowsToInsert);
+    }
 
     // Auto-attach proposal dossier documents to innovation_setup roadmap cards
     if (teamDossier && teamDossier.snapshotData) {

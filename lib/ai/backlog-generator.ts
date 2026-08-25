@@ -1,11 +1,17 @@
 import OpenAI from 'openai';
 
+export interface AiBacklogSubtask {
+  title: string;
+  estimatedHours: number;
+}
+
 export interface AiBacklogTask {
   judul: string;
   deskripsi: string;
   acceptanceCriteria: string;
   suggestedSprintNumber?: number;
   storyPoint?: number;
+  subtasks?: AiBacklogSubtask[];
 }
 
 export interface AiBacklogResponse {
@@ -98,9 +104,11 @@ Output HARUS berupa JSON murni:
 }`;
 
     const userPrompt = `Nilai Story Point untuk kartu task berikut:
-Judul: ${judul}
-Deskripsi: ${deskripsi || '-'}
-Acceptance Criteria: ${acceptanceCriteria || '-'}`;
+- Judul: ${judul}
+- Deskripsi: ${deskripsi || '-'}
+- Acceptance Criteria: ${acceptanceCriteria || '-'}
+
+Keluarkan skor Story Point Fibonacci murni.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -111,17 +119,27 @@ Acceptance Criteria: ${acceptanceCriteria || '-'}`;
       response_format: { type: 'json_object' },
     });
 
-    const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-    if (typeof parsed.storyPoint === 'number') {
-      return normalizeToFibonacci(parsed.storyPoint);
+    const responseText = completion.choices[0]?.message?.content || '';
+    if (!responseText) {
+      return estimateStoryPointHeuristic(judul, deskripsi || '', acceptanceCriteria || '');
     }
-    return estimateStoryPointHeuristic(judul, deskripsi || '', acceptanceCriteria || '');
+
+    const parsed = JSON.parse(responseText);
+    const spRaw = typeof parsed.storyPoint === 'number' ? parsed.storyPoint : parseInt(parsed.storyPoint, 10);
+    return normalizeToFibonacci(spRaw, estimateStoryPointHeuristic(judul, deskripsi || '', acceptanceCriteria || ''));
   } catch (err: any) {
-    console.warn(`[estimateCardStoryPointWithAi] Error evaluating SP: ${err.message}, fallback to heuristic.`);
+    console.warn(`[AI StoryPoint] Error estimating SP for "${judul}":`, err.message);
     return estimateStoryPointHeuristic(judul, deskripsi || '', acceptanceCriteria || '');
   }
 }
 
+/**
+ * Panggil AI (gpt-5.4-mini / gpt-4o-mini) untuk memecah teks Roadmap proposal
+ * menjadi kumpulan Scrum Backlog Tasks atomik lengkap dengan:
+ * 1. suggestedSprintNumber (terdistribusi dari Sprint 1 sampai totalSprints)
+ * 2. storyPoint skala Fibonacci (1, 2, 3, 5, 8, 13)
+ * 3. subtasks (3-5 langkah kerja konkret dengan estimatedHours)
+ */
 export async function generateAiBacklogFromRoadmap(params: {
   teamId: string;
   proposalId: string;
@@ -150,7 +168,7 @@ export async function generateAiBacklogFromRoadmap(params: {
     const openai = new OpenAI({ apiKey });
 
     const systemPrompt = `Anda adalah Scrum Master & Agile Coach senior ahli metodologi Scrum dan Lean Startup di PT Pegadaian (Persero).
-Tugas Anda adalah membedah dan memecah roadmap implementasi inovasi (bagian "Cara mewujudkan ide inovasi" / tahapan implementasi) dari proposal PIA Season 12 menjadi daftar Backlog Task atomik berstandar Scrum yang tajam, konkret, lengkap dengan estimasi Story Point skala Fibonacci, dan siap dikerjakan tim.
+Tugas Anda adalah membedah dan memecah roadmap implementasi inovasi (bagian "Cara mewujudkan ide inovasi" / tahapan implementasi) dari proposal PIA Season 12 menjadi daftar Backlog Task atomik berstandar Scrum yang tajam, konkret, lengkap dengan estimasi Story Point skala Fibonacci, serta 3-5 SUBTASK teknis/operasional per kartu, siap dikerjakan tim.
 
 ATURAN GRANULARITAS TASK (SANGAT PENTING):
 1. DILARANG KERAS MEMBUAT TASK SETINGKAT EPIC / MAKRO.
@@ -169,6 +187,9 @@ Petakan setiap task ke nomor sprint yang paling tepat (integer dari 1 sampai ${t
 - Sprint 2 s.d. ${Math.max(2, totalSprints - 1)}: Eksekusi pengembangan prototipe, integrasi, pengujian bertahap.
 - Sprint ${totalSprints}: Uji coba akhir, rilis rintisan, pelaporan performa.
 
+ATURAN SUBTASK (subtasks):
+Untuk setiap task, buat 3 sampai 5 subtask tindakan teknis yang runtut (Persiapan -> Eksekusi -> Validasi/Dokumentasi) beserta estimasi jam (integer 1-16 jam).
+
 ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
 1. JUDUL TASK: Wajib diawali KATA KERJA AKTIF / IMPERATIVE VERB sebagai KATA PERTAMA (contoh: "Susun", "Siapkan", "Jadwalkan", "Koordinasikan", "Petakan", "Rancang", "Kembangkan", "Hubungkan", "Lakukan", "Uji coba", "Rangkum", "Evaluasi").
 2. ANTI-HALUSINASI KETAT: HANYA gunakan konteks, nama sistem, stakeholder, dan entitas yang disebutkan di proposal/roadmap.
@@ -180,7 +201,8 @@ ATURAN FORMAT SCRUM & PEMISAHAN FIELD:
 4. ACCEPTANCE CRITERIA (acceptanceCriteria): Berisi definisi luaran konkret / tolok ukur hasil kerja task tersebut tanpa awalan "Hasil atau output dari task/aktivitas ini adalah".
 5. storyPoint: Angka integer salah satu dari [1, 2, 3, 5, 8, 13].
 6. suggestedSprintNumber: Angka integer antara 1 sampai ${totalSprints}.
-7. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
+7. subtasks: Array 3-5 subtask dengan "title" (string) dan "estimatedHours" (integer 1-16).
+8. Output HARUS berupa format JSON murni tanpa markdown formatting.`;
 
     const userPrompt = `PROPOSAL METADATA:
 - Proposal ID: ${proposalId}
@@ -196,7 +218,7 @@ ${roadmapText}
 KONTEKS PROPOSAL TERKAIT (MASALAH, SOLUSI & DUKUNGAN):
 ${rawProposalData ? JSON.stringify(rawProposalData, null, 2) : 'Tidak ada'}
 
-Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPoint' (1, 2, 3, 5, 8, 13) ke dalam format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPoint' (1, 2, 3, 5, 8, 13) dan 'subtasks' ke dalam format JSON:
 {
   "tasks": [
     {
@@ -204,7 +226,21 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPo
       "deskripsi": "Kata Kerja Imperatif + penjelasan konteks aktivitas langsung tanpa subjek 'Tim'.",
       "acceptanceCriteria": "Luaran konkret / dokumen / deliverable / tolok ukur selesai.",
       "storyPoint": 3,
-      "suggestedSprintNumber": 1
+      "suggestedSprintNumber": 1,
+      "subtasks": [
+        {
+          "title": "Subtask aksi spesifik 1",
+          "estimatedHours": 3
+        },
+        {
+          "title": "Subtask aksi spesifik 2",
+          "estimatedHours": 4
+        },
+        {
+          "title": "Subtask aksi spesifik 3",
+          "estimatedHours": 2
+        }
+      ]
     }
   ]
 }`;
@@ -256,17 +292,42 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik lengkap dengan 'storyPo
 
         const sp = normalizeToFibonacci(t.storyPoint, estimateStoryPointHeuristic(t.judul, t.deskripsi, t.acceptanceCriteria));
 
+        const subtasks: AiBacklogSubtask[] = [];
+        if (Array.isArray(t.subtasks)) {
+          for (const st of t.subtasks) {
+            if (st && typeof st.title === 'string' && st.title.trim().length > 0) {
+              const est = typeof st.estimatedHours === 'number' && st.estimatedHours > 0
+                ? Math.round(st.estimatedHours)
+                : Math.max(2, Math.round(sp * 1.5));
+              subtasks.push({
+                title: st.title.trim(),
+                estimatedHours: Math.min(24, Math.max(1, est)),
+              });
+            }
+          }
+        }
+
+        // Fallback subtasks if AI did not return valid subtasks array
+        if (subtasks.length === 0) {
+          subtasks.push(
+            { title: `Persiapan, riset kebutuhan, & koordinasi: ${t.judul.trim().substring(0, 45)}`, estimatedHours: Math.max(2, Math.round(sp * 1.2)) },
+            { title: `Implementasi teknis & eksekusi aktivitas utama`, estimatedHours: Math.max(3, Math.round(sp * 2.0)) },
+            { title: `Validasi, pengujian hasil, & dokumentasi luaran`, estimatedHours: Math.max(2, Math.round(sp * 1.0)) }
+          );
+        }
+
         validatedTasks.push({
           judul: t.judul.trim(),
           deskripsi: typeof t.deskripsi === 'string' ? t.deskripsi.trim() : '',
           acceptanceCriteria: typeof t.acceptanceCriteria === 'string' ? t.acceptanceCriteria.trim() : '',
           storyPoint: sp,
           suggestedSprintNumber: sprintNum,
+          subtasks,
         });
       }
     }
 
-    console.log(`[AI Backlog] ✅ Successfully generated ${validatedTasks.length} Scrum Backlog tasks with Story Points for Proposal ID: ${proposalId} using model: ${modelName}`);
+    console.log(`[AI Backlog] ✅ Successfully generated ${validatedTasks.length} Scrum Backlog tasks with Story Points & Subtasks for Proposal ID: ${proposalId} using model: ${modelName}`);
     return validatedTasks.length > 0 ? validatedTasks : null;
   } catch (err: any) {
     console.error(`[AI Backlog] ❌ Error during AI Backlog generation for Proposal ID ${proposalId}:`, err.message);
