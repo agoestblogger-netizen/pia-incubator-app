@@ -1999,7 +1999,7 @@ export function KanbanClient({
         >
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center h-6 w-6 rounded-full bg-amber-600 text-white text-xs font-black shadow-xs">
-              2
+              1
             </span>
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
@@ -2075,7 +2075,7 @@ export function KanbanClient({
         >
           <div className="flex items-center gap-3">
             <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#0F5132] text-white text-xs font-black shadow-xs">
-              3
+              2
             </span>
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
@@ -2126,7 +2126,7 @@ export function KanbanClient({
                   Sprint {selectedSprintNum} Belum Dimulai
                 </h3>
                 <p className="text-xs text-amber-800 max-w-md mx-auto">
-                  Selesaikan estimasi jam dan penugasan anggota di <strong>Section 2: Sprint Planning</strong>, lalu klik <strong>&quot;Mulai Sprint {selectedSprintNum}&quot;</strong> untuk membuka papan kerja eksekusi.
+                  Selesaikan estimasi Story Point dan penugasan anggota di <strong>Sprint Planning</strong>, lalu klik <strong>&quot;Mulai Sprint {selectedSprintNum}&quot;</strong> untuk membuka papan kerja eksekusi.
                 </p>
                 <Button
                   size="sm"
