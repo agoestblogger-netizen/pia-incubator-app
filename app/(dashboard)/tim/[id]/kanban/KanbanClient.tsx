@@ -1799,9 +1799,6 @@ export function KanbanClient({
           onClick={() => setActiveSection(activeSection === 1 ? 2 : 1)}
         >
           <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-slate-800 text-white text-xs font-black shadow-xs">
-              1
-            </span>
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
                 <span>Daftar Sprint &amp; Roadmap</span>
