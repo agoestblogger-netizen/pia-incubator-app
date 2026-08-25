@@ -163,17 +163,28 @@ export function TimPhaseGateNav({
           </h1>
         </div>
 
-        {/* Baris Tombol Menu: Dashboard (Segera Hadir) */}
+        {/* Baris Tombol Menu: Dashboard (Segera Hadir - Solid Putih Kontras Tinggi) */}
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/15">
           <button
             type="button"
             disabled
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white/10 text-white/50 border border-white/15 backdrop-blur-xs cursor-not-allowed select-none transition-colors"
+            style={{
+              backgroundColor: "#FFFFFF",
+              color: "#0B3D2E",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)",
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-white cursor-not-allowed select-none transition-all opacity-100"
             title="Fitur Dashboard Ringkasan & Statistik Tim Segera Hadir"
           >
-            <BarChart3 className="h-3.5 w-3.5 opacity-60" />
-            <span>Dashboard</span>
-            <span className="text-[9px] font-semibold bg-white/15 px-1.5 py-0.5 rounded-md text-white/70">
+            <BarChart3 className="h-3.5 w-3.5 text-[#0B3D2E] shrink-0" />
+            <span className="text-[#0B3D2E]">Dashboard</span>
+            <span
+              style={{
+                backgroundColor: "#E5E5EA",
+                color: "#4A4A5C",
+              }}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            >
               Segera Hadir
             </span>
           </button>
