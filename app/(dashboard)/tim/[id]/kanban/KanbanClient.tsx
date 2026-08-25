@@ -47,6 +47,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
   Plus,
   Calendar,
   Layers,
@@ -759,6 +764,30 @@ export function KanbanClient({
       setSubtasks(res.data);
     }
     setLoadingSubtasks(false);
+  };
+
+  const handleQuickAssignSprint = async (cardId: string, sprintNum: number | null) => {
+    setDetailSprintNumber(sprintNum);
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === cardId
+          ? {
+              ...c,
+              sprintNumber: sprintNum,
+              statusKolom: sprintNum ? (c.statusKolom === 'Backlog' ? 'To Do' : c.statusKolom) : 'Backlog',
+            }
+          : c
+      )
+    );
+    const res = await updateKanbanCardSprintAction(timId, cardId, sprintNum);
+    if (res.success) {
+      toast.success(
+        sprintNum ? `Kartu berhasil di-assign ke Sprint ${sprintNum}.` : 'Kartu dikembalikan ke Backlog.',
+        'Sprint Diperbarui'
+      );
+    } else {
+      toast.error(res.error || 'Gagal update sprint kartu.');
+    }
   };
 
   const handleCreateSubtask = async () => {
@@ -3331,10 +3360,61 @@ export function KanbanClient({
 
                         {/* Penugasan Sprint */}
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-gray-800 block flex items-center gap-1.5">
-                            <Layers className="h-4 w-4 text-gray-500" />
-                            <span>Sprint</span>
-                          </label>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <Layers className="h-4 w-4 text-gray-500" />
+                              <span>Sprint</span>
+                            </label>
+
+                            {/* Tombol Cepat: Assign ke Sprint (Direct 1-Click Commit) */}
+                            {canEdit && isCardPersisted && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-[10px] font-bold text-[#0F5132] hover:bg-[#E3F0E6] gap-1 cursor-pointer"
+                                    title="Assign langsung ke Sprint (1-klik commit)"
+                                  >
+                                    <Zap className="h-3 w-3 fill-[#3E9463] text-[#3E9463]" />
+                                    <span>Assign ke Sprint ⚡</span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56 p-2 bg-white rounded-xl shadow-xl border border-[#C9E4D0]" align="end">
+                                  <span className="text-[11px] font-bold text-[#0B3D2E] block mb-1.5">
+                                    Pilih Target Sprint:
+                                  </span>
+                                  <div className="space-y-1">
+                                    {sprints.map((s) => (
+                                      <button
+                                        key={s.nomorSprint}
+                                        type="button"
+                                        onClick={async () => {
+                                          await handleQuickAssignSprint(selectedCardForDetail.id, s.nomorSprint);
+                                        }}
+                                        className="w-full text-left p-1.5 rounded-lg hover:bg-[#F0F7F1] text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-[#C9E4D0]"
+                                      >
+                                        <span>Sprint {s.nomorSprint} {s.status === "aktif" ? "(Aktif)" : ""}</span>
+                                        <ArrowRight className="h-3 w-3 text-[#3E9463]" />
+                                      </button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        await handleQuickAssignSprint(selectedCardForDetail.id, null);
+                                      }}
+                                      className="w-full text-left p-1.5 rounded-lg hover:bg-gray-100 text-xs font-semibold text-gray-500 flex items-center justify-between transition-colors cursor-pointer border border-transparent"
+                                    >
+                                      <span>📦 Kembalikan ke Backlog</span>
+                                      <ArrowRight className="h-3 w-3 text-gray-400" />
+                                    </button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
+
                           <select
                             value={detailSprintNumber === null ? "backlog" : String(detailSprintNumber)}
                             disabled={!canEdit}

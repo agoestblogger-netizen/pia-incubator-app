@@ -20,6 +20,7 @@ import {
 
 import {
   createKanbanCardAction,
+  updateKanbanCardSprintAction,
   getTaskSubtasksAction,
   createTaskSubtaskAction,
   toggleTaskSubtaskAction,
@@ -59,6 +60,7 @@ import {
   FolderOpen,
   ArrowRight,
   Edit3,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -533,6 +535,14 @@ export function DiskusiCanvasClient({
         targetY + stickyH > pinY;
 
       if (isOverlap && pin.kanbanCardId && !movedSticky.convertedToSubtaskId) {
+        // Validate placeholder
+        const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
+        const trimmed = movedSticky.content?.trim() || '';
+        if (!trimmed || PLACEHOLDERS.includes(trimmed)) {
+          toast.error('Isi sticky note ini dulu sebelum dijadikan subtask.', 'Sticky Kosong');
+          break;
+        }
+
         // Trigger Mechanism 1: Drag sticky to pin
         const res = await assignStickyToCardSubtaskAction({
           noteId: movedSticky.id,
@@ -556,6 +566,14 @@ export function DiskusiCanvasClient({
 
   // ─── Mechanism 2: Convert via Button -> Pick Card ──────────────────────────
   const handleConvertStickyToSubtask = async (noteId: string, targetCardId: string) => {
+    const note = notes.find((n) => n.id === noteId);
+    const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
+    const trimmed = note?.content?.trim() || '';
+    if (!trimmed || PLACEHOLDERS.includes(trimmed)) {
+      toast.error('Isi sticky note ini dulu sebelum dijadikan subtask.', 'Sticky Kosong');
+      return;
+    }
+
     const res = await assignStickyToCardSubtaskAction({
       noteId,
       cardId: targetCardId,
@@ -594,7 +612,7 @@ export function DiskusiCanvasClient({
     }
   };
 
-  const handleSaveCompiledCard = async () => {
+  const handleSaveCompiledCard = async (targetSprintNumber: number | null = null) => {
     if (!compiledDraft || !compiledDraft.judul.trim()) return;
     setSavingCompiledCard(true);
 
@@ -606,10 +624,12 @@ export function DiskusiCanvasClient({
         deskripsi: compiledDraft.deskripsi,
         acceptanceCriteria: compiledDraft.acceptanceCriteria,
         storyPoint: compiledDraft.storyPoint || 3,
-        statusKolom: 'To Do',
+        statusKolom: targetSprintNumber ? 'To Do' : 'To Do',
+        sprintNumber: targetSprintNumber,
+        reviewStatus: 'adopted',
         tahap: compiledDraft.tahap,
         label: 'Hasil Kompilasi Diskusi',
-        suggestedSprintNumber: 1,
+        suggestedSprintNumber: targetSprintNumber || 1,
         _initialSubtasks: compiledDraft.subtasks,
       } as any);
 
@@ -648,7 +668,12 @@ export function DiskusiCanvasClient({
         setCompiledModalOpen(false);
         setCompiledDraft(null);
         setCompiledSourceNoteIds([]);
-        toast.success(`Kartu Backlog "${createdCard.judul.substring(0, 35)}..." berhasil dibuat!`, 'Kompilasi Sukses');
+        toast.success(
+          targetSprintNumber
+            ? `Kartu "${createdCard.judul.substring(0, 35)}..." berhasil dibuat & di-assign ke Sprint ${targetSprintNumber}!`
+            : `Kartu Backlog "${createdCard.judul.substring(0, 35)}..." berhasil disimpan ke Backlog Kerja!`,
+          'Kompilasi Sukses'
+        );
       } else {
         toast.error(res.error || 'Gagal menyimpan kartu backlog baru');
       }
@@ -656,6 +681,94 @@ export function DiskusiCanvasClient({
       toast.error(err.message || 'Gagal menyimpan kartu');
     } finally {
       setSavingCompiledCard(false);
+    }
+  };
+
+  // ─── Modal Detail Card Subtasks & Comments ─────────────────────────────────
+  // Subtask Edit Inline State
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingSubtaskField, setEditingSubtaskField] = useState<'title' | 'hours' | null>(null);
+  const [editTitleDraft, setEditTitleDraft] = useState('');
+  const [editHoursDraft, setEditHoursDraft] = useState<number | ''>('');
+  const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null);
+
+  const handleStartEditTitle = (st: any) => {
+    setEditingSubtaskId(st.id);
+    setEditingSubtaskField('title');
+    setEditTitleDraft(st.title);
+  };
+
+  const handleStartEditHours = (st: any) => {
+    setEditingSubtaskId(st.id);
+    setEditingSubtaskField('hours');
+    setEditHoursDraft(st.estimatedHours ?? '');
+  };
+
+  const handleCancelEditSubtask = () => {
+    setEditingSubtaskId(null);
+    setEditingSubtaskField(null);
+    setEditTitleDraft('');
+    setEditHoursDraft('');
+  };
+
+  const handleSaveSubtaskTitle = async (subtaskId: string) => {
+    const trimmed = editTitleDraft.trim();
+    const original = subtasks.find((s) => s.id === subtaskId);
+    if (!trimmed || !original || trimmed === original.title) {
+      handleCancelEditSubtask();
+      return;
+    }
+    setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? { ...s, title: trimmed } : s)));
+    handleCancelEditSubtask();
+    const res = await updateTaskSubtaskTitleAction(subtaskId, timId, trimmed);
+    if (!res.success) {
+      setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? { ...s, title: original.title } : s)));
+      toast.error(res.error || 'Gagal memperbarui judul subtask.');
+    }
+  };
+
+  const handleSaveSubtaskHours = async (subtaskId: string) => {
+    const original = subtasks.find((s) => s.id === subtaskId);
+    const newHours = editHoursDraft === '' ? null : Math.max(0, Number(editHoursDraft));
+    const oldHours = original?.estimatedHours ?? null;
+    if (newHours === oldHours) {
+      handleCancelEditSubtask();
+      return;
+    }
+    setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? { ...s, estimatedHours: newHours } : s)));
+    handleCancelEditSubtask();
+    const res = await updateTaskSubtaskHoursAction(subtaskId, timId, newHours);
+    if (!res.success) {
+      setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? { ...s, estimatedHours: oldHours } : s)));
+      toast.error(res.error || 'Gagal memperbarui estimasi jam subtask.');
+    }
+  };
+
+  const handleDeleteSubtaskInModal = async (subtaskId: string) => {
+    setDeletingSubtaskId(subtaskId);
+    const res = await deleteTaskSubtaskAction(subtaskId, timId);
+    if (res.success) {
+      setSubtasks((prev) => prev.filter((st) => st.id !== subtaskId));
+      toast.success('Subtask berhasil dihapus.');
+    } else {
+      toast.error(res.error || 'Gagal menghapus subtask.');
+    }
+    setDeletingSubtaskId(null);
+  };
+
+  const handleQuickAssignSprintInModal = async (cardId: string, sprintNum: number | null) => {
+    setSelectedCardForDetail((prev) => (prev && prev.id === cardId ? { ...prev, sprintNumber: sprintNum } : prev));
+    setCards((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, sprintNumber: sprintNum } : c))
+    );
+    const res = await updateKanbanCardSprintAction(timId, cardId, sprintNum);
+    if (res.success) {
+      toast.success(
+        sprintNum ? `Kartu berhasil di-assign ke Sprint ${sprintNum}.` : 'Kartu dikembalikan ke Backlog.',
+        'Sprint Diperbarui'
+      );
+    } else {
+      toast.error(res.error || 'Gagal update sprint kartu.');
     }
   };
 
@@ -853,18 +966,23 @@ export function DiskusiCanvasClient({
 
           {/* 1. Frames (Grouping Boxes) */}
           {frames.map((frame) => {
+            const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
             const frameNotes = notes.filter((n) => n.frameId === frame.id || (
               n.posX >= frame.posX &&
               n.posX <= frame.posX + frame.width &&
               n.posY >= frame.posY &&
               n.posY <= frame.posY + frame.height
             ));
+            const validNotesCount = frameNotes.filter(
+              (n) => n.type === 'sticky' && n.content?.trim() && !PLACEHOLDERS.includes(n.content.trim())
+            ).length;
 
             return (
               <FrameCard
                 key={frame.id}
                 frame={frame}
                 noteCount={frameNotes.length}
+                validNotesCount={validNotesCount}
                 isCompiling={compilingFrameId === frame.id}
                 onUpdate={async (fId, label, x, y, w, h) => {
                   await updateDiskusiFrameAction({ frameId: fId, label, posX: x, posY: y, width: w, height: h });
@@ -1287,24 +1405,59 @@ export function DiskusiCanvasClient({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCompiledModalOpen(false)}
-                  className="text-xs"
+                  className="text-xs cursor-pointer"
                 >
                   Batal
                 </Button>
-                <Button
-                  size="sm"
-                  disabled={savingCompiledCard || !compiledDraft.judul.trim()}
-                  onClick={handleSaveCompiledCard}
-                  className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5"
-                >
-                  {savingCompiledCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                  <span>Simpan ke Backlog Kerja</span>
-                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    disabled={savingCompiledCard || !compiledDraft.judul.trim()}
+                    onClick={() => handleSaveCompiledCard(null)}
+                    className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    {savingCompiledCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    <span>Simpan ke Backlog</span>
+                  </Button>
+
+                  {/* Quick Assign ke Sprint 1-Click Action */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        size="sm"
+                        disabled={savingCompiledCard || !compiledDraft.judul.trim()}
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 shadow-2xs cursor-pointer"
+                      >
+                        <Zap className="h-3.5 w-3.5 fill-white" />
+                        <span>Assign ke Sprint ⚡</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2 bg-white rounded-xl shadow-xl border border-gray-200" align="end">
+                      <span className="text-[11px] font-bold text-gray-800 block mb-1.5">
+                        Pilih Target Sprint:
+                      </span>
+                      <div className="space-y-1">
+                        {[1, 2, 3, 4].map((sprintNum) => (
+                          <button
+                            key={sprintNum}
+                            type="button"
+                            onClick={() => handleSaveCompiledCard(sprintNum)}
+                            className="w-full text-left p-1.5 rounded-lg hover:bg-amber-50 text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-amber-200"
+                          >
+                            <span>Sprint {sprintNum}</span>
+                            <ArrowRight className="h-3 w-3 text-amber-600" />
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
           )}
@@ -1323,9 +1476,55 @@ export function DiskusiCanvasClient({
                   <DialogTitle className="text-sm font-extrabold text-[#0B3D2E]">
                     {selectedCardForDetail.judul}
                   </DialogTitle>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                    {selectedCardForDetail.storyPoint || 3} SP
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                      {selectedCardForDetail.storyPoint || 3} SP
+                    </span>
+
+                    {/* Quick Sprint Assign in Modal 2 */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px] font-bold text-[#0F5132] border-[#C9E4D0] hover:bg-[#F0F7F1] gap-1 cursor-pointer"
+                        >
+                          <Zap className="h-3 w-3 fill-[#3E9463] text-[#3E9463]" />
+                          <span>
+                            {selectedCardForDetail.sprintNumber
+                              ? `Sprint ${selectedCardForDetail.sprintNumber}`
+                              : 'Assign Sprint ⚡'}
+                          </span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-52 p-2 bg-white rounded-xl shadow-xl border border-[#C9E4D0]" align="end">
+                        <span className="text-[11px] font-bold text-[#0B3D2E] block mb-1.5">
+                          Pilih Target Sprint:
+                        </span>
+                        <div className="space-y-1">
+                          {[1, 2, 3, 4].map((sprintNum) => (
+                            <button
+                              key={sprintNum}
+                              type="button"
+                              onClick={() => handleQuickAssignSprintInModal(selectedCardForDetail.id, sprintNum)}
+                              className="w-full text-left p-1.5 rounded-lg hover:bg-[#F0F7F1] text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-[#C9E4D0]"
+                            >
+                              <span>Sprint {sprintNum}</span>
+                              <ArrowRight className="h-3 w-3 text-[#3E9463]" />
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAssignSprintInModal(selectedCardForDetail.id, null)}
+                            className="w-full text-left p-1.5 rounded-lg hover:bg-gray-100 text-xs font-semibold text-gray-500 flex items-center justify-between transition-colors cursor-pointer"
+                          >
+                            <span>📦 Backlog (Tanpa Sprint)</span>
+                            <ArrowRight className="h-3 w-3 text-gray-400" />
+                          </button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </DialogHeader>
 
@@ -1348,47 +1547,129 @@ export function DiskusiCanvasClient({
                   </div>
                 )}
 
-                {/* Subtasks Section */}
+                {/* Subtasks Section with Inline Edit */}
                 <div className="space-y-2 p-3.5 rounded-xl bg-[#F0F7F1] border border-[#C9E4D0]">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[#0B3D2E] text-xs flex items-center gap-1.5">
                       <CheckSquare className="h-3.5 w-3.5 text-[#3E9463]" />
                       <span>Subtasks ({subtasks.length})</span>
                     </span>
+                    <span className="text-[10px] text-gray-500">
+                      {subtasks.filter((s) => s.isDone).length}/{subtasks.length} Selesai
+                    </span>
                   </div>
 
                   {loadingSubtasks ? (
                     <div className="flex items-center justify-center py-4 text-xs text-gray-400 gap-1.5">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
                       <span>Memuat subtask...</span>
                     </div>
                   ) : subtasks.length === 0 ? (
                     <p className="text-[11px] text-gray-400 italic py-1">Belum ada subtask pada kartu ini.</p>
                   ) : (
-                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {subtasks.map((st) => (
                         <div
                           key={st.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0]"
+                          className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:bg-[#E3F0E6]/50 transition-colors group"
                         >
-                          <div
-                            onClick={() => handleToggleSubtaskInModal(st.id, st.isDone)}
-                            className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
-                          >
-                            {st.isDone ? (
-                              <CheckSquare className="h-3.5 w-3.5 text-[#0F5132]" />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSubtaskInModal(st.id, st.isDone)}
+                              className="text-[#0F5132] hover:text-[#146C43] transition-colors shrink-0 cursor-pointer"
+                            >
+                              {st.isDone ? (
+                                <CheckSquare className="h-4 w-4 text-[#0F5132]" />
+                              ) : (
+                                <Square className="h-4 w-4 text-gray-400" />
+                              )}
+                            </button>
+
+                            {/* Judul Subtask: Inline Edit */}
+                            {editingSubtaskId === st.id && editingSubtaskField === 'title' ? (
+                              <Input
+                                autoFocus
+                                value={editTitleDraft}
+                                onChange={(e) => setEditTitleDraft(e.target.value)}
+                                onBlur={() => handleSaveSubtaskTitle(st.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveSubtaskTitle(st.id);
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    handleCancelEditSubtask();
+                                  }
+                                }}
+                                className="h-7 text-xs px-1.5 py-0 bg-white border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] flex-1 font-medium"
+                              />
                             ) : (
-                              <Square className="h-3.5 w-3.5 text-gray-400" />
+                              <span
+                                onClick={() => handleStartEditTitle(st)}
+                                className={`text-xs flex-1 truncate cursor-pointer hover:bg-yellow-50/80 hover:text-[#0B3D2E] px-1 py-0.5 rounded transition-colors ${
+                                  st.isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'
+                                }`}
+                                title="Klik untuk mengedit judul subtask"
+                              >
+                                {st.title}
+                              </span>
                             )}
-                            <span className={`text-xs truncate ${st.isDone ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                              {st.title}
-                            </span>
                           </div>
-                          {st.estimatedHours && (
-                            <span className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">
-                              {st.estimatedHours} jam
-                            </span>
-                          )}
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Jam Subtask: Inline Edit */}
+                            {editingSubtaskId === st.id && editingSubtaskField === 'hours' ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  autoFocus
+                                  type="number"
+                                  min={0}
+                                  max={999}
+                                  value={editHoursDraft}
+                                  onChange={(e) =>
+                                    setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))
+                                  }
+                                  onBlur={() => handleSaveSubtaskHours(st.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSaveSubtaskHours(st.id);
+                                    } else if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      handleCancelEditSubtask();
+                                    }
+                                  }}
+                                  className="h-6 w-14 text-[10px] px-1 py-0 text-center bg-white border-[#D4AF37] font-bold"
+                                />
+                                <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditHours(st)}
+                                className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                                title="Klik untuk mengedit estimasi jam subtask"
+                              >
+                                {st.estimatedHours ? `${st.estimatedHours} jam` : '+ jam'}
+                              </button>
+                            )}
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              disabled={deletingSubtaskId === st.id}
+                              onClick={() => handleDeleteSubtaskInModal(st.id)}
+                              className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 rounded transition-all cursor-pointer"
+                              title="Hapus subtask"
+                            >
+                              {deletingSubtaskId === st.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin text-red-600" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1411,7 +1692,7 @@ export function DiskusiCanvasClient({
                     <Button
                       size="sm"
                       onClick={handleAddSubtaskInModal}
-                      className="h-8 px-3 text-xs bg-[#0F5132] text-white font-bold"
+                      className="h-8 px-3 text-xs bg-[#0F5132] text-white font-bold cursor-pointer"
                     >
                       Tambah
                     </Button>
@@ -1451,7 +1732,7 @@ export function DiskusiCanvasClient({
                       size="sm"
                       disabled={sendingComment}
                       onClick={handleSendCommentInModal}
-                      className="h-8 px-3 text-xs bg-[#0F5132] text-white font-bold"
+                      className="h-8 px-3 text-xs bg-[#0F5132] text-white font-bold cursor-pointer"
                     >
                       Kirim
                     </Button>
@@ -1470,6 +1751,7 @@ export function DiskusiCanvasClient({
 function FrameCard({
   frame,
   noteCount,
+  validNotesCount,
   isCompiling,
   onUpdate,
   onDelete,
@@ -1477,6 +1759,7 @@ function FrameCard({
 }: {
   frame: DiskusiFrameItem;
   noteCount: number;
+  validNotesCount: number;
   isCompiling: boolean;
   onUpdate: (id: string, label: string, x: number, y: number, w: number, h: number) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -1568,23 +1851,29 @@ function FrameCard({
         </div>
 
         <div className="flex items-center gap-1">
-          {/* AI Compile Button */}
-          {noteCount >= 2 && (
-            <Button
-              size="sm"
-              disabled={isCompiling}
-              onClick={onCompile}
-              className="h-6 px-2 text-[10px] font-extrabold bg-[#0F5132] hover:bg-[#146C43] text-white gap-1 shadow-2xs cursor-pointer"
-              title="Kompilasi ide-ide di dalam kelompok ini jadi kartu Backlog dengan AI"
-            >
-              {isCompiling ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Sparkles className="h-3 w-3 text-[#FFD700]" />
-              )}
-              <span>Kompilasi AI</span>
-            </Button>
-          )}
+          {/* AI Compile Button: disabled if validNotesCount < 2 */}
+          <Button
+            size="sm"
+            disabled={isCompiling || validNotesCount < 2}
+            onClick={onCompile}
+            className={`h-6 px-2 text-[10px] font-extrabold text-white gap-1 shadow-2xs transition-all ${
+              validNotesCount < 2
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-[#0F5132] hover:bg-[#146C43] cursor-pointer'
+            }`}
+            title={
+              validNotesCount < 2
+                ? 'Isi minimal 2 sticky note dengan teks (bukan default) sebelum kompilasi AI'
+                : 'Kompilasi ide-ide di dalam kelompok ini jadi kartu Backlog dengan AI'
+            }
+          >
+            {isCompiling ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Sparkles className={`h-3 w-3 ${validNotesCount < 2 ? 'text-gray-400' : 'text-[#FFD700]'}`} />
+            )}
+            <span>Kompilasi AI</span>
+          </Button>
 
           <button
             onClick={() => onDelete(frame.id)}

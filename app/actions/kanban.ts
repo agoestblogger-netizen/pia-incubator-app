@@ -124,6 +124,24 @@ export async function createKanbanCardAction(
       })
       .returning();
 
+    // Insert _initialSubtasks if provided (e.g. from AI Compilation)
+    if (Array.isArray((cardData as any)._initialSubtasks) && (cardData as any)._initialSubtasks.length > 0) {
+      const subtaskInserts = (cardData as any)._initialSubtasks
+        .map((st: any, idx: number) => ({
+          taskId: card.id,
+          title: String(st.title || '').trim(),
+          estimatedHours: typeof st.estimatedHours === 'number' && st.estimatedHours > 0 ? st.estimatedHours : null,
+          isDone: false,
+          orderIndex: idx,
+          createdBy: user.id,
+        }))
+        .filter((st: any) => Boolean(st.title));
+
+      if (subtaskInserts.length > 0) {
+        await db.insert(kanbanSubtask).values(subtaskInserts);
+      }
+    }
+
     await logKanbanActivity({
       taskId: card.id,
       userId: user.id,

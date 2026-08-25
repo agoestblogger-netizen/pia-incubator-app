@@ -467,10 +467,16 @@ export async function assignStickyToCardSubtaskAction({
   try {
     const user = await getCurrentUser();
 
-    // 1. Get note
+    // 1. Get note & validate content
     const [note] = await db.select().from(diskusiNote).where(eq(diskusiNote.id, noteId)).limit(1);
     if (!note || !note.content) {
-      return { success: false, error: 'Catatan tidak ditemukan atau kosong' };
+      return { success: false, error: 'Isi sticky note ini dulu sebelum dijadikan subtask.' };
+    }
+
+    const trimmed = note.content.trim();
+    const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
+    if (!trimmed || PLACEHOLDERS.includes(trimmed)) {
+      return { success: false, error: 'Isi sticky note ini dulu sebelum dijadikan subtask.' };
     }
 
     // 2. Get target card
@@ -479,19 +485,26 @@ export async function assignStickyToCardSubtaskAction({
       return { success: false, error: 'Kartu target tidak ditemukan' };
     }
 
-    // 3. Create subtask
+    // 3. Count existing subtasks for orderIndex
+    const existingSubtasks = await db
+      .select({ id: kanbanSubtask.id })
+      .from(kanbanSubtask)
+      .where(eq(kanbanSubtask.taskId, cardId));
+
+    // 4. Create subtask with orderIndex and createdBy
     const [newSubtask] = await db
       .insert(kanbanSubtask)
       .values({
         taskId: cardId,
-        title: note.content.trim(),
+        title: trimmed,
         estimatedHours: null,
         isDone: false,
+        orderIndex: existingSubtasks.length,
         createdBy: user?.id ?? null,
       })
       .returning();
 
-    // 4. Mark sticky as converted
+    // 5. Mark sticky as converted
     const [updatedNote] = await db
       .update(diskusiNote)
       .set({
@@ -539,16 +552,20 @@ export async function compileFrameNotesAction({
       .from(diskusiNote)
       .where(and(eq(diskusiNote.frameId, frameId), eq(diskusiNote.type, 'sticky')));
 
-    const validContents = notes
-      .map((n) => n.content?.trim())
-      .filter((c): c is string => Boolean(c && c.length > 0));
+    const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
+    const validNotes = notes.filter((n) => {
+      const c = n.content?.trim() || '';
+      return Boolean(c) && !PLACEHOLDERS.includes(c);
+    });
 
-    if (validContents.length < 2) {
+    if (validNotes.length < 2) {
       return {
         success: false,
-        error: 'Kelompok ide membutuhkan minimal 2 catatan sticky note untuk dikompilasi oleh AI.',
+        error: 'Kelompok ide membutuhkan minimal 2 catatan sticky note yang terisi (bukan placeholder) untuk dikompilasi oleh AI.',
       };
     }
+
+    const validContents = validNotes.map((n) => n.content!.trim());
 
     // 3. Get team info
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
