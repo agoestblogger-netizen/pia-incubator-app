@@ -2494,16 +2494,16 @@ export function KanbanClient({
                               {subtasks.map((st) => (
                                 <div
                                   key={st.id}
-                                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-colors group"
+                                  className="flex items-start justify-between gap-2.5 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-colors group"
                                 >
                                   <div
                                     onClick={() => canEdit && handleToggleSubtask(st.id, st.isDone)}
-                                    className={`flex items-center gap-2 min-w-0 flex-1 ${canEdit ? "cursor-pointer" : ""}`}
+                                    className={`flex items-start gap-2 min-w-0 flex-1 ${canEdit ? "cursor-pointer" : ""}`}
                                   >
                                     <button
                                       type="button"
                                       disabled={!canEdit || togglingSubtaskId === st.id}
-                                      className="text-[#3E9463] focus:outline-none shrink-0"
+                                      className="text-[#3E9463] focus:outline-none shrink-0 mt-0.5"
                                     >
                                       {st.isDone ? (
                                         <CheckSquare className="h-4 w-4 text-[#3E9463]" />
@@ -2512,7 +2512,7 @@ export function KanbanClient({
                                       )}
                                     </button>
                                     <span
-                                      className={`text-xs truncate ${
+                                      className={`text-xs break-words leading-relaxed whitespace-normal flex-1 ${
                                         st.isDone
                                           ? "line-through text-gray-400"
                                           : "text-gray-800 font-medium"
@@ -2522,7 +2522,7 @@ export function KanbanClient({
                                     </span>
                                   </div>
 
-                                  <div className="flex items-center gap-1.5 shrink-0">
+                                  <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                                     {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0 ? (
                                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37]">
                                         {st.estimatedHours} jam
