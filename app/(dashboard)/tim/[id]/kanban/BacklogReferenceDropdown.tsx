@@ -8,11 +8,8 @@ import {
   Lock,
   ArrowRight,
   ArrowUp,
-  Layers,
   Info,
-  CheckCircle2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface BacklogReferenceDropdownProps {
@@ -20,6 +17,7 @@ interface BacklogReferenceDropdownProps {
   isCurrentPlanningSprint: boolean;
   currentPlanningSprintNumber: number;
   cards: any[];
+  hadAdoptedCards?: boolean;
   canEdit: boolean;
   isCvUnlocked: boolean;
   isMvUnlocked: boolean;
@@ -30,7 +28,8 @@ export function BacklogReferenceDropdown({
   sprintNumber,
   isCurrentPlanningSprint,
   currentPlanningSprintNumber,
-  cards,
+  cards = [],
+  hadAdoptedCards = false,
   canEdit,
   isCvUnlocked,
   isMvUnlocked,
@@ -65,13 +64,10 @@ export function BacklogReferenceDropdown({
   };
 
   const handleTouchItem = (card: any, isPhaseLocked: boolean, e: React.MouseEvent) => {
-    // If it's already selected via touch, execute selection
     if (touchCard?.id === card.id && !isPhaseLocked) {
       handleSelect(card, isPhaseLocked);
       return;
     }
-
-    // First touch: select for preview
     setTouchCard(card);
   };
 
@@ -88,12 +84,31 @@ export function BacklogReferenceDropdown({
     return { isLocked: false, reason: "" };
   };
 
+  // If group is empty, render disabled dropdown button with precise state message
   if (cards.length === 0) {
+    const emptyPlaceholder = hadAdoptedCards
+      ? `-- Semua kartu referensi Sprint ${sprintNumber} telah diadopsi --`
+      : `-- Tidak ada kartu referensi untuk Sprint ${sprintNumber} --`;
+
     return (
-      <div className="p-3 rounded-xl bg-gray-50/70 border border-dashed border-gray-200 text-center">
-        <p className="text-[11px] text-gray-400 italic">
-          Semua kartu referensi untuk Sprint {sprintNumber} telah diadopsi.
-        </p>
+      <div className="w-full">
+        <button
+          type="button"
+          disabled
+          className="w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/60 text-xs font-medium text-gray-400 cursor-not-allowed select-none opacity-80"
+        >
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-gray-300" />
+            <span className="truncate italic">{emptyPlaceholder}</span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400 border border-gray-200">
+              0 kartu
+            </span>
+            <ChevronDown className="h-4 w-4 text-gray-300" />
+          </div>
+        </button>
       </div>
     );
   }

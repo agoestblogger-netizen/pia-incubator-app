@@ -303,6 +303,9 @@ export function SprintPlanningSection({
                 const groupCards = aiReferenceCards.filter(
                   (c) => (c.suggestedSprintNumber || 1) === s.nomorSprint
                 );
+                const hadAdoptedCards = backlogCards.some(
+                  (c) => (c.suggestedSprintNumber || 1) === s.nomorSprint || c.sprintNumber === s.nomorSprint
+                );
 
                 return (
                   <div key={s.nomorSprint} className="space-y-0">
@@ -345,6 +348,7 @@ export function SprintPlanningSection({
                         isCurrentPlanningSprint={isCurrentPlanningSprint}
                         currentPlanningSprintNumber={sprint.nomorSprint}
                         cards={groupCards}
+                        hadAdoptedCards={hadAdoptedCards}
                         canEdit={canEdit}
                         isCvUnlocked={isCvUnlocked}
                         isMvUnlocked={isMvUnlocked}

@@ -1144,9 +1144,19 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
   const cardsToInsert: Array<typeof kanbanCard.$inferInsert> = [];
   let cardUrutan = 0;
 
-  // Sprints count
-  const sprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
-  const totalSprints = Math.max(1, sprints.length);
+  // Sprints count (ensure at least 4 sprints exist so cards distribute across sprints 1-4)
+  let sprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
+  if (sprints.length === 0) {
+    const defaults = [
+      { timInovatorId: timId, nomorSprint: 1, status: "belum_dimulai", tujuan: "Problem Validation & Setup" },
+      { timInovatorId: timId, nomorSprint: 2, status: "belum_dimulai", tujuan: "Solution Exploration & Prototyping" },
+      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "MVP Development & Testing" },
+      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "Market Validation & Pitch Preparation" },
+    ];
+    await db.insert(sprint).values(defaults).onConflictDoNothing();
+    sprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
+  }
+  const totalSprints = Math.max(4, sprints.length);
 
   if (teamDossier && teamDossier.snapshotData) {
     const snap = teamDossier.snapshotData as any;
