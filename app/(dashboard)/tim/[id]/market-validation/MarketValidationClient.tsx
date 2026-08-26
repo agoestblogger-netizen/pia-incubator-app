@@ -2441,12 +2441,103 @@ export function MarketValidationClient({
               </CardContent>
             </Card>
 
-            {/* ── 9. Lembar Pengesahan Laporan MV (3 Pihak: PO, Coach, Promotor) ── */}
+            {/* ── 9. Dokumen & Bukti Preliminary Review SME (Read-Only) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                      <Paperclip className="h-4 w-4 text-[#3E9463]" />
+                      <span>9. Dokumen &amp; Catatan Preliminary Review SME</span>
+                    </CardTitle>
+                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                      Daftar dokumen review dan masukan dari Innovation Coach / SME sebelum sidang FMI.
+                    </CardDescription>
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    Dikelola via Kartu Kanban &ldquo;Preliminary Review (SME)&rdquo;
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-3">
+                {/* Dokumen Files Uploaded */}
+                {Array.isArray(initialData?.report?.buktiPendukung) &&
+                initialData.report.buktiPendukung.filter((b: any) => b.type === "dokumen_preliminary_review").length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {initialData.report.buktiPendukung
+                      .filter((b: any) => b.type === "dokumen_preliminary_review")
+                      .map((doc: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs hover:border-[#3E9463] transition-all"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            <FileCheck className="h-4 w-4 text-[#3E9463] shrink-0" />
+                            <div className="min-w-0">
+                              <a
+                                href={doc.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-gray-800 hover:text-[#0B3D2E] truncate block hover:underline"
+                              >
+                                {doc.file_name || "Dokumen Preliminary Review"}
+                              </a>
+                              {doc.tanggal && (
+                                <span className="text-[10px] text-gray-400">
+                                  {formatDateIndo(doc.tanggal)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <a
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-[#0B3D2E] bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors shrink-0"
+                            title="Buka / Unduh Dokumen"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500 italic bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200">
+                    Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Kanban &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan MV&rdquo;.
+                  </p>
+                )}
+
+                {/* Catatan Review SME Lainnya */}
+                {Array.isArray(initialData?.report?.buktiPendukung) &&
+                  initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length > 0 && (
+                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                      <span className="text-xs font-bold text-gray-700 block">
+                        Catatan Review SME ({initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length} Catatan):
+                      </span>
+                      <div className="space-y-1.5">
+                        {initialData.report.buktiPendukung
+                          .filter((b: any) => b.type !== "dokumen_preliminary_review")
+                          .map((b: any, idx: number) => (
+                            <div key={idx} className="p-2.5 bg-white rounded-lg border border-gray-200 text-xs">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                                <span>Reviewer: {b.reviewer || "SME / Coach"}</span>
+                                <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
+                              </div>
+                              <p className="text-gray-600 text-[11px] mt-1 whitespace-pre-wrap">{b.content || b.catatan || ""}</p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+              </CardContent>
+            </Card>
+
+            {/* ── 10. Lembar Pengesahan Laporan MV (3 Pihak: PO, Coach, Promotor) ── */}
             <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
               <CardHeader className="pb-3 border-b border-gray-100">
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Stamp className="h-4 w-4 text-[#3E9463]" />
-                  <span>9. Lembar Pengesahan Laporan Market Validation</span>
+                  <span>10. Lembar Pengesahan Laporan Market Validation</span>
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Pengesahan formal hasil pasar untuk prasyarat maju ke sidang Forum Manajemen Inovasi (FMI).

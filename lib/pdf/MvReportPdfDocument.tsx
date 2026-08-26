@@ -590,10 +590,37 @@ export function MvReportPdfDocument({
           </View>
         </View>
 
-        {/* Section 9: Lembar Pengesahan (3 Tanda Tangan: PO, Coach, Promotor) */}
+        {/* Section 9: Dokumen & Catatan Preliminary Review SME */}
+        <Text style={styles.sectionTitle}>9. DOKUMEN &amp; CATATAN PRELIMINARY REVIEW SME</Text>
+        <View style={styles.table}>
+          {Array.isArray(report?.buktiPendukung) && report.buktiPendukung.length > 0 ? (
+            report.buktiPendukung.map((b: any, idx: number) => (
+              <View key={idx} style={styles.tableRow}>
+                <Text style={[styles.tableCellLabel, { width: '30%' }]}>
+                  {b.type === 'dokumen_preliminary_review'
+                    ? '📎 Dokumen Review'
+                    : `Reviewer: ${b.reviewer || 'SME / Coach'}`}
+                </Text>
+                <Text style={[styles.tableCellValue, { width: '70%' }]}>
+                  {b.type === 'dokumen_preliminary_review'
+                    ? `${b.file_name || 'Dokumen Preliminary Review'} (${formatDate(b.tanggal)})`
+                    : b.content || b.catatan || '-'}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { width: '100%', textAlign: 'center', color: '#94a3b8' }]}>
+                Belum ada dokumen atau catatan preliminary review yang dilampirkan.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Section 10: Lembar Pengesahan (3 Tanda Tangan: PO, Coach, Promotor) */}
         <View style={styles.signatureContainer}>
           <Text style={[styles.sectionTitle, { marginTop: 4, marginBottom: 6 }]}>
-            9. LEMBAR PENGESAHAN LAPORAN MARKET VALIDATION
+            10. LEMBAR PENGESAHAN LAPORAN MARKET VALIDATION
           </Text>
           <View style={styles.signatureGrid}>
             {/* 1. Project Owner */}
