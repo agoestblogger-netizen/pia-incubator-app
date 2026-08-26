@@ -13,12 +13,16 @@ import {
   mvReleaseLog,
   dfvRekapitulasi,
   anggotaTim,
+  kanbanCard,
+  kanbanSubtask,
+  sprint,
 } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne, inArray, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { generateAiBacklogFromMvPlan } from "@/lib/ai/mv-backlog-generator";
 
 export async function getMarketValidationData(timId: string) {
   const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
@@ -573,5 +577,196 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal membatalkan persetujuan Market Validation Report.' };
+  }
+}
+
+export async function generateMvBacklogAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const allowed = await hasPermission(user, "market_val.edit", timId);
+    if (!allowed) return { success: false, error: "Forbidden: Anda tidak memiliki izin mengedit tim ini." };
+
+    const [plan] = await db
+      .select()
+      .from(marketValidationPlan)
+      .where(eq(marketValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) {
+      return {
+        success: false,
+        error: "Form MVP Release Plan belum disimpan. Simpan form rencana rilis MVP terlebih dahulu.",
+      };
+    }
+
+    const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
+    const namaProyek = tim?.namaProyekInovasi || "Proyek Inovasi";
+
+    const teamSprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
+    const totalSprints = Math.max(2, teamSprints.length || 4);
+
+    const mappingFitur = await db
+      .select()
+      .from(mvpMappingFitur)
+      .where(eq(mvpMappingFitur.planId, plan.id));
+    const resources = await db
+      .select()
+      .from(mvpResourcesNeeded)
+      .where(eq(mvpResourcesNeeded.planId, plan.id));
+    const metrik = await db
+      .select()
+      .from(rencanaValidasiMetrik)
+      .where(
+        and(
+          eq(rencanaValidasiMetrik.planId, plan.id),
+          eq(rencanaValidasiMetrik.fase, "market_validation")
+        )
+      );
+
+    // Call AI / Fallback Generator
+    const generatedTasks = await generateAiBacklogFromMvPlan({
+      teamId: timId,
+      namaProyek,
+      totalSprints,
+      plan: {
+        mvpVersion: plan.mvpVersion,
+        channelRelease: plan.channelRelease,
+        periodeReleaseMulai: plan.periodeReleaseMulai ? plan.periodeReleaseMulai.toISOString() : null,
+        periodeReleaseSelesai: plan.periodeReleaseSelesai ? plan.periodeReleaseSelesai.toISOString() : null,
+        deskripsiMvp: plan.deskripsiMvp,
+        deskripsiProsesMvp: plan.deskripsiProsesMvp,
+        fiturMvpDirilis: plan.fiturMvpDirilis,
+        targetEarlyAdopters: plan.targetEarlyAdopters,
+        lokasiPilot: plan.lokasiPilot,
+        jumlahTargetPengguna: plan.jumlahTargetPengguna,
+        daftarEarlyAdopters: plan.daftarEarlyAdopters,
+        batasanScopeMvp: plan.batasanScopeMvp,
+        mappingFitur: mappingFitur.map((f) => ({
+          fiturSolusi: f.fiturSolusi,
+          fiturMvpStatus: f.fiturMvpStatus,
+          benefit: f.benefit || undefined,
+        })),
+        resources: resources.map((r) => ({
+          jenisResource: r.jenisResource,
+          kebutuhanSpesifik: r.kebutuhanSpesifik,
+          ownerSumber: r.ownerSumber || undefined,
+        })),
+        metrik: metrik.map((m) => ({
+          validasi: m.validasi,
+          metrik: m.metrik,
+          target: m.target || undefined,
+        })),
+      },
+    });
+
+    if (!generatedTasks || generatedTasks.length === 0) {
+      return { success: false, error: "Gagal menghasilkan rekomendasi backlog Market Validation." };
+    }
+
+    // Clean up previous UNADOPTED AI-generated MV cards (do NOT delete adopted cards and do NOT delete Template Baku MV)
+    const existingAiMvCards = await db
+      .select({ id: kanbanCard.id })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.tahap, "market_validation"),
+          eq(kanbanCard.reviewStatus, "ai_reference"),
+          ne(kanbanCard.label, "Template Baku MV")
+        )
+      );
+
+    if (existingAiMvCards.length > 0) {
+      const cardIdsToDelete = existingAiMvCards.map((c) => c.id);
+      await db.delete(kanbanCard).where(inArray(kanbanCard.id, cardIdsToDelete));
+    }
+
+    // Get current max urutan for this team
+    const [latestCard] = await db
+      .select({ urutan: kanbanCard.urutan })
+      .from(kanbanCard)
+      .where(eq(kanbanCard.timInovatorId, timId))
+      .orderBy(desc(kanbanCard.urutan))
+      .limit(1);
+
+    let nextUrutan = (latestCard?.urutan ?? 0) + 1;
+
+    // Insert new AI recommendation cards
+    const cardsToInsert = generatedTasks.map((t) => {
+      const subtasks = t.subtasks || [];
+      const totalEstHours = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+
+      return {
+        timInovatorId: timId,
+        judul: t.judul,
+        deskripsi: t.deskripsi || null,
+        acceptanceCriteria: t.acceptanceCriteria || null,
+        statusKolom: "To Do",
+        tahap: "market_validation",
+        sprintNumber: null,
+        suggestedSprintNumber: t.suggestedSprintNumber || 1,
+        storyPoint: t.storyPoint || 3,
+        estimasiJam: totalEstHours > 0 ? totalEstHours : null,
+        label: "Rekomendasi MV",
+        reviewStatus: "ai_reference",
+        urutan: nextUrutan++,
+        _subtasks: subtasks,
+      };
+    });
+
+    const insertedCards = await db
+      .insert(kanbanCard)
+      .values(cardsToInsert.map(({ _subtasks, ...c }) => c))
+      .returning();
+
+    // Insert initial subtasks
+    const subtaskRows: Array<typeof kanbanSubtask.$inferInsert> = [];
+    for (let i = 0; i < insertedCards.length; i++) {
+      const card = insertedCards[i];
+      const subtasks = cardsToInsert[i]._subtasks;
+      if (subtasks && subtasks.length > 0) {
+        for (let sIdx = 0; sIdx < subtasks.length; sIdx++) {
+          const st = subtasks[sIdx];
+          subtaskRows.push({
+            taskId: card.id,
+            title: st.title,
+            estimatedHours: st.estimatedHours || 3,
+            isDone: false,
+            orderIndex: sIdx,
+            createdBy: null,
+          });
+        }
+      }
+    }
+
+    if (subtaskRows.length > 0) {
+      await db.insert(kanbanSubtask).values(subtaskRows);
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "MARKET_VAL_GENERATE_BACKLOG",
+      entity: "market_validation_plan",
+      entityId: plan.id,
+      details: { timId, count: insertedCards.length },
+    });
+
+    revalidatePath(`/tim/${timId}/market-validation`);
+    revalidatePath(`/tim/${timId}/kanban`);
+
+    return {
+      success: true,
+      count: insertedCards.length,
+      message: `Berhasil menghasilkan ${insertedCards.length} rekomendasi backlog Market Validation!`,
+    };
+  } catch (error: any) {
+    console.error("[generateMvBacklogAction] Error:", error);
+    return {
+      success: false,
+      error: error.message || "Gagal menghasilkan rekomendasi backlog Market Validation.",
+    };
   }
 }

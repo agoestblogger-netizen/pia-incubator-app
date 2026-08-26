@@ -41,12 +41,7 @@ export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
     { title: "Finalisasi dan simpan status keputusan fase CV", estimatedHours: 1 },
   ],
 
-  // ─── 8 TEMPLATE BAKU MARKET VALIDATION ───
-  "Susun Perencanaan Market Validation": [
-    { title: "Tentukan parameter ruang lingkup uji coba pasar (pilot project)", estimatedHours: 3 },
-    { title: "Tetapkan metrik Product-Market Fit (PMF) & target konversi", estimatedHours: 3 },
-    { title: "Rancang skema akuisisi pengguna pilot & saluran distribusi", estimatedHours: 3 },
-  ],
+  // ─── 7 TEMPLATE BAKU MARKET VALIDATION ───
   "MVP Planning": [
     { title: "Petakan spesifikasi fungsional fitur inti MVP", estimatedHours: 4 },
     { title: "Alokasikan kebutuhan sumber daya (teknologi, anggaran, tim)", estimatedHours: 3 },

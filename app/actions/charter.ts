@@ -1065,13 +1065,6 @@ const bakuCVTasks = [
 
 const bakuMVTasks = [
   {
-    judul: "Susun Perencanaan Market Validation",
-    deskripsi: "Tentukan parameter pilot project, target adopsi pasar, dan metrik Product-Market Fit (PMF).",
-    acceptanceCriteria: "Dokumen rencana Market Validation lengkap dengan parameter pilot, metrik PMF, dan target pengguna aktif.",
-    tahap: "market_validation" as const,
-    storyPoint: 3,
-  },
-  {
     judul: "MVP Planning",
     deskripsi: "Definisikan spesifikasi fitur MVP versi rilis dan alokasi kebutuhan resource implementasi.",
     acceptanceCriteria: "Dokumen spesifikasi backlog fitur MVP versi rilis dan alokasi sumber daya implementasi.",

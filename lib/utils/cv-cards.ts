@@ -6,8 +6,10 @@ export type CvBakuCardType =
   | "sme"
   | "keputusan";
 
-export function detectCvBakuCardType(judul: string): CvBakuCardType | null {
+export function detectCvBakuCardType(judul: string, tahap?: string): CvBakuCardType | null {
+  if (tahap === "market_validation") return null;
   const norm = (judul || "").toLowerCase().trim();
+  if (norm.includes("market validation") || norm.includes("- mv")) return null;
   if (norm.includes("siapkan prototype untuk testing") || norm.includes("siapkan prototype")) {
     return "prototype";
   }

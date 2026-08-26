@@ -36,6 +36,7 @@ import {
 } from "@/app/actions/capacity";
 import { SprintPlanningSection } from "./SprintPlanningSection";
 import { CvCardWorkDocumentSection } from "@/components/kanban/CvCardWorkDocumentSection";
+import { MvCardWorkDocumentSection } from "@/components/kanban/MvCardWorkDocumentSection";
 import { toast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -3114,18 +3115,31 @@ export function KanbanClient({
                         />
                       </div>
 
-                      {/* Custom Document: Dokumen Kerja Khusus (Paket 18 - 6 Kartu Baku CV) */}
+                      {/* Custom Document: Dokumen Kerja Khusus (CV & MV) */}
                       {selectedCardForDetail && !selectedCardForDetail.isNewBacklog && (
-                        <CvCardWorkDocumentSection
-                          timId={timId}
-                          card={{
-                            id: selectedCardForDetail.id,
-                            judul: detailJudul,
-                            customDocumentData: detailCustomDocumentData,
-                          }}
-                          canEdit={canEdit}
-                          onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
-                        />
+                        <>
+                          <CvCardWorkDocumentSection
+                            timId={timId}
+                            card={{
+                              id: selectedCardForDetail.id,
+                              judul: detailJudul,
+                              customDocumentData: detailCustomDocumentData,
+                            }}
+                            canEdit={canEdit}
+                            onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
+                          />
+                          <MvCardWorkDocumentSection
+                            timId={timId}
+                            card={{
+                              id: selectedCardForDetail.id,
+                              judul: detailJudul,
+                              tahap: detailTahap,
+                              customDocumentData: detailCustomDocumentData,
+                            }}
+                            canEdit={canEdit}
+                            onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
+                          />
+                        </>
                       )}
 
                       {/* 5. Tanggal Mulai & Target Selesai */}

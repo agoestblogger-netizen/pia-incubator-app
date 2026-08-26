@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import {
   saveMarketValidationPlanFullAction,
+  generateMvBacklogAction,
   signMvPlanAction,
   revokeMvPlanSignatureAction,
   saveMarketValidationReportAction,
@@ -17,14 +18,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Save,
-  CheckCircle2,
   CheckCircle,
   Rocket,
   TrendingUp,
   Stamp,
   RotateCcw,
   Loader2,
-  AlertCircle,
   Briefcase,
   Building2,
   Plus,
@@ -36,11 +35,14 @@ import {
   Layers,
   BarChart3,
   Users,
-  ShieldCheck,
   FileCheck,
+  KanbanSquare,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
+import { KanbanClient } from "../kanban/KanbanClient";
 
 // ── 5 Baris Tetap Resources Needed (Bagian D) ─────────────────────────────────
 const RESOURCES_NEEDED_ROWS = [
@@ -200,16 +202,35 @@ function formatDateForInput(dateVal?: any) {
 
 export function MarketValidationClient({
   timId,
+  timInfo,
+  roleAssignments,
   initialData,
+  initialColumns = [],
+  initialCards = [],
+  initialSprints = [],
+  anggotaTim = [],
   canEdit = true,
   canApprove = false,
+  canEditKanban = true,
   currentUser,
+  phaseGateStatus,
 }: {
   timId: string;
+  timInfo?: {
+    namaProyekInovasi?: string | null;
+    klasifikasiInovasi?: string | null;
+  };
+  roleAssignments?: any[];
   initialData: any;
+  initialColumns?: any[];
+  initialCards?: any[];
+  initialSprints?: any[];
+  anggotaTim?: any[];
   canEdit?: boolean;
   canApprove?: boolean;
+  canEditKanban?: boolean;
   currentUser?: any;
+  phaseGateStatus?: any;
 }) {
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
@@ -449,7 +470,7 @@ export function MarketValidationClient({
 
   const [signingRole, setSigningRole] = useState<string | null>(null);
 
-  const teamMembers = initialData?.teamMembers || [];
+  const teamMembers = initialData?.teamMembers || anggotaTim || [];
   const poCharterName =
     teamMembers.find(
       (m: any) =>
@@ -580,7 +601,29 @@ export function MarketValidationClient({
     setSaving(false);
   };
 
-  // ── Report Tab (Existing Tab 2) ─────────────────────────────────────────────
+  // ── Generate AI Backlog Action ──────────────────────────────────────────────
+  const [generatingBacklog, setGeneratingBacklog] = useState(false);
+
+  const handleGenerateBacklog = async () => {
+    setGeneratingBacklog(true);
+    try {
+      const res = await generateMvBacklogAction(timId);
+      if (res.success) {
+        toast.success(
+          res.message || `Berhasil menghasilkan rekomendasi backlog Market Validation!`,
+          "Rekomendasi Terbuat"
+        );
+      } else {
+        toast.error(res.error || "Gagal menghasilkan backlog.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan sistem.", "Error");
+    } finally {
+      setGeneratingBacklog(false);
+    }
+  };
+
+  // ── Report Tab (Tab 3) ──────────────────────────────────────────────────────
   const [reportForm, setReportForm] = useState({
     mvpVersionDilaporkan: initialData?.report?.mvpVersionDilaporkan || "v1.0-pilot",
     jumlahEarlyAdoptersAktual: initialData?.report?.jumlahEarlyAdoptersAktual || 45,
@@ -682,14 +725,14 @@ export function MarketValidationClient({
               FR-PIA-03.1
             </Badge>
             <h2 className="text-base font-extrabold text-gray-900">
-              {initialData?.tim?.namaProyekInovasi || "Market Validation Planning"}
+              {timInfo?.namaProyekInovasi || initialData?.tim?.namaProyekInovasi || "Market Validation Planning"}
             </h2>
           </div>
           <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 font-medium">
             <span>
               Klasifikasi Inovasi:{" "}
               <strong className="text-gray-800">
-                {initialData?.tim?.klasifikasiInovasi || "Incremental Innovation"}
+                {timInfo?.klasifikasiInovasi || initialData?.tim?.klasifikasiInovasi || "Incremental Innovation"}
               </strong>
             </span>
             <span>&bull;</span>
@@ -698,10 +741,29 @@ export function MarketValidationClient({
             </span>
           </div>
         </div>
+
+        {/* Action Button: Generate Rekomendasi Backlog */}
+        {canEdit && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={generatingBacklog}
+            onClick={handleGenerateBacklog}
+            className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-xs font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs"
+          >
+            {generatingBacklog ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5 text-[#F0C24B]" />
+            )}
+            <span>{generatingBacklog ? "Menghasilkan Backlog..." : "✨ Generate Rekomendasi Backlog"}</span>
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="plan" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md bg-emerald-50/70 p-1 rounded-xl border border-[#C9E4D0]">
+        <TabsList className="grid w-full grid-cols-3 max-w-xl bg-emerald-50/70 p-1 rounded-xl border border-[#C9E4D0]">
           <TabsTrigger
             value="plan"
             className="flex items-center gap-2 text-xs font-bold data-[state=active]:bg-[#0B3D2E] data-[state=active]:text-white rounded-lg transition-all"
@@ -710,11 +772,18 @@ export function MarketValidationClient({
             <span>1. MVP Release Plan</span>
           </TabsTrigger>
           <TabsTrigger
+            value="backlog"
+            className="flex items-center gap-2 text-xs font-bold data-[state=active]:bg-[#0B3D2E] data-[state=active]:text-white rounded-lg transition-all"
+          >
+            <KanbanSquare className="h-3.5 w-3.5" />
+            <span>2. Backlog &amp; Sprint</span>
+          </TabsTrigger>
+          <TabsTrigger
             value="report"
             className="flex items-center gap-2 text-xs font-bold data-[state=active]:bg-[#0B3D2E] data-[state=active]:text-white rounded-lg transition-all"
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            <span>2. PMF &amp; Go/No-Go Report</span>
+            <span>3. PMF &amp; Go/No-Go Report</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1725,7 +1794,7 @@ export function MarketValidationClient({
 
             {/* Tombol Simpan MVP Plan */}
             {canEdit && (
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="submit"
                   disabled={saving}
@@ -1744,7 +1813,58 @@ export function MarketValidationClient({
         </TabsContent>
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* TAB 2: PMF & GO/NO-GO REPORT */}
+        {/* TAB 2: BACKLOG & SPRINT (KANBAN EMBEDDED) */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="backlog" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-gray-200 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-50 rounded-xl">
+                <KanbanSquare className="h-5 w-5 text-[#0B3D2E]" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-gray-900">
+                  Kanban Board &amp; Sprint Execution (Market Validation)
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Eksekusi 7 kartu baku dan rekomendasi backlog Market Validation pada rangkaian sprint tim.
+                </p>
+              </div>
+            </div>
+
+            {canEdit && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={generatingBacklog}
+                onClick={handleGenerateBacklog}
+                className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-bold rounded-xl gap-2 h-8"
+              >
+                {generatingBacklog ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5 text-[#3E9463]" />
+                )}
+                <span>{generatingBacklog ? "Menghasilkan..." : "Generate Ulang Rekomendasi Backlog"}</span>
+              </Button>
+            )}
+          </div>
+
+          <KanbanClient
+            timId={timId}
+            initialColumns={initialColumns}
+            initialCards={initialCards}
+            initialSprints={initialSprints}
+            anggotaTim={teamMembers}
+            canEdit={canEditKanban}
+            currentUser={currentUser}
+            phaseGateStatus={phaseGateStatus}
+            tahapScope="market_validation"
+          />
+        </TabsContent>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB 3: PMF & GO/NO-GO REPORT */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="report" className="space-y-4 mt-4">
           <form onSubmit={handleSaveReport} className="space-y-4">
