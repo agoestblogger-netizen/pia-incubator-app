@@ -111,6 +111,7 @@ export const sprint = pgTable('sprint', {
   tanggalSelesaiAktual: timestamp('tanggal_selesai_aktual', { withTimezone: true }),
   status: text('status').notNull().default('belum_dimulai'), // 'belum_dimulai' | 'aktif' | 'selesai'
   tujuan: text('tujuan'),
+  sprintGoal: text('sprint_goal'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

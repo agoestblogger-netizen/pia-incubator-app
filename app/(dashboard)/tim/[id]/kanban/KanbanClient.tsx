@@ -2002,7 +2002,9 @@ export function KanbanClient({
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <h3 className="text-base font-extrabold text-gray-900">
                           Sprint {selectedSection1Sprint.nomorSprint}
-                          {selectedSection1Sprint.tujuan
+                          {selectedSection1Sprint.sprintGoal
+                            ? `: ${selectedSection1Sprint.sprintGoal}`
+                            : selectedSection1Sprint.tujuan
                             ? `: ${selectedSection1Sprint.tujuan.replace(
                                 new RegExp(`^Sprint\\s*${selectedSection1Sprint.nomorSprint}\\s*:\\s*`, "i"),
                                 ""
@@ -2020,6 +2022,13 @@ export function KanbanClient({
                             : "⚪ Belum Direncanakan"}
                         </Badge>
                       </div>
+
+                      {selectedSection1Sprint.sprintGoal && (
+                        <p className="text-xs text-purple-950 bg-purple-50/80 border border-purple-200/80 px-3 py-1.5 rounded-xl font-medium flex items-center gap-2">
+                          <Target className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                          <span><strong>Sprint Goal:</strong> {selectedSection1Sprint.sprintGoal}</span>
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600">
                         <span className="flex items-center gap-1.5">

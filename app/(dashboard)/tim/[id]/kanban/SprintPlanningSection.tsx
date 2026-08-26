@@ -17,10 +17,15 @@ import {
   Lock,
   Plus,
   Zap,
+  Target,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { MemberCapacityInfo, upsertMemberCapacityAction } from "@/app/actions/capacity";
+import { updateSprintGoalAction, getSuggestedSprintGoalAction } from "@/app/actions/sprint";
+import { getHeuristicSprintGoal } from "@/lib/ai/sprint-goal-generator";
 import { toast } from "@/components/ui/ToastProvider";
 import { getPhaseTokenBySlug } from "@/lib/theme/tokens";
 
@@ -81,9 +86,72 @@ export function SprintPlanningSection({
   const [tempCapacityVal, setTempCapacityVal] = useState<number>(15);
   const [savingCapacity, setSavingCapacity] = useState(false);
 
+  // Sprint Goal state & auto-suggestion
+  const [sprintGoal, setSprintGoal] = useState<string>(sprint.sprintGoal || "");
+  const [isSuggestedGoal, setIsSuggestedGoal] = useState<boolean>(false);
+  const [savingGoal, setSavingGoal] = useState<boolean>(false);
+  const [loadingSuggestion, setLoadingSuggestion] = useState<boolean>(false);
+
   // Phase gating check
   const isCvUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
   const isMvUnlocked = Boolean(phaseGateStatus?.gates?.marketValidation?.unlocked);
+
+  // Auto-suggest when sprint changes or when backlogCards are present and sprintGoal is empty
+  React.useEffect(() => {
+    if (sprint.sprintGoal && sprint.sprintGoal.trim().length > 0) {
+      setSprintGoal(sprint.sprintGoal);
+      setIsSuggestedGoal(false);
+    } else {
+      if (backlogCards && backlogCards.length > 0) {
+        const suggestion = getHeuristicSprintGoal(backlogCards);
+        setSprintGoal(suggestion);
+        setIsSuggestedGoal(true);
+      } else {
+        setSprintGoal("");
+        setIsSuggestedGoal(false);
+      }
+    }
+  }, [sprint.id, sprint.sprintGoal, backlogCards]);
+
+  const handleSaveSprintGoal = async (valToSave?: string) => {
+    const text = valToSave !== undefined ? valToSave : sprintGoal;
+    if (text.trim() === (sprint.sprintGoal || "").trim()) return;
+    setSavingGoal(true);
+    try {
+      const res = await updateSprintGoalAction(timId, sprint.id, text);
+      if (res.success) {
+        setIsSuggestedGoal(false);
+        toast.success("Sprint Goal berhasil disimpan!", "Goal Tersimpan");
+        if (onRefreshCapacities) onRefreshCapacities();
+      } else {
+        toast.error(res.error || "Gagal menyimpan Sprint Goal.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyimpan Sprint Goal.", "Gagal");
+    } finally {
+      setSavingGoal(false);
+    }
+  };
+
+  const handleFetchAiSuggestion = async () => {
+    if (backlogCards.length === 0) {
+      toast.info("Belum ada backlog di sprint ini. Tambahkan backlog terlebih dahulu.", "Backlog Kosong");
+      return;
+    }
+    setLoadingSuggestion(true);
+    try {
+      const res = await getSuggestedSprintGoalAction(timId, sprint.nomorSprint);
+      if (res.success && res.suggestedGoal) {
+        setSprintGoal(res.suggestedGoal);
+        setIsSuggestedGoal(true);
+        toast.success("Saran Sprint Goal diperbarui!", "Saran AI");
+      }
+    } catch {
+      toast.error("Gagal membuat saran Sprint Goal.");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
 
   // Local state for assignments in planning: cardId -> { storyPoint, ownerAnggotaId }
   const [assignments, setAssignments] = useState<Record<string, PlanningCardAssignment>>(() => {
@@ -269,6 +337,89 @@ export function SprintPlanningSection({
 
   return (
     <div className="space-y-8">
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* BAGIAN A: SPRINT GOAL */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-50/70 via-white to-amber-50/40 border border-purple-200/90 shadow-2xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-purple-100 text-purple-700 border border-purple-200/80 shadow-2xs">
+              <Target className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-extrabold text-gray-900 flex items-center gap-2 flex-wrap">
+                <span>Sprint Goal — Sasaran Utama Sprint {sprint.nomorSprint}</span>
+                {isSuggestedGoal && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 shadow-2xs">
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                    <span>Saran Otomatis AI</span>
+                  </span>
+                )}
+              </h3>
+              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                Target luaran utama yang disepakati bersama tim selama sprint ini berjalan
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {backlogCards.length > 0 && canEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleFetchAiSuggestion}
+                disabled={loadingSuggestion || savingGoal}
+                className="h-7 text-[11px] font-semibold text-purple-700 hover:text-purple-800 hover:bg-purple-100/60 gap-1 px-2.5 rounded-lg cursor-pointer"
+                title="Generate ulang saran Sprint Goal dari backlog aktual"
+              >
+                {loadingSuggestion ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3 text-amber-500" />
+                )}
+                <span>Saran Ulang AI</span>
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleSaveSprintGoal()}
+                disabled={savingGoal || !sprintGoal.trim()}
+                className="h-7 text-[11px] font-bold bg-purple-700 hover:bg-purple-800 text-white gap-1 px-3 rounded-lg shadow-2xs cursor-pointer"
+              >
+                {savingGoal ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                <span>{savingGoal ? "Menyimpan..." : "Simpan Goal"}</span>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="relative">
+          <Textarea
+            rows={2}
+            disabled={!canEdit}
+            value={sprintGoal}
+            onChange={(e) => {
+              setSprintGoal(e.target.value);
+              setIsSuggestedGoal(false);
+            }}
+            onBlur={() => handleSaveSprintGoal()}
+            placeholder="Belum ada saran — tambahkan backlog dulu atau isi manual sasaran utama sprint ini..."
+            className={`text-xs sm:text-sm resize-none rounded-xl transition-all ${
+              isSuggestedGoal
+                ? "italic text-purple-950 border-purple-300 bg-purple-50/40 focus:bg-white focus:not-italic"
+                : "text-gray-900 border-gray-300 bg-white"
+            }`}
+          />
+        </div>
+      </div>
+
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN C: PANEL "BACKLOG REFERENSI" */}
       {/* ─────────────────────────────────────────────────────────────────── */}

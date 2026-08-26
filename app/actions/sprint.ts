@@ -6,6 +6,7 @@ import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
+import { generateAiSprintGoal, getHeuristicSprintGoal } from "@/lib/ai/sprint-goal-generator";
 
 export async function getSprintsByTimId(timId: string) {
   let list = await db
@@ -383,3 +384,108 @@ export async function getSprintLogs(timId: string) {
     .where(eq(sprintLog.timInovatorId, timId))
     .orderBy(desc(sprintLog.tanggalPerubahan));
 }
+
+export async function updateSprintGoalAction(timId: string, sprintId: string, sprintGoal: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const allowed =
+      (await hasPermission(user, "kanban.edit", timId)) ||
+      (await hasPermission(user, "cust_val.edit", timId)) ||
+      (await hasPermission(user, "charter.edit", timId));
+    if (!allowed) {
+      return { success: false, error: "Forbidden: Anda tidak memiliki izin mengedit sprint tim ini." };
+    }
+
+    const [updated] = await db
+      .update(sprint)
+      .set({
+        sprintGoal: sprintGoal.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(sprint.id, sprintId), eq(sprint.timInovatorId, timId)))
+      .returning();
+
+    if (!updated) {
+      return { success: false, error: "Sprint tidak ditemukan." };
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "SPRINT_GOAL_UPDATE",
+      entity: "sprint",
+      entityId: sprintId,
+      details: { timId, nomorSprint: updated.nomorSprint, sprintGoal },
+    });
+
+    revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/market-validation`);
+    revalidatePath(`/tim/${timId}/overview`);
+
+    return { success: true, sprint: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menyimpan Sprint Goal." };
+  }
+}
+
+export async function getSuggestedSprintGoalAction(timId: string, sprintNumber: number) {
+  try {
+    // 1. Get cards allocated or suggested for this sprint
+    const cardsInSprint = await db
+      .select({
+        id: kanbanCard.id,
+        judul: kanbanCard.judul,
+        deskripsi: kanbanCard.deskripsi,
+        tahap: kanbanCard.tahap,
+        sprintNumber: kanbanCard.sprintNumber,
+        suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
+      })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.sprintNumber, sprintNumber)
+        )
+      );
+
+    // If no adopted cards in sprint, also consider suggested cards for this sprint
+    let targetCards = cardsInSprint;
+    if (targetCards.length === 0) {
+      const suggestedCards = await db
+        .select({
+          id: kanbanCard.id,
+          judul: kanbanCard.judul,
+          deskripsi: kanbanCard.deskripsi,
+          tahap: kanbanCard.tahap,
+          sprintNumber: kanbanCard.sprintNumber,
+          suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
+        })
+        .from(kanbanCard)
+        .where(
+          and(
+            eq(kanbanCard.timInovatorId, timId),
+            eq(kanbanCard.suggestedSprintNumber, sprintNumber)
+          )
+        );
+      targetCards = suggestedCards;
+    }
+
+    if (targetCards.length === 0) {
+      return { success: true, suggestedGoal: "" };
+    }
+
+    const suggestedGoal = await generateAiSprintGoal({
+      sprintNumber,
+      cards: targetCards,
+    });
+
+    return { success: true, suggestedGoal };
+  } catch (error: any) {
+    console.error("[getSuggestedSprintGoalAction] Error:", error);
+    return { success: false, error: error.message || "Gagal membuat saran Sprint Goal." };
+  }
+}
+
