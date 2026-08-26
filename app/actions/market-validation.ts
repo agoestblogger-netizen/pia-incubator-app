@@ -131,7 +131,49 @@ export async function saveMarketValidationReportAction(planId: string, timId: st
   }
 }
 
-export async function approveMarketValidationReportAction(reportId: string, timId: string) {
+import { createAdminClient } from "@/lib/supabase/admin";
+
+async function processMvSignatureImage(timId: string, imageStr?: string | null): Promise<string | null> {
+  if (!imageStr) return null;
+  if (!imageStr.startsWith("data:image/")) return imageStr;
+
+  try {
+    const supabaseAdmin = createAdminClient();
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const bucketExists = buckets?.some((b) => b.name === "task-attachments");
+    if (!bucketExists) {
+      await supabaseAdmin.storage.createBucket("task-attachments", { public: true });
+    }
+
+    const base64Data = imageStr.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const storagePath = `signatures/${timId}/${Date.now()}_mv_promotor_sig.png`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("task-attachments")
+      .upload(storagePath, buffer, { contentType: "image/png", upsert: true });
+
+    if (uploadError) {
+      console.warn("[processMvSignatureImage] Storage upload error, using data URI:", uploadError.message);
+      return imageStr;
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from("task-attachments")
+      .getPublicUrl(storagePath);
+
+    return publicUrlData?.publicUrl || imageStr;
+  } catch (err: any) {
+    console.warn("[processMvSignatureImage] Failed, fallback to data URI:", err.message);
+    return imageStr;
+  }
+}
+
+export async function approveMarketValidationReportAction(
+  reportId: string,
+  timId: string,
+  signatureImage?: string | null
+) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -168,6 +210,8 @@ export async function approveMarketValidationReportAction(reportId: string, timI
       )
       .limit(1);
 
+    const processedImageUrl = await processMvSignatureImage(timId, signatureImage);
+
     const approvalData = {
       userId: user.id,
       nama: user.nama,
@@ -175,6 +219,7 @@ export async function approveMarketValidationReportAction(reportId: string, timI
       unit: anggota?.unitKerja || 'PT Pegadaian',
       tanggal: new Date().toISOString(),
       status: 'approved',
+      signatureImage: processedImageUrl,
     };
 
     await db
@@ -195,6 +240,7 @@ export async function approveMarketValidationReportAction(reportId: string, timI
         timId,
         approvedBy: user.nama,
         email: user.email,
+        signatureData: approvalData,
       },
     });
 

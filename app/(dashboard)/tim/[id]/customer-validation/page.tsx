@@ -3,6 +3,7 @@ import { getCustomerValidationData } from "@/app/actions/customer-validation";
 import { getKanbanData } from "@/app/actions/kanban";
 import { getSprintsByTimId } from "@/app/actions/sprint";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
+import { getCharterRolesData } from "@/app/actions/charter";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
@@ -20,11 +21,12 @@ export default async function CustomerValidationPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const [data, phaseGateStatus, kanbanData, sprints, canEditCv, canEditKanban] = await Promise.all([
+  const [data, phaseGateStatus, kanbanData, sprints, rolesData, canEditCv, canEditKanban] = await Promise.all([
     getCustomerValidationData(tim.id),
     getTeamPhaseGateStatus(tim.id),
     getKanbanData(tim.id),
     getSprintsByTimId(tim.id),
+    getCharterRolesData(tim.id),
     user ? hasPermission(user, 'cust_val.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
   ]);
@@ -39,6 +41,7 @@ export default async function CustomerValidationPage({
           namaProyekInovasi: tim.namaProyekInovasi,
           klasifikasiInovasi: tim.klasifikasiInovasi || tim.kategoriPia || 'BREAKTHROUGH',
         }}
+        roleAssignments={rolesData?.assignments || []}
         initialData={data}
         initialColumns={kanbanData.columns}
         initialCards={kanbanData.cards}

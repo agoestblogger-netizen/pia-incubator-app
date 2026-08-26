@@ -1,10 +1,10 @@
-import React from 'react';
 import {
   Document,
   Page,
   Text,
   View,
   StyleSheet,
+  Image,
 } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
@@ -192,9 +192,9 @@ export interface CvPlanningPdfData {
   // Section E
   metrikCatatan?: Record<string, string>;
   // Signatures
-  ttdDisusun?: { nama: string; jabatan?: string; unit?: string; tanggal?: string } | null;
-  ttdDiperiksa?: { nama: string; jabatan?: string; unit?: string; tanggal?: string } | null;
-  ttdDisetujui?: { nama: string; jabatan?: string; unit?: string; tanggal?: string } | null;
+  ttdDisusun?: { nama: string; jabatan?: string; unit?: string; tanggal?: string; signatureImage?: string } | null;
+  ttdDiperiksa?: { nama: string; jabatan?: string; unit?: string; tanggal?: string; signatureImage?: string } | null;
+  ttdDisetujui?: { nama: string; jabatan?: string; unit?: string; tanggal?: string; signatureImage?: string } | null;
 }
 
 const DIMENSI_STATIC = [
@@ -426,9 +426,16 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
             <Text style={styles.signatureRoleTitle}>Disusun Oleh</Text>
             {data.ttdDisusun?.nama ? (
               <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 7, color: '#0f5132', fontWeight: 'bold', marginBottom: 12 }}>
-                  [Telah Ditandatangani Digital]
-                </Text>
+                {data.ttdDisusun.signatureImage ? (
+                  <Image
+                    src={data.ttdDisusun.signatureImage}
+                    style={{ width: 65, height: 26, objectFit: 'contain', marginBottom: 4 }}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 7, color: '#0f5132', fontWeight: 'bold', marginBottom: 12 }}>
+                    [Telah Ditandatangani Digital]
+                  </Text>
+                )}
                 <Text style={styles.signatureName}>{data.ttdDisusun.nama}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDisusun.jabatan || 'Inisiator Inovasi'}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDisusun.unit || 'PT Pegadaian'}</Text>
@@ -453,9 +460,16 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
             <Text style={styles.signatureRoleTitle}>Diperiksa Oleh</Text>
             {data.ttdDiperiksa?.nama ? (
               <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 7, color: '#0f5132', fontWeight: 'bold', marginBottom: 12 }}>
-                  [Telah Ditandatangani Digital]
-                </Text>
+                {data.ttdDiperiksa.signatureImage ? (
+                  <Image
+                    src={data.ttdDiperiksa.signatureImage}
+                    style={{ width: 65, height: 26, objectFit: 'contain', marginBottom: 4 }}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 7, color: '#0f5132', fontWeight: 'bold', marginBottom: 12 }}>
+                    [Telah Ditandatangani Digital]
+                  </Text>
+                )}
                 <Text style={styles.signatureName}>{data.ttdDiperiksa.nama}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDiperiksa.jabatan || 'Innovation Coach'}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDiperiksa.unit || 'PT Pegadaian'}</Text>
@@ -480,9 +494,16 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
             <Text style={styles.signatureRoleTitle}>Disetujui Oleh</Text>
             {data.ttdDisetujui?.nama ? (
               <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 7, color: '#0f5132', fontWeight: 'bold', marginBottom: 12 }}>
-                  [Telah Ditandatangani Digital]
-                </Text>
+                {data.ttdDisetujui.signatureImage ? (
+                  <Image
+                    src={data.ttdDisetujui.signatureImage}
+                    style={{ width: 65, height: 26, objectFit: 'contain', marginBottom: 4 }}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 7, color: '#0f5132', fontWeight: 'bold', marginBottom: 12 }}>
+                    [Telah Ditandatangani Digital]
+                  </Text>
+                )}
                 <Text style={styles.signatureName}>{data.ttdDisetujui.nama}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDisetujui.jabatan || 'Project Owner'}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDisetujui.unit || 'PT Pegadaian'}</Text>

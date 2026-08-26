@@ -26,6 +26,7 @@ import {
   Building2,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
+import { SignaturePadModal } from "@/components/ui/SignaturePad";
 
 export function MarketValidationClient({
   timId,
@@ -108,7 +109,17 @@ export function MarketValidationClient({
     setSaving(false);
   };
 
-  const handleApproveReport = async () => {
+  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
+
+  const handleApproveReport = () => {
+    if (!initialData?.report?.id) {
+      toast.error("Laporan Market Validation belum disimpan oleh tim.", "Laporan Belum Ada");
+      return;
+    }
+    setIsSigModalOpen(true);
+  };
+
+  const handleSaveSignature = async (dataUrl: string) => {
     if (!initialData?.report?.id) {
       toast.error("Laporan Market Validation belum disimpan oleh tim.", "Laporan Belum Ada");
       return;
@@ -116,7 +127,7 @@ export function MarketValidationClient({
     setApproving(true);
     setMsg(null);
 
-    const res = await approveMarketValidationReportAction(initialData.report.id, timId);
+    const res = await approveMarketValidationReportAction(initialData.report.id, timId, dataUrl);
     if (res.success && res.ttdDisetujui) {
       setReportTtdDisetujui(res.ttdDisetujui);
       toast.success("Laporan Market Validation berhasil disetujui secara formal oleh Promotor!", "Persetujuan Berhasil");
@@ -431,6 +442,15 @@ export function MarketValidationClient({
                           <Building2 className="h-3.5 w-3.5 text-gray-400" />
                           <span>{reportTtdDisetujui.unit}</span>
                         </div>
+                        {reportTtdDisetujui.signatureImage && (
+                          <div className="bg-white p-1.5 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[140px] my-2">
+                            <img
+                              src={reportTtdDisetujui.signatureImage}
+                              alt="Tanda Tangan Promotor"
+                              className="h-12 w-auto object-contain block"
+                            />
+                          </div>
+                        )}
                         <div className="text-[11px] text-gray-400 pt-1 font-mono">
                           Waktu Persetujuan: {new Date(reportTtdDisetujui.tanggal).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
                         </div>
@@ -496,6 +516,16 @@ export function MarketValidationClient({
           </form>
         </TabsContent>
       </Tabs>
+
+      {/* Signature Pad Modal for Promotor */}
+      <SignaturePadModal
+        isOpen={isSigModalOpen}
+        onClose={() => setIsSigModalOpen(false)}
+        onSave={handleSaveSignature}
+        title="Persetujuan Formal Promotor Inovasi"
+        roleName="Promotor Inovasi"
+        userName={currentUser?.nama || "Promotor Inovasi"}
+      />
     </div>
   );
 }

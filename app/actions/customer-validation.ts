@@ -546,12 +546,51 @@ export async function autoFillFullCvPlanAction(timId: string) {
   }
 }
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
+async function processSignatureImage(timId: string, imageStr?: string | null): Promise<string | null> {
+  if (!imageStr) return null;
+  if (!imageStr.startsWith("data:image/")) return imageStr;
+
+  try {
+    const supabaseAdmin = createAdminClient();
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const bucketExists = buckets?.some((b) => b.name === "task-attachments");
+    if (!bucketExists) {
+      await supabaseAdmin.storage.createBucket("task-attachments", { public: true });
+    }
+
+    const base64Data = imageStr.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const storagePath = `signatures/${timId}/${Date.now()}_sig.png`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("task-attachments")
+      .upload(storagePath, buffer, { contentType: "image/png", upsert: true });
+
+    if (uploadError) {
+      console.warn("[processSignatureImage] Storage upload error, using data URI:", uploadError.message);
+      return imageStr;
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from("task-attachments")
+      .getPublicUrl(storagePath);
+
+    return publicUrlData?.publicUrl || imageStr;
+  } catch (err: any) {
+    console.warn("[processSignatureImage] Failed, fallback to data URI:", err.message);
+    return imageStr;
+  }
+}
+
 /**
  * Tandatangani Customer Validation Plan sebagai Inisiator / Coach / Project Owner
  */
 export async function signCvPlanAction(
   timId: string,
-  roleType: 'inisiator' | 'coach' | 'po'
+  roleType: 'inisiator' | 'coach' | 'po',
+  signatureImage?: string | null
 ) {
   try {
     const user = await getCurrentUser();
@@ -576,6 +615,8 @@ export async function signCvPlanAction(
         ? 'Innovation Coach'
         : 'Project Owner';
 
+    const processedImageUrl = await processSignatureImage(timId, signatureImage);
+
     const signatureData = {
       userId: user.id,
       nama: user.nama,
@@ -583,6 +624,7 @@ export async function signCvPlanAction(
       unit: anggota?.unitKerja || 'PT Pegadaian',
       tanggal: new Date().toISOString(),
       status: 'signed',
+      signatureImage: processedImageUrl,
     };
 
     // Ensure plan exists

@@ -143,11 +143,14 @@ function formatDateIndo(dateStr?: string): string {
   }
 }
 
+import { SignaturePadModal } from "@/components/ui/SignaturePad";
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function CustomerValidationClient({
   timId,
   timInfo,
+  roleAssignments = [],
   initialData,
   initialColumns = [],
   initialCards = [],
@@ -163,6 +166,11 @@ export function CustomerValidationClient({
     namaProyekInovasi?: string;
     klasifikasiInovasi?: string;
   };
+  roleAssignments?: Array<{
+    roleCode: string;
+    userName: string;
+    userEmail: string;
+  }>;
   initialData: any;
   initialColumns?: any[];
   initialCards?: any[];
@@ -193,11 +201,40 @@ export function CustomerValidationClient({
     dataDukung: (initialData?.plan?.dataDukung as string[]) || [],
   });
 
+  // ── Names from Charter ────────────────────────────────────────────────────
+  const inisiatorCharterName =
+    roleAssignments?.find((a) => a.roleCode === "inisiator")?.userName ||
+    anggotaTim?.find((a) => a.role === "inisiator" || a.jabatan?.toLowerCase().includes("inisiator"))?.nama ||
+    null;
+
+  const coachCharterName =
+    roleAssignments?.find((a) => a.roleCode === "coach")?.userName ||
+    anggotaTim?.find((a) => a.role === "coach" || a.jabatan?.toLowerCase().includes("coach"))?.nama ||
+    null;
+
+  const poCharterName =
+    roleAssignments?.find((a) => a.roleCode === "project_owner")?.userName ||
+    anggotaTim?.find((a) => a.role === "project_owner" || a.jabatan?.toLowerCase().includes("owner") || a.jabatan?.toLowerCase().includes("po"))?.nama ||
+    null;
+
   // ── Signatures state ───────────────────────────────────────────────────────
   const [ttdDisusun, setTtdDisusun] = useState<any>(initialData?.plan?.ttdDisusun || null);
   const [ttdDiperiksa, setTtdDiperiksa] = useState<any>(initialData?.plan?.ttdDiperiksa || null);
   const [ttdDisetujui, setTtdDisetujui] = useState<any>(initialData?.plan?.ttdDisetujui || null);
   const [signingRole, setSigningRole] = useState<'inisiator' | 'coach' | 'po' | null>(null);
+
+  // ── Signature Pad Modal state ──────────────────────────────────────────────
+  const [sigModal, setSigModal] = useState<{
+    isOpen: boolean;
+    roleType: 'inisiator' | 'coach' | 'po';
+    roleName: string;
+    userName: string;
+  }>({
+    isOpen: false,
+    roleType: 'inisiator',
+    roleName: 'Inisiator Inovasi',
+    userName: currentUser?.nama || '',
+  });
 
   // ── Dimensi feedback state ─────────────────────────────────────────────────
   const initDimensi = () => {
@@ -353,10 +390,33 @@ export function CustomerValidationClient({
     }
   };
 
-  const handleSignPlan = async (roleType: 'inisiator' | 'coach' | 'po') => {
+  const openSignModal = (roleType: 'inisiator' | 'coach' | 'po') => {
+    const roleName =
+      roleType === 'inisiator'
+        ? 'Inisiator Inovasi'
+        : roleType === 'coach'
+        ? 'Innovation Coach'
+        : 'Project Owner';
+    const assignedName =
+      roleType === 'inisiator'
+        ? inisiatorCharterName
+        : roleType === 'coach'
+        ? coachCharterName
+        : poCharterName;
+
+    setSigModal({
+      isOpen: true,
+      roleType,
+      roleName,
+      userName: currentUser?.nama || assignedName || roleName,
+    });
+  };
+
+  const handleSaveSignature = async (dataUrl: string) => {
+    const roleType = sigModal.roleType;
     setSigningRole(roleType);
     try {
-      const res = await signCvPlanAction(timId, roleType);
+      const res = await signCvPlanAction(timId, roleType, dataUrl);
       if (res.success && res.signatureData) {
         if (roleType === 'inisiator') setTtdDisusun(res.signatureData);
         if (roleType === 'coach') setTtdDiperiksa(res.signatureData);
@@ -1027,21 +1087,49 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      <div className="font-bold text-gray-900">
-                        {ttdDisusun?.nama || "( Inisiator Inovasi )"}
-                      </div>
-                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                        <Briefcase className="h-3 w-3 text-gray-400" />
-                        <span>{ttdDisusun?.jabatan || "Inisiator Inovasi"}</span>
-                      </div>
-                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                        <Building2 className="h-3 w-3 text-gray-400" />
-                        <span>{ttdDisusun?.unit || "PT Pegadaian"}</span>
-                      </div>
-                      {ttdDisusun?.tanggal && (
-                        <div className="text-[10px] text-gray-400 mt-1 font-mono">
-                          {formatDateIndo(ttdDisusun.tanggal)}
-                        </div>
+                      {ttdDisusun?.status === 'signed' ? (
+                        <>
+                          <div className="font-bold text-gray-900">{ttdDisusun.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDisusun.jabatan || "Inisiator Inovasi"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDisusun.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {ttdDisusun.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={ttdDisusun.signatureImage}
+                                alt="Tanda Tangan Inisiator"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {ttdDisusun.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(ttdDisusun.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {inisiatorCharterName || "( Inisiator Inovasi )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>Inisiator Inovasi</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                          </div>
+                        </>
                       )}
                     </div>
 
@@ -1063,7 +1151,7 @@ export function CustomerValidationClient({
                           type="button"
                           size="sm"
                           disabled={signingRole === 'inisiator'}
-                          onClick={() => handleSignPlan('inisiator')}
+                          onClick={() => openSignModal('inisiator')}
                           className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
                         >
                           <Stamp className="h-3.5 w-3.5 mr-1" />
@@ -1098,21 +1186,49 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      <div className="font-bold text-gray-900">
-                        {ttdDiperiksa?.nama || "( Innovation Coach )"}
-                      </div>
-                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                        <Briefcase className="h-3 w-3 text-gray-400" />
-                        <span>{ttdDiperiksa?.jabatan || "Innovation Coach"}</span>
-                      </div>
-                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                        <Building2 className="h-3 w-3 text-gray-400" />
-                        <span>{ttdDiperiksa?.unit || "PT Pegadaian"}</span>
-                      </div>
-                      {ttdDiperiksa?.tanggal && (
-                        <div className="text-[10px] text-gray-400 mt-1 font-mono">
-                          {formatDateIndo(ttdDiperiksa.tanggal)}
-                        </div>
+                      {ttdDiperiksa?.status === 'signed' ? (
+                        <>
+                          <div className="font-bold text-gray-900">{ttdDiperiksa.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDiperiksa.jabatan || "Innovation Coach"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDiperiksa.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {ttdDiperiksa.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={ttdDiperiksa.signatureImage}
+                                alt="Tanda Tangan Coach"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {ttdDiperiksa.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(ttdDiperiksa.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {coachCharterName || "( Innovation Coach )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>Innovation Coach</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                          </div>
+                        </>
                       )}
                     </div>
 
@@ -1134,7 +1250,7 @@ export function CustomerValidationClient({
                           type="button"
                           size="sm"
                           disabled={signingRole === 'coach'}
-                          onClick={() => handleSignPlan('coach')}
+                          onClick={() => openSignModal('coach')}
                           className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
                         >
                           <Stamp className="h-3.5 w-3.5 mr-1" />
@@ -1169,21 +1285,49 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      <div className="font-bold text-gray-900">
-                        {ttdDisetujui?.nama || "( Project Owner )"}
-                      </div>
-                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                        <Briefcase className="h-3 w-3 text-gray-400" />
-                        <span>{ttdDisetujui?.jabatan || "Project Owner"}</span>
-                      </div>
-                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                        <Building2 className="h-3 w-3 text-gray-400" />
-                        <span>{ttdDisetujui?.unit || "PT Pegadaian"}</span>
-                      </div>
-                      {ttdDisetujui?.tanggal && (
-                        <div className="text-[10px] text-gray-400 mt-1 font-mono">
-                          {formatDateIndo(ttdDisetujui.tanggal)}
-                        </div>
+                      {ttdDisetujui?.status === 'signed' ? (
+                        <>
+                          <div className="font-bold text-gray-900">{ttdDisetujui.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDisetujui.jabatan || "Project Owner"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDisetujui.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {ttdDisetujui.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={ttdDisetujui.signatureImage}
+                                alt="Tanda Tangan PO"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {ttdDisetujui.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(ttdDisetujui.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {poCharterName || "( Project Owner )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>Project Owner</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                          </div>
+                        </>
                       )}
                     </div>
 
@@ -1205,7 +1349,7 @@ export function CustomerValidationClient({
                           type="button"
                           size="sm"
                           disabled={signingRole === 'po'}
-                          onClick={() => handleSignPlan('po')}
+                          onClick={() => openSignModal('po')}
                           className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
                         >
                           <Stamp className="h-3.5 w-3.5 mr-1" />
@@ -1367,6 +1511,16 @@ export function CustomerValidationClient({
           </form>
         </TabsContent>
       </Tabs>
+
+      {/* Signature Pad Modal */}
+      <SignaturePadModal
+        isOpen={sigModal.isOpen}
+        onClose={() => setSigModal((prev) => ({ ...prev, isOpen: false }))}
+        onSave={handleSaveSignature}
+        title={`Tanda Tangan Digital — ${sigModal.roleName}`}
+        roleName={sigModal.roleName}
+        userName={sigModal.userName}
+      />
     </div>
   );
 }
