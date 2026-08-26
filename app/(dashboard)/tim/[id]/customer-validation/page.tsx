@@ -35,6 +35,10 @@ export default async function CustomerValidationPage({
 
       <CustomerValidationClient
         timId={tim.id}
+        timInfo={{
+          namaProyekInovasi: tim.namaProyekInovasi,
+          klasifikasiInovasi: tim.klasifikasiInovasi || tim.kategoriPia || 'BREAKTHROUGH',
+        }}
         initialData={data}
         initialColumns={kanbanData.columns}
         initialCards={kanbanData.cards}

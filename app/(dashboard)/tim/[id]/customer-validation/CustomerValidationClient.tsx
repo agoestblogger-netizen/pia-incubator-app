@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   saveCustomerValidationPlanFullAction,
   saveCustomerValidationReportAction,
   generateCvBacklogAction,
   autoFillCvPlanFromCharterAction,
+  autoFillFullCvPlanAction,
+  signCvPlanAction,
+  revokeCvPlanSignatureAction,
 } from "@/app/actions/customer-validation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -16,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
+  Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { KanbanClient } from "../kanban/KanbanClient";
@@ -123,10 +127,27 @@ function fileName(url: string) {
   }
 }
 
+function formatDateIndo(dateStr?: string): string {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function CustomerValidationClient({
   timId,
+  timInfo,
   initialData,
   initialColumns = [],
   initialCards = [],
@@ -138,6 +159,10 @@ export function CustomerValidationClient({
   phaseGateStatus,
 }: {
   timId: string;
+  timInfo?: {
+    namaProyekInovasi?: string;
+    klasifikasiInovasi?: string;
+  };
   initialData: any;
   initialColumns?: any[];
   initialCards?: any[];
@@ -167,6 +192,12 @@ export function CustomerValidationClient({
     etikaPersetujuanData: initialData?.plan?.etikaPersetujuanData || "",
     dataDukung: (initialData?.plan?.dataDukung as string[]) || [],
   });
+
+  // ── Signatures state ───────────────────────────────────────────────────────
+  const [ttdDisusun, setTtdDisusun] = useState<any>(initialData?.plan?.ttdDisusun || null);
+  const [ttdDiperiksa, setTtdDiperiksa] = useState<any>(initialData?.plan?.ttdDiperiksa || null);
+  const [ttdDisetujui, setTtdDisetujui] = useState<any>(initialData?.plan?.ttdDisetujui || null);
+  const [signingRole, setSigningRole] = useState<'inisiator' | 'coach' | 'po' | null>(null);
 
   // ── Dimensi feedback state ─────────────────────────────────────────────────
   const initDimensi = () => {
@@ -209,6 +240,57 @@ export function CustomerValidationClient({
   const [generatingBacklog, setGeneratingBacklog] = useState(false);
   const [autoFillingFromCharter, setAutoFillingFromCharter] = useState(false);
 
+  // ── Auto-fill Trigger on First Mount ───────────────────────────────────────
+  const hasTriggeredMountAutoFill = useRef(false);
+
+  useEffect(() => {
+    if (hasTriggeredMountAutoFill.current) return;
+    hasTriggeredMountAutoFill.current = true;
+
+    // Syarat auto-fill otomatis:
+    // SEMUA field Section A, B, C masih kosong total
+    const isSectionAEmpty =
+      !planForm.projectMission &&
+      !planForm.customerDanContext &&
+      !planForm.problemHypothesis &&
+      !planForm.hmw &&
+      !planForm.solutionHypothesis;
+
+    const isSectionBEmpty =
+      !planForm.fiturAlurDiuji &&
+      !planForm.skenarioUserTesting &&
+      !planForm.instrumenValidasi;
+
+    const isSectionCEmpty =
+      !planForm.targetEarlyAdopters &&
+      !planForm.kriteriaSeleksi &&
+      !planForm.lokasiChannelTesting &&
+      !planForm.metodeRekrutmen &&
+      !planForm.etikaPersetujuanData;
+
+    // Only run if genuinely empty and not already saved
+    if (isSectionAEmpty && isSectionBEmpty && isSectionCEmpty && !initialData?.plan?.id) {
+      setAutoFillingFromCharter(true);
+      autoFillFullCvPlanAction(timId)
+        .then((res) => {
+          if (res.success && res.data) {
+            setPlanForm((prev) => ({
+              ...prev,
+              ...res.data,
+            }));
+            toast.info(
+              "Form Perencanaan CV otomatis diisi dari Innovation Charter & AI. Silakan tinjau dan simpan.",
+              "Auto-Fill Awal Berhasil"
+            );
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setAutoFillingFromCharter(false);
+        });
+    }
+  }, [timId, initialData?.plan?.id]);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleSavePlan = async (e: React.FormEvent) => {
@@ -229,47 +311,93 @@ export function CustomerValidationClient({
     setSaving(false);
   };
 
-  const handleAutoFillFromCharter = async () => {
-    // Check if any Section A field is already filled — ask confirmation
-    const sectionAFields = [
+  const handleAutoFillFull = async () => {
+    const sectionFields = [
       planForm.projectMission,
       planForm.customerDanContext,
       planForm.problemHypothesis,
       planForm.hmw,
       planForm.solutionHypothesis,
+      planForm.fiturAlurDiuji,
+      planForm.skenarioUserTesting,
+      planForm.targetEarlyAdopters,
     ];
-    const hasExistingData = sectionAFields.some((v) => v && v.trim().length > 0);
+    const hasExistingData = sectionFields.some((v) => v && v.trim().length > 0);
 
     if (hasExistingData) {
       const confirmed = window.confirm(
-        "Beberapa field Section A sudah terisi.\n\nLanjutkan auto-fill dari Innovation Charter akan MENIMPA isian yang ada.\n\nLanjutkan?"
+        "Beberapa field Perencanaan CV sudah terisi.\n\nLanjutkan auto-fill dari Innovation Charter & AI akan MENIMPA isian yang ada.\n\nLanjutkan?"
       );
       if (!confirmed) return;
     }
 
     setAutoFillingFromCharter(true);
     try {
-      const res = await autoFillCvPlanFromCharterAction(timId);
+      const res = await autoFillFullCvPlanAction(timId);
       if (res.success && res.data) {
         setPlanForm((prev) => ({
           ...prev,
-          projectMission: res.data!.projectMission || prev.projectMission,
-          customerDanContext: res.data!.customerDanContext || prev.customerDanContext,
-          problemHypothesis: res.data!.problemHypothesis || prev.problemHypothesis,
-          hmw: res.data!.hmw || prev.hmw,
-          solutionHypothesis: res.data!.solutionHypothesis || prev.solutionHypothesis,
+          ...res.data,
         }));
         toast.success(
-          "Section A berhasil diisi dari data Innovation Charter. Tinjau dan simpan jika sudah sesuai.",
+          "Form Perencanaan CV berhasil diisi otomatis dari Innovation Charter & AI. Tinjau dan simpan jika sudah sesuai.",
           "Auto-Fill Berhasil"
         );
       } else {
-        toast.error(res.error || "Gagal mengambil data Charter.", "Auto-Fill Gagal");
+        toast.error(res.error || "Gagal mengambil data draf otomatis.", "Auto-Fill Gagal");
       }
     } catch (err: any) {
       toast.error(err.message || "Terjadi kesalahan saat auto-fill.", "Gagal");
     } finally {
       setAutoFillingFromCharter(false);
+    }
+  };
+
+  const handleSignPlan = async (roleType: 'inisiator' | 'coach' | 'po') => {
+    setSigningRole(roleType);
+    try {
+      const res = await signCvPlanAction(timId, roleType);
+      if (res.success && res.signatureData) {
+        if (roleType === 'inisiator') setTtdDisusun(res.signatureData);
+        if (roleType === 'coach') setTtdDiperiksa(res.signatureData);
+        if (roleType === 'po') setTtdDisetujui(res.signatureData);
+        toast.success("Tanda tangan digital berhasil dibubuhkan.", "Tanda Tangan Berhasil");
+      } else {
+        toast.error(res.error || "Gagal menandatangani.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menandatangani.", "Gagal");
+    } finally {
+      setSigningRole(null);
+    }
+  };
+
+  const handleRevokeSign = async (roleType: 'inisiator' | 'coach' | 'po') => {
+    const roleLabel =
+      roleType === 'inisiator'
+        ? 'Inisiator'
+        : roleType === 'coach'
+        ? 'Innovation Coach'
+        : 'Project Owner';
+
+    const confirmed = window.confirm(`Batalkan tanda tangan sebagai ${roleLabel}?`);
+    if (!confirmed) return;
+
+    setSigningRole(roleType);
+    try {
+      const res = await revokeCvPlanSignatureAction(timId, roleType);
+      if (res.success) {
+        if (roleType === 'inisiator') setTtdDisusun(null);
+        if (roleType === 'coach') setTtdDiperiksa(null);
+        if (roleType === 'po') setTtdDisetujui(null);
+        toast.success("Tanda tangan berhasil dibatalkan.", "Dibatalkan");
+      } else {
+        toast.error(res.error || "Gagal membatalkan tanda tangan.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membatalkan tanda tangan.", "Gagal");
+    } finally {
+      setSigningRole(null);
     }
   };
 
@@ -365,6 +493,38 @@ export function CustomerValidationClient({
         <TabsContent value="plan" className="space-y-5 mt-4">
           <form onSubmit={handleSavePlan} className="space-y-5">
 
+            {/* ── HEADER READ-ONLY INFO & DOWNLOAD PDF ───────────────────── */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-white to-purple-50/60 border border-emerald-200/90 shadow-2xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Template Juklak 2.1 — Perencanaan Customer Validation
+                  </span>
+                  <h3 className="text-sm sm:text-base font-extrabold text-gray-900">
+                    {timInfo?.namaProyekInovasi || "Proyek Inovasi"}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="font-semibold text-gray-500">Klasifikasi Inovasi:</span>
+                    <Badge variant="outline" className="font-bold text-[10px] bg-white border-emerald-300 text-emerald-800">
+                      {timInfo?.klasifikasiInovasi || "BREAKTHROUGH"}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/api/pdf/cv-planning/${timId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Download className="h-4 w-4 text-emerald-600" />
+                    <span>📄 Unduh PDF Perencanaan CV</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
             {/* ── BAGIAN 1: Konteks & Hipotesis ────────────────────────────── */}
             <Card>
               <CardHeader>
@@ -382,7 +542,7 @@ export function CustomerValidationClient({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={handleAutoFillFromCharter}
+                      onClick={handleAutoFillFull}
                       disabled={autoFillingFromCharter}
                       className="h-8 text-[11px] font-semibold gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-900 rounded-xl shadow-2xs shrink-0 cursor-pointer"
                     >
@@ -391,7 +551,7 @@ export function CustomerValidationClient({
                       ) : (
                         <Wand2 className="h-3.5 w-3.5 text-amber-500" />
                       )}
-                      <span>{autoFillingFromCharter ? "Mengambil data..." : "✨ Isi Otomatis dari Innovation Charter"}</span>
+                      <span>{autoFillingFromCharter ? "Mengisi otomatis..." : "✨ Isi Ulang Otomatis (Charter + AI)"}</span>
                     </Button>
                   )}
                 </div>
@@ -470,27 +630,15 @@ export function CustomerValidationClient({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-700">
-                      Tipe Prototype yang Diuji
-                    </label>
-                    <Input
-                      value={planForm.prototypeType}
-                      onChange={(e) => setPlanForm({ ...planForm, prototypeType: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-700">
-                      Target Jumlah Responden
-                    </label>
-                    <Input
-                      type="number"
-                      value={planForm.jumlahTargetResponden}
-                      onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: Number(e.target.value) })}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Tipe Prototype yang Diuji
+                  </label>
+                  <Input
+                    placeholder="Figma / Clickable Prototype, Wireframe, dll..."
+                    value={planForm.prototypeType}
+                    onChange={(e) => setPlanForm({ ...planForm, prototypeType: e.target.value })}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -603,11 +751,23 @@ export function CustomerValidationClient({
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700">
-                    Kriteria Seleksi (Early Adopters)
+                    1. Target Early Adopters
                   </label>
                   <Textarea
                     rows={2}
-                    placeholder="Kriteria inklusi/eksklusi responden — siapa yang masuk dan siapa yang tidak..."
+                    placeholder="Profil early adopters awal berskala kecil yang relevan dengan customer prioritas..."
+                    value={planForm.targetEarlyAdopters}
+                    onChange={(e) => setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700">
+                    2. Kriteria Seleksi
+                  </label>
+                  <Textarea
+                    rows={2}
+                    placeholder="Kriteria inklusi/eksklusi responden; contoh: segmen, lokasi, perilaku..."
                     value={planForm.kriteriaSeleksi}
                     onChange={(e) => setPlanForm({ ...planForm, kriteriaSeleksi: e.target.value })}
                   />
@@ -616,21 +776,22 @@ export function CustomerValidationClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-700">
-                      Kriteria Early Adopters (Profil)
+                      3. Target Jumlah Responden
                     </label>
                     <Input
-                      placeholder="Penaksir dengan masa kerja > 2 tahun"
-                      value={planForm.targetEarlyAdopters}
-                      onChange={(e) => setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })}
+                      type="number"
+                      min={1}
+                      value={planForm.jumlahTargetResponden}
+                      onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: Number(e.target.value) })}
                     />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-700">
-                      Lokasi / Channel Testing
+                      4. Lokasi / Channel Testing
                     </label>
                     <Input
-                      placeholder="Cabang Kramat Jati & Rawamangun"
+                      placeholder="Cabang Kramat Jati & Rawamangun / Online Meet..."
                       value={planForm.lokasiChannelTesting}
                       onChange={(e) => setPlanForm({ ...planForm, lokasiChannelTesting: e.target.value })}
                     />
@@ -639,7 +800,7 @@ export function CustomerValidationClient({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700">
-                    Metode Rekrutmen
+                    5. Metode Rekrutmen
                   </label>
                   <Textarea
                     rows={2}
@@ -651,7 +812,7 @@ export function CustomerValidationClient({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700">
-                    Etika dan Persetujuan Data
+                    6. Etika dan Persetujuan Data
                   </label>
                   <Textarea
                     rows={2}
@@ -789,6 +950,7 @@ export function CustomerValidationClient({
               </CardContent>
             </Card>
 
+            {/* ── ACTION BUTTONS: Generate Backlog & Simpan Plan ────────────── */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <div className="flex items-center gap-2">
                 {initialData?.plan?.id ? (
@@ -822,6 +984,239 @@ export function CustomerValidationClient({
                 <span>{saving ? "Menyimpan..." : "Simpan Validation Plan"}</span>
               </Button>
             </div>
+
+            {/* ── BLOK TANDA TANGAN FORMAL (3 PIHAK) ────────────────────────── */}
+            <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden mt-6">
+              <CardHeader className="bg-gradient-to-r from-emerald-50/50 via-white to-purple-50/30 border-b border-gray-100">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2">
+                      <Stamp className="h-4.5 w-4.5 text-[#0F5132]" />
+                      Persetujuan &amp; Tanda Tangan Formal Perencanaan CV
+                    </CardTitle>
+                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                      Dokumentasi persetujuan dari Inisiator Inovasi, Innovation Coach, dan Project Owner (independen).
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Kartu 1: Inisiator */}
+                  <div
+                    className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
+                      ttdDisusun?.status === 'signed'
+                        ? 'border-emerald-300 bg-emerald-50/40'
+                        : 'border-dashed border-gray-200 bg-gray-50/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                        Disusun Oleh
+                      </span>
+                      {ttdDisusun?.status === 'signed' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Ditandatangani</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Ditandatangani
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs">
+                      <div className="font-bold text-gray-900">
+                        {ttdDisusun?.nama || "( Inisiator Inovasi )"}
+                      </div>
+                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <Briefcase className="h-3 w-3 text-gray-400" />
+                        <span>{ttdDisusun?.jabatan || "Inisiator Inovasi"}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <Building2 className="h-3 w-3 text-gray-400" />
+                        <span>{ttdDisusun?.unit || "PT Pegadaian"}</span>
+                      </div>
+                      {ttdDisusun?.tanggal && (
+                        <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                          {formatDateIndo(ttdDisusun.tanggal)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {ttdDisusun?.status === 'signed' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={signingRole === 'inisiator'}
+                          onClick={() => handleRevokeSign('inisiator')}
+                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          <span>Batalkan Tanda Tangan</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={signingRole === 'inisiator'}
+                          onClick={() => handleSignPlan('inisiator')}
+                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                        >
+                          <Stamp className="h-3.5 w-3.5 mr-1" />
+                          <span>Tandatangani sbg Inisiator</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Kartu 2: Innovation Coach */}
+                  <div
+                    className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
+                      ttdDiperiksa?.status === 'signed'
+                        ? 'border-emerald-300 bg-emerald-50/40'
+                        : 'border-dashed border-gray-200 bg-gray-50/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                        Diperiksa Oleh
+                      </span>
+                      {ttdDiperiksa?.status === 'signed' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Ditandatangani</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Ditandatangani
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs">
+                      <div className="font-bold text-gray-900">
+                        {ttdDiperiksa?.nama || "( Innovation Coach )"}
+                      </div>
+                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <Briefcase className="h-3 w-3 text-gray-400" />
+                        <span>{ttdDiperiksa?.jabatan || "Innovation Coach"}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <Building2 className="h-3 w-3 text-gray-400" />
+                        <span>{ttdDiperiksa?.unit || "PT Pegadaian"}</span>
+                      </div>
+                      {ttdDiperiksa?.tanggal && (
+                        <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                          {formatDateIndo(ttdDiperiksa.tanggal)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {ttdDiperiksa?.status === 'signed' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={signingRole === 'coach'}
+                          onClick={() => handleRevokeSign('coach')}
+                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          <span>Batalkan Tanda Tangan</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={signingRole === 'coach'}
+                          onClick={() => handleSignPlan('coach')}
+                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                        >
+                          <Stamp className="h-3.5 w-3.5 mr-1" />
+                          <span>Tandatangani sbg Coach</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Kartu 3: Project Owner */}
+                  <div
+                    className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
+                      ttdDisetujui?.status === 'signed'
+                        ? 'border-emerald-300 bg-emerald-50/40'
+                        : 'border-dashed border-gray-200 bg-gray-50/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                        Disetujui Oleh
+                      </span>
+                      {ttdDisetujui?.status === 'signed' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Ditandatangani</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Ditandatangani
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs">
+                      <div className="font-bold text-gray-900">
+                        {ttdDisetujui?.nama || "( Project Owner )"}
+                      </div>
+                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <Briefcase className="h-3 w-3 text-gray-400" />
+                        <span>{ttdDisetujui?.jabatan || "Project Owner"}</span>
+                      </div>
+                      <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                        <Building2 className="h-3 w-3 text-gray-400" />
+                        <span>{ttdDisetujui?.unit || "PT Pegadaian"}</span>
+                      </div>
+                      {ttdDisetujui?.tanggal && (
+                        <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                          {formatDateIndo(ttdDisetujui.tanggal)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {ttdDisetujui?.status === 'signed' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={signingRole === 'po'}
+                          onClick={() => handleRevokeSign('po')}
+                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          <span>Batalkan Tanda Tangan</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={signingRole === 'po'}
+                          onClick={() => handleSignPlan('po')}
+                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                        >
+                          <Stamp className="h-3.5 w-3.5 mr-1" />
+                          <span>Tandatangani sbg PO</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </form>
         </TabsContent>
 

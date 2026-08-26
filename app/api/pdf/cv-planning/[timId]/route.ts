@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import {
+  timInovator,
+  customerValidationPlan,
+  customerValidationDimensiFeedback,
+  rencanaValidasiMetrik,
+} from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { renderToBuffer } from '@react-pdf/renderer';
+import React from 'react';
+import { CvPlanningPdfDocument, CvPlanningPdfData } from '@/lib/pdf/CvPlanningPdfDocument';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ timId: string }> }
+) {
+  try {
+    const { timId } = await context.params;
+
+    const [tim] = await db
+      .select()
+      .from(timInovator)
+      .where(eq(timInovator.id, timId))
+      .limit(1);
+
+    if (!tim) {
+      return new NextResponse('Tim inovator tidak ditemukan.', { status: 404 });
+    }
+
+    const [plan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    let dimensiMap: Record<string, string> = {};
+    let metrikMap: Record<string, string> = {};
+
+    if (plan) {
+      const dimensiRows = await db
+        .select()
+        .from(customerValidationDimensiFeedback)
+        .where(eq(customerValidationDimensiFeedback.planId, plan.id));
+      dimensiRows.forEach((r) => {
+        dimensiMap[r.dimensi] = r.evidenceYangDikumpulkan || '';
+      });
+
+      const metrikRows = await db
+        .select()
+        .from(rencanaValidasiMetrik)
+        .where(eq(rencanaValidasiMetrik.planId, plan.id));
+      metrikRows.forEach((r) => {
+        metrikMap[r.metrik] = r.catatan || '';
+      });
+    }
+
+    const pdfData: CvPlanningPdfData = {
+      namaProyekInovasi: tim.namaProyekInovasi || '-',
+      klasifikasiInovasi: tim.klasifikasiInovasi || tim.kategoriPia || 'BREAKTHROUGH',
+      // Section A
+      projectMission: plan?.projectMission,
+      customerDanContext: plan?.customerDanContext,
+      problemHypothesis: plan?.problemHypothesis,
+      hmw: plan?.hmw,
+      solutionHypothesis: plan?.solutionHypothesis,
+      // Section B
+      prototypeType: plan?.prototypeType,
+      fiturAlurDiuji: plan?.fiturAlurDiuji,
+      skenarioUserTesting: plan?.skenarioUserTesting,
+      instrumenValidasi: plan?.instrumenValidasi,
+      dataDukung: (plan?.dataDukung as string[]) || [],
+      // Section C
+      targetEarlyAdopters: plan?.targetEarlyAdopters,
+      kriteriaSeleksi: plan?.kriteriaSeleksi,
+      jumlahTargetResponden: plan?.jumlahTargetResponden,
+      lokasiChannelTesting: plan?.lokasiChannelTesting,
+      metodeRekrutmen: plan?.metodeRekrutmen,
+      etikaPersetujuanData: plan?.etikaPersetujuanData,
+      // Section D & E
+      dimensiEvidence: dimensiMap,
+      metrikCatatan: metrikMap,
+      // Signatures
+      ttdDisusun: plan?.ttdDisusun as any,
+      ttdDiperiksa: plan?.ttdDiperiksa as any,
+      ttdDisetujui: plan?.ttdDisetujui as any,
+    };
+
+    // Render PDF to buffer
+    const documentElement = React.createElement(CvPlanningPdfDocument, { data: pdfData });
+    const buffer = await renderToBuffer(documentElement as any);
+
+    const safeName = (tim.namaProyekInovasi || 'Tim')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .slice(0, 50);
+    const filename = `Perencanaan-CustomerValidation-${safeName}.pdf`;
+
+    return new NextResponse(buffer as any, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
+  } catch (error: any) {
+    console.error('[PDF Export CV Planning] Error:', error);
+    return new NextResponse(`Gagal membuat PDF: ${error.message}`, { status: 500 });
+  }
+}

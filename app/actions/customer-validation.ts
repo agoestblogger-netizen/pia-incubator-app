@@ -13,12 +13,16 @@ import {
   sprint,
   timInovator,
   charter,
+  anggotaTim,
+  userRoleTim,
+  roles,
 } from "@/lib/db/schema";
 import { eq, and, ne, inArray, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
+import { generateFullCvPlanDraft } from "@/lib/ai/cv-plan-full-generator";
 
 
 export async function getCustomerValidationData(timId: string) {
@@ -480,3 +484,203 @@ export async function autoFillCvPlanFromCharterAction(timId: string): Promise<{
     return { success: false, error: error.message || 'Gagal mengambil data Charter.' };
   }
 }
+
+/**
+ * Auto-fill Sections A, B, and C of CV Plan using Innovation Charter data + AI.
+ */
+export async function autoFillFullCvPlanAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Tidak terautentikasi.' };
+
+    const [timRow] = await db
+      .select()
+      .from(timInovator)
+      .where(eq(timInovator.id, timId))
+      .limit(1);
+
+    const [charterRow] = await db
+      .select()
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1);
+
+    if (!charterRow) {
+      return { success: false, error: 'Innovation Charter belum ditemukan untuk tim ini.' };
+    }
+
+    const hasData = [
+      charterRow.projectMission,
+      charterRow.problemWorthSolving,
+      charterRow.hmw,
+    ].some((f) => f && f.trim().length > 0);
+
+    if (!hasData) {
+      return {
+        success: false,
+        error: 'Innovation Charter belum memiliki data yang cukup. Lengkapi Charter terlebih dahulu.',
+      };
+    }
+
+    const draft = await generateFullCvPlanDraft({
+      namaProyekInovasi: timRow?.namaProyekInovasi,
+      klasifikasiInovasi: timRow?.klasifikasiInovasi || timRow?.kategoriPia,
+      projectMission: charterRow.projectMission,
+      customerEarlyAdopters: charterRow.customerEarlyAdopters,
+      contextAreaBantuan: charterRow.contextAreaBantuan,
+      problemWorthSolving: charterRow.problemWorthSolving,
+      hmw: charterRow.hmw,
+      desirabilityHypothesis: charterRow.desirabilityHypothesis,
+      feasibilityHypothesis: charterRow.feasibilityHypothesis,
+      viabilityHypothesis: charterRow.viabilityHypothesis,
+      solusiAwal: charterRow.solusiAwal,
+    });
+
+    return {
+      success: true,
+      data: draft,
+    };
+  } catch (error: any) {
+    console.error('[autoFillFullCvPlanAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal menghasilkan draf otomatis.' };
+  }
+}
+
+/**
+ * Tandatangani Customer Validation Plan sebagai Inisiator / Coach / Project Owner
+ */
+export async function signCvPlanAction(
+  timId: string,
+  roleType: 'inisiator' | 'coach' | 'po'
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    // Get user details in this team
+    const [anggota] = await db
+      .select()
+      .from(anggotaTim)
+      .where(
+        and(
+          eq(anggotaTim.timInovatorId, timId),
+          eq(anggotaTim.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    const defaultRoleTitle =
+      roleType === 'inisiator'
+        ? 'Inisiator Inovasi'
+        : roleType === 'coach'
+        ? 'Innovation Coach'
+        : 'Project Owner';
+
+    const signatureData = {
+      userId: user.id,
+      nama: user.nama,
+      jabatan: anggota?.jabatan || defaultRoleTitle,
+      unit: anggota?.unitKerja || 'PT Pegadaian',
+      tanggal: new Date().toISOString(),
+      status: 'signed',
+    };
+
+    // Ensure plan exists
+    const [existing] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    const fieldToUpdate =
+      roleType === 'inisiator'
+        ? { ttdDisusun: signatureData }
+        : roleType === 'coach'
+        ? { ttdDiperiksa: signatureData }
+        : { ttdDisetujui: signatureData };
+
+    if (existing) {
+      await db
+        .update(customerValidationPlan)
+        .set({
+          ...fieldToUpdate,
+          updatedAt: new Date(),
+        })
+        .where(eq(customerValidationPlan.id, existing.id));
+    } else {
+      await db.insert(customerValidationPlan).values({
+        timInovatorId: timId,
+        ...fieldToUpdate,
+      });
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: `CV_PLAN_SIGN_${roleType.toUpperCase()}`,
+      entity: 'customer_validation_plan',
+      entityId: existing?.id || timId,
+      details: { timId, roleType, signatureData },
+    });
+
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    return { success: true, signatureData };
+  } catch (error: any) {
+    console.error('[signCvPlanAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal membubuhkan tanda tangan.' };
+  }
+}
+
+/**
+ * Batalkan tanda tangan Customer Validation Plan
+ */
+export async function revokeCvPlanSignatureAction(
+  timId: string,
+  roleType: 'inisiator' | 'coach' | 'po'
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    const [existing] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!existing) {
+      return { success: false, error: 'Customer Validation Plan belum dibuat.' };
+    }
+
+    const fieldToClear =
+      roleType === 'inisiator'
+        ? { ttdDisusun: null }
+        : roleType === 'coach'
+        ? { ttdDiperiksa: null }
+        : { ttdDisetujui: null };
+
+    await db
+      .update(customerValidationPlan)
+      .set({
+        ...fieldToClear,
+        updatedAt: new Date(),
+      })
+      .where(eq(customerValidationPlan.id, existing.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: `CV_PLAN_REVOKE_SIGN_${roleType.toUpperCase()}`,
+      entity: 'customer_validation_plan',
+      entityId: existing.id,
+      details: { timId, roleType, revokedBy: user.nama },
+    });
+
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[revokeCvPlanSignatureAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal membatalkan tanda tangan.' };
+  }
+}
+
