@@ -162,6 +162,7 @@ export const kanbanCard = pgTable('kanban_card', {
   estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (deprecated/historis)
   storyPoint: integer('story_point'), // story point kartu skala Fibonacci: 1, 2, 3, 5, 8, 13
   suggestedSprintNumber: integer('suggested_sprint_number'), // sprint yang disarankan dari analisa proposal / heuristik
+  customDocumentData: jsonb('custom_document_data').notNull().default(sql`'{}'`), // isian khusus dokumen kerja per kartu baku CV (Paket 18)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -335,6 +336,7 @@ export const customerValidationReport = pgTable('customer_validation_report', {
 export const customerTestingFeedbackResponden = pgTable('customer_testing_feedback_responden', {
   id: uuid('id').primaryKey().defaultRandom(),
   reportId: uuid('report_id').notNull().references(() => customerValidationReport.id, { onDelete: 'cascade' }),
+  sourceCardId: uuid('source_card_id').references(() => kanbanCard.id, { onDelete: 'set null' }), // pelacakan kartu sumber feedback (Paket 18)
   respondenProfil: text('responden_profil').notNull(),
   usabilitySkorFeedback: text('usability_skor_feedback'),
   functionalitySkorFeedback: text('functionality_skor_feedback'),

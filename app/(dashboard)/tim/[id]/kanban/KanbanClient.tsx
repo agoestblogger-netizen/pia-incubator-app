@@ -35,6 +35,7 @@ import {
   MemberCapacityInfo,
 } from "@/app/actions/capacity";
 import { SprintPlanningSection } from "./SprintPlanningSection";
+import { CvCardWorkDocumentSection } from "@/components/kanban/CvCardWorkDocumentSection";
 import { toast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -675,6 +676,7 @@ export function KanbanClient({
   const [detailTanggalSelesai, setDetailTanggalSelesai] = useState("");
   const [detailAcceptanceCriteria, setDetailAcceptanceCriteria] = useState("");
   const [detailDependencyRisiko, setDetailDependencyRisiko] = useState("");
+  const [detailCustomDocumentData, setDetailCustomDocumentData] = useState<any>({});
   const [savingDetailCard, setSavingDetailCard] = useState(false);
   const [deletingCard, setDeletingCard] = useState(false);
 
@@ -1295,6 +1297,7 @@ export function KanbanClient({
     );
     setDetailAcceptanceCriteria(card.acceptanceCriteria || "");
     setDetailDependencyRisiko(card.dependencyRisiko || "");
+    setDetailCustomDocumentData(card.customDocumentData || {});
 
     if (card.reviewStatus === "ai_reference") {
       setSelectedRefCardId(card.id);
@@ -1347,6 +1350,7 @@ export function KanbanClient({
     setDetailTanggalSelesai("");
     setDetailAcceptanceCriteria("");
     setDetailDependencyRisiko("");
+    setDetailCustomDocumentData({});
     setAttachments([]);
     setLinks([]);
     setSubtasks([]);
@@ -1478,12 +1482,17 @@ export function KanbanClient({
         tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
         acceptanceCriteria: detailAcceptanceCriteria,
         dependencyRisiko: detailDependencyRisiko,
+        customDocumentData: detailCustomDocumentData,
       };
 
       const res = await updateKanbanCardFullAction(timId, selectedCardForDetail.id, payload);
       if (res.success && res.data) {
         setCards((prev) =>
-          prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
+          prev.map((c) =>
+            c.id === selectedCardForDetail.id
+              ? { ...c, ...res.data, customDocumentData: detailCustomDocumentData }
+              : c
+          )
         );
         toast.success("Perubahan detail kartu berhasil disimpan!", "Kartu Diperbarui");
         setSelectedCardForDetail(null);
@@ -3104,6 +3113,20 @@ export function KanbanClient({
                           className="text-xs font-medium bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
                         />
                       </div>
+
+                      {/* Custom Document: Dokumen Kerja Khusus (Paket 18 - 6 Kartu Baku CV) */}
+                      {selectedCardForDetail && !selectedCardForDetail.isNewBacklog && (
+                        <CvCardWorkDocumentSection
+                          timId={timId}
+                          card={{
+                            id: selectedCardForDetail.id,
+                            judul: detailJudul,
+                            customDocumentData: detailCustomDocumentData,
+                          }}
+                          canEdit={canEdit}
+                          onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
+                        />
+                      )}
 
                       {/* 5. Tanggal Mulai & Target Selesai */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

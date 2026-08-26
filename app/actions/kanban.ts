@@ -70,6 +70,7 @@ export async function getKanbanData(timId: string) {
       estimasiJam: kanbanCard.estimasiJam,
       storyPoint: kanbanCard.storyPoint,
       suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
+      customDocumentData: kanbanCard.customDocumentData,
       createdAt: kanbanCard.createdAt,
       updatedAt: kanbanCard.updatedAt,
       attachmentsCount: sql<number>`cast(count(distinct ${taskAttachment.id}) as int)`,
@@ -395,6 +396,7 @@ export async function updateKanbanCardFullAction(
     if (cardData.estimasiJam !== undefined) updatePayload.estimasiJam = cardData.estimasiJam;
     if (cardData.storyPoint !== undefined) updatePayload.storyPoint = cardData.storyPoint;
     if (cardData.suggestedSprintNumber !== undefined) updatePayload.suggestedSprintNumber = cardData.suggestedSprintNumber;
+    if (cardData.customDocumentData !== undefined) updatePayload.customDocumentData = cardData.customDocumentData;
 
     const [updated] = await db
       .update(kanbanCard)

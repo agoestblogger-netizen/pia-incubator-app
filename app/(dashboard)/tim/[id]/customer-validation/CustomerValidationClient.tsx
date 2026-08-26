@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   saveCustomerValidationPlanFullAction,
   saveCustomerValidationReportAction,
@@ -217,6 +218,21 @@ export function CustomerValidationClient({
     anggotaTim?.find((a) => a.role === "project_owner" || a.jabatan?.toLowerCase().includes("owner") || a.jabatan?.toLowerCase().includes("po"))?.nama ||
     null;
 
+  // ── Tab state ─────────────────────────────────────────────────────────────
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (tabParam === "report") return "report";
+    if (tabParam === "backlog") return "backlog";
+    return "plan";
+  });
+
+  useEffect(() => {
+    if (tabParam === "report" || tabParam === "backlog" || tabParam === "plan") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   // ── Signatures state ───────────────────────────────────────────────────────
   const [ttdDisusun, setTtdDisusun] = useState<any>(initialData?.plan?.ttdDisusun || null);
   const [ttdDiperiksa, setTtdDiperiksa] = useState<any>(initialData?.plan?.ttdDiperiksa || null);
@@ -265,7 +281,10 @@ export function CustomerValidationClient({
     fiturKunci1: initialData?.report?.fiturKunci1 || "",
     fiturKunci2: initialData?.report?.fiturKunci2 || "",
     fiturKunci3: initialData?.report?.fiturKunci3 || "",
-    jumlahRespondenAktual: initialData?.report?.jumlahRespondenAktual || 10,
+    prototypeSolusiLink: initialData?.report?.prototypeSolusiLink || "",
+    mekanismeUserTesting: initialData?.report?.mekanismeUserTesting || "",
+    tanggalLokasiTesting: initialData?.report?.tanggalLokasiTesting || "",
+    jumlahRespondenAktual: initialData?.report?.jumlahRespondenAktual ?? 10,
     profilRespondenAktual: initialData?.report?.profilRespondenAktual || "",
     kesimpulan: initialData?.report?.kesimpulan || "",
     ketercapaianPsf: initialData?.report?.ketercapaianPsf || "tercapai",
@@ -533,7 +552,7 @@ export function CustomerValidationClient({
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="plan" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200 shadow-2xs">
           <TabsTrigger value="plan" className="flex items-center justify-center gap-2 text-xs font-bold py-2 rounded-xl">
             <ClipboardList className="h-3.5 w-3.5 text-amber-600" />
@@ -1426,6 +1445,63 @@ export function CustomerValidationClient({
                     value={reportForm.validatedSolution}
                     onChange={(e) => setReportForm({ ...reportForm, validatedSolution: e.target.value })}
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Link Prototype Solusi (URL)
+                  </label>
+                  <Input
+                    type="url"
+                    placeholder="https://www.figma.com/proto/... atau URL demo"
+                    value={reportForm.prototypeSolusiLink}
+                    onChange={(e) => setReportForm({ ...reportForm, prototypeSolusiLink: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Mekanisme User Testing
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Metode testing (wawancara, observasi, daring/tatap muka)..."
+                      value={reportForm.mekanismeUserTesting}
+                      onChange={(e) => setReportForm({ ...reportForm, mekanismeUserTesting: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Tanggal &amp; Lokasi Testing
+                    </label>
+                    <Input
+                      placeholder="Contoh: 10-12 Maret 2026 di Outlet Kramat Jati"
+                      value={reportForm.tanggalLokasiTesting}
+                      onChange={(e) => setReportForm({ ...reportForm, tanggalLokasiTesting: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-gray-600">Jumlah Responden Aktual</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={reportForm.jumlahRespondenAktual}
+                      onChange={(e) => setReportForm({ ...reportForm, jumlahRespondenAktual: parseInt(e.target.value, 10) || 0 })}
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[11px] font-semibold text-gray-600">Profil Responden Aktual</label>
+                    <Input
+                      placeholder="Contoh: 5 Nasabah Tabungan Emas usia 25-35 thn..."
+                      value={reportForm.profilRespondenAktual}
+                      onChange={(e) => setReportForm({ ...reportForm, profilRespondenAktual: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
