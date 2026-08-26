@@ -1020,13 +1020,6 @@ export async function revokeCharterApprovalAction(timId: string) {
 
 const bakuCVTasks = [
   {
-    judul: "Susun Perencanaan Customer Validation",
-    deskripsi: "Tentukan hipotesis value proposition yang akan diuji, profil early adopters sasaran, dan metodologi pengujian (interview / usability testing / survey).",
-    acceptanceCriteria: "Dokumen rencana Customer Validation lengkap dengan hipotesis PSF, profil responden, dan metodologi pengujian yang disepakati.",
-    tahap: "customer_validation" as const,
-    storyPoint: 3,
-  },
-  {
     judul: "Siapkan prototype untuk testing",
     deskripsi: "Siapkan mockup, clickable prototype, atau instrumen demonstrasi solusi yang siap diuji ke responden.",
     acceptanceCriteria: "Prototype clickable / instrumen demonstrasi solusi yang siap diujicobakan kepada calon pengguna.",
@@ -1319,15 +1312,15 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     }
   }
 
-  // 15 Template Baku (7 CV + 8 MV) dengan suggestedSprintNumber terdistribusi seimbang
+  // 14 Template Baku (6 CV + 8 MV) dengan suggestedSprintNumber terdistribusi seimbang
   for (let cvIdx = 0; cvIdx < bakuCVTasks.length; cvIdx++) {
     const t = bakuCVTasks[cvIdx];
-    // Heuristik CV: Tugas 0-1 di Sprint 1, Tugas 2-4 di Sprint 2, Tugas 5-6 di Sprint 3
+    // Heuristik 6 kartu CV: Tugas 0-1 di Sprint 1, Tugas 2-3 di Sprint 2, Tugas 4-5 di Sprint 3
     const cvSprint = totalSprints <= 2
-      ? 1
+      ? (cvIdx < 3 ? 1 : 2)
       : cvIdx < 2
       ? 1
-      : cvIdx < 5
+      : cvIdx < 4
       ? 2
       : Math.min(totalSprints, 3);
 

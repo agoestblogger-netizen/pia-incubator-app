@@ -1,5 +1,5 @@
 /**
- * Kamus Subtask Baku untuk 15 Kartu Template Customer Validation (7) & Market Validation (8)
+ * Kamus Subtask Baku untuk 14 Kartu Template Customer Validation (6) & Market Validation (8)
  * Berdasarkan tahapan resmi Petunjuk Pelaksanaan (Juklak) Inkubasi Inovasi PT Pegadaian
  */
 
@@ -9,13 +9,7 @@ export interface PredefinedSubtask {
 }
 
 export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
-  // ─── 7 TEMPLATE BAKU CUSTOMER VALIDATION ───
-  "Susun Perencanaan Customer Validation": [
-    { title: "Rumuskan hipotesis Problem-Solution Fit (PSF)", estimatedHours: 3 },
-    { title: "Tentukan profil responden & kriteria early adopters", estimatedHours: 2 },
-    { title: "Susun panduan wawancara & instrumen pengujian", estimatedHours: 3 },
-    { title: "Tetapkan target metrik & kriteria kelulusan PSF", estimatedHours: 2 },
-  ],
+  // ─── 6 TEMPLATE BAKU CUSTOMER VALIDATION ───
   "Siapkan prototype untuk testing": [
     { title: "Susun alur interaksi pengguna (user journey & wireframe)", estimatedHours: 4 },
     { title: "Kembangkan mockup/clickable prototype interaktif", estimatedHours: 8 },
