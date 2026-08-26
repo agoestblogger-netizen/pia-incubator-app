@@ -1384,7 +1384,12 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     const subtaskRowsToInsert: Array<typeof kanbanSubtask.$inferInsert> = [];
     for (let i = 0; i < insertedCards.length; i++) {
       const card = insertedCards[i];
-      const initialSubtasks = (cardsToInsert[i] as any)?._initialSubtasks as Array<{ title: string; estimatedHours: number }> | undefined;
+      const initialSubtasks = (cardsToInsert[i] as any)?._initialSubtasks as Array<{
+        title: string;
+        estimatedHours: number;
+        subtaskType?: string;
+        reportFieldMapping?: Record<string, any>;
+      }> | undefined;
       if (initialSubtasks && initialSubtasks.length > 0) {
         for (let sIdx = 0; sIdx < initialSubtasks.length; sIdx++) {
           const st = initialSubtasks[sIdx];
@@ -1394,6 +1399,8 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
             estimatedHours: st.estimatedHours || 180,
             isDone: false,
             orderIndex: sIdx,
+            subtaskType: st.subtaskType || 'regular',
+            reportFieldMapping: st.reportFieldMapping || null,
             createdBy: null,
           });
         }

@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import {
   kanbanCard,
+  kanbanSubtask,
   customerValidationPlan,
   customerValidationReport,
   customerTestingFeedbackResponden,
@@ -656,3 +657,318 @@ export async function syncCardCustomDocToReportAction(
     };
   }
 }
+
+/**
+ * Mengambil data awal untuk modal subtask wajib (mandatory subtask)
+ */
+export async function getMandatorySubtaskDataAction(
+  timId: string,
+  cardId: string,
+  mappingField: string
+) {
+  try {
+    let [plan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) {
+      return { success: true, data: {} };
+    }
+
+    let [report] = await db
+      .select()
+      .from(customerValidationReport)
+      .where(eq(customerValidationReport.planId, plan.id))
+      .limit(1);
+
+    if (!report) {
+      return { success: true, data: {} };
+    }
+
+    let data: Record<string, any> = {};
+
+    switch (mappingField) {
+      case "prototype_link":
+        data = {
+          prototypeLink: report.prototypeSolusiLink || "",
+        };
+        break;
+      case "responden_profil":
+        data = {
+          jumlahRespondenAktual: report.jumlahRespondenAktual ?? "",
+          profilRespondenAktual: report.profilRespondenAktual || "",
+        };
+        break;
+      case "mekanisme_lokasi":
+        data = {
+          mekanismeUserTesting: report.mekanismeUserTesting || "",
+          tanggalLokasiTesting: report.tanggalLokasiTesting || "",
+        };
+        break;
+      case "feedback_matrix": {
+        const rows = await db
+          .select()
+          .from(customerTestingFeedbackResponden)
+          .where(
+            and(
+              eq(customerTestingFeedbackResponden.reportId, report.id),
+              eq(customerTestingFeedbackResponden.sourceCardId, cardId)
+            )
+          );
+        data = {
+          feedbackRows: rows.map((r) => ({
+            id: r.id,
+            respondenProfil: r.respondenProfil || "",
+            usability: r.usabilitySkorFeedback || "",
+            functionality: r.functionalitySkorFeedback || "",
+            solvability: r.solvabilitySkorFeedback || "",
+            payability: r.payabilitySkorFeedback || "",
+            others: r.others || "",
+            priorityInsightAction: r.priorityInsightAction || "",
+          })),
+        };
+        break;
+      }
+      case "validated_solution_psf":
+        data = {
+          validatedSolution: report.validatedSolution || "",
+          ketercapaianPsf: report.ketercapaianPsf || "tercapai",
+        };
+        break;
+      case "kesimpulan_pembelajaran":
+        data = {
+          kesimpulan: report.kesimpulan || "",
+        };
+        break;
+      case "preliminary_review": {
+        const bukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+        const catatanObj = bukti.find((b: any) => b.type === "catatan_sme" && b.sourceCardId === cardId);
+        const docs = bukti.filter(
+          (b: any) => b.type === "dokumen_preliminary_review" && b.sourceCardId === cardId
+        );
+        data = {
+          catatanSme: catatanObj?.content || "",
+          reviewerNama: catatanObj?.reviewer || "",
+          tanggalReview: catatanObj?.tanggal || new Date().toISOString().split("T")[0],
+          dokumenFiles: docs.map((d: any) => ({
+            name: d.file_name || d.name,
+            url: d.file_url || d.url,
+            size: d.size,
+          })),
+        };
+        break;
+      }
+      case "keputusan_lanjut":
+        data = {
+          keputusan: report.keputusan || "lanjut",
+          catatanMvpPlanning: report.catatanMvpPlanning || "",
+        };
+        break;
+      default:
+        data = {};
+    }
+
+    return { success: true, data };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal memuat data subtask wajib." };
+  }
+}
+
+/**
+ * Menyimpan data dari modal subtask wajib ke Laporan CV dan otomatis mencentang subtask (isDone = true)
+ */
+export async function saveMandatorySubtaskDataAction(
+  timId: string,
+  cardId: string,
+  subtaskId: string,
+  mappingField: string,
+  payload: Record<string, any>
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "cust_val.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk mengedit Customer Validation tim ini.",
+      };
+    }
+
+    let [plan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) {
+      const [newPlan] = await db
+        .insert(customerValidationPlan)
+        .values({ timInovatorId: timId })
+        .returning();
+      plan = newPlan;
+    }
+
+    let [report] = await db
+      .select()
+      .from(customerValidationReport)
+      .where(eq(customerValidationReport.planId, plan.id))
+      .limit(1);
+
+    if (!report) {
+      const [newReport] = await db
+        .insert(customerValidationReport)
+        .values({ planId: plan.id })
+        .returning();
+      report = newReport;
+    }
+
+    const reportUpdates: any = { updatedAt: new Date() };
+
+    switch (mappingField) {
+      case "prototype_link":
+        reportUpdates.prototypeSolusiLink = payload.prototypeLink || null;
+        break;
+
+      case "responden_profil": {
+        const jlh = payload.jumlahRespondenAktual;
+        reportUpdates.jumlahRespondenAktual =
+          jlh !== undefined && jlh !== null && jlh !== "" ? Number(jlh) : null;
+        reportUpdates.profilRespondenAktual = payload.profilRespondenAktual || null;
+        break;
+      }
+
+      case "mekanisme_lokasi":
+        reportUpdates.mekanismeUserTesting = payload.mekanismeUserTesting || null;
+        reportUpdates.tanggalLokasiTesting = payload.tanggalLokasiTesting || null;
+        break;
+
+      case "feedback_matrix": {
+        const rows: any[] = Array.isArray(payload.feedbackRows) ? payload.feedbackRows : [];
+        await db
+          .delete(customerTestingFeedbackResponden)
+          .where(
+            and(
+              eq(customerTestingFeedbackResponden.reportId, report.id),
+              eq(customerTestingFeedbackResponden.sourceCardId, cardId)
+            )
+          );
+
+        if (rows.length > 0) {
+          const insertPayload = rows
+            .filter((r) => r.respondenProfil && r.respondenProfil.trim().length > 0)
+            .map((r) => ({
+              reportId: report.id,
+              sourceCardId: cardId,
+              respondenProfil: r.respondenProfil.trim(),
+              usabilitySkorFeedback: r.usability || null,
+              functionalitySkorFeedback: r.functionality || null,
+              solvabilitySkorFeedback: r.solvability || null,
+              payabilitySkorFeedback: r.payability || null,
+              others: r.others || null,
+              priorityInsightAction: r.priorityInsightAction || null,
+            }));
+
+          if (insertPayload.length > 0) {
+            await db.insert(customerTestingFeedbackResponden).values(insertPayload);
+          }
+        }
+        break;
+      }
+
+      case "validated_solution_psf":
+        reportUpdates.validatedSolution = payload.validatedSolution || null;
+        reportUpdates.ketercapaianPsf = payload.ketercapaianPsf || null;
+        break;
+
+      case "kesimpulan_pembelajaran":
+        reportUpdates.kesimpulan = payload.kesimpulan || null;
+        break;
+
+      case "preliminary_review": {
+        const existingBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+        const filtered = existingBukti.filter(
+          (b: any) =>
+            !(
+              b.sourceCardId === cardId &&
+              (b.type === "catatan_sme" || b.type === "dokumen_preliminary_review")
+            )
+        );
+
+        if (payload.catatanSme?.trim()) {
+          filtered.push({
+            id: randomUUID(),
+            type: "catatan_sme",
+            content: payload.catatanSme.trim(),
+            reviewer: payload.reviewerNama || "SME / Innovation Coach",
+            tanggal: payload.tanggalReview || new Date().toISOString(),
+            sourceCardId: cardId,
+          });
+        }
+
+        const files: Array<{ url: string; name: string; size?: number }> =
+          Array.isArray(payload.dokumenFiles) ? payload.dokumenFiles : [];
+
+        for (const f of files) {
+          if (f.url) {
+            filtered.push({
+              id: randomUUID(),
+              type: "dokumen_preliminary_review",
+              file_url: f.url,
+              file_name: f.name || "Dokumen Preliminary Review",
+              size: f.size,
+              tanggal: new Date().toISOString(),
+              sourceCardId: cardId,
+            });
+          }
+        }
+
+        reportUpdates.buktiPendukung = filtered;
+        break;
+      }
+
+      case "keputusan_lanjut":
+        // Pilihan resmi: lanjut, iterasi, hold, stop
+        reportUpdates.keputusan = payload.keputusan || "lanjut";
+        reportUpdates.catatanMvpPlanning = payload.catatanMvpPlanning || null;
+        break;
+    }
+
+    // Update customerValidationReport
+    await db
+      .update(customerValidationReport)
+      .set(reportUpdates)
+      .where(eq(customerValidationReport.id, report.id));
+
+    // Otomatis tandai subtask wajib ini isDone = true
+    await db
+      .update(kanbanSubtask)
+      .set({ isDone: true })
+      .where(eq(kanbanSubtask.id, subtaskId));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "MANDATORY_SUBTASK_SAVE",
+      entity: "customer_validation_report",
+      entityId: report.id,
+      details: { timId, cardId, subtaskId, mappingField },
+    });
+
+    revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Gagal menyimpan data subtask wajib.",
+    };
+  }
+}
+

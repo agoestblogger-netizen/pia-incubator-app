@@ -3,42 +3,94 @@
  * Berdasarkan tahapan resmi Petunjuk Pelaksanaan (Juklak) Inkubasi Inovasi PT Pegadaian
  */
 
+export type SubtaskType = "regular" | "mandatory_simple" | "mandatory_complex";
+
 export interface PredefinedSubtask {
   title: string;
   estimatedHours: number;
+  subtaskType?: SubtaskType;
+  reportFieldMapping?: Record<string, any>;
 }
 
 export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
   // ─── 6 TEMPLATE BAKU CUSTOMER VALIDATION ───
   "Siapkan prototype untuk testing": [
-    { title: "Susun alur interaksi pengguna (user journey & wireframe)", estimatedHours: 240 },
-    { title: "Kembangkan mockup/clickable prototype interaktif", estimatedHours: 480 },
-    { title: "Uji mandiri prototype & siapkan skenario demonstrasi", estimatedHours: 240 },
+    {
+      title: "Isi Link Prototype Solusi",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "prototype_link" },
+    },
+    { title: "Susun alur interaksi pengguna (user journey & wireframe)", estimatedHours: 240, subtaskType: "regular" },
+    { title: "Kembangkan mockup/clickable prototype interaktif", estimatedHours: 480, subtaskType: "regular" },
+    { title: "Uji mandiri prototype & siapkan skenario demonstrasi", estimatedHours: 240, subtaskType: "regular" },
   ],
   "Rekrut early adopters/responden": [
-    { title: "Buat daftar calon responden (minimal 5-10 orang)", estimatedHours: 180 },
-    { title: "Hubungi calon responden & kirimkan brief pengujian", estimatedHours: 180 },
-    { title: "Jadwalkan sesi interview / usability testing", estimatedHours: 120 },
+    {
+      title: "Isi Jumlah & Profil Responden Aktual",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "responden_profil" },
+    },
+    { title: "Buat daftar calon responden (minimal 5-10 orang)", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Hubungi calon responden & kirimkan brief pengujian", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Jadwalkan sesi interview / usability testing", estimatedHours: 120, subtaskType: "regular" },
   ],
   "Lakukan sesi user testing": [
-    { title: "Eksekusi sesi testing dengan responden batch 1", estimatedHours: 360 },
-    { title: "Eksekusi sesi testing dengan responden batch 2", estimatedHours: 360 },
-    { title: "Catat feedback verbatim 4 dimensi (Problem, Solution, Usability, Willingness)", estimatedHours: 240 },
+    {
+      title: "Isi Mekanisme & Lokasi Testing",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "mekanisme_lokasi" },
+    },
+    {
+      title: "Isi Feedback Matrix per Responden",
+      estimatedHours: 180,
+      subtaskType: "mandatory_complex",
+      reportFieldMapping: { field: "feedback_matrix" },
+    },
+    { title: "Eksekusi sesi testing dengan responden batch 1", estimatedHours: 360, subtaskType: "regular" },
+    { title: "Eksekusi sesi testing dengan responden batch 2", estimatedHours: 360, subtaskType: "regular" },
+    { title: "Catat feedback verbatim 4 dimensi (Problem, Solution, Usability, Willingness)", estimatedHours: 240, subtaskType: "regular" },
   ],
   "Analisis hasil & isi Laporan Customer Validation": [
-    { title: "Rekapitulasi skor kuantitatif 4 dimensi validasi", estimatedHours: 180 },
-    { title: "Sintesis temuan kualitatif utama & pain points pengguna", estimatedHours: 180 },
-    { title: "Isi lengkap form Laporan Customer Validation di sistem", estimatedHours: 180 },
+    {
+      title: "Isi Validated Solution & Ketercapaian PSF",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "validated_solution_psf" },
+    },
+    {
+      title: "Isi Kesimpulan & Pembelajaran",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "kesimpulan_pembelajaran" },
+    },
+    { title: "Rekapitulasi skor kuantitatif 4 dimensi validasi", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Sintesis temuan kualitatif utama & pain points pengguna", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Isi lengkap form Laporan Customer Validation di sistem", estimatedHours: 180, subtaskType: "regular" },
   ],
   "Preliminary Review (SME) - CV": [
-    { title: "Siapkan ringkasan temuan validasi untuk review SME", estimatedHours: 120 },
-    { title: "Jalankan sesi review bersama SME & Coach Inovasi", estimatedHours: 120 },
-    { title: "Dokumentasikan masukan, catatan, & rekomendasi SME", estimatedHours: 120 },
+    {
+      title: "Isi Catatan Review & Upload Dokumen",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "preliminary_review" },
+    },
+    { title: "Siapkan ringkasan temuan validasi untuk review SME", estimatedHours: 120, subtaskType: "regular" },
+    { title: "Jalankan sesi review bersama SME & Coach Inovasi", estimatedHours: 120, subtaskType: "regular" },
+    { title: "Dokumentasikan masukan, catatan, & rekomendasi SME", estimatedHours: 120, subtaskType: "regular" },
   ],
   "Tentukan keputusan Fit/Tidak Fit": [
-    { title: "Evaluasi ketercapaian target metrik PSF", estimatedHours: 120 },
-    { title: "Diskusikan keputusan fase (Fit / Iterasi / Pivot) bersama tim", estimatedHours: 120 },
-    { title: "Finalisasi dan simpan status keputusan fase CV", estimatedHours: 60 },
+    {
+      title: "Tentukan Keputusan Lanjut",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "keputusan_lanjut" },
+    },
+    { title: "Evaluasi ketercapaian target metrik PSF", estimatedHours: 120, subtaskType: "regular" },
+    { title: "Diskusikan keputusan fase (Fit / Iterasi / Pivot) bersama tim", estimatedHours: 120, subtaskType: "regular" },
+    { title: "Finalisasi dan simpan status keputusan fase CV", estimatedHours: 60, subtaskType: "regular" },
   ],
 
   // ─── 7 TEMPLATE BAKU MARKET VALIDATION ───

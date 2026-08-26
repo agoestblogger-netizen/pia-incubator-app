@@ -37,8 +37,9 @@ import {
   MemberCapacityInfo,
 } from "@/app/actions/capacity";
 import { SprintPlanningSection } from "./SprintPlanningSection";
-import { CvCardWorkDocumentSection } from "@/components/kanban/CvCardWorkDocumentSection";
+import { MandatorySubtaskModal } from "@/components/kanban/MandatorySubtaskModal";
 import { MvCardWorkDocumentSection } from "@/components/kanban/MvCardWorkDocumentSection";
+import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 import { toast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -773,6 +774,9 @@ export function KanbanClient({
   const [editingSubtaskField, setEditingSubtaskField] = useState<'title' | 'hours' | null>(null);
   const [editTitleDraft, setEditTitleDraft] = useState("");
   const [editHoursDraft, setEditHoursDraft] = useState<number | "">("");
+  // Mandatory Subtask Modal State
+  const [selectedMandatorySubtask, setSelectedMandatorySubtask] = useState<any | null>(null);
+  const [isMandatoryModalOpen, setIsMandatoryModalOpen] = useState(false);
 
   const fetchTaskSubtasks = async (taskId: string) => {
     setLoadingSubtasks(true);
@@ -2820,18 +2824,49 @@ export function KanbanClient({
                                 const attachments = Array.isArray(st.attachmentData) ? st.attachmentData : [];
                                 const hasProof = attachments.length > 0;
                                 const isPopoverOpen = activeSubtaskPopoverId === st.id;
+                                const isMandatory = st.subtaskType === 'mandatory_simple' || st.subtaskType === 'mandatory_complex';
 
                                 return (
                                   <div
                                     key={st.id}
-                                    className="p-2.5 rounded-xl bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-all space-y-2 group shadow-2xs"
+                                    className={`p-2.5 rounded-xl bg-white border transition-all space-y-2 group shadow-2xs ${
+                                      isMandatory
+                                        ? "border-emerald-300/80 bg-emerald-50/10 hover:border-emerald-500"
+                                        : "border-[#C9E4D0] hover:border-[#3E9463]/60"
+                                    }`}
                                   >
                                     <div className="flex items-start justify-between gap-2.5">
                                       <div className="flex items-start gap-2 min-w-0 flex-1">
                                         {/* Checkbox or Lock */}
-                                        {!hasProof ? (
+                                        {isMandatory ? (
+                                          st.isDone ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setSelectedMandatorySubtask(st);
+                                                setIsMandatoryModalOpen(true);
+                                              }}
+                                              className="text-[#3E9463] focus:outline-none shrink-0 mt-0.5 cursor-pointer"
+                                              title="Subtask wajib telah terisi di Laporan CV. Klik untuk melihat / mengubah data."
+                                            >
+                                              <CheckSquare className="h-4 w-4 text-[#3E9463]" />
+                                            </button>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setSelectedMandatorySubtask(st);
+                                                setIsMandatoryModalOpen(true);
+                                              }}
+                                              className="p-1 text-amber-700 bg-amber-50 rounded-md border border-amber-200 shrink-0 mt-0.5 cursor-pointer hover:bg-amber-100 transition-colors"
+                                              title="Checklist terkunci: Klik untuk mengisi data subtask wajib ini"
+                                            >
+                                              <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                            </button>
+                                          )
+                                        ) : !hasProof ? (
                                           <div
-                                            className="p-1 text-amber-700 bg-amber-50 rounded-md border border-amber-200 shrink-0 mt-0.5"
+                                            className="p-1 text-amber-700 bg-amber-50 rounded-md border border-amber-200 shrink-0 mt-0.5 cursor-help"
                                             title="Checklist terkunci: Harap lampirkan bukti kerja terlebih dahulu"
                                           >
                                             <Lock className="h-3.5 w-3.5 text-amber-600" />
@@ -2867,39 +2902,50 @@ export function KanbanClient({
                                               className="text-xs leading-relaxed font-medium text-gray-900 w-full border border-[#3E9463] rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white"
                                             />
                                           ) : (
-                                            <span
-                                              onClick={() => { if (canEdit) handleStartEditTitle(st); }}
-                                              title={canEdit ? 'Klik untuk mengedit judul subtask' : undefined}
-                                              className={`text-xs break-words leading-relaxed whitespace-normal block ${
-                                                st.isDone
-                                                  ? 'line-through text-gray-400 font-normal'
-                                                  : !hasProof
-                                                  ? 'text-gray-500 font-normal'
-                                                  : 'text-gray-900 font-semibold'
-                                              } ${canEdit ? 'cursor-text hover:text-[#0B3D2E]' : ''} transition-colors`}
-                                            >
-                                              {st.title}
-                                            </span>
-                                          )}
-
-                                          {/* Keterangan Bukti Kerja */}
-                                          {!hasProof ? (
-                                            <span className="text-[10px] text-amber-700 font-medium block mt-0.5">
-                                              🔒 Belum ada bukti kerja — checklist terkunci sampai lampiran ditambahkan
-                                            </span>
-                                          ) : st.isDone ? (
-                                            <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
-                                              ✓ Sudah ada bukti kerja ({attachments.length} lampiran)
-                                            </span>
-                                          ) : (
-                                            <span className="text-[10px] text-gray-500 font-medium block mt-0.5">
-                                              📎 {attachments.length} bukti kerja terlampir — siap dituntaskan
-                                            </span>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span
+                                                onClick={() => { if (canEdit && !isMandatory) handleStartEditTitle(st); }}
+                                                title={canEdit && !isMandatory ? 'Klik untuk mengedit judul subtask' : undefined}
+                                                className={`text-xs break-words leading-relaxed whitespace-normal ${
+                                                  st.isDone
+                                                    ? 'line-through text-gray-400 font-normal'
+                                                    : !hasProof && !isMandatory
+                                                    ? 'text-gray-500 font-normal'
+                                                    : 'text-gray-900 font-semibold'
+                                                } ${canEdit && !isMandatory ? 'cursor-text hover:text-[#0B3D2E]' : ''} transition-colors`}
+                                              >
+                                                {st.title}
+                                              </span>
+                                              {isMandatory && (
+                                                <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-[#0B3D2E] border border-emerald-300 shrink-0">
+                                                  Wajib
+                                                </span>
+                                              )}
+                                            </div>
                                           )}
                                         </div>
                                       </div>
 
                                       <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                                        {/* Mandatory Action Button ("Isi Data" / "Ubah Data") */}
+                                        {isMandatory && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSelectedMandatorySubtask(st);
+                                              setIsMandatoryModalOpen(true);
+                                            }}
+                                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors flex items-center gap-1 cursor-pointer shrink-0 ${
+                                              st.isDone
+                                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                                : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-2xs"
+                                            }`}
+                                          >
+                                            <FileText className="h-3 w-3" />
+                                            <span>{st.isDone ? "Ubah Data" : "Isi Data"}</span>
+                                          </button>
+                                        )}
+
                                         {/* PIC Subtask Dropdown (Lebar ~170px) */}
                                         <select
                                           value={st.assigneeUserId || ""}
@@ -2937,10 +2983,10 @@ export function KanbanClient({
                                           </div>
                                         ) : (
                                           <span
-                                            onClick={() => { if (canEdit) handleStartEditHours(st); }}
-                                            title={canEdit ? 'Klik untuk mengedit estimasi durasi menit' : undefined}
+                                            onClick={() => { if (canEdit && !isMandatory) handleStartEditHours(st); }}
+                                            title={canEdit && !isMandatory ? 'Klik untuk mengedit estimasi durasi menit' : undefined}
                                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
-                                              canEdit ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
+                                              canEdit && !isMandatory ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
                                             } transition-colors`}
                                           >
                                             {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
@@ -2950,28 +2996,30 @@ export function KanbanClient({
                                         )}
 
                                         {/* Tombol Lampiran Bukti Kerja (📎) */}
-                                        <div className="relative">
-                                          <button
-                                            type="button"
-                                            onClick={() => setActiveSubtaskPopoverId(isPopoverOpen ? null : st.id)}
-                                            className={`p-1 rounded-md border transition-colors relative cursor-pointer ${
-                                              isPopoverOpen
-                                                ? "bg-[#0B3D2E] text-white border-[#0B3D2E]"
-                                                : hasProof
-                                                ? "bg-emerald-50 text-[#0B3D2E] border-emerald-300 hover:bg-emerald-100"
-                                                : "bg-white text-gray-400 border-gray-200 hover:text-gray-700 hover:bg-gray-50"
-                                            }`}
-                                            title={`Lampiran Bukti Kerja (${attachments.length} terunggah)`}
-                                          >
-                                            <Paperclip className="h-3.5 w-3.5" />
-                                            {hasProof && (
-                                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
-                                            )}
-                                          </button>
-                                        </div>
+                                        {!isMandatory && (
+                                          <div className="relative">
+                                            <button
+                                              type="button"
+                                              onClick={() => setActiveSubtaskPopoverId(isPopoverOpen ? null : st.id)}
+                                              className={`p-1 rounded-md border transition-colors relative cursor-pointer ${
+                                                isPopoverOpen
+                                                  ? "bg-[#0B3D2E] text-white border-[#0B3D2E]"
+                                                  : hasProof
+                                                  ? "bg-emerald-50 text-[#0B3D2E] border-emerald-300 hover:bg-emerald-100"
+                                                  : "bg-white text-gray-400 border-gray-200 hover:text-gray-700 hover:bg-gray-50"
+                                              }`}
+                                              title={`Lampiran Bukti Kerja (${attachments.length} terunggah)`}
+                                            >
+                                              <Paperclip className="h-3.5 w-3.5" />
+                                              {hasProof && (
+                                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+                                              )}
+                                            </button>
+                                          </div>
+                                        )}
 
-                                        {/* Tombol Hapus Subtask */}
-                                        {canEdit && (
+                                        {/* Tombol Hapus Subtask (hanya untuk subtask non-wajib) */}
+                                        {canEdit && !isMandatory && (
                                           <button
                                             type="button"
                                             disabled={deletingSubtaskId === st.id}
@@ -3492,31 +3540,19 @@ export function KanbanClient({
                         />
                       </div>
 
-                      {/* Custom Document: Dokumen Kerja Khusus (CV & MV) */}
+                      {/* Custom Document: Dokumen Kerja Khusus (MV) */}
                       {selectedCardForDetail && !selectedCardForDetail.isNewBacklog && (
-                        <>
-                          <CvCardWorkDocumentSection
-                            timId={timId}
-                            card={{
-                              id: selectedCardForDetail.id,
-                              judul: detailJudul,
-                              customDocumentData: detailCustomDocumentData,
-                            }}
-                            canEdit={canEdit}
-                            onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
-                          />
-                          <MvCardWorkDocumentSection
-                            timId={timId}
-                            card={{
-                              id: selectedCardForDetail.id,
-                              judul: detailJudul,
-                              tahap: detailTahap,
-                              customDocumentData: detailCustomDocumentData,
-                            }}
-                            canEdit={canEdit}
-                            onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
-                          />
-                        </>
+                        <MvCardWorkDocumentSection
+                          timId={timId}
+                          card={{
+                            id: selectedCardForDetail.id,
+                            judul: detailJudul,
+                            tahap: detailTahap,
+                            customDocumentData: detailCustomDocumentData,
+                          }}
+                          canEdit={canEdit}
+                          onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
+                        />
                       )}
 
                       {/* 5. Tanggal Mulai & Target Selesai */}
@@ -4423,6 +4459,28 @@ export function KanbanClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      {/* Modal Subtask Wajib (Customer Validation Report Integration) */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      {selectedCardForDetail && (
+        <MandatorySubtaskModal
+          isOpen={isMandatoryModalOpen}
+          onClose={() => {
+            setIsMandatoryModalOpen(false);
+            setSelectedMandatorySubtask(null);
+          }}
+          timId={timId}
+          cardId={selectedCardForDetail.id}
+          cardTitle={detailJudul || selectedCardForDetail.judul}
+          subtask={selectedMandatorySubtask}
+          onSuccess={(subtaskId) => {
+            setSubtasks((prev) =>
+              prev.map((s) => (s.id === subtaskId ? { ...s, isDone: true } : s))
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

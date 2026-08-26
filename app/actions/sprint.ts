@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { sprint, sprintLog, kanbanCard, customerValidationPlan, sprintReview } from "@/lib/db/schema";
-import { eq, and, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, ne, asc, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -372,6 +372,32 @@ export async function completeSprintAction(
             updatedAt: new Date(),
           })
           .where(eq(kanbanCard.id, mov.cardId));
+      }
+    }
+
+    // Auto carry-over any remaining incomplete cards in this sprint that were not explicitly moved
+    const handledCardIds = new Set((cardMovements || []).map((m) => m.cardId));
+    const nextSprintNum = targetSprint.nomorSprint + 1;
+    const remainingIncompleteCards = await db
+      .select({ id: kanbanCard.id })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.sprintNumber, targetSprint.nomorSprint),
+          ne(kanbanCard.statusKolom, "Done")
+        )
+      );
+
+    for (const c of remainingIncompleteCards) {
+      if (!handledCardIds.has(c.id)) {
+        await db
+          .update(kanbanCard)
+          .set({
+            sprintNumber: nextSprintNum,
+            updatedAt: new Date(),
+          })
+          .where(eq(kanbanCard.id, c.id));
       }
     }
 

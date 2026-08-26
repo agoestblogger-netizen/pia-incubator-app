@@ -3,6 +3,8 @@ import OpenAI from 'openai';
 export interface AiBacklogSubtask {
   title: string;
   estimatedHours: number;
+  subtaskType?: string;
+  reportFieldMapping?: Record<string, any>;
 }
 
 export interface AiBacklogTask {

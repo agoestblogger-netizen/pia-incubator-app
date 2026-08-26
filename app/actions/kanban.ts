@@ -20,6 +20,7 @@ import { logAudit } from "@/lib/db/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPredefinedSubtasks } from "@/lib/data/subtask-templates";
 import { generateDynamicSubtasksForCard } from "@/lib/ai/subtask-generator";
+import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 
 export async function logKanbanActivity(params: {
   taskId: string;
@@ -35,8 +36,8 @@ export async function logKanbanActivity(params: {
       userId: params.userId || null,
       actionType: params.actionType,
       fieldName: params.fieldName,
-      oldValue: params.oldValue ?? null,
-      newValue: params.newValue ?? null,
+      oldValue: params.oldValue || null,
+      newValue: params.newValue || null,
     });
   } catch (err) {
     console.error("[logKanbanActivity] Error inserting activity log:", err);
@@ -237,6 +238,38 @@ export async function updateKanbanCardStatusAction(
       .from(kanbanCard)
       .where(eq(kanbanCard.id, cardId))
       .limit(1);
+
+    if (!oldCard) {
+      return { success: false, error: "Kartu tidak ditemukan." };
+    }
+
+    // ── BAGIAN C: Validasi Kartu Template Baku CV wajib selesai semua subtask wajib sebelum Done ──
+    if (newStatusKolom === "Done") {
+      const isBakuCv = detectCvBakuCardType(oldCard.judul, oldCard.tahap || undefined);
+      if (isBakuCv) {
+        const mandatorySubtasks = await db
+          .select({
+            id: kanbanSubtask.id,
+            isDone: kanbanSubtask.isDone,
+            title: kanbanSubtask.title,
+          })
+          .from(kanbanSubtask)
+          .where(
+            and(
+              eq(kanbanSubtask.taskId, cardId),
+              inArray(kanbanSubtask.subtaskType, ["mandatory_simple", "mandatory_complex"])
+            )
+          );
+
+        const incompleteMandatory = mandatorySubtasks.filter((st) => !st.isDone);
+        if (incompleteMandatory.length > 0) {
+          return {
+            success: false,
+            error: "⚠ Kartu ini punya subtask wajib yang belum diisi. Lengkapi dulu sebelum menandai Done.",
+          };
+        }
+      }
+    }
 
     const updatePayload: any = {
       statusKolom: newStatusKolom,
@@ -861,6 +894,8 @@ export async function getTaskSubtasksAction(taskId: string) {
         orderIndex: kanbanSubtask.orderIndex,
         assigneeUserId: kanbanSubtask.assigneeUserId,
         attachmentData: kanbanSubtask.attachmentData,
+        subtaskType: kanbanSubtask.subtaskType,
+        reportFieldMapping: kanbanSubtask.reportFieldMapping,
         createdBy: kanbanSubtask.createdBy,
         createdAt: kanbanSubtask.createdAt,
         assigneeName: users.nama,
@@ -1338,6 +1373,19 @@ export async function deleteTaskSubtaskAction(subtaskId: string, timId: string) 
       return {
         success: false,
         error: "Forbidden: Anda tidak memiliki izin menghapus subtask.",
+      };
+    }
+
+    const [st] = await db
+      .select({ id: kanbanSubtask.id, subtaskType: kanbanSubtask.subtaskType })
+      .from(kanbanSubtask)
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .limit(1);
+
+    if (st && st.subtaskType && st.subtaskType !== "regular") {
+      return {
+        success: false,
+        error: "Subtask wajib tidak dapat dihapus.",
       };
     }
 

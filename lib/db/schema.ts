@@ -232,11 +232,13 @@ export const kanbanSubtask = pgTable('kanban_subtask', {
   id: uuid('id').primaryKey().defaultRandom(),
   taskId: uuid('task_id').notNull().references(() => kanbanCard.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
-  estimatedHours: integer('estimated_hours'), // estimasi jam spesifik untuk subtask ini
+  estimatedHours: integer('estimated_hours'), // estimasi durasi menit untuk subtask ini
   isDone: boolean('is_done').notNull().default(false),
   orderIndex: integer('order_index').notNull().default(0),
   assigneeUserId: uuid('assignee_user_id').references(() => users.id, { onDelete: 'set null' }), // PIC per-subtask (Paket 24b)
   attachmentData: jsonb('attachment_data').$type<any[]>().default([]), // Lampiran bukti kerja per-subtask (Paket 24/Penyempurnaan Modal)
+  subtaskType: text('subtask_type').notNull().default('regular'), // 'regular' | 'mandatory_simple' | 'mandatory_complex'
+  reportFieldMapping: jsonb('report_field_mapping').$type<Record<string, any>>(), // Metadata field tujuan di Report
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

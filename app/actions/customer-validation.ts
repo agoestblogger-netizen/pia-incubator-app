@@ -387,9 +387,11 @@ export async function generateCvBacklogAction(timId: string) {
           subtaskRows.push({
             taskId: card.id,
             title: st.title,
-            estimatedHours: st.estimatedHours || 3,
+            estimatedHours: st.estimatedHours || 180,
             isDone: false,
             orderIndex: sIdx,
+            subtaskType: st.subtaskType || 'regular',
+            reportFieldMapping: st.reportFieldMapping || null,
             createdBy: null,
           });
         }
