@@ -3,7 +3,6 @@
 import { db } from "@/lib/db";
 import {
   charter,
-  kanbanCard,
   customerValidationPlan,
   customerValidationReport,
   marketValidationPlan,
@@ -12,6 +11,7 @@ import {
   timInovator,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+
 
 export type PhaseGateStatus = {
   timId: string;
@@ -79,17 +79,12 @@ export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateSt
   );
 
   // 3. Check Customer Validation gate:
-  // Condition: ALL Kanban cards with tahap = 'innovation_setup' must have statusKolom = 'Done'.
-  const setupCards = await db
-    .select({
-      id: kanbanCard.id,
-      statusKolom: kanbanCard.statusKolom,
-    })
-    .from(kanbanCard)
-    .where(and(eq(kanbanCard.timInovatorId, timId), eq(kanbanCard.tahap, "innovation_setup")));
+  // Condition: Innovation Charter sudah disetujui Promotor (ttdDisetujui tidak null/falsy).
+  const charterApproval = charterRow?.ttdDisetujui as any;
+  const isCustomerValidationUnlocked = Boolean(
+    charterApproval && (charterApproval.disetujui === true || charterApproval.status === 'approved')
+  );
 
-  const incompleteSetupCards = setupCards.filter((c) => c.statusKolom !== "Done");
-  const isCustomerValidationUnlocked = setupCards.length > 0 ? incompleteSetupCards.length === 0 : true;
 
   // 4. Check Market Validation gate:
   // Condition: customer_validation_report.keputusan === 'Lanjut ke Market Validation' or 'lanjut'
@@ -167,7 +162,7 @@ export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateSt
         href: `/tim/${timId}/customer-validation`,
         reason: isCustomerValidationUnlocked
           ? undefined
-          : `Selesaikan dulu semua task Innovation Setup di Kanban (${incompleteSetupCards.length} task belum Done).`,
+          : "Innovation Charter belum disetujui oleh Promotor Inovasi. Minta Promotor untuk memberikan persetujuan formal di halaman Innovation Charter.",
       },
       marketValidation: {
         unlocked: isMarketValidationUnlocked,
