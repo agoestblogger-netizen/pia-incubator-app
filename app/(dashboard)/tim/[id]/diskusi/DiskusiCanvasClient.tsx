@@ -61,6 +61,7 @@ import {
   ArrowRight,
   Edit3,
   Zap,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -204,6 +205,8 @@ export function DiskusiCanvasClient({
   timNama,
   currentUser,
   initialData,
+  isCvUnlocked = false,
+  isMvUnlocked = false,
 }: {
   timId: string;
   timNama: string;
@@ -215,7 +218,15 @@ export function DiskusiCanvasClient({
     documents: DiskusiDocumentItem[];
     cards: KanbanCardItem[];
   };
+  isCvUnlocked?: boolean;
+  isMvUnlocked?: boolean;
 }) {
+  // Helper: check if a card's phase is locked
+  const isPhaseLocked = (card: KanbanCardItem): boolean => {
+    if (card.tahap === 'customer_validation' && !isCvUnlocked) return true;
+    if (card.tahap === 'market_validation' && !isMvUnlocked) return true;
+    return false;
+  };
   const [clientId] = useState(() => 'tab-' + Math.random().toString(36).slice(2, 8));
   const [notes, setNotes] = useState<DiskusiNoteItem[]>(initialData.notes);
   const [frames, setFrames] = useState<DiskusiFrameItem[]>(initialData.frames);
@@ -1000,10 +1011,13 @@ export function DiskusiCanvasClient({
           {/* 2. Notes (Sticky Notes & Pin Cards) */}
           {notes.map((note) => {
             if (note.type === 'pin') {
+              const pinCard = cards.find((c) => c.id === note.kanbanCardId);
+              const pinIsLocked = pinCard ? isPhaseLocked(pinCard) : false;
               return (
                 <PinCard
                   key={note.id}
                   note={note}
+                  isLocked={pinIsLocked}
                   presenceUsers={onlineUsers}
                   currentClientId={clientId}
                   onUpdatePosition={async (id, x, y) => {
@@ -1134,6 +1148,7 @@ export function DiskusiCanvasClient({
                   filteredReferenceCards.map((card) => {
                     const isPinned = notes.some((n) => n.kanbanCardId === card.id);
                     const phaseToken = getPhaseTokenBySlug(card.tahap);
+                    const cardIsLocked = isPhaseLocked(card);
 
                     return (
                       <div
@@ -1141,21 +1156,31 @@ export function DiskusiCanvasClient({
                         className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${
                           isPinned
                             ? 'bg-gray-50 border-gray-200 opacity-60'
+                            : cardIsLocked
+                            ? 'bg-amber-50/30 border-amber-200 hover:border-amber-400 hover:shadow-xs'
                             : 'bg-white border-[#C9E4D0] hover:border-[#0F5132] hover:shadow-xs'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1.5">
-                          <span
-                            className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${phaseToken.badgeClass}`}
-                          >
-                            {card.tahap === 'innovation_setup'
-                              ? 'Setup'
-                              : card.tahap === 'customer_validation'
-                              ? 'CV'
-                              : card.tahap === 'market_validation'
-                              ? 'MV'
-                              : 'Umum'}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${phaseToken.badgeClass}`}
+                            >
+                              {card.tahap === 'innovation_setup'
+                                ? 'Setup'
+                                : card.tahap === 'customer_validation'
+                                ? 'CV'
+                                : card.tahap === 'market_validation'
+                                ? 'MV'
+                                : 'Umum'}
+                            </span>
+                            {cardIsLocked && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                <Lock className="h-2.5 w-2.5" />
+                                Terkunci
+                              </span>
+                            )}
+                          </div>
 
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
@@ -1168,7 +1193,12 @@ export function DiskusiCanvasClient({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handlePinCardToCanvas(card.id)}
-                                className="h-6 px-1.5 text-[10px] font-bold text-[#0F5132] hover:bg-[#F0F7F1] gap-1 cursor-pointer"
+                                title={cardIsLocked ? 'Sematkan ke kanvas untuk didiskusikan (bukan mengadopsi)' : '+ Pin ke kanvas'}
+                                className={`h-6 px-1.5 text-[10px] font-bold gap-1 cursor-pointer ${
+                                  cardIsLocked
+                                    ? 'text-amber-700 hover:bg-amber-100'
+                                    : 'text-[#0F5132] hover:bg-[#F0F7F1]'
+                                }`}
                               >
                                 <Pin className="h-3 w-3" />
                                 <span>+ Pin</span>
@@ -1178,6 +1208,12 @@ export function DiskusiCanvasClient({
                         </div>
 
                         <p className="text-xs font-bold text-gray-800 leading-snug line-clamp-2">{card.judul}</p>
+
+                        {cardIsLocked && (
+                          <p className="text-[9px] text-amber-700 font-medium">
+                            💬 Bisa didiskusikan di kanvas, belum bisa diadopsi ke sprint.
+                          </p>
+                        )}
 
                         <div className="flex items-center justify-between text-[10px] text-gray-400 pt-0.5">
                           <span>{card.label || 'Referensi'}</span>
@@ -1481,49 +1517,56 @@ export function DiskusiCanvasClient({
                       {selectedCardForDetail.storyPoint || 3} SP
                     </span>
 
-                    {/* Quick Sprint Assign in Modal 2 */}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px] font-bold text-[#0F5132] border-[#C9E4D0] hover:bg-[#F0F7F1] gap-1 cursor-pointer"
-                        >
-                          <Zap className="h-3 w-3 fill-[#3E9463] text-[#3E9463]" />
-                          <span>
-                            {selectedCardForDetail.sprintNumber
-                              ? `Sprint ${selectedCardForDetail.sprintNumber}`
-                              : 'Assign Sprint ⚡'}
-                          </span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-52 p-2 bg-white rounded-xl shadow-xl border border-[#C9E4D0]" align="end">
-                        <span className="text-[11px] font-bold text-[#0B3D2E] block mb-1.5">
-                          Pilih Target Sprint:
-                        </span>
-                        <div className="space-y-1">
-                          {[1, 2, 3, 4].map((sprintNum) => (
-                            <button
-                              key={sprintNum}
-                              type="button"
-                              onClick={() => handleQuickAssignSprintInModal(selectedCardForDetail.id, sprintNum)}
-                              className="w-full text-left p-1.5 rounded-lg hover:bg-[#F0F7F1] text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-[#C9E4D0]"
-                            >
-                              <span>Sprint {sprintNum}</span>
-                              <ArrowRight className="h-3 w-3 text-[#3E9463]" />
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => handleQuickAssignSprintInModal(selectedCardForDetail.id, null)}
-                            className="w-full text-left p-1.5 rounded-lg hover:bg-gray-100 text-xs font-semibold text-gray-500 flex items-center justify-between transition-colors cursor-pointer"
+                    {/* Quick Sprint Assign in Modal 2 — hidden for locked-phase cards */}
+                    {!isPhaseLocked(selectedCardForDetail) ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px] font-bold text-[#0F5132] border-[#C9E4D0] hover:bg-[#F0F7F1] gap-1 cursor-pointer"
                           >
-                            <span>📦 Backlog (Tanpa Sprint)</span>
-                            <ArrowRight className="h-3 w-3 text-gray-400" />
-                          </button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                            <Zap className="h-3 w-3 fill-[#3E9463] text-[#3E9463]" />
+                            <span>
+                              {selectedCardForDetail.sprintNumber
+                                ? `Sprint ${selectedCardForDetail.sprintNumber}`
+                                : 'Assign Sprint ⚡'}
+                            </span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-52 p-2 bg-white rounded-xl shadow-xl border border-[#C9E4D0]" align="end">
+                          <span className="text-[11px] font-bold text-[#0B3D2E] block mb-1.5">
+                            Pilih Target Sprint:
+                          </span>
+                          <div className="space-y-1">
+                            {[1, 2, 3, 4].map((sprintNum) => (
+                              <button
+                                key={sprintNum}
+                                type="button"
+                                onClick={() => handleQuickAssignSprintInModal(selectedCardForDetail.id, sprintNum)}
+                                className="w-full text-left p-1.5 rounded-lg hover:bg-[#F0F7F1] text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-[#C9E4D0]"
+                              >
+                                <span>Sprint {sprintNum}</span>
+                                <ArrowRight className="h-3 w-3 text-[#3E9463]" />
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAssignSprintInModal(selectedCardForDetail.id, null)}
+                              className="w-full text-left p-1.5 rounded-lg hover:bg-gray-100 text-xs font-semibold text-gray-500 flex items-center justify-between transition-colors cursor-pointer"
+                            >
+                              <span>📦 Backlog (Tanpa Sprint)</span>
+                              <ArrowRight className="h-3 w-3 text-gray-400" />
+                            </button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300">
+                        <Lock className="h-2.5 w-2.5" />
+                        Fase Terkunci
+                      </span>
+                    )}
                   </div>
                 </div>
               </DialogHeader>
@@ -1891,6 +1934,7 @@ function FrameCard({
 // ─── Component: PinCard (Referenced Backlog Card on Canvas) ─────────────────────
 function PinCard({
   note,
+  isLocked = false,
   presenceUsers,
   currentClientId,
   onUpdatePosition,
@@ -1900,6 +1944,7 @@ function PinCard({
   onFocusLeave,
 }: {
   note: DiskusiNoteItem;
+  isLocked?: boolean;
   presenceUsers: Record<string, PresenceUser>;
   currentClientId: string;
   onUpdatePosition: (id: string, x: number, y: number) => Promise<void>;
@@ -1961,13 +2006,28 @@ function PinCard({
       )}
 
       <div
-        className="w-56 bg-white rounded-xl shadow-md border-2 border-[#C9E4D0] hover:border-[#0F5132] transition-all p-2.5 space-y-1.5 group cursor-grab active:cursor-grabbing"
+        className={`w-56 bg-white rounded-xl shadow-md transition-all p-2.5 space-y-1.5 group cursor-grab active:cursor-grabbing relative ${
+          isLocked
+            ? 'border-2 border-amber-300 hover:border-amber-500'
+            : 'border-2 border-[#C9E4D0] hover:border-[#0F5132]'
+        }`}
         onMouseDown={handleMouseDown}
       >
+        {/* Lock indicator badge for phase-locked cards */}
+        {isLocked && (
+          <div className="absolute -top-2 -right-2 bg-amber-100 border border-amber-400 rounded-full p-0.5 shadow-sm z-10" title="Fase belum terbuka — hanya untuk diskusi">
+            <Lock className="h-3 w-3 text-amber-700" />
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-1.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0F5132] bg-[#F0F7F1] px-1.5 py-0.5 rounded border border-[#C9E4D0]">
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+            isLocked
+              ? 'text-amber-800 bg-amber-50 border-amber-300'
+              : 'text-[#0F5132] bg-[#F0F7F1] border-[#C9E4D0]'
+          }`}>
             <Pin className="h-3 w-3" />
-            <span>Pin Kartu</span>
+            <span>{isLocked ? '🔒 Pin (Terkunci)' : 'Pin Kartu'}</span>
           </span>
 
           <div className="flex items-center gap-1">

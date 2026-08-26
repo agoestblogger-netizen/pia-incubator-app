@@ -50,6 +50,8 @@ export default async function DiskusiPage({
         timNama={tim.namaProyekInovasi}
         currentUser={currentUser}
         initialData={diskusiDataRes.data as any}
+        isCvUnlocked={phaseGateStatus.gates.customerValidation.unlocked}
+        isMvUnlocked={phaseGateStatus.gates.marketValidation.unlocked}
       />
     </div>
   );
