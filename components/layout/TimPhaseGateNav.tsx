@@ -201,7 +201,7 @@ export function TimPhaseGateNav({
         {gateItems.map((item) => {
           const isActive =
             item.id === "innovation_setup"
-              ? pathname.startsWith(`/tim/${timId}/charter`)
+              ? pathname.startsWith(`/tim/${timId}/charter`) || pathname.startsWith(`/tim/${timId}/kanban`)
               : item.id === "customer_validation"
               ? pathname.startsWith(`/tim/${timId}/customer-validation`)
               : item.id === "market_validation"

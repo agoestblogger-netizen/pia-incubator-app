@@ -1173,9 +1173,11 @@ export function KanbanClient({
     );
   }, [filteredCards]);
 
-  // AI Reference Cards — kartu yang belum ditinjau tim
+  // AI Reference Cards — kartu yang belum ditinjau tim (di-scope hanya untuk Innovation Setup pada konteks ini)
   const aiReferenceCards = useMemo(() => {
-    return cards.filter((c) => c.reviewStatus === 'ai_reference');
+    return cards.filter(
+      (c) => c.reviewStatus === 'ai_reference' && c.tahap === 'innovation_setup'
+    );
   }, [cards]);
 
   // Selected Planning Sprint Object
@@ -1205,14 +1207,13 @@ export function KanbanClient({
   const availableRefCardsForDropdown = useMemo(() => {
     return cards.filter((c) => {
       if (c.reviewStatus !== "ai_reference") return false;
+      if (c.tahap !== "innovation_setup") return false;
       const cardSuggestedSprint = c.suggestedSprintNumber || 1;
       const isCurrentlySelected = selectedRefCardId === c.id || selectedCardForDetail?.id === c.id;
       if (cardSuggestedSprint !== currentModalSprintNum && !isCurrentlySelected) return false;
-      if (c.tahap === "customer_validation" && !isCvUnlocked) return false;
-      if (c.tahap === "market_validation" && !isMvUnlocked) return false;
       return true;
     });
-  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail, isCvUnlocked, isMvUnlocked]);
+  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail]);
 
   const handleSelectReferenceCardInModal = (refCardId: string) => {
     setSelectedRefCardId(refCardId);

@@ -5,6 +5,7 @@ import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
+import { InnovationSetupSubNav } from "@/components/layout/InnovationSetupSubNav";
 import { KanbanClient } from "./KanbanClient";
 
 export const dynamic = 'force-dynamic';
@@ -28,8 +29,11 @@ export default async function KanbanPage({
 
   return (
     <div className="space-y-6">
-      {/* 5-Box Phase Gate Header Navigation */}
+      {/* 3-Box Phase Gate Header Navigation */}
       <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
+
+      {/* Innovation Setup Sub-Nav Tabs: 1. Innovation Charter | 2. Sprint Planning & Kanban */}
+      <InnovationSetupSubNav timId={tim.id} activeTab="kanban" />
 
       {/* Main Workspace: Kanban Board & Roadmap */}
       <KanbanClient

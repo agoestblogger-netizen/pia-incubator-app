@@ -5,6 +5,7 @@ import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
+import { InnovationSetupSubNav } from "@/components/layout/InnovationSetupSubNav";
 import { CharterFormClient } from "./CharterFormClient";
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,8 @@ export default async function CharterPage({
   return (
     <div className="space-y-6">
       <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
+
+      <InnovationSetupSubNav timId={tim.id} activeTab="charter" />
 
       <CharterFormClient
         timId={tim.id}

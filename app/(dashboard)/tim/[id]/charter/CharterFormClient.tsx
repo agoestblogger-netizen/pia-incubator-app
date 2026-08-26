@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   saveCharterAction,
   approveCharterAction,
@@ -48,6 +49,7 @@ import {
   ChevronDown,
   ChevronRight,
   Target,
+  KanbanSquare,
 } from "lucide-react";
 import { RoleProposalHintTooltip } from "./RoleProposalHintTooltip";
 
@@ -1063,7 +1065,7 @@ export function CharterFormClient({
 
             {/* Structured Sprint Milestones */}
             <div className="space-y-3 pt-2 border-t border-gray-100">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div>
                   <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
                     Rencana Milestone per Sprint
@@ -1072,9 +1074,19 @@ export function CharterFormClient({
                     Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Kanban).
                   </p>
                 </div>
-                <span className="text-[11px] font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
-                  {sprints.length} Iterasi Sprint
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
+                    {sprints.length} Iterasi Sprint
+                  </span>
+                  <Link
+                    href={`/tim/${timId}/kanban`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5142D6]/10 text-[#5142D6] hover:bg-[#5142D6]/20 text-xs font-bold transition-all border border-[#5142D6]/20 shadow-2xs"
+                    title="Buka Sprint Planning & Kanban Board"
+                  >
+                    <KanbanSquare className="h-3.5 w-3.5" />
+                    <span>Buka Sprint Planning &amp; Kanban &rarr;</span>
+                  </Link>
+                </div>
               </div>
 
               <div className="space-y-3">
