@@ -96,12 +96,17 @@ export function BacklogReferenceDropdown({
     return { isLocked: false, reason: "" };
   };
 
-  // 1. Order sprints so that the current planning sprint is AT THE VERY TOP, followed by other sprints in order
+  // 1. Order sprints:
+  //    [current planning sprint] → [overdue sprints, desc] → [future sprints, asc]
   const orderedSprints = useMemo(() => {
-    const sorted = [...sprints].sort((a, b) => a.nomorSprint - b.nomorSprint);
-    const active = sorted.find((s) => s.nomorSprint === currentPlanningSprintNumber);
-    const passives = sorted.filter((s) => s.nomorSprint !== currentPlanningSprintNumber);
-    return active ? [active, ...passives] : sorted;
+    const current = sprints.find((s) => s.nomorSprint === currentPlanningSprintNumber);
+    const overdue = sprints
+      .filter((s) => s.nomorSprint < currentPlanningSprintNumber)
+      .sort((a, b) => b.nomorSprint - a.nomorSprint); // most-recent overdue first
+    const future = sprints
+      .filter((s) => s.nomorSprint > currentPlanningSprintNumber)
+      .sort((a, b) => a.nomorSprint - b.nomorSprint);
+    return current ? [current, ...overdue, ...future] : [...overdue, ...future];
   }, [sprints, currentPlanningSprintNumber]);
 
   // 2. Order all cards: active sprint cards first, then passive sprint cards
@@ -249,6 +254,8 @@ export function BacklogReferenceDropdown({
               ) : (
                 orderedSprints.map((s) => {
                   const isCurrentPlanningSprint = s.nomorSprint === currentPlanningSprintNumber;
+                  const isOverdueSprint = s.nomorSprint < currentPlanningSprintNumber;
+
                   // Filter cards that belong to this sprint and are currently visible
                   const cardsInThisSection = visibleCards.filter(
                     (c) => (c.suggestedSprintNumber || 1) === s.nomorSprint
@@ -256,33 +263,46 @@ export function BacklogReferenceDropdown({
 
                   if (cardsInThisSection.length === 0) return null;
 
+                  let headerClass = "";
+                  let labelText = "";
+                  let badgeClass = "";
+                  let actionHint = "";
+                  let dotColor = "";
+
+                  if (isCurrentPlanningSprint) {
+                    headerClass = "bg-purple-100/90 text-purple-900 border-y border-purple-200";
+                    badgeClass = "bg-purple-200 text-purple-950";
+                    labelText = `SPRINT ${s.nomorSprint} · SEDANG DIRENCANAKAN`;
+                    actionHint = "tinjau & adopsi";
+                    dotColor = "bg-purple-600";
+                  } else if (isOverdueSprint) {
+                    headerClass = "bg-red-50/80 text-red-900 border-y border-red-200";
+                    badgeClass = "bg-red-100 text-red-800";
+                    labelText = `SPRINT ${s.nomorSprint} · TERLEWAT`;
+                    actionHint = "promosikan";
+                    dotColor = "bg-red-400";
+                  } else {
+                    headerClass = "bg-gray-100/90 text-gray-600 border-y border-gray-200";
+                    badgeClass = "bg-gray-200 text-gray-700";
+                    labelText = `SPRINT ${s.nomorSprint} · BELUM WAKTUNYA`;
+                    actionHint = "promosikan";
+                    dotColor = "bg-gray-400";
+                  }
+
                   return (
                     <div key={s.nomorSprint} className="space-y-0">
                       {/* Section Header */}
                       <div
-                        className={`px-3.5 py-1.5 flex items-center justify-between text-[10px] font-black uppercase tracking-wider sticky top-[41px] z-5 ${
-                          isCurrentPlanningSprint
-                            ? "bg-purple-100/90 text-purple-900 border-y border-purple-200"
-                            : "bg-gray-100/90 text-gray-600 border-y border-gray-200"
-                        }`}
+                        className={`px-3.5 py-1.5 flex items-center justify-between text-[10px] font-black uppercase tracking-wider sticky top-[41px] z-5 ${headerClass}`}
                       >
                         <div className="flex items-center gap-1.5">
-                          <span>
-                            SPRINT {s.nomorSprint} ·{" "}
-                            {isCurrentPlanningSprint ? "SEDANG DIRENCANAKAN" : "BELUM WAKTUNYA"}
-                          </span>
-                          <span
-                            className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
-                              isCurrentPlanningSprint
-                                ? "bg-purple-200 text-purple-950"
-                                : "bg-gray-200 text-gray-700"
-                            }`}
-                          >
+                          <span>{labelText}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${badgeClass}`}>
                             {cardsInThisSection.length}
                           </span>
                         </div>
                         <span className="text-[9px] font-semibold lowercase hidden sm:inline opacity-80">
-                          {isCurrentPlanningSprint ? "tinjau & adopsi" : "promosikan"}
+                          {actionHint}
                         </span>
                       </div>
 
@@ -317,11 +337,7 @@ export function BacklogReferenceDropdown({
                                 {isLocked ? (
                                   <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                 ) : (
-                                  <span
-                                    className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                      isCurrentPlanningSprint ? "bg-purple-600" : "bg-gray-400"
-                                    }`}
-                                  />
+                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotColor}`} />
                                 )}
 
                                 <span
