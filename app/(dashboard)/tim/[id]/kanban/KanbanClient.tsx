@@ -598,6 +598,7 @@ export function KanbanClient({
   canEdit = true,
   currentUser,
   phaseGateStatus,
+  tahapScope = "innovation_setup",
 }: {
   timId: string;
   initialColumns: any[];
@@ -607,6 +608,7 @@ export function KanbanClient({
   canEdit?: boolean;
   currentUser?: any;
   phaseGateStatus?: any;
+  tahapScope?: string;
 }) {
   const [viewMode, setViewMode] = useState<"board" | "timeline">("board");
   const [cards, setCards] = useState<any[]>(initialCards);
@@ -1173,12 +1175,12 @@ export function KanbanClient({
     );
   }, [filteredCards]);
 
-  // AI Reference Cards — kartu yang belum ditinjau tim (di-scope hanya untuk Innovation Setup pada konteks ini)
+  // AI Reference Cards — kartu yang belum ditinjau tim (di-scope sesuai tahapScope pada konteks ini)
   const aiReferenceCards = useMemo(() => {
     return cards.filter(
-      (c) => c.reviewStatus === 'ai_reference' && c.tahap === 'innovation_setup'
+      (c) => c.reviewStatus === 'ai_reference' && c.tahap === tahapScope
     );
-  }, [cards]);
+  }, [cards, tahapScope]);
 
   // Selected Planning Sprint Object
   const currentPlanningSprintObj = useMemo(() => {
@@ -1207,13 +1209,13 @@ export function KanbanClient({
   const availableRefCardsForDropdown = useMemo(() => {
     return cards.filter((c) => {
       if (c.reviewStatus !== "ai_reference") return false;
-      if (c.tahap !== "innovation_setup") return false;
+      if (c.tahap !== tahapScope) return false;
       const cardSuggestedSprint = c.suggestedSprintNumber || 1;
       const isCurrentlySelected = selectedRefCardId === c.id || selectedCardForDetail?.id === c.id;
       if (cardSuggestedSprint !== currentModalSprintNum && !isCurrentlySelected) return false;
       return true;
     });
-  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail]);
+  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail, tahapScope]);
 
   const handleSelectReferenceCardInModal = (refCardId: string) => {
     setSelectedRefCardId(refCardId);

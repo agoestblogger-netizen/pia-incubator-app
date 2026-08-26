@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   saveCustomerValidationPlanFullAction,
   saveCustomerValidationReportAction,
+  generateCvBacklogAction,
 } from "@/app/actions/customer-validation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -13,9 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
-  Paperclip, FileText, ImageIcon, Table2, BarChart3,
+  Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
+import { KanbanClient } from "../kanban/KanbanClient";
 
 // ── Konstanta tetap ─────────────────────────────────────────────────────────
 
@@ -125,9 +127,25 @@ function fileName(url: string) {
 export function CustomerValidationClient({
   timId,
   initialData,
+  initialColumns = [],
+  initialCards = [],
+  initialSprints = [],
+  anggotaTim = [],
+  canEditCv = true,
+  canEditKanban = true,
+  currentUser,
+  phaseGateStatus,
 }: {
   timId: string;
   initialData: any;
+  initialColumns?: any[];
+  initialCards?: any[];
+  initialSprints?: any[];
+  anggotaTim?: any[];
+  canEditCv?: boolean;
+  canEditKanban?: boolean;
+  currentUser?: any;
+  phaseGateStatus?: any;
 }) {
   // ── Plan state ─────────────────────────────────────────────────────────────
   const [planForm, setPlanForm] = useState({
@@ -187,6 +205,7 @@ export function CustomerValidationClient({
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generatingBacklog, setGeneratingBacklog] = useState(false);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -206,6 +225,26 @@ export function CustomerValidationClient({
       toast.error((res as any).error || "Gagal menyimpan.", "Gagal Menyimpan");
     }
     setSaving(false);
+  };
+
+  const handleGenerateBacklog = async () => {
+    if (!initialData?.plan?.id) {
+      toast.error("Harap simpan Form Perencanaan CV terlebih dahulu sebelum generate rekomendasi backlog.", "Rencana Belum Disimpan");
+      return;
+    }
+    setGeneratingBacklog(true);
+    try {
+      const res = await generateCvBacklogAction(timId);
+      if (res.success) {
+        toast.success(res.message || `Berhasil menghasilkan ${res.count} rekomendasi backlog!`, "AI Backlog Terbuat");
+      } else {
+        toast.error(res.error || "Gagal menghasilkan backlog.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat menghubungi AI.", "Gagal");
+    } finally {
+      setGeneratingBacklog(false);
+    }
   };
 
   const handleSaveReport = async (e: React.FormEvent) => {
@@ -261,14 +300,18 @@ export function CustomerValidationClient({
   return (
     <div className="space-y-4">
       <Tabs defaultValue="plan" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="plan" className="flex items-center gap-2 text-xs">
-            <ClipboardList className="h-3.5 w-3.5" />
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200 shadow-2xs">
+          <TabsTrigger value="plan" className="flex items-center justify-center gap-2 text-xs font-bold py-2 rounded-xl">
+            <ClipboardList className="h-3.5 w-3.5 text-amber-600" />
             <span>1. Validation Plan</span>
           </TabsTrigger>
-          <TabsTrigger value="report" className="flex items-center gap-2 text-xs">
-            <FileCheck className="h-3.5 w-3.5" />
-            <span>2. Validation Report (Hasil)</span>
+          <TabsTrigger value="backlog" className="flex items-center justify-center gap-2 text-xs font-bold py-2 rounded-xl">
+            <KanbanSquare className="h-3.5 w-3.5 text-purple-600" />
+            <span>2. Backlog &amp; Sprint</span>
+          </TabsTrigger>
+          <TabsTrigger value="report" className="flex items-center justify-center gap-2 text-xs font-bold py-2 rounded-xl">
+            <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
+            <span>3. Validation Report</span>
           </TabsTrigger>
         </TabsList>
 
@@ -679,8 +722,31 @@ export function CustomerValidationClient({
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={saving} className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white gap-2 h-10 px-6 rounded-xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2">
+                {initialData?.plan?.id ? (
+                  <Button
+                    type="button"
+                    onClick={handleGenerateBacklog}
+                    disabled={generatingBacklog || saving}
+                    className="bg-purple-700 hover:bg-purple-800 text-white gap-2 h-10 px-5 rounded-xl shadow-xs cursor-pointer"
+                  >
+                    {generatingBacklog ? (
+                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 text-amber-300" />
+                    )}
+                    <span>{generatingBacklog ? "Menghasilkan Backlog AI..." : "✨ Generate Rekomendasi Backlog"}</span>
+                  </Button>
+                ) : (
+                  <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span>Simpan rencana validasi minimal 1x untuk membuka tombol Generate Rekomendasi Backlog.</span>
+                  </div>
+                )}
+              </div>
+
+              <Button type="submit" disabled={saving} className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white gap-2 h-10 px-6 rounded-xl shadow-xs">
                 {saving ? (
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                 ) : (
@@ -692,13 +758,53 @@ export function CustomerValidationClient({
           </form>
         </TabsContent>
 
-        {/* ═══ TAB 2: REPORT ════════════════════════════════════════════════ */}
+        {/* ═══ TAB 2: BACKLOG & SPRINT ═══════════════════════════════════════ */}
+        <TabsContent value="backlog" className="space-y-6 mt-4">
+          <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/80 text-xs text-purple-900 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+              <div>
+                <strong>Workspace Backlog &amp; Sprint: Customer Validation</strong> &mdash; Kelola sprint planning, penugasan story point, dan eksekusi kartu validasi pelanggan.
+              </div>
+            </div>
+            {initialData?.plan?.id && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleGenerateBacklog}
+                disabled={generatingBacklog}
+                className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs"
+              >
+                {generatingBacklog ? (
+                  <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full inline-block" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5 text-amber-300" />
+                )}
+                <span>{generatingBacklog ? "Menghasilkan..." : "Generate Ulang Backlog"}</span>
+              </Button>
+            )}
+          </div>
+
+          <KanbanClient
+            timId={timId}
+            initialColumns={initialColumns}
+            initialCards={initialCards}
+            initialSprints={initialSprints}
+            anggotaTim={anggotaTim}
+            canEdit={canEditKanban}
+            currentUser={currentUser}
+            phaseGateStatus={phaseGateStatus}
+            tahapScope="customer_validation"
+          />
+        </TabsContent>
+
+        {/* ═══ TAB 3: REPORT ════════════════════════════════════════════════ */}
         <TabsContent value="report" className="space-y-4 mt-4">
           <form onSubmit={handleSaveReport} className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold">
-                  Laporan Hasil Validasi Pelanggan (Report)
+                  Laporan Hasil Validasi Pelanggan (Validation Report)
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Ringkasan temuan pengujian, PSF, dan keputusan kelanjutan ke tahap Market Validation

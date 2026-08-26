@@ -1,11 +1,23 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { customerValidationPlan, customerValidationReport, rencanaValidasiMetrik, hasilValidasiMetrik, customerValidationDimensiFeedback } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import {
+  customerValidationPlan,
+  customerValidationReport,
+  rencanaValidasiMetrik,
+  hasilValidasiMetrik,
+  customerValidationDimensiFeedback,
+  kanbanCard,
+  kanbanSubtask,
+  kanbanColumn,
+  sprint,
+  timInovator,
+} from "@/lib/db/schema";
+import { eq, and, ne, inArray, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
+import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
 
 
 export async function getCustomerValidationData(timId: string) {
@@ -222,4 +234,159 @@ export async function saveCustomerValidationPlanFullAction(
     return { success: false, error: error.message || 'Gagal menyimpan rencana validasi pelanggan.' };
   }
 }
+
+export async function generateCvBacklogAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    const allowed = await hasPermission(user, 'cust_val.edit', timId);
+    if (!allowed) return { success: false, error: 'Forbidden: Anda tidak memiliki izin mengedit tim ini.' };
+
+    const [plan] = await db.select().from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
+
+    if (!plan) {
+      return {
+        success: false,
+        error: 'Form Perencanaan CV belum disimpan. Simpan form rencana validasi terlebih dahulu.',
+      };
+    }
+
+    const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
+    const namaProyek = tim?.namaProyekInovasi || 'Proyek Inovasi';
+
+    const teamSprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
+    const totalSprints = Math.max(2, teamSprints.length || 4);
+
+    // Call AI / Fallback Generator
+    const generatedTasks = await generateAiBacklogFromCvPlan({
+      teamId: timId,
+      namaProyek,
+      totalSprints,
+      plan: {
+        projectMission: plan.projectMission,
+        customerDanContext: plan.customerDanContext,
+        problemHypothesis: plan.problemHypothesis,
+        hmw: plan.hmw,
+        solutionHypothesis: plan.solutionHypothesis,
+        prototypeType: plan.prototypeType,
+        fiturAlurDiuji: plan.fiturAlurDiuji,
+        skenarioUserTesting: plan.skenarioUserTesting,
+        instrumenValidasi: plan.instrumenValidasi,
+        targetEarlyAdopters: plan.targetEarlyAdopters,
+        kriteriaSeleksi: plan.kriteriaSeleksi,
+        jumlahTargetResponden: plan.jumlahTargetResponden,
+        lokasiChannelTesting: plan.lokasiChannelTesting,
+        metodeRekrutmen: plan.metodeRekrutmen,
+        etikaPersetujuanData: plan.etikaPersetujuanData,
+      },
+    });
+
+    if (!generatedTasks || generatedTasks.length === 0) {
+      return { success: false, error: 'Gagal menghasilkan backlog dari AI.' };
+    }
+
+    // Clean up previous UNADOPTED AI-generated CV cards (do NOT delete adopted cards and do NOT delete Template Baku CV)
+    const existingAiCvCards = await db
+      .select({ id: kanbanCard.id })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.tahap, 'customer_validation'),
+          eq(kanbanCard.reviewStatus, 'ai_reference'),
+          ne(kanbanCard.label, 'Template Baku CV')
+        )
+      );
+
+    if (existingAiCvCards.length > 0) {
+      const cardIdsToDelete = existingAiCvCards.map((c) => c.id);
+      await db.delete(kanbanCard).where(inArray(kanbanCard.id, cardIdsToDelete));
+    }
+
+    // Get current max urutan for this team
+    const [latestCard] = await db
+      .select({ urutan: kanbanCard.urutan })
+      .from(kanbanCard)
+      .where(eq(kanbanCard.timInovatorId, timId))
+      .orderBy(desc(kanbanCard.urutan))
+      .limit(1);
+
+    let nextUrutan = (latestCard?.urutan ?? 0) + 1;
+
+    // Insert new AI recommendation cards
+    const cardsToInsert = generatedTasks.map((t) => {
+      const subtasks = t.subtasks || [];
+      const totalEstHours = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+
+      return {
+        timInovatorId: timId,
+        judul: t.judul,
+        deskripsi: t.deskripsi || null,
+        acceptanceCriteria: t.acceptanceCriteria || null,
+        statusKolom: 'To Do',
+        tahap: 'customer_validation',
+        sprintNumber: null,
+        suggestedSprintNumber: t.suggestedSprintNumber || 1,
+        storyPoint: t.storyPoint || 3,
+        estimasiJam: totalEstHours > 0 ? totalEstHours : null,
+        label: 'Rekomendasi CV',
+        reviewStatus: 'ai_reference',
+        urutan: nextUrutan++,
+        _subtasks: subtasks,
+      };
+    });
+
+    const insertedCards = await db.insert(kanbanCard).values(
+      cardsToInsert.map(({ _subtasks, ...c }) => c)
+    ).returning();
+
+    // Insert initial subtasks
+    const subtaskRows: Array<typeof kanbanSubtask.$inferInsert> = [];
+    for (let i = 0; i < insertedCards.length; i++) {
+      const card = insertedCards[i];
+      const subtasks = cardsToInsert[i]._subtasks;
+      if (subtasks && subtasks.length > 0) {
+        for (let sIdx = 0; sIdx < subtasks.length; sIdx++) {
+          const st = subtasks[sIdx];
+          subtaskRows.push({
+            taskId: card.id,
+            title: st.title,
+            estimatedHours: st.estimatedHours || 3,
+            isDone: false,
+            orderIndex: sIdx,
+            createdBy: null,
+          });
+        }
+      }
+    }
+
+    if (subtaskRows.length > 0) {
+      await db.insert(kanbanSubtask).values(subtaskRows);
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'CUST_VAL_GENERATE_BACKLOG',
+      entity: 'customer_validation_plan',
+      entityId: plan.id,
+      details: { timId, count: insertedCards.length },
+    });
+
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/kanban`);
+
+    return {
+      success: true,
+      count: insertedCards.length,
+      message: `Berhasil menghasilkan ${insertedCards.length} rekomendasi backlog Customer Validation!`,
+    };
+  } catch (error: any) {
+    console.error('[generateCvBacklogAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal menghasilkan rekomendasi backlog.' };
+  }
+}
+
 
