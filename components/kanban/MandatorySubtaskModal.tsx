@@ -202,7 +202,7 @@ export function MandatorySubtaskModal({
       <DialogContent
         className={
           isComplex
-            ? "sm:max-w-4xl max-h-[90vh] flex flex-col"
+            ? "w-full max-w-[95vw] lg:max-w-6xl xl:max-w-7xl max-h-[92vh] flex flex-col"
             : "sm:max-w-xl max-h-[85vh] flex flex-col"
         }
       >
@@ -337,23 +337,23 @@ export function MandatorySubtaskModal({
                       <span>Matriks Feedback 5 Dimensi per Responden ({feedbackRows.length})</span>
                     </label>
                     <p className="text-[10px] text-gray-500">
-                      Catat catatan respon verbal &amp; observasi responden untuk tiap dimensi.
+                      Catat respon verbal &amp; observasi responden untuk tiap dimensi testing. Geser tabel ke kanan jika kolom melebihi layar.
                     </p>
                   </div>
                   <Button
                     type="button"
                     size="sm"
                     onClick={handleAddFeedbackRow}
-                    className="h-7 text-xs bg-[#3E9463] hover:bg-[#0B3D2E] text-white font-bold gap-1 cursor-pointer"
+                    className="h-8 text-xs bg-[#3E9463] hover:bg-[#0B3D2E] text-white font-bold gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="h-3.5 w-3.5" />
                     <span>Tambah Responden</span>
                   </Button>
                 </div>
 
                 {feedbackRows.length === 0 ? (
-                  <div className="p-6 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 space-y-2">
-                    <p className="text-gray-400 text-xs">Belum ada baris feedback responden.</p>
+                  <div className="p-8 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 space-y-2">
+                    <p className="text-gray-400 text-xs font-medium">Belum ada data feedback responden.</p>
                     <Button
                       type="button"
                       variant="outline"
@@ -367,92 +367,120 @@ export function MandatorySubtaskModal({
                   </div>
                 ) : (
                   <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs">
-                    <div className="overflow-x-auto max-h-72">
-                      <table className="w-full text-[11px] text-left border-collapse">
+                    <div className="overflow-x-auto max-h-[58vh]">
+                      <table className="min-w-[1300px] w-full text-[11px] text-left border-collapse">
                         <thead className="bg-[#0B3D2E] text-white font-bold sticky top-0 z-10">
                           <tr>
-                            <th className="p-2 border-r border-emerald-900 w-8 text-center">#</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[140px]">Profil Responden *</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[120px]">Usability</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[120px]">Functionality</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[120px]">Solvability</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[120px]">Payability</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[120px]">Others</th>
-                            <th className="p-2 border-r border-emerald-900 min-w-[140px]">Priority Insight</th>
-                            <th className="p-2 w-8 text-center">Aksi</th>
+                            <th className="p-2.5 border-r border-emerald-900 w-10 min-w-[40px] text-center">#</th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[240px] min-w-[240px]">
+                              <span className="block font-bold">Profil Responden *</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Nama/Inisial &amp; Profil Segmen</span>
+                            </th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[170px] min-w-[170px]">
+                              <span className="block font-bold">Usability</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Kemudahan UI / Alur</span>
+                            </th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[170px] min-w-[170px]">
+                              <span className="block font-bold">Functionality</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Kesesuaian Fitur</span>
+                            </th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[170px] min-w-[170px]">
+                              <span className="block font-bold">Solvability</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Penyelesaian Masalah</span>
+                            </th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[170px] min-w-[170px]">
+                              <span className="block font-bold">Payability</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Kesediaan Membayar</span>
+                            </th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[160px] min-w-[160px]">
+                              <span className="block font-bold">Others</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Catatan Tambahan</span>
+                            </th>
+                            <th className="p-2.5 border-r border-emerald-900 w-[200px] min-w-[200px]">
+                              <span className="block font-bold">Priority Insight</span>
+                              <span className="block text-[9.5px] font-normal text-emerald-200">Tindak Lanjut Utama</span>
+                            </th>
+                            <th className="p-2.5 w-12 min-w-[48px] text-center">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {feedbackRows.map((row, idx) => (
                             <tr key={row.id || idx} className="hover:bg-gray-50/80 transition-colors">
-                              <td className="p-2 font-bold text-gray-500 text-center border-r border-gray-100">
+                              <td className="p-2.5 font-bold text-gray-500 text-center border-r border-gray-100 align-top pt-3">
                                 {idx + 1}
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Nama / Inisial / Segmen..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Nama / inisial & profil segmen responden..."
                                   value={row.respondenProfil || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "respondenProfil", e.target.value)}
-                                  className="text-[11px] h-7 bg-white"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full"
                                   required
                                 />
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Kemudahan alur..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Kemudahan alur dan pemahaman UI/UX..."
                                   value={row.usability || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "usability", e.target.value)}
-                                  className="text-[11px] h-7 bg-white"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full"
                                 />
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Kesesuaian fitur..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Kesesuaian fitur dengan kebutuhan..."
                                   value={row.functionality || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "functionality", e.target.value)}
-                                  className="text-[11px] h-7 bg-white"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full"
                                 />
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Penyelesaian masalah..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Tingkat penyelesaian masalah utama..."
                                   value={row.solvability || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "solvability", e.target.value)}
-                                  className="text-[11px] h-7 bg-white"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full"
                                 />
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Kesediaan membayar..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Kesediaan membayar atau berlangganan..."
                                   value={row.payability || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "payability", e.target.value)}
-                                  className="text-[11px] h-7 bg-white"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full"
                                 />
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Catatan tambahan..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Catatan observasi tambahan..."
                                   value={row.others || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "others", e.target.value)}
-                                  className="text-[11px] h-7 bg-white"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full"
                                 />
                               </td>
-                              <td className="p-1.5 border-r border-gray-100">
-                                <Input
-                                  placeholder="Tindak lanjut kunci..."
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Tindak lanjut atau temuan kunci..."
                                   value={row.priorityInsightAction || ""}
                                   onChange={(e) => handleUpdateFeedbackRow(idx, "priorityInsightAction", e.target.value)}
-                                  className="text-[11px] h-7 bg-white font-medium text-emerald-800"
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] placeholder:text-[10.5px] placeholder:text-gray-400 leading-snug w-full font-medium text-emerald-900"
                                 />
                               </td>
-                              <td className="p-1.5 text-center">
+                              <td className="p-2 text-center align-top pt-3">
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteFeedbackRow(idx)}
-                                  className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 cursor-pointer"
-                                  title="Hapus baris"
+                                  className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 cursor-pointer transition-colors"
+                                  title="Hapus baris responden ini"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </td>
                             </tr>
