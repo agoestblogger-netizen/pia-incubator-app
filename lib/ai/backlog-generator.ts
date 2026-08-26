@@ -24,26 +24,43 @@ export interface AiBacklogResponse {
 /** Heuristik untuk mengklasifikasi task ke tahap customer_validation atau market_validation */
 export function classifyBacklogTaskTahap(judul: string, deskripsi = '', acceptanceCriteria = ''): 'customer_validation' | 'market_validation' {
   const text = `${judul} ${deskripsi} ${acceptanceCriteria}`.toLowerCase();
-  if (
-    text.includes('wawancara') ||
-    text.includes('kuesioner') ||
-    text.includes('survei') ||
-    text.includes('early adopter') ||
-    text.includes('problem validation') ||
-    text.includes('riset kebutuhan') ||
-    text.includes('skenario uji') ||
-    text.includes('user testing') ||
-    text.includes('feedback responden') ||
-    text.includes('desirability') ||
-    text.includes('mockup awal') ||
-    text.includes('lo-fi') ||
-    text.includes('low-fidelity') ||
-    text.includes('psf')
-  ) {
-    return 'customer_validation';
+  
+  // Rule: MV HANYA untuk task yang JELAS soal membangun/mengembangkan/mengintegrasikan sistem, modul, fitur, atau platform nyata
+  const isBuildingSystem =
+    text.includes('kembangkan modul') ||
+    text.includes('kembangkan fitur') ||
+    text.includes('kembangkan sistem') ||
+    text.includes('kembangkan aplikasi') ||
+    text.includes('kembangkan platform') ||
+    text.includes('kembangkan backend') ||
+    text.includes('kembangkan frontend') ||
+    text.includes('kembangkan engine') ||
+    text.includes('bangun sistem') ||
+    text.includes('bangun aplikasi') ||
+    text.includes('bangun platform') ||
+    text.includes('bangun mvp') ||
+    text.includes('kembangkan mvp') ||
+    text.includes('integrasikan api') ||
+    text.includes('integrasi sistem') ||
+    text.includes('integrasi database') ||
+    text.includes('integrasi layanan') ||
+    text.includes('rilis mvp') ||
+    text.includes('rilis sistem') ||
+    text.includes('rilis aplikasi') ||
+    text.includes('rilis platform') ||
+    text.includes('pilot release') ||
+    text.includes('backend development') ||
+    text.includes('frontend development') ||
+    text.includes('software development') ||
+    text.includes('coding') ||
+    text.includes('deployment');
+
+  if (isBuildingSystem) {
+    return 'market_validation';
   }
-  // Pekerjaan membangun sistem / platform / modul / integrasi / MVP / pilot / operasional -> market_validation (mayoritas roadmap)
-  return 'market_validation';
+
+  // DEFAULT untuk SEMUA task lainnya (riset, wawancara, testing, prototype, kemitraan/MOU, koordinasi divisi, kepatuhan/compliance, admin, dll.)
+  return 'customer_validation';
 }
 
 /** Normalisasi Story Point (1 SP = 60 menit, linear). Mendukung desimal & integer positif. */
@@ -203,9 +220,9 @@ export async function generateAiBacklogFromRoadmap(params: {
 
     const systemPrompt = `Anda adalah Scrum Master senior PT Pegadaian (Persero).
 Tugas: Pecah roadmap implementasi proposal PIA menjadi 10-14 Backlog Task atomik standar Scrum lengkap dengan:
-1. tahap: MENGKLASIFIKASIKAN tiap task ke salah satu dari 2 tag persis ('customer_validation' ATAU 'market_validation'):
-   - 'customer_validation': untuk pekerjaan validasi awal / riset pengguna / wawancara responden / penyusunan instrumen testing / prototype awal sederhana untuk diuji.
-   - 'market_validation': untuk pekerjaan MEMBANGUN sistem / modul / fitur nyata / integrasi arsitektur / MVP development / pilot release / kesiapan operasional (PERKIRAAN INI AKAN MENJADI MAYORITAS).
+1. tahap: MENGKLASIFIKASIKAN tiap task ke salah satu dari 2 tag persis ('customer_validation' ATAU 'market_validation') dengan aturan sederhana:
+   - 'market_validation': HANYA untuk task yang JELAS soal membangun / mengembangkan / mengintegrasikan sistem, modul, fitur teknis, atau platform MVP beneran (kata kerja seperti "Kembangkan modul...", "Bangun platform...", "Integrasikan API/sistem...", "Rilis MVP...").
+   - 'customer_validation': DEFAULT untuk SEMUA task lainnya — termasuk riset pengguna, wawancara, testing, prototype mockup, kemitraan/MoU, koordinasi lintas divisi, persiapan kepatuhan/compliance, legal, dan administrasi. Jika ragu atau bukan soal build sistem, WAJIB default ke 'customer_validation'.
    - JANGAN PERNAH gunakan tag 'innovation_setup' (opsi ini telah dihapus).
 2. storyPoint: estimasikan durasi pengerjaan dalam MENIT yang realistis (misal 60, 120, 180, 240, 300, 480 menit) lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit).
 3. suggestedSprintNumber: integer antara 1 sampai ${totalSprints}:
