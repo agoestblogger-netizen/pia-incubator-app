@@ -145,7 +145,7 @@ ATURAN STRUKTUR SETIAP TASK:
 1. JUDUL: Dimulai KATA KERJA AKTIF imperatif (contoh: "Siapkan...", "Susun...", "Rekrut...", "Lakukan...", "Sintesis...", "Analisis...").
 2. DESKRIPSI: Instruksi operasional ringkas tanpa subjek "Tim".
 3. ACCEPTANCE CRITERIA: Luaran selesai yang terukur dan konkret.
-4. Story Point: Bilangan Fibonacci [1, 2, 3, 5, 8, 13].
+4. Story Point: Estimasikan durasi pengerjaan dalam MENIT yang realistis (misal 60, 120, 180, 240, 300, 480 menit), lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit). Boleh bilangan bulat atau desimal.
 5. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi wajar pada fase Customer Validation, biasanya sprint 1-3).
 6. subtasks: 3 sampai 5 subtask konkret dengan estimatedHours (integer 1-16).
 
@@ -156,7 +156,7 @@ Output HARUS JSON murni:
       "judul": "...",
       "deskripsi": "...",
       "acceptanceCriteria": "...",
-      "storyPoint": 5,
+      "storyPoint": 3,
       "suggestedSprintNumber": 1,
       "subtasks": [
         { "title": "...", "estimatedHours": 3 }

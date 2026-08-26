@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { teamMemberCapacity, anggotaTim, kanbanCard, kanbanSubtask } from "@/lib/db/schema";
-import { eq, and, sql, gt } from "drizzle-orm";
+import { teamMemberCapacity, anggotaTim, kanbanCard } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/db/audit";
@@ -11,48 +11,12 @@ export interface MemberCapacityInfo {
   anggotaTimId: string;
   nama: string;
   jabatan: string;
-  kapasitasSp: number;
-  kapasitasJam?: number;
+  kapasitasJam: number; // default 2 jam per orang per sprint (Paket 24a)
+  kapasitasSp: number;  // derived/mirror: 1 SP = 1 jam = 60 menit
   isAiSuggested?: boolean;
 }
 
-/** Hitung rasio jam per SP dari kartu-kartu yang sudah memiliki subtasks dengan jam terisi */
-export async function calculateTeamHoursPerSpRatio(timId: string): Promise<number> {
-  try {
-    const rows = await db
-      .select({
-        taskId: kanbanSubtask.taskId,
-        totalHours: sql<number>`cast(coalesce(sum(${kanbanSubtask.estimatedHours}), 0) as int)`,
-        storyPoint: kanbanCard.storyPoint,
-      })
-      .from(kanbanSubtask)
-      .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
-      .where(
-        and(
-          eq(kanbanCard.timInovatorId, timId),
-          gt(kanbanSubtask.estimatedHours, 0),
-          gt(kanbanCard.storyPoint, 0)
-        )
-      )
-      .groupBy(kanbanSubtask.taskId, kanbanCard.storyPoint);
-
-    if (rows.length >= 3) {
-      const totalHours = rows.reduce((acc, r) => acc + (r.totalHours || 0), 0);
-      const totalSp = rows.reduce((acc, r) => acc + (r.storyPoint || 0), 0);
-      if (totalSp > 0 && totalHours > 0) {
-        const ratio = totalHours / totalSp;
-        return Math.max(2, Math.min(8, Math.round(ratio * 10) / 10));
-      }
-    }
-  } catch (err) {
-    console.warn("[calculateTeamHoursPerSpRatio] Failed to calculate ratio, using default 4:", err);
-  }
-
-  // Default baseline: ~4 jam / 1 SP (asumsi 60 jam / 4 = 15 SP)
-  return 4;
-}
-
-/** Ambil kapasitas per anggota tim untuk satu sprint dalam Story Point (SP). Default saran AI ~15 SP. */
+/** Ambil kapasitas per anggota tim untuk satu sprint. Default 2 jam per orang (Paket 24a). */
 export async function getTeamCapacityForSprint(
   timId: string,
   sprintNumber: number
@@ -72,47 +36,51 @@ export async function getTeamCapacityForSprint(
       )
     );
 
-  const hoursPerSp = await calculateTeamHoursPerSpRatio(timId);
-  // Asumsi jam kerja efektif per orang per sprint ~60 jam -> SP = 60 / hoursPerSp
-  const suggestedSp = Math.max(8, Math.min(30, Math.round(60 / hoursPerSp)));
+  const DEFAULT_JAM_PER_ORANG = 2; // Paket 24a: Default tetap 2 jam per orang per sprint
 
   return anggota.map((a) => {
     const record = capacityRecords.find((c) => c.anggotaTimId === a.id);
-    const hasManualSp = record?.kapasitasSp !== null && record?.kapasitasSp !== undefined;
-    const finalSp = hasManualSp ? record!.kapasitasSp! : suggestedSp;
+    const hasManualJam = record?.kapasitasJam !== null && record?.kapasitasJam !== undefined;
+    const finalJam = hasManualJam ? record!.kapasitasJam! : DEFAULT_JAM_PER_ORANG;
 
     return {
       anggotaTimId: a.id,
       nama: a.nama,
       jabatan: a.jabatan,
-      kapasitasSp: finalSp,
-      kapasitasJam: record?.kapasitasJam ?? 80,
-      isAiSuggested: !hasManualSp,
+      kapasitasJam: finalJam,
+      kapasitasSp: finalJam,
+      isAiSuggested: false,
     };
   });
 }
 
-/** Simpan/update kapasitas SP seorang anggota untuk sprint tertentu. */
+/** Simpan/update kapasitas jam seorang anggota untuk sprint tertentu. */
 export async function upsertMemberCapacityAction(
   timId: string,
   anggotaTimId: string,
   sprintNumber: number,
-  kapasitasSp: number
+  kapasitasJam: number
 ) {
   try {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     const allowed = await hasPermission(user, "kanban.edit", timId);
     if (!allowed) return { success: false, error: "Forbidden: Tidak ada izin." };
-    if (kapasitasSp < 0 || kapasitasSp > 999)
-      return { success: false, error: "Kapasitas Story Point harus antara 0-999 SP." };
+    if (kapasitasJam < 0 || kapasitasJam > 999)
+      return { success: false, error: "Kapasitas jam harus antara 0-999 jam." };
 
     await db
       .insert(teamMemberCapacity)
-      .values({ timInovatorId: timId, anggotaTimId, sprintNumber, kapasitasSp, kapasitasJam: kapasitasSp * 4 })
+      .values({
+        timInovatorId: timId,
+        anggotaTimId,
+        sprintNumber,
+        kapasitasJam,
+        kapasitasSp: kapasitasJam,
+      })
       .onConflictDoUpdate({
         target: [teamMemberCapacity.anggotaTimId, teamMemberCapacity.sprintNumber],
-        set: { kapasitasSp, kapasitasJam: kapasitasSp * 4, updatedAt: new Date() },
+        set: { kapasitasJam, kapasitasSp: kapasitasJam, updatedAt: new Date() },
       });
 
     await logAudit({
@@ -121,7 +89,7 @@ export async function upsertMemberCapacityAction(
       action: "CAPACITY_UPSERT",
       entity: "team_member_capacity",
       entityId: anggotaTimId,
-      details: { timId, anggotaTimId, sprintNumber, kapasitasSp },
+      details: { timId, anggotaTimId, sprintNumber, kapasitasJam },
     });
 
     revalidatePath(`/tim/${timId}`);

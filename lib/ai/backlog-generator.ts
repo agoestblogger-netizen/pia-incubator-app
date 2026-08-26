@@ -18,15 +18,13 @@ export interface AiBacklogResponse {
   tasks: AiBacklogTask[];
 }
 
-const FIBONACCI_SP_OPTIONS = [1, 2, 3, 5, 8, 13] as const;
-
-/** Normalisasi angka ke skala Fibonacci terdekat (1, 2, 3, 5, 8, 13). */
-export function normalizeToFibonacci(val: number | null | undefined, fallback = 3): number {
+/** Normalisasi Story Point (1 SP = 60 menit, linear). Mendukung desimal & integer positif. */
+export function normalizeStoryPoint(val: number | null | undefined, fallback = 3): number {
   if (typeof val !== 'number' || isNaN(val) || val <= 0) return fallback;
-  return FIBONACCI_SP_OPTIONS.reduce((prev, curr) =>
-    Math.abs(curr - val) < Math.abs(prev - val) ? curr : prev
-  );
+  return Number(val.toFixed(2));
 }
+
+export const normalizeToFibonacci = normalizeStoryPoint;
 
 /** Estimasi Story Point berbasis heuristik kualitatif jika AI tidak tersedia */
 export function estimateStoryPointHeuristic(judul: string, deskripsi = '', acceptanceCriteria = ''): number {
@@ -92,23 +90,27 @@ export async function estimateCardStoryPointWithAi(params: {
 
   try {
     const openai = new OpenAI({ apiKey });
-    const systemPrompt = `Anda adalah Scrum Master & Agile Coach senior ahli estimasi Story Point (skala Fibonacci: 1, 2, 3, 5, 8, 13).
-Tugas Anda adalah menilai estimasi kompleksitas kualitatif kartu task backlog dan memberikan skor Story Point:
-- 1-2 SP: Tugas administratif singkat, konfirmasi jadwal, review cepat, brief, atau koordinasi ringan.
-- 3-5 SP: Riset dasar, penyusunan materi/pertanyaan, pengujian pengguna (user testing), analisis hasil, atau penyusunan dokumen.
-- 8-13 SP: Pengembangan teknis (MVP development), integrasi multi-sistem/stakeholder, arsitektur sistem, atau implementasi teknis kompleks.
+    const systemPrompt = `Anda adalah Scrum Master & Agile Coach senior ahli estimasi waktu kerja Scrum (1 Story Point = 60 Menit).
+Tugas Anda adalah mengestimasikan durasi pengerjaan kartu task backlog dalam MENIT yang realistis berdasarkan judul & deskripsi kartu, lalu mengeluarkannya dalam bentuk Story Point (menit ÷ 60):
+- Contoh: 60 menit = 1 SP
+- Contoh: 120 menit = 2 SP
+- Contoh: 180 menit = 3 SP
+- Contoh: 240 menit = 4 SP
+- Contoh: 300 menit = 5 SP
+- Contoh: 480 menit = 8 SP
 
 Output HARUS berupa JSON murni:
 {
+  "estimasiMenit": 180,
   "storyPoint": 3
 }`;
 
-    const userPrompt = `Nilai Story Point untuk kartu task berikut:
+    const userPrompt = `Estimasikan durasi pengerjaan dalam menit dan story point untuk kartu task berikut:
 - Judul: ${judul}
 - Deskripsi: ${deskripsi || '-'}
 - Acceptance Criteria: ${acceptanceCriteria || '-'}
 
-Keluarkan skor Story Point Fibonacci murni.`;
+Keluarkan estimasi waktu menit dan story_point (menit ÷ 60).`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -169,7 +171,7 @@ export async function generateAiBacklogFromRoadmap(params: {
 
     const systemPrompt = `Anda adalah Scrum Master senior PT Pegadaian (Persero).
 Tugas: Pecah roadmap implementasi proposal PIA menjadi 10-14 Backlog Task atomik standar Scrum lengkap dengan:
-1. Story Point Fibonacci: [1, 2, 3, 5, 8, 13]
+1. storyPoint: estimasikan durasi pengerjaan dalam MENIT yang realistis (misal 60, 120, 180, 240, 300, 480 menit) lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit). Boleh bilangan bulat atau desimal.
 2. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi seimbang dari Sprint 1 s.d ${totalSprints})
 3. subtasks: 3 sampai 5 subtask konkret dan actionable per task (estimatedHours integer 1-16). Setiap subtask HARUS jelas menggambarkan tindakan spesifik yang dilakukan — deskriptif dan dapat langsung dieksekusi, BUKAN dipotong kaku.
 

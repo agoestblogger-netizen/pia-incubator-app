@@ -49,7 +49,7 @@ export async function getKanbanData(timId: string) {
     .where(eq(kanbanColumn.timInovatorId, timId))
     .orderBy(asc(kanbanColumn.urutan));
 
-  const cards = await db
+  const rawCards = await db
     .select({
       id: kanbanCard.id,
       timInovatorId: kanbanCard.timInovatorId,
@@ -80,6 +80,35 @@ export async function getKanbanData(timId: string) {
     .where(eq(kanbanCard.timInovatorId, timId))
     .groupBy(kanbanCard.id)
     .orderBy(asc(kanbanCard.urutan));
+
+  // Query subtask totals for all cards in this team (Paket 24a)
+  const subtaskRows = await db
+    .select({
+      taskId: kanbanSubtask.taskId,
+      subtasksCount: sql<number>`cast(count(${kanbanSubtask.id}) as int)`,
+      totalSubtaskHours: sql<number>`cast(coalesce(sum(${kanbanSubtask.estimatedHours}), 0) as int)`,
+    })
+    .from(kanbanSubtask)
+    .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
+    .where(eq(kanbanCard.timInovatorId, timId))
+    .groupBy(kanbanSubtask.taskId);
+
+  const subtaskMap = new Map<string, { subtasksCount: number; totalSubtaskHours: number }>();
+  for (const st of subtaskRows) {
+    subtaskMap.set(st.taskId, {
+      subtasksCount: st.subtasksCount || 0,
+      totalSubtaskHours: st.totalSubtaskHours || 0,
+    });
+  }
+
+  const cards = rawCards.map((c) => {
+    const stInfo = subtaskMap.get(c.id);
+    return {
+      ...c,
+      subtasksCount: stInfo?.subtasksCount || 0,
+      totalSubtaskHours: stInfo?.totalSubtaskHours || c.estimasiJam || 0,
+    };
+  });
 
   return { columns, cards };
 }

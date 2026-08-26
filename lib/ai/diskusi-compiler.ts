@@ -46,7 +46,7 @@ ATURAN OUTPUT:
 2. deskripsi: Sintesis komprehensif dari ide-ide yang didiskusikan. Jelaskan latar belakang ide, sasaran utama, dan cakupan implementasinya.
 3. acceptanceCriteria: Kriteria keberhasilan luaran yang terukur, konkret, dan dapat diverifikasi saat task dinyatakan selesai.
 4. tahap: Pilih salah satu yang paling sesuai dari: "innovation_setup" (riset/charter), "customer_validation" (uji problem-solution fit/prototype), "market_validation" (uji pilot/DFV/MVP), atau "umum".
-5. storyPoint: Nilai Fibonacci (1, 2, 3, 5, 8, atau 13) berdasarkan estimasi kompleksitas dan beban kerja.
+5. storyPoint: Estimasikan durasi kerja dalam MENIT yang realistis, lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit).
 6. subtasks: Buat 3 sampai 5 subtask konkret dan actionable yang menggambarkan langkah eksekusi teknis dan operasional secara berurutan. Setiap subtask memiliki title yang deskriptif dan estimatedHours (integer 1-16).
 
 KEMBALIKAN HANYA JSON VALID SESUAI FORMAT:
@@ -55,7 +55,7 @@ KEMBALIKAN HANYA JSON VALID SESUAI FORMAT:
   "deskripsi": "...",
   "acceptanceCriteria": "...",
   "tahap": "customer_validation",
-  "storyPoint": 5,
+  "storyPoint": 3,
   "subtasks": [
     { "title": "...", "estimatedHours": 3 },
     { "title": "...", "estimatedHours": 4 },

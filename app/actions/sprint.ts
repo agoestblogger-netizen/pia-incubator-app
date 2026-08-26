@@ -20,13 +20,15 @@ export async function getSprintsByTimId(timId: string) {
     .where(eq(sprint.timInovatorId, timId))
     .orderBy(asc(sprint.nomorSprint));
 
-  // If no sprints exist yet, initialize 4 default sprints
+  // If no sprints exist yet, initialize 6 default sprints (Paket 24a)
   if (list.length === 0) {
     const defaultSprints = [
       { timInovatorId: timId, nomorSprint: 1, status: "belum_dimulai", tujuan: "Problem Validation & Setup" },
       { timInovatorId: timId, nomorSprint: 2, status: "belum_dimulai", tujuan: "Solution Exploration & Prototyping" },
-      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "MVP Development & Testing" },
-      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "Market Validation & Pitch Preparation" },
+      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "Customer Validation & Testing" },
+      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "MVP Development & Pilot Prep" },
+      { timInovatorId: timId, nomorSprint: 5, status: "belum_dimulai", tujuan: "Market Validation & Pilot Execution" },
+      { timInovatorId: timId, nomorSprint: 6, status: "belum_dimulai", tujuan: "Pitch & FMI Preparation" },
     ];
 
     await db.insert(sprint).values(defaultSprints).onConflictDoNothing();

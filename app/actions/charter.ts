@@ -1139,19 +1139,21 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
   const cardsToInsert: Array<typeof kanbanCard.$inferInsert> = [];
   let cardUrutan = 0;
 
-  // Sprints count (ensure at least 4 sprints exist so cards distribute across sprints 1-4)
+  // Sprints count (ensure at least 6 sprints exist so cards distribute across sprints 1-6 - Paket 24a)
   let sprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
   if (sprints.length === 0) {
     const defaults = [
       { timInovatorId: timId, nomorSprint: 1, status: "belum_dimulai", tujuan: "Problem Validation & Setup" },
       { timInovatorId: timId, nomorSprint: 2, status: "belum_dimulai", tujuan: "Solution Exploration & Prototyping" },
-      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "MVP Development & Testing" },
-      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "Market Validation & Pitch Preparation" },
+      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "Customer Validation & Testing" },
+      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "MVP Development & Pilot Prep" },
+      { timInovatorId: timId, nomorSprint: 5, status: "belum_dimulai", tujuan: "Market Validation & Pilot Execution" },
+      { timInovatorId: timId, nomorSprint: 6, status: "belum_dimulai", tujuan: "Pitch & FMI Preparation" },
     ];
     await db.insert(sprint).values(defaults).onConflictDoNothing();
     sprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
   }
-  const totalSprints = Math.max(4, sprints.length);
+  const totalSprints = Math.max(6, sprints.length);
 
   if (teamDossier && teamDossier.snapshotData) {
     const snap = teamDossier.snapshotData as any;
@@ -1347,12 +1349,18 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
 
   for (let mvIdx = 0; mvIdx < bakuMVTasks.length; mvIdx++) {
     const t = bakuMVTasks[mvIdx];
-    // Heuristik MV: Tugas 0-3 di Sprint 3, Tugas 4-7 di Sprint 4
-    const mvSprint = totalSprints <= 2
+    // Heuristik 8 kartu MV: terdistribusi di sprint fase Market Validation (Sprint 4-6 pada 6 sprint)
+    const mvSprint = totalSprints <= 3
       ? totalSprints
-      : mvIdx < 4
-      ? Math.min(totalSprints, Math.max(1, totalSprints - 1))
-      : totalSprints;
+      : totalSprints === 4
+      ? (mvIdx < 4 ? 3 : 4)
+      : totalSprints === 5
+      ? (mvIdx < 3 ? 3 : mvIdx < 6 ? 4 : 5)
+      : mvIdx < 3
+      ? 4
+      : mvIdx < 6
+      ? 5
+      : 6;
 
     const predefined = getPredefinedSubtasks(t.judul, t.tahap) || [];
     const totalEstHours = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);

@@ -1411,16 +1411,24 @@ export function DiskusiCanvasClient({
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-gray-800 block mb-1">Story Point (Fibonacci)</label>
-                  <select
-                    value={compiledDraft.storyPoint}
-                    onChange={(e) => setCompiledDraft({ ...compiledDraft, storyPoint: parseInt(e.target.value) || 3 })}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-gray-800">Estimasi Waktu</label>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      ≈ {Number((compiledDraft.storyPoint || 3).toFixed(2))} SP
+                    </span>
+                  </div>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={15}
+                    value={Math.round((compiledDraft.storyPoint || 3) * 60)}
+                    onChange={(e) => {
+                      const min = Math.max(1, parseInt(e.target.value, 10) || 60);
+                      setCompiledDraft({ ...compiledDraft, storyPoint: Number((min / 60).toFixed(2)) });
+                    }}
                     className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132]"
-                  >
-                    {[1, 2, 3, 5, 8, 13].map((sp) => (
-                      <option key={sp} value={sp}>{sp} SP</option>
-                    ))}
-                  </select>
+                    placeholder="Menit (contoh: 120)"
+                  />
                 </div>
               </div>
 

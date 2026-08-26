@@ -3281,93 +3281,42 @@ export function KanbanClient({
                           <select
                             value={detailOwnerAnggotaId || ""}
                             disabled={!canEdit}
-                            onChange={(e) => {
-                              const newOwnerId = e.target.value || null;
-                              if (newOwnerId && detailSprintNumber) {
-                                const targetOwner = anggotaTim.find((a) => a.id === newOwnerId);
-                                const targetCap = capacities.find((c) => c.anggotaTimId === newOwnerId)?.kapasitasSp ?? 15;
-                                const currentOwnedCards = cards.filter(
-                                  (c) =>
-                                    c.ownerAnggotaId === newOwnerId &&
-                                    c.sprintNumber === detailSprintNumber &&
-                                    c.id !== selectedCardForDetail?.id
-                                );
-                                const currentUsedSp = currentOwnedCards.reduce((sum, c) => sum + (c.storyPoint || 3), 0);
-                                const cardSp = detailStoryPoint || 3;
-                                const projectedSp = currentUsedSp + cardSp;
-
-                                if (projectedSp > targetCap || currentUsedSp >= targetCap) {
-                                  toast.error(
-                                    `⚠ ${targetOwner?.nama || "Anggota"} sudah mencapai kapasitas (${projectedSp}/${targetCap} SP) di Sprint ${detailSprintNumber}. Alokasikan ke anggota lain atau sesuaikan kapasitas.`,
-                                    "Kapasitas Penuh / Terlampaui"
-                                  );
-                                  return;
-                                }
-                              }
-                              setDetailOwnerAnggotaId(newOwnerId);
-                            }}
+                            onChange={(e) => setDetailOwnerAnggotaId(e.target.value || null)}
                             className="w-full text-xs bg-white border border-[#C9E4D0] rounded-lg p-2 text-gray-900 font-semibold focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
                           >
                             <option value="">-- Belum Ditugaskan --</option>
-                            {anggotaTim.map((a) => {
-                              const aCap = capacities.find((c) => c.anggotaTimId === a.id)?.kapasitasSp ?? 15;
-                              return (
-                                <option key={a.id} value={a.id}>
-                                  {a.nama} ({a.jabatan || a.unitKerja || "Anggota"}) — Kapasitas {aCap} SP
-                                </option>
-                              );
-                            })}
+                            {anggotaTim.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.nama} ({a.jabatan || a.unitKerja || "Anggota"})
+                              </option>
+                            ))}
                           </select>
                         </div>
 
-                        {/* Story Point (Skala Fibonacci) */}
+                        {/* Estimasi Waktu (Menit) & Story Point (Paket 24a) */}
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-[#8A6300] block flex items-center gap-1.5">
-                            <Zap className="h-4 w-4 text-[#B8860B] fill-[#B8860B]" />
-                            <span>Story Point</span>
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={detailStoryPoint ?? 3}
-                              disabled={!canEdit}
-                              onChange={(e) => {
-                                const newSp = parseInt(e.target.value) || 3;
-                                // Check if current owner would exceed capacity with this new SP
-                                if (detailOwnerAnggotaId && detailSprintNumber) {
-                                  const targetOwner = anggotaTim.find((a) => a.id === detailOwnerAnggotaId);
-                                  const targetCap = capacities.find((c) => c.anggotaTimId === detailOwnerAnggotaId)?.kapasitasSp ?? 15;
-                                  const currentOwnedCards = cards.filter(
-                                    (c) =>
-                                      c.ownerAnggotaId === detailOwnerAnggotaId &&
-                                      c.sprintNumber === detailSprintNumber &&
-                                      c.id !== selectedCardForDetail?.id
-                                  );
-                                  const currentUsedSp = currentOwnedCards.reduce((sum, c) => sum + (c.storyPoint || 3), 0);
-                                  const projectedSp = currentUsedSp + newSp;
-
-                                  if (projectedSp > targetCap) {
-                                    toast.error(
-                                      `⚠ Perubahan ke ${newSp} SP akan melebihi kapasitas ${targetOwner?.nama || "Owner"} (${projectedSp}/${targetCap} SP). Sesuaikan kapasitas atau ganti penugasan.`,
-                                      "Kapasitas Melebihi Batas"
-                                    );
-                                    return;
-                                  }
-                                }
-                                setDetailStoryPoint(newSp);
-                              }}
-                              className="w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37]"
-                            >
-                              <option value="1">1 SP (Sangat Sederhana - Admin singkat)</option>
-                              <option value="2">2 SP (Sederhana - Review/Brief)</option>
-                              <option value="3">3 SP (Sedang - Riset/Dokumen)</option>
-                              <option value="5">5 SP (Menengah - Prototype/Testing)</option>
-                              <option value="8">8 SP (Kompleks - MVP Development)</option>
-                              <option value="13">13 SP (Sangat Kompleks - Arsitektur)</option>
-                            </select>
-                            <span className="text-xs text-[#8A6300] bg-[#FBF3DD] font-black px-2.5 py-1.5 rounded-lg border border-[#D4AF37] shrink-0 shadow-2xs">
-                              {detailStoryPoint ?? 3} SP
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-[#8A6300] flex items-center gap-1.5">
+                              <Clock className="h-4 w-4 text-[#B8860B]" />
+                              <span>Estimasi Waktu (menit)</span>
+                            </label>
+                            <span className="text-[10px] font-black text-[#8A6300] bg-[#FBF3DD] px-2 py-0.5 rounded-md border border-[#D4AF37] shadow-2xs">
+                              ≈ {Number((detailStoryPoint ?? 3).toFixed(2))} SP
                             </span>
                           </div>
+                          <Input
+                            type="number"
+                            min={1}
+                            step={15}
+                            disabled={!canEdit}
+                            value={Math.round((detailStoryPoint ?? 3) * 60)}
+                            onChange={(e) => {
+                              const min = Math.max(1, parseInt(e.target.value, 10) || 60);
+                              setDetailStoryPoint(Number((min / 60).toFixed(2)));
+                            }}
+                            className="w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37]"
+                            placeholder="Contoh: 120"
+                          />
                         </div>
 
                         {/* Penugasan Sprint */}

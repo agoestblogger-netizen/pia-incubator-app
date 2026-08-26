@@ -19,6 +19,7 @@ import {
   Zap,
   Target,
   RefreshCw,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,14 +58,14 @@ interface SprintPlanningSectionProps {
   startingSprint: boolean;
 }
 
-const FIBONACCI_OPTIONS = [
-  { value: 1, label: "1 SP — Sangat Sederhana (Tugas admin singkat)" },
-  { value: 2, label: "2 SP — Sederhana (Review / Brief)" },
-  { value: 3, label: "3 SP — Sedang (Riset / Dokumen)" },
-  { value: 5, label: "5 SP — Menengah (Prototype / Testing)" },
-  { value: 8, label: "8 SP — Kompleks (MVP Development / Integrasi)" },
-  { value: 13, label: "13 SP — Sangat Kompleks (Arsitektur berat)" },
-];
+function formatHoursDuration(hours: number): string {
+  if (hours <= 0) return "0 jam";
+  const wholeHours = Math.floor(hours);
+  const minutes = Math.round((hours - wholeHours) * 60);
+  if (minutes === 0) return `${wholeHours} jam`;
+  if (wholeHours === 0) return `${minutes} menit`;
+  return `${wholeHours} jam ${minutes} menit`;
+}
 
 export function SprintPlanningSection({
   timId,
@@ -83,7 +84,7 @@ export function SprintPlanningSection({
   startingSprint,
 }: SprintPlanningSectionProps) {
   const [editingCapacityId, setEditingCapacityId] = useState<string | null>(null);
-  const [tempCapacityVal, setTempCapacityVal] = useState<number>(15);
+  const [tempCapacityVal, setTempCapacityVal] = useState<number>(2);
   const [savingCapacity, setSavingCapacity] = useState(false);
 
   // Sprint Goal state & auto-suggestion
@@ -212,42 +213,27 @@ export function SprintPlanningSection({
     });
   }, [backlogCards]);
 
-  // Capacity lookup map: anggotaTimId -> SP Capacity (AI suggested or manual)
+  // Capacity lookup map: anggotaTimId -> Kapasitas Jam (Default 2 jam - Paket 24a)
   const capacityMap = useMemo(() => {
     const map = new Map<string, number>();
     anggotaTim.forEach((a) => {
       const cap = capacities.find((c) => c.anggotaTimId === a.id);
-      map.set(a.id, cap ? cap.kapasitasSp : 15);
+      map.set(a.id, cap ? (cap.kapasitasJam ?? 2) : 2);
     });
     return map;
   }, [anggotaTim, capacities]);
 
-  // Compute allocated SP per member from current assignments
-  const allocatedSpMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    anggotaTim.forEach((a) => {
-      map[a.id] = 0;
-    });
-
-    Object.values(assignments).forEach((asg) => {
-      if (asg.ownerAnggotaId && asg.storyPoint && asg.storyPoint > 0) {
-        map[asg.ownerAnggotaId] = (map[asg.ownerAnggotaId] || 0) + asg.storyPoint;
-      }
-    });
-
-    return map;
-  }, [assignments, anggotaTim]);
-
-  // Total Team Aggregate SP (Non-blocking gauge)
-  const totalTeamMaxSp = useMemo(() => {
-    return anggotaTim.reduce((sum, a) => sum + (capacityMap.get(a.id) ?? 15), 0);
+  // Batas Maksimal Jam Kerja Kelompok = SUM kapasitas semua anggota tim aktif
+  const totalTeamMaxHours = useMemo(() => {
+    return anggotaTim.reduce((sum, a) => sum + (capacityMap.get(a.id) ?? 2), 0);
   }, [anggotaTim, capacityMap]);
 
-  const totalTeamUsedSp = useMemo(() => {
-    return Object.values(allocatedSpMap).reduce((sum, v) => sum + v, 0);
-  }, [allocatedSpMap]);
+  // Akumulasi Total Durasi Subtask dari semua kartu di sprint ini (Paket 24a)
+  const totalSubtaskHours = useMemo(() => {
+    return backlogCards.reduce((sum, c) => sum + (c.totalSubtaskHours || 0), 0);
+  }, [backlogCards]);
 
-  const totalTeamPct = totalTeamMaxSp > 0 ? Math.round((totalTeamUsedSp / totalTeamMaxSp) * 1000) / 10 : 0;
+  const totalTeamPct = totalTeamMaxHours > 0 ? Math.round((totalSubtaskHours / totalTeamMaxHours) * 100) : 0;
 
   // Check if planning has at least 1 valid card (SP > 0 and owner selected)
   const validAssignedCards = useMemo(() => {
@@ -262,58 +248,24 @@ export function SprintPlanningSection({
 
   const canStartSprint = validAssignedCards.length > 0;
 
-  // Handle updating Story Point for a card
-  const handleSpChange = (cardId: string, value: string) => {
-    const parsed = value === "" ? null : Math.max(1, parseInt(value) || 3);
-    
-    // If card already has an owner, check if changing SP would exceed owner capacity
-    const currentOwnerId = assignments[cardId]?.ownerAnggotaId;
-    if (currentOwnerId && parsed) {
-      const currentOwner = anggotaTim.find((a) => a.id === currentOwnerId);
-      const ownerMaxSp = capacityMap.get(currentOwnerId) ?? 15;
-      const currentUsedSp = allocatedSpMap[currentOwnerId] ?? 0;
-      const prevCardSp = assignments[cardId]?.storyPoint ?? 0;
-      const projectedSp = currentUsedSp - prevCardSp + parsed;
-
-      if (projectedSp > ownerMaxSp) {
-        toast.error(
-          `⚠ Perubahan ke ${parsed} SP akan melebihi kapasitas ${currentOwner?.nama || "Owner"} (${projectedSp}/${ownerMaxSp} SP). Sesuaikan kapasitas atau ganti penugasan.`,
-          "Kapasitas Melebihi Batas"
-        );
-        return;
-      }
-    }
+  // Handle updating Estimasi Waktu (menit) for a card (Paket 24a)
+  const handleMinutesChange = (cardId: string, value: string) => {
+    const minutes = value === "" ? null : Math.max(1, parseInt(value, 10) || 60);
+    const storyPoint = minutes !== null ? Number((minutes / 60).toFixed(2)) : null;
 
     setAssignments((prev) => ({
       ...prev,
       [cardId]: {
         ...(prev[cardId] || { cardId, ownerAnggotaId: null }),
-        storyPoint: parsed,
+        storyPoint: storyPoint,
       },
     }));
   };
 
-  // Handle updating owner for a card with BLOCKING capacity checking
+  // Handle updating owner for a card
   const handleOwnerChange = (cardId: string, newOwnerId: string | null) => {
-    if (newOwnerId) {
-      const targetOwner = anggotaTim.find((a) => a.id === newOwnerId);
-      const targetMaxSp = capacityMap.get(newOwnerId) ?? 15;
-      const currentUsedSp = allocatedSpMap[newOwnerId] ?? 0;
-      const thisCardCurrentOwner = assignments[cardId]?.ownerAnggotaId;
-      const thisCardSp = assignments[cardId]?.storyPoint ?? 3;
-      const alreadyAssignedSpToThisOwner = thisCardCurrentOwner === newOwnerId ? thisCardSp : 0;
-      const projectedSp = currentUsedSp - alreadyAssignedSpToThisOwner + thisCardSp;
-
-      // BLOCKING validation if >= 100% (or exceeds max capacity)
-      if (projectedSp > targetMaxSp || currentUsedSp >= targetMaxSp) {
-        toast.error(
-          `⚠ ${targetOwner?.nama || "Anggota"} sudah mencapai kapasitas (${projectedSp}/${targetMaxSp} SP). Alokasikan ke anggota lain atau sesuaikan kapasitas.`,
-          "Kapasitas Penuh / Terlampaui"
-        );
-        return;
-      }
-    }
-
+    // NOTE (Paket 24a): Blocking per-member capacity check is temporarily disabled
+    // (Akan dibangun kembali berbasis subtask di Paket 24b)
     setAssignments((prev) => ({
       ...prev,
       [cardId]: {
@@ -323,7 +275,7 @@ export function SprintPlanningSection({
     }));
   };
 
-  // Handle saving edited SP capacity
+  // Handle saving edited Jam capacity
   const handleSaveCapacity = async (anggotaId: string) => {
     setSavingCapacity(true);
     const res = await upsertMemberCapacityAction(
@@ -333,7 +285,7 @@ export function SprintPlanningSection({
       tempCapacityVal
     );
     if (res.success) {
-      toast.success("Kapasitas Story Point anggota berhasil diperbarui.", "Kapasitas Disimpan");
+      toast.success("Kapasitas jam kerja anggota berhasil diperbarui.", "Kapasitas Disimpan");
       setEditingCapacityId(null);
       onRefreshCapacities();
     } else {
@@ -496,7 +448,7 @@ export function SprintPlanningSection({
             </span>
           </div>
           <span className="text-[11px] text-gray-500 font-medium">
-            Alokasikan Story Point dan PIC owner sebelum memulai eksekusi sprint
+            Alokasikan estimasi menit dan PIC owner sebelum memulai eksekusi sprint
           </span>
         </div>
 
@@ -507,7 +459,7 @@ export function SprintPlanningSection({
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-[#0B3D2E]" />
               <h4 className="text-xs font-extrabold text-[#0B3D2E] uppercase tracking-wider">
-                Panel Kapasitas Tim (Story Point) &amp; Backlog Kerja
+                Panel Kapasitas Tim (Jam Kerja) &amp; Backlog Kerja
               </h4>
             </div>
 
@@ -523,15 +475,15 @@ export function SprintPlanningSection({
             )}
           </div>
 
-          {/* Panel Kapasitas Tim Versi SP — Sprint N */}
+          {/* Panel Kapasitas Tim — Sprint N */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-[#0B3D2E] flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-[#3E9463]" />
-                <span>Kapasitas Anggota Tim (Disarankan AI dalam Story Point)</span>
+                <Clock className="h-3.5 w-3.5 text-[#3E9463]" />
+                <span>Kapasitas Anggota Tim (Default 2 Jam per Orang)</span>
               </span>
               <span className="text-[11px] text-gray-500 font-medium">
-                Klik ikon pensil untuk menyesuaikan kapasitas SP per orang
+                Klik ikon pensil untuk menyesuaikan kapasitas jam per orang
               </span>
             </div>
 
@@ -542,22 +494,12 @@ export function SprintPlanningSection({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {anggotaTim.map((anggota) => {
-                  const maxCap = capacityMap.get(anggota.id) ?? 15;
-                  const usedCap = allocatedSpMap[anggota.id] ?? 0;
-                  const pct = maxCap > 0 ? Math.round((usedCap / maxCap) * 100) : 0;
-                  const isOver = usedCap >= maxCap && maxCap > 0;
-                  const isNear = !isOver && pct >= 60;
+                  const maxCap = capacityMap.get(anggota.id) ?? 2;
 
                   return (
                     <div
                       key={anggota.id}
-                      className={`p-3.5 rounded-xl border transition-all ${
-                        isOver
-                          ? "border-l-4 border-l-red-500 border-red-300 bg-red-50/70 shadow-xs"
-                          : isNear
-                          ? "border-l-4 border-l-amber-500 border-amber-300 bg-amber-50/60 shadow-2xs"
-                          : "border-l-4 border-l-[#3E9463] border-[#C9E4D0] bg-[#F0F7F1] hover:bg-white shadow-2xs"
-                      }`}
+                      className="p-3.5 rounded-xl border border-l-4 border-l-[#3E9463] border-[#C9E4D0] bg-[#F0F7F1] hover:bg-white shadow-2xs transition-all"
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
@@ -588,6 +530,7 @@ export function SprintPlanningSection({
                               onClick={() => handleSaveCapacity(anggota.id)}
                               disabled={savingCapacity}
                               className="h-6 w-6 rounded bg-[#3E9463] text-white flex items-center justify-center hover:bg-[#0B3D2E] disabled:opacity-50"
+                              title="Simpan kapasitas jam"
                             >
                               {savingCapacity ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -612,7 +555,7 @@ export function SprintPlanningSection({
                                 setEditingCapacityId(anggota.id);
                                 setTempCapacityVal(maxCap);
                               }}
-                              title="Klik untuk ubah kapasitas Story Point"
+                              title="Klik untuk ubah kapasitas jam kerja"
                               className="text-gray-400 hover:text-[#3E9463] p-1 rounded hover:bg-white transition-colors"
                             >
                               <Edit2 className="h-3 w-3" />
@@ -621,59 +564,12 @@ export function SprintPlanningSection({
                         )}
                       </div>
 
-                      {/* SP Text & Dynamic Progress Bar */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-600 font-medium">
-                            {anggota.nama.split(" ")[0]}:{" "}
-                            <strong
-                              className={
-                                isOver
-                                  ? "text-red-700 font-black"
-                                  : isNear
-                                  ? "text-amber-900 font-black"
-                                  : "text-gray-900 font-black"
-                              }
-                            >
-                              {usedCap} / {maxCap} SP
-                            </strong>
-                          </span>
-                          <span
-                            className={`font-black text-[10px] px-2 py-0.5 rounded-full border shadow-2xs ${
-                              isOver
-                                ? "bg-red-100 text-red-800 border-red-200"
-                                : isNear
-                                ? "bg-amber-100 text-amber-900 border-amber-200"
-                                : "bg-[#E3F0E6] text-[#0B3D2E] border-[#C9E4D0]"
-                            }`}
-                          >
-                            {pct}%
-                          </span>
-                        </div>
-
-                        <div className="h-2.5 w-full bg-[#E3F0E6] rounded-full overflow-hidden p-0.5 border border-[#C9E4D0]">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              isOver
-                                ? "bg-red-600"
-                                : isNear
-                                ? "bg-amber-500"
-                                : "bg-[#3E9463]"
-                            }`}
-                            style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                          />
-                        </div>
-
-                        {isOver ? (
-                          <p className="text-[10px] font-bold text-red-600 flex items-center gap-1 pt-0.5">
-                            <AlertTriangle className="h-3 w-3 shrink-0" />
-                            <span>Kapasitas penuh/tercapai ({usedCap}/{maxCap} SP)</span>
-                          </p>
-                        ) : isNear ? (
-                          <p className="text-[10px] text-amber-800 font-medium flex items-center gap-1 pt-0.5">
-                            <span>💡 Alokasi mendekati batas kapasitas ({usedCap}/{maxCap} SP)</span>
-                          </p>
-                        ) : null}
+                      {/* Capacity Text in Jam */}
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-gray-600 font-medium">Kapasitas Sprint:</span>
+                        <span className="font-extrabold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] shadow-2xs">
+                          {maxCap} Jam
+                        </span>
                       </div>
                     </div>
                   );
@@ -681,16 +577,19 @@ export function SprintPlanningSection({
               </div>
             )}
 
-            {/* Total Agregat SP Tim (Non-blocking Gauge) — Hijau Tua Pekat #0B3D2E & Emas #F0C24B */}
+            {/* Total Tim: Akumulasi Durasi Subtask (Non-blocking Gauge) — Paket 24a */}
             {anggotaTim.length > 0 && (
               <div className="p-4 bg-[#0B3D2E] rounded-2xl border border-[#0B3D2E] shadow-sm space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-bold">
+                <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
                   <span className="flex items-center gap-2 text-white font-extrabold text-xs">
                     <Users className="h-4 w-4 text-emerald-400" />
                     <span>
-                      Total Tim:{" "}
+                      Total Tim (Durasi Subtask):{" "}
                       <span className="text-[#F0C24B] font-black text-sm">
-                        {totalTeamUsedSp} / {totalTeamMaxSp} SP
+                        {formatHoursDuration(totalSubtaskHours)}
+                      </span>
+                      <span className="text-emerald-200 font-normal text-xs ml-1.5">
+                        / Batas Kelompok: {totalTeamMaxHours} jam
                       </span>
                     </span>
                   </span>
@@ -707,7 +606,7 @@ export function SprintPlanningSection({
                   />
                 </div>
                 <p className="text-[10px] text-white/70 font-medium">
-                  Indikator total agregat tim bersifat informasional (non-blocking). Penugasan task divalidasi per orang.
+                  Akumulasi total durasi seluruh subtask kartu pada sprint ini dibandingkan dengan batas maksimal jam kerja kelompok. Indikator ini bersifat informasional (non-blocking).
                 </p>
               </div>
             )}
@@ -744,13 +643,8 @@ export function SprintPlanningSection({
                   };
 
                   const currentOwnerId = currentAsg.ownerAnggotaId;
-                  const currentSp = currentAsg.storyPoint;
-                  const currentOwner = anggotaTim.find((a) => a.id === currentOwnerId);
-
-                  // Check if selected owner is currently over capacity
-                  const ownerMaxCap = currentOwnerId ? capacityMap.get(currentOwnerId) ?? 15 : 15;
-                  const ownerUsedCap = currentOwnerId ? allocatedSpMap[currentOwnerId] ?? 0 : 0;
-                  const isOwnerOverCap = currentOwnerId ? ownerUsedCap >= ownerMaxCap : false;
+                  const currentSp = currentAsg.storyPoint ?? (card.storyPoint ?? 3);
+                  const currentMinutes = Math.round(currentSp * 60);
 
                   return (
                     <div
@@ -783,25 +677,28 @@ export function SprintPlanningSection({
                         </button>
                       </div>
 
-                      {/* Inputs: Story Point + Owner PIC */}
+                      {/* Inputs: Estimasi Waktu (Menit) + Owner PIC (Paket 24a) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[#C9E4D0]">
                         <div>
-                          <label className="text-[11px] font-bold text-[#8A6300] block mb-1 flex items-center gap-1.5">
-                            <Zap className="h-3.5 w-3.5 text-[#B8860B] fill-[#B8860B]" />
-                            <span>Story Point (Skala Fibonacci)</span>
-                          </label>
-                          <select
-                            value={currentSp ?? 3}
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-[#8A6300] flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-[#B8860B]" />
+                              <span>Estimasi Waktu (menit)</span>
+                            </label>
+                            <span className="text-[10px] font-extrabold text-[#8A6300] bg-[#FBF3DD] px-1.5 py-0.5 rounded border border-[#D4AF37]">
+                              ≈ {Number(currentSp.toFixed(2))} SP
+                            </span>
+                          </div>
+                          <Input
+                            type="number"
+                            min={1}
+                            step={15}
                             disabled={!canEdit}
-                            onChange={(e) => handleSpChange(card.id, e.target.value)}
-                            className="w-full h-8 text-xs bg-[#FBF3DD] border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg px-2 text-[#8A6300] font-extrabold focus:ring-2 focus:ring-[#D4AF37] transition-colors"
-                          >
-                            {FIBONACCI_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
+                            value={currentMinutes}
+                            onChange={(e) => handleMinutesChange(card.id, e.target.value)}
+                            className="h-8 text-xs bg-[#FBF3DD] border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg px-2 text-[#8A6300] font-extrabold focus:ring-2 focus:ring-[#D4AF37] transition-colors"
+                            placeholder="Contoh: 120"
+                          />
                         </div>
 
                         <div>
@@ -816,28 +713,14 @@ export function SprintPlanningSection({
                             className="w-full h-8 text-xs bg-[#F0F7F1] border-2 border-[#C9E4D0] hover:border-[#3E9463] rounded-lg px-2 text-gray-900 font-bold focus:ring-2 focus:ring-[#C9E4D0] focus:border-[#3E9463] transition-colors"
                           >
                             <option value="">-- Pilih Owner --</option>
-                            {anggotaTim.map((a) => {
-                              const aMax = capacityMap.get(a.id) ?? 15;
-                              const aUsed = allocatedSpMap[a.id] ?? 0;
-                              return (
-                                <option key={a.id} value={a.id}>
-                                  {a.nama} ({aUsed}/{aMax} SP)
-                                </option>
-                              );
-                            })}
+                            {anggotaTim.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.nama} ({a.jabatan || "Anggota Tim"})
+                              </option>
+                            ))}
                           </select>
                         </div>
                       </div>
-
-                      {/* Owner Overload Warning Alert */}
-                      {isOwnerOverCap && currentOwner && (
-                        <div className="rounded-lg bg-red-50 border border-red-200 p-2 flex items-center gap-2 text-[11px] text-red-700 font-medium">
-                          <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0" />
-                          <span>
-                            {currentOwner.nama} telah mencapai batas kapasitas ({ownerUsedCap}/{ownerMaxCap} SP).
-                          </span>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
