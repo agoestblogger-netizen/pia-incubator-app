@@ -44,10 +44,13 @@ import {
   FileText,
   Activity,
   History,
+  Wallet,
+  ArrowUpRight,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
 import { KanbanClient } from "../kanban/KanbanClient";
+import { KeuanganClient } from "../keuangan/KeuanganClient";
 
 // ── 5 Baris Tetap Resources Needed (Bagian D) ─────────────────────────────────
 const RESOURCES_NEEDED_ROWS = [
@@ -213,10 +216,13 @@ export function MarketValidationClient({
   initialColumns = [],
   initialCards = [],
   initialSprints = [],
+  initialKeuanganList = [],
   anggotaTim = [],
   canEdit = true,
   canApprove = false,
   canEditKanban = true,
+  canSubmitAnggaran = false,
+  canManageAnggaran = false,
   currentUser,
   phaseGateStatus,
 }: {
@@ -230,13 +236,17 @@ export function MarketValidationClient({
   initialColumns?: any[];
   initialCards?: any[];
   initialSprints?: any[];
+  initialKeuanganList?: any[];
   anggotaTim?: any[];
   canEdit?: boolean;
   canApprove?: boolean;
   canEditKanban?: boolean;
+  canSubmitAnggaran?: boolean;
+  canManageAnggaran?: boolean;
   currentUser?: any;
   phaseGateStatus?: any;
 }) {
+  const [activeTab, setActiveTab] = useState("plan");
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
     initialData?.plan?.hasilCustomerValidationRingkasan ||
@@ -769,6 +779,15 @@ export function MarketValidationClient({
   const sprintReviews = initialData?.sprintReviews || [];
   const allTeamCards = initialData?.allTeamCards || [];
 
+  const hasApprovedLpj =
+    Array.isArray(initialKeuanganList) &&
+    initialKeuanganList.some(
+      (item: any) =>
+        item.statusLpj === "disetujui" ||
+        item.status === "lpj_approved" ||
+        item.statusLpj === "approved"
+    );
+
   return (
     <div className="space-y-5">
       {/* ══ BAGIAN A: Header Read-Only (Template 3.1 & 3.2) ══ */}
@@ -828,8 +847,8 @@ export function MarketValidationClient({
         </div>
       </div>
 
-      <Tabs defaultValue="plan" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-xl bg-emerald-50/70 p-1 rounded-xl border border-[#C9E4D0]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl bg-emerald-50/70 p-1 rounded-xl border border-[#C9E4D0]">
           <TabsTrigger
             value="plan"
             className="flex items-center gap-2 text-xs font-bold data-[state=active]:bg-[#0B3D2E] data-[state=active]:text-white rounded-lg transition-all"
@@ -850,6 +869,13 @@ export function MarketValidationClient({
           >
             <TrendingUp className="h-3.5 w-3.5" />
             <span>3. PMF &amp; Go/No-Go Report</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="keuangan"
+            className="flex items-center gap-2 text-xs font-bold data-[state=active]:bg-[#0B3D2E] data-[state=active]:text-white rounded-lg transition-all"
+          >
+            <Wallet className="h-3.5 w-3.5 text-amber-500" />
+            <span>💰 4. RAB &amp; LPJ</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1999,6 +2025,28 @@ export function MarketValidationClient({
                   </div>
                 </div>
 
+                {/* Banner Pengingat RAB & LPJ (Non-blocking) */}
+                {!hasApprovedLpj && (
+                  <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-300 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-start gap-2.5">
+                      <Wallet className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                      <p className="text-xs leading-relaxed font-medium">
+                        💰 <strong>Pengingat Keuangan:</strong> Pastikan RAB &amp; LPJ Market Validation Anda sudah diajukan dan LPJ disetujui sebelum menetapkan Keputusan Go/No-Go final.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveTab("keuangan")}
+                      className="border-amber-400 bg-white hover:bg-amber-100/60 text-amber-900 font-bold text-xs shrink-0 rounded-lg h-8 gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <span>Buka RAB &amp; LPJ</span>
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700">
                     Ringkasan Aktivitas Rilis &amp; Hasil Pilot
@@ -2836,6 +2884,34 @@ export function MarketValidationClient({
               </div>
             )}
           </form>
+        </TabsContent>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB 4: RAB & LPJ (EMBEDDED KEUANGAN) */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="keuangan" className="space-y-4 mt-4">
+          <div className="bg-white p-3 rounded-2xl border border-gray-200 shadow-2xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-50 rounded-xl">
+                <Wallet className="h-5 w-5 text-[#0B3D2E]" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-gray-900">
+                  Pengelolaan Anggaran RAB &amp; LPJ (Market Validation)
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Pengajuan anggaran operasional pilot dan pelaporan pertanggungjawaban (LPJ).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <KeuanganClient
+            timId={timId}
+            initialList={initialKeuanganList}
+            canSubmit={canSubmitAnggaran}
+            canManage={canManageAnggaran}
+          />
         </TabsContent>
       </Tabs>
 
