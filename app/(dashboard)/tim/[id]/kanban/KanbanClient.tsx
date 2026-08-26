@@ -631,6 +631,14 @@ export function KanbanClient({
   const [viewMode, setViewMode] = useState<"board" | "timeline">("board");
   const [cards, setCards] = useState<any[]>(initialCards);
   const [sprints, setSprints] = useState<any[]>(initialSprints);
+
+  useEffect(() => {
+    setCards(initialCards);
+  }, [initialCards]);
+
+  useEffect(() => {
+    setSprints(initialSprints);
+  }, [initialSprints]);
   const [columns] = useState<any[]>(
     initialColumns.length > 0
       ? initialColumns
