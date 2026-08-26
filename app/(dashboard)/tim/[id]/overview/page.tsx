@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { TimPhaseGateNav } from "@/components/layout/TimPhaseGateNav";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, CheckCircle2, Lock } from "lucide-react";
+import { Users } from "lucide-react";
 import { formatDateIndo } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
@@ -113,21 +113,20 @@ export default async function TimOverviewPage({
         </div>
       </div>
 
-      {/* Overview Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Susunan Tim */}
-        <Card className="md:col-span-1 rounded-2xl shadow-2xs border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold flex items-center gap-2 text-gray-900">
-              <Users className="h-4 w-4 text-[#0F5132]" />
-              <span>Anggota Tim Inovator</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tim.anggota.length === 0 ? (
-              <p className="text-xs text-gray-400">Belum ada anggota terdaftar.</p>
-            ) : (
-              tim.anggota.map((a) => (
+      {/* Anggota Tim Inovator — full-width setelah Tahapan dihapus */}
+      <Card className="rounded-2xl shadow-2xs border-gray-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-bold flex items-center gap-2 text-gray-900">
+            <Users className="h-4 w-4 text-[#0F5132]" />
+            <span>Anggota Tim Inovator</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {tim.anggota.length === 0 ? (
+            <p className="text-xs text-gray-400">Belum ada anggota terdaftar.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {tim.anggota.map((a) => (
                 <div
                   key={a.id}
                   className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 space-y-0.5"
@@ -140,117 +139,11 @@ export default async function TimOverviewPage({
                     </span>
                   )}
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Status Tahapan Inkubasi — Kartu Navigasi Aktif */}
-        <Card className="md:col-span-2 rounded-2xl shadow-2xs border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold flex items-center gap-2 text-gray-900">
-              <CheckCircle2 className="h-4 w-4 text-[#0F5132]" />
-              <span>Tahapan Program Inkubasi (3 Tahap Utama)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Tahap 1: Innovation Setup — selalu terbuka */}
-              <a
-                href={phaseGateStatus.gates.innovationSetup.href}
-                className="p-4 rounded-xl border border-[#DDD6FE] bg-[#F5F3FF] space-y-1.5 shadow-2xs hover:shadow-sm hover:border-[#5142D6]/60 hover:bg-[#EDE9FE] transition-all group cursor-pointer"
-              >
-                <span className="text-[10px] font-extrabold text-[#5142D6] uppercase tracking-wider block">
-                  Tahap 1
-                </span>
-                <h4 className="text-sm font-bold text-gray-900 group-hover:text-[#5142D6] transition-colors">
-                  Innovation Setup
-                </h4>
-                <p className="text-[11px] text-gray-600">
-                  Penyusunan Innovation Charter, Backlog, dan Sprint MVP.
-                </p>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#5142D6] group-hover:underline">
-                  Buka →
-                </span>
-              </a>
-
-              {/* Tahap 2: Customer Validation — ikut phase gate */}
-              {phaseGateStatus.gates.customerValidation.unlocked ? (
-                <a
-                  href={phaseGateStatus.gates.customerValidation.href}
-                  className="p-4 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] space-y-1.5 shadow-2xs hover:shadow-sm hover:border-[#B8720E]/60 hover:bg-[#FEF3C7] transition-all group cursor-pointer"
-                >
-                  <span className="text-[10px] font-extrabold text-[#B8720E] uppercase tracking-wider block">
-                    Tahap 2
-                  </span>
-                  <h4 className="text-sm font-bold text-gray-900 group-hover:text-[#B8720E] transition-colors">
-                    Customer Validation
-                  </h4>
-                  <p className="text-[11px] text-gray-600">
-                    Uji Problem-Solution Fit dengan early adopter di unit kerja.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#B8720E] group-hover:underline">
-                    Buka →
-                  </span>
-                </a>
-              ) : (
-                <div className="p-4 rounded-xl border border-[#FDE68A] bg-[#FFFBEB]/60 space-y-1.5 shadow-2xs opacity-70 cursor-not-allowed select-none">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold text-[#B8720E] uppercase tracking-wider block">
-                      Tahap 2
-                    </span>
-                    <Lock className="h-3.5 w-3.5 text-[#B8720E]/60" />
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-700">Customer Validation</h4>
-                  <p className="text-[11px] text-gray-500">
-                    Uji Problem-Solution Fit dengan early adopter di unit kerja.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700/70">
-                    🔒 Terkunci
-                  </span>
-                </div>
-              )}
-
-              {/* Tahap 3: Market Validation — ikut phase gate */}
-              {phaseGateStatus.gates.marketValidation.unlocked ? (
-                <a
-                  href={phaseGateStatus.gates.marketValidation.href}
-                  className="p-4 rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] space-y-1.5 shadow-2xs hover:shadow-sm hover:border-[#0E8C55]/60 hover:bg-[#D1FAE5] transition-all group cursor-pointer"
-                >
-                  <span className="text-[10px] font-extrabold text-[#0E8C55] uppercase tracking-wider block">
-                    Tahap 3
-                  </span>
-                  <h4 className="text-sm font-bold text-gray-900 group-hover:text-[#0E8C55] transition-colors">
-                    Market Validation
-                  </h4>
-                  <p className="text-[11px] text-gray-600">
-                    Uji Product-Market Fit, evaluasi bisnis, dan FMI Decision.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0E8C55] group-hover:underline">
-                    Buka →
-                  </span>
-                </a>
-              ) : (
-                <div className="p-4 rounded-xl border border-[#A7F3D0] bg-[#ECFDF5]/60 space-y-1.5 shadow-2xs opacity-70 cursor-not-allowed select-none">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold text-[#0E8C55] uppercase tracking-wider block">
-                      Tahap 3
-                    </span>
-                    <Lock className="h-3.5 w-3.5 text-[#0E8C55]/60" />
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-700">Market Validation</h4>
-                  <p className="text-[11px] text-gray-500">
-                    Uji Product-Market Fit, evaluasi bisnis, dan FMI Decision.
-                  </p>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700/70">
-                    🔒 Terkunci
-                  </span>
-                </div>
-              )}
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
