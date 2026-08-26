@@ -1205,12 +1205,26 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       }
     }
 
+    const cvMaxSprint = Math.max(1, Math.min(2, Math.floor(totalSprints / 2)));
+    const mvMinSprint = Math.min(totalSprints, cvMaxSprint + 1);
+
     if (aiTasks && aiTasks.length > 0) {
       for (let i = 0; i < aiTasks.length; i++) {
         const t = aiTasks[i];
+        const taskTahap: 'customer_validation' | 'market_validation' =
+          (t.tahap === 'customer_validation' || t.tahap === 'market_validation')
+            ? t.tahap
+            : 'market_validation';
+
         let sprintNum = t.suggestedSprintNumber;
-        if (!sprintNum || sprintNum < 1 || sprintNum > totalSprints) {
-          sprintNum = (i % totalSprints) + 1;
+        if (taskTahap === 'customer_validation') {
+          if (!sprintNum || sprintNum < 1 || sprintNum > cvMaxSprint) {
+            sprintNum = (i % cvMaxSprint) + 1;
+          }
+        } else {
+          if (!sprintNum || sprintNum < mvMinSprint || sprintNum > totalSprints) {
+            sprintNum = mvMinSprint + (i % Math.max(1, totalSprints - mvMinSprint + 1));
+          }
         }
 
         const sp = t.storyPoint || 3;
@@ -1230,7 +1244,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           deskripsi: t.deskripsi || null,
           acceptanceCriteria: t.acceptanceCriteria || null,
           statusKolom: "To Do",
-          tahap: "innovation_setup",
+          tahap: taskTahap,
           sprintNumber: null,
           suggestedSprintNumber: sprintNum,
           storyPoint: sp,
@@ -1248,6 +1262,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           judul: `Susun penyelarasan problem space — ${judulSolusi.substring(0, 40)}`,
           deskripsi: `Validasi ulang temuan masalah, HMW, dan sasaran pengguna awal bersama Inisiator dan Promotor.`,
           acceptanceCriteria: `Dokumen penyelarasan problem space dan target profil pengguna awal yang disepakati bersama.`,
+          tahap: "customer_validation" as const,
           sprint: 1,
           sp: 3,
           subtasks: [
@@ -1260,7 +1275,8 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           judul: `Rancang desain konseptual & arsitektur solusi MVP`,
           deskripsi: `Rumuskan cakupan fitur inti yang akan diuji pada fase Customer Validation & Market Validation.`,
           acceptanceCriteria: `Dokumen arsitektur solusi konseptual dan daftar fitur MVP yang siap diimplementasikan.`,
-          sprint: Math.min(totalSprints, 2),
+          tahap: "market_validation" as const,
+          sprint: mvMinSprint,
           sp: 5,
           subtasks: [
             { title: "Petakan cakupan fitur inti & user journey", estimatedHours: 240 },
@@ -1275,7 +1291,8 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           judul: `Konsolidasikan kebutuhan resource & koordinasi SME`,
           deskripsi: `Konsolidasikan kebutuhan anggaran, teknologi, dan koordinasi bersama Subject Matter Expert.`,
           acceptanceCriteria: `Rencana alokasi sumber daya dan jadwal koordinasi dengan SME yang telah dikonfirmasi.`,
-          sprint: Math.min(totalSprints, 3),
+          tahap: "market_validation" as const,
+          sprint: Math.min(totalSprints, mvMinSprint + 1),
           sp: 3,
           subtasks: [
             { title: "Inventarisir kebutuhan teknologi & anggaran", estimatedHours: 180 },
@@ -1293,7 +1310,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           deskripsi: ft.deskripsi,
           acceptanceCriteria: ft.acceptanceCriteria,
           statusKolom: "To Do",
-          tahap: "innovation_setup",
+          tahap: ft.tahap,
           sprintNumber: null,
           suggestedSprintNumber: ft.sprint,
           storyPoint: ft.sp,

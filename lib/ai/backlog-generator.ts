@@ -11,6 +11,7 @@ export interface AiBacklogTask {
   judul: string;
   deskripsi: string;
   acceptanceCriteria: string;
+  tahap?: 'customer_validation' | 'market_validation';
   suggestedSprintNumber?: number;
   storyPoint?: number;
   subtasks?: AiBacklogSubtask[];
@@ -18,6 +19,31 @@ export interface AiBacklogTask {
 
 export interface AiBacklogResponse {
   tasks: AiBacklogTask[];
+}
+
+/** Heuristik untuk mengklasifikasi task ke tahap customer_validation atau market_validation */
+export function classifyBacklogTaskTahap(judul: string, deskripsi = '', acceptanceCriteria = ''): 'customer_validation' | 'market_validation' {
+  const text = `${judul} ${deskripsi} ${acceptanceCriteria}`.toLowerCase();
+  if (
+    text.includes('wawancara') ||
+    text.includes('kuesioner') ||
+    text.includes('survei') ||
+    text.includes('early adopter') ||
+    text.includes('problem validation') ||
+    text.includes('riset kebutuhan') ||
+    text.includes('skenario uji') ||
+    text.includes('user testing') ||
+    text.includes('feedback responden') ||
+    text.includes('desirability') ||
+    text.includes('mockup awal') ||
+    text.includes('lo-fi') ||
+    text.includes('low-fidelity') ||
+    text.includes('psf')
+  ) {
+    return 'customer_validation';
+  }
+  // Pekerjaan membangun sistem / platform / modul / integrasi / MVP / pilot / operasional -> market_validation (mayoritas roadmap)
+  return 'market_validation';
 }
 
 /** Normalisasi Story Point (1 SP = 60 menit, linear). Mendukung desimal & integer positif. */
@@ -140,9 +166,10 @@ Keluarkan estimasi waktu menit dan story_point (menit ÷ 60).`;
 /**
  * Panggil AI (gpt-5.4-mini / gpt-4o-mini) untuk memecah teks Roadmap proposal
  * menjadi kumpulan Scrum Backlog Tasks atomik lengkap dengan:
- * 1. suggestedSprintNumber (terdistribusi dari Sprint 1 sampai totalSprints)
- * 2. storyPoint skala Fibonacci (1, 2, 3, 5, 8, 13)
- * 3. subtasks (3-5 langkah kerja konkret, deskriptif, dan actionable, dengan estimatedHours)
+ * 1. tahap: diklasifikasikan ke 'customer_validation' atau 'market_validation' (tanpa innovation_setup)
+ * 2. suggestedSprintNumber: terdistribusi sesuai tahap (CV di sprint awal, MV di sprint lanjutan)
+ * 3. storyPoint skala menit ÷ 60
+ * 4. subtasks (3-5 langkah kerja konkret, deskriptif, dan actionable, dengan estimatedHours)
  */
 export async function generateAiBacklogFromRoadmap(params: {
   teamId: string;
@@ -166,16 +193,25 @@ export async function generateAiBacklogFromRoadmap(params: {
     return null;
   }
 
-  console.log(`[AI Backlog] 🚀 Starting AI-powered Backlog generation for Team ID: ${teamId}, Proposal ID: ${proposalId} (${namaProyek}) - Total Sprints: ${totalSprints}`);
+  const cvMaxSprint = Math.max(1, Math.min(2, Math.floor(totalSprints / 2)));
+  const mvMinSprint = Math.min(totalSprints, cvMaxSprint + 1);
+
+  console.log(`[AI Backlog] 🚀 Starting AI-powered Backlog generation for Team ID: ${teamId}, Proposal ID: ${proposalId} (${namaProyek}) - Total Sprints: ${totalSprints} (CV Sprints: 1-${cvMaxSprint}, MV Sprints: ${mvMinSprint}-${totalSprints})`);
 
   try {
     const openai = new OpenAI({ apiKey, timeout: 25000 });
 
     const systemPrompt = `Anda adalah Scrum Master senior PT Pegadaian (Persero).
 Tugas: Pecah roadmap implementasi proposal PIA menjadi 10-14 Backlog Task atomik standar Scrum lengkap dengan:
-1. storyPoint: estimasikan durasi pengerjaan dalam MENIT yang realistis (misal 60, 120, 180, 240, 300, 480 menit) lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit). Boleh bilangan bulat atau desimal.
-2. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi seimbang dari Sprint 1 s.d ${totalSprints})
-3. subtasks: 3 sampai 5 subtask konkret dan actionable per task (estimatedHours integer 1-16). Setiap subtask HARUS jelas menggambarkan tindakan spesifik yang dilakukan — deskriptif dan dapat langsung dieksekusi, BUKAN dipotong kaku.
+1. tahap: MENGKLASIFIKASIKAN tiap task ke salah satu dari 2 tag persis ('customer_validation' ATAU 'market_validation'):
+   - 'customer_validation': untuk pekerjaan validasi awal / riset pengguna / wawancara responden / penyusunan instrumen testing / prototype awal sederhana untuk diuji.
+   - 'market_validation': untuk pekerjaan MEMBANGUN sistem / modul / fitur nyata / integrasi arsitektur / MVP development / pilot release / kesiapan operasional (PERKIRAAN INI AKAN MENJADI MAYORITAS).
+   - JANGAN PERNAH gunakan tag 'innovation_setup' (opsi ini telah dihapus).
+2. storyPoint: estimasikan durasi pengerjaan dalam MENIT yang realistis (misal 60, 120, 180, 240, 300, 480 menit) lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit).
+3. suggestedSprintNumber: integer antara 1 sampai ${totalSprints}:
+   - Untuk task 'customer_validation': distribusikan di rentang sprint AWAL (Sprint 1 sampai ${cvMaxSprint}).
+   - Untuk task 'market_validation': distribusikan di rentang sprint LANJUTAN (Sprint ${mvMinSprint} sampai ${totalSprints}).
+4. subtasks: 3 sampai 5 subtask konkret dan actionable per task (estimatedHours integer 1-16). Setiap subtask HARUS jelas menggambarkan tindakan spesifik yang dilakukan — deskriptif dan dapat langsung dieksekusi.
 
 ATURAN FORMAT:
 - JUDUL: Diawali KATA KERJA AKTIF (Susun, Siapkan, Rancang, Kembangkan, Hubungkan, Uji coba, Evaluasi).
@@ -183,21 +219,22 @@ ATURAN FORMAT:
 - ACCEPTANCE CRITERIA: Luaran konkret / kriteria selesai.
 - Output HARUS JSON murni tanpa markdown.`;
 
-    const userPrompt = `PROPOSAL: ${namaProyek} (${kategoriPia}) | Total Sprint: ${totalSprints}
+    const userPrompt = `PROPOSAL: ${namaProyek} (${kategoriPia}) | Total Sprint: ${totalSprints} (CV: Sprint 1-${cvMaxSprint}, MV: Sprint ${mvMinSprint}-${totalSprints})
 ROADMAP TEKS:
 """
 ${roadmapText.substring(0, 1500)}
 """
 
-Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 'storyPoint', 'suggestedSprintNumber', dan 'subtasks' ke format JSON:
+Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 'tahap' ('customer_validation' atau 'market_validation'), 'storyPoint', 'suggestedSprintNumber', dan 'subtasks' ke format JSON:
 {
   "tasks": [
     {
       "judul": "Kata Kerja Aktif + Sasaran Aksi",
       "deskripsi": "Aktivitas teknis ringkas yang menjelaskan apa yang dilakukan.",
       "acceptanceCriteria": "Luaran selesai yang terukur dan konkret.",
+      "tahap": "market_validation",
       "storyPoint": 5,
-      "suggestedSprintNumber": 1,
+      "suggestedSprintNumber": ${mvMinSprint},
       "subtasks": [
         { "title": "Identifikasi kebutuhan teknis dan peta risiko awal", "estimatedHours": 3 },
         { "title": "Koordinasi dengan pemangku kepentingan terkait scope", "estimatedHours": 2 },
@@ -255,9 +292,20 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 's
     for (let i = 0; i < rawTasks.length; i++) {
       const t = rawTasks[i];
       if (t && typeof t.judul === 'string' && t.judul.trim().length > 0) {
+        const taskTahap: 'customer_validation' | 'market_validation' =
+          t.tahap === 'customer_validation' || t.tahap === 'market_validation'
+            ? t.tahap
+            : classifyBacklogTaskTahap(t.judul, t.deskripsi, t.acceptanceCriteria);
+
         let sprintNum = typeof t.suggestedSprintNumber === 'number' ? Math.round(t.suggestedSprintNumber) : null;
-        if (!sprintNum || sprintNum < 1 || sprintNum > totalSprints) {
-          sprintNum = (i % totalSprints) + 1;
+        if (taskTahap === 'customer_validation') {
+          if (!sprintNum || sprintNum < 1 || sprintNum > cvMaxSprint) {
+            sprintNum = (i % cvMaxSprint) + 1;
+          }
+        } else {
+          if (!sprintNum || sprintNum < mvMinSprint || sprintNum > totalSprints) {
+            sprintNum = mvMinSprint + (i % Math.max(1, totalSprints - mvMinSprint + 1));
+          }
         }
 
         const sp = normalizeToFibonacci(t.storyPoint, estimateStoryPointHeuristic(t.judul, t.deskripsi, t.acceptanceCriteria));
@@ -290,6 +338,7 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 's
           judul: t.judul.trim(),
           deskripsi: typeof t.deskripsi === 'string' ? t.deskripsi.trim() : '',
           acceptanceCriteria: typeof t.acceptanceCriteria === 'string' ? t.acceptanceCriteria.trim() : '',
+          tahap: taskTahap,
           storyPoint: sp,
           suggestedSprintNumber: sprintNum,
           subtasks,
@@ -297,7 +346,7 @@ Pecah roadmap di atas menjadi daftar Backlog Task atomik (10-14 tasks) dengan 's
       }
     }
 
-    console.log(`[AI Backlog] ✅ Successfully generated ${validatedTasks.length} Scrum Backlog tasks with Story Points & Subtasks for Proposal ID: ${proposalId} using model: ${modelName}`);
+    console.log(`[AI Backlog] ✅ Successfully generated ${validatedTasks.length} Scrum Backlog tasks for Proposal ID: ${proposalId} (CV: ${validatedTasks.filter(t => t.tahap === 'customer_validation').length}, MV: ${validatedTasks.filter(t => t.tahap === 'market_validation').length}) using model: ${modelName}`);
     return validatedTasks.length > 0 ? validatedTasks : null;
   } catch (err: any) {
     console.error(`[AI Backlog] ❌ Error during AI Backlog generation for Proposal ID ${proposalId}:`, err.message);
