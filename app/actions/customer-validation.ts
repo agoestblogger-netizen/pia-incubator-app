@@ -12,6 +12,7 @@ import {
   kanbanColumn,
   sprint,
   timInovator,
+  charter,
 } from "@/lib/db/schema";
 import { eq, and, ne, inArray, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -389,4 +390,93 @@ export async function generateCvBacklogAction(timId: string) {
   }
 }
 
+/**
+ * Auto-fill Section A of CV Plan from the team's Innovation Charter.
+ * Returns the mapped field values — does NOT save to DB (client does the
+ * setPlanForm + confirms before saving).
+ */
+export async function autoFillCvPlanFromCharterAction(timId: string): Promise<{
+  success: boolean;
+  data?: {
+    projectMission: string;
+    customerDanContext: string;
+    problemHypothesis: string;
+    hmw: string;
+    solutionHypothesis: string;
+  };
+  error?: string;
+}> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Tidak terautentikasi.' };
 
+    const [charterRow] = await db
+      .select({
+        projectMission: charter.projectMission,
+        customerEarlyAdopters: charter.customerEarlyAdopters,
+        contextAreaBantuan: charter.contextAreaBantuan,
+        problemWorthSolving: charter.problemWorthSolving,
+        hmw: charter.hmw,
+        desirabilityHypothesis: charter.desirabilityHypothesis,
+        feasibilityHypothesis: charter.feasibilityHypothesis,
+        viabilityHypothesis: charter.viabilityHypothesis,
+      })
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1);
+
+    if (!charterRow) {
+      return { success: false, error: 'Innovation Charter belum ditemukan untuk tim ini.' };
+    }
+
+    // Check if charter has at least minimal data
+    const hasData = [
+      charterRow.projectMission,
+      charterRow.problemWorthSolving,
+      charterRow.hmw,
+    ].some((f) => f && f.trim().length > 0);
+
+    if (!hasData) {
+      return { success: false, error: 'Innovation Charter belum memiliki data yang cukup. Lengkapi Charter terlebih dahulu.' };
+    }
+
+    // Mapping: Charter → CV Plan Section A
+    const projectMission = charterRow.projectMission?.trim() || '';
+
+    // Merge customerEarlyAdopters + contextAreaBantuan into a coherent paragraph
+    const customer = charterRow.customerEarlyAdopters?.trim() || '';
+    const context = charterRow.contextAreaBantuan?.trim() || '';
+    let customerDanContext = '';
+    if (customer && context) {
+      customerDanContext = `${customer} dalam konteks ${context}`;
+    } else {
+      customerDanContext = customer || context;
+    }
+
+    const problemHypothesis = charterRow.problemWorthSolving?.trim() || '';
+    const hmw = charterRow.hmw?.trim() || '';
+
+    // Merge DFV hypotheses: prefer desirability, append feasibility + viability as context
+    const desirability = charterRow.desirabilityHypothesis?.trim() || '';
+    const feasibility = charterRow.feasibilityHypothesis?.trim() || '';
+    const viability = charterRow.viabilityHypothesis?.trim() || '';
+    const dfvParts = [desirability, feasibility, viability].filter(Boolean);
+    const solutionHypothesis = dfvParts.length > 0
+      ? dfvParts.join(' | ')
+      : '';
+
+    return {
+      success: true,
+      data: {
+        projectMission,
+        customerDanContext,
+        problemHypothesis,
+        hmw,
+        solutionHypothesis,
+      },
+    };
+  } catch (error: any) {
+    console.error('[autoFillCvPlanFromCharterAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal mengambil data Charter.' };
+  }
+}

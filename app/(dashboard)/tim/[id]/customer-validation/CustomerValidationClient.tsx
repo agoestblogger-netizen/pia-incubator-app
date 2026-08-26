@@ -5,6 +5,7 @@ import {
   saveCustomerValidationPlanFullAction,
   saveCustomerValidationReportAction,
   generateCvBacklogAction,
+  autoFillCvPlanFromCharterAction,
 } from "@/app/actions/customer-validation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
-  Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw,
+  Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { KanbanClient } from "../kanban/KanbanClient";
@@ -206,6 +207,7 @@ export function CustomerValidationClient({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingBacklog, setGeneratingBacklog] = useState(false);
+  const [autoFillingFromCharter, setAutoFillingFromCharter] = useState(false);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -225,6 +227,50 @@ export function CustomerValidationClient({
       toast.error((res as any).error || "Gagal menyimpan.", "Gagal Menyimpan");
     }
     setSaving(false);
+  };
+
+  const handleAutoFillFromCharter = async () => {
+    // Check if any Section A field is already filled — ask confirmation
+    const sectionAFields = [
+      planForm.projectMission,
+      planForm.customerDanContext,
+      planForm.problemHypothesis,
+      planForm.hmw,
+      planForm.solutionHypothesis,
+    ];
+    const hasExistingData = sectionAFields.some((v) => v && v.trim().length > 0);
+
+    if (hasExistingData) {
+      const confirmed = window.confirm(
+        "Beberapa field Section A sudah terisi.\n\nLanjutkan auto-fill dari Innovation Charter akan MENIMPA isian yang ada.\n\nLanjutkan?"
+      );
+      if (!confirmed) return;
+    }
+
+    setAutoFillingFromCharter(true);
+    try {
+      const res = await autoFillCvPlanFromCharterAction(timId);
+      if (res.success && res.data) {
+        setPlanForm((prev) => ({
+          ...prev,
+          projectMission: res.data!.projectMission || prev.projectMission,
+          customerDanContext: res.data!.customerDanContext || prev.customerDanContext,
+          problemHypothesis: res.data!.problemHypothesis || prev.problemHypothesis,
+          hmw: res.data!.hmw || prev.hmw,
+          solutionHypothesis: res.data!.solutionHypothesis || prev.solutionHypothesis,
+        }));
+        toast.success(
+          "Section A berhasil diisi dari data Innovation Charter. Tinjau dan simpan jika sudah sesuai.",
+          "Auto-Fill Berhasil"
+        );
+      } else {
+        toast.error(res.error || "Gagal mengambil data Charter.", "Auto-Fill Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat auto-fill.", "Gagal");
+    } finally {
+      setAutoFillingFromCharter(false);
+    }
   };
 
   const handleGenerateBacklog = async () => {
@@ -322,12 +368,33 @@ export function CustomerValidationClient({
             {/* ── BAGIAN 1: Konteks & Hipotesis ────────────────────────────── */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-bold">
-                  A. Konteks Inovasi & Hipotesis
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
-                </CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-bold">
+                      A. Konteks Inovasi &amp; Hipotesis
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
+                    </CardDescription>
+                  </div>
+                  {canEditCv && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoFillFromCharter}
+                      disabled={autoFillingFromCharter}
+                      className="h-8 text-[11px] font-semibold gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-900 rounded-xl shadow-2xs shrink-0 cursor-pointer"
+                    >
+                      {autoFillingFromCharter ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-3.5 w-3.5 text-amber-500" />
+                      )}
+                      <span>{autoFillingFromCharter ? "Mengambil data..." : "✨ Isi Otomatis dari Innovation Charter"}</span>
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
