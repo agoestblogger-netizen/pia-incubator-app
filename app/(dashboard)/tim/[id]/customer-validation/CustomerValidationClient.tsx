@@ -148,43 +148,11 @@ const TEMUAN_KUALITATIF_ROWS = [
   },
 ];
 
-const METRIK_HASIL_ROWS = [
-  {
-    validasi: "Desirability",
-    metrik: "Kepuasan Pengguna",
-    target: "Rata-rata ≥4 atau target lain yang disepakati",
-  },
-  {
-    validasi: "Desirability",
-    metrik: "Ketertarikan Penggunaan Berulang",
-    target: 'Mayoritas minimal "Sering" atau target lain yang disepakati',
-  },
-  {
-    validasi: "Desirability",
-    metrik: "Rekomendasi kepada Orang Lain",
-    target: 'Mayoritas minimal "Mungkin" atau target lain yang disepakati',
-  },
-  {
-    validasi: "Feasibility",
-    metrik: "Tingkat Keberhasilan Skenario Penggunaan Utama",
-    target: "≥80% responden menyelesaikan tanpa bantuan fatal",
-  },
-  {
-    validasi: "Feasibility",
-    metrik: "Tingkat Kemudahan Pemahaman Alur Solusi",
-    target: 'Rata-rata ≥4 atau mayoritas "Mudah"',
-  },
-  {
-    validasi: "Viability",
-    metrik: "Kesediaan Menggunakan/Membayar atau Menanggung Effort",
-    target: 'Mayoritas minimal "Mungkin" / sepadan dengan benefit',
-  },
-  {
-    validasi: "Viability",
-    metrik: "Persepsi Nilai Tambah vs Solusi yang Ada Saat Ini",
-    target: 'Mayoritas menyatakan "Lebih Baik" atau "Sangat Lebih Baik"',
-  },
-];
+const METRIK_HASIL_ROWS = METRIK_ROWS.map((r) => ({
+  validasi: r.validasi,
+  metrik: r.metrik,
+  target: r.kriteria,
+}));
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -390,16 +358,19 @@ export function CustomerValidationClient({
   };
   const [temuanKualitatifList, setTemuanKualitatifList] = useState(initTemuan);
 
-  // ── Tabel 2: Hasil Validasi Metrik state (7 baris tetap) ───────────────────
+  // ── Tabel 2: Hasil Validasi Metrik state (7 baris tetap ditarik dari Tab 1) ───
   const initMetrikHasil = () => {
-    return METRIK_HASIL_ROWS.map((row) => {
+    return METRIK_ROWS.map((row) => {
+      const rencana = (initialData?.metrikRencana || []).find(
+        (r: any) => r.metrik === row.metrik
+      );
       const found = (initialData?.metrikHasil || []).find(
         (m: any) => m.metrik === row.metrik
       );
       return {
         validasi: row.validasi,
         metrik: row.metrik,
-        target: found?.target || row.target,
+        target: rencana?.catatan || found?.target || row.kriteria,
         hasilAktual: found?.hasilAktual || "",
         interpretasi: found?.interpretasi || "",
         learning: found?.learning || "",

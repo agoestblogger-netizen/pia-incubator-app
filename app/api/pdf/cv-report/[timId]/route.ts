@@ -6,6 +6,7 @@ import {
   customerValidationReport,
   customerTestingFeedbackResponden,
   hasilValidasiMetrik,
+  rencanaValidasiMetrik,
   customerValidationTemuanKualitatif,
   anggotaTim,
 } from '@/lib/db/schema';
@@ -43,6 +44,7 @@ export async function GET(
     let feedbackRespondenList: any[] = [];
     let metrikHasilList: any[] = [];
     let temuanKualitatifList: any[] = [];
+    let metrikRencanaRows: any[] = [];
 
     if (plan) {
       [report] = await db
@@ -50,6 +52,11 @@ export async function GET(
         .from(customerValidationReport)
         .where(eq(customerValidationReport.planId, plan.id))
         .limit(1);
+
+      metrikRencanaRows = await db
+        .select()
+        .from(rencanaValidasiMetrik)
+        .where(eq(rencanaValidasiMetrik.planId, plan.id));
     }
 
     if (report) {
@@ -73,6 +80,59 @@ export async function GET(
         .from(customerValidationTemuanKualitatif)
         .where(eq(customerValidationTemuanKualitatif.reportId, report.id));
     }
+
+    // 7 Metrik Resmi Juklak PIA
+    const METRIK_OFFICIAL = [
+      {
+        validasi: 'Desirability',
+        metrik: 'Kepuasan Pengguna',
+        kriteria: 'Rata-rata ≥4 atau target lain yang disepakati',
+      },
+      {
+        validasi: 'Desirability',
+        metrik: 'Ketertarikan Penggunaan Berulang',
+        kriteria: 'Mayoritas minimal "Sering" atau target lain yang disepakati',
+      },
+      {
+        validasi: 'Desirability',
+        metrik: 'Rekomendasi kepada Orang Lain',
+        kriteria: 'Mayoritas minimal "Mungkin"',
+      },
+      {
+        validasi: 'Desirability',
+        metrik: 'Kejelasan dan Kemudahan Penggunaan',
+        kriteria: 'Rata-rata ≥4 atau mayoritas "Mudah"',
+      },
+      {
+        validasi: 'Desirability',
+        metrik: 'Kesediaan Membayar / Menggunakan',
+        kriteria: 'Mayoritas bersedia membayar/menggunakan sesuai konteks inovasi',
+      },
+      {
+        validasi: 'Feasibility On Paper',
+        metrik: 'Kelayakan teknis/operasional awal',
+        kriteria: 'Tidak ada blocker kritis sebelum MVP',
+      },
+      {
+        validasi: 'Viability On Paper',
+        metrik: 'Potensi dampak bisnis/ekonomi awal',
+        kriteria: 'Terdapat potensi manfaat dan asumsi yang dapat diuji saat MVP',
+      },
+    ];
+
+    const mappedMetrikHasil = METRIK_OFFICIAL.map((m) => {
+      const rencana = metrikRencanaRows.find((r) => r.metrik === m.metrik);
+      const found = metrikHasilList.find((h) => h.metrik === m.metrik);
+      return {
+        validasi: m.validasi,
+        metrik: m.metrik,
+        target: rencana?.catatan || found?.target || m.kriteria,
+        hasilAktual: found?.hasilAktual || '',
+        interpretasi: found?.interpretasi || '',
+        learning: found?.learning || '',
+        enhancement: found?.enhancement || '',
+      };
+    });
 
     // Role charter names fallback
     const members = await db
@@ -115,7 +175,7 @@ export async function GET(
       // Section C
       feedbackRespondenList,
       // Section D
-      metrikHasilList,
+      metrikHasilList: mappedMetrikHasil,
       // Section E
       temuanKualitatifList,
       // Section F

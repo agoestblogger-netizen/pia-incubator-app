@@ -442,13 +442,13 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
           {(data.metrikHasilList && data.metrikHasilList.length > 0
             ? data.metrikHasilList
             : [
-                { validasi: 'Desirability', metrik: 'Kepuasan Pengguna', target: '≥4 / target disepakati' },
-                { validasi: 'Desirability', metrik: 'Ketertarikan Penggunaan Berulang', target: 'Mayoritas "Sering"' },
-                { validasi: 'Desirability', metrik: 'Rekomendasi kepada Orang Lain', target: 'Mayoritas "Mungkin"' },
-                { validasi: 'Feasibility', metrik: 'Tingkat Keberhasilan Skenario Utama', target: '≥80% selesai tanpa bantuan fatal' },
-                { validasi: 'Feasibility', metrik: 'Kemudahan Pemahaman Alur Solusi', target: 'Rata-rata ≥4 / "Mudah"' },
-                { validasi: 'Viability', metrik: 'Kesediaan Membayar / Menanggung Effort', target: 'Mayoritas "Sepadan"' },
-                { validasi: 'Viability', metrik: 'Persepsi Nilai Tambah vs Solusi Eksisting', target: 'Mayoritas "Lebih Baik"' },
+                { validasi: 'Desirability', metrik: 'Kepuasan Pengguna', target: 'Rata-rata ≥4 atau target lain yang disepakati' },
+                { validasi: 'Desirability', metrik: 'Ketertarikan Penggunaan Berulang', target: 'Mayoritas minimal "Sering" atau target lain yang disepakati' },
+                { validasi: 'Desirability', metrik: 'Rekomendasi kepada Orang Lain', target: 'Mayoritas minimal "Mungkin"' },
+                { validasi: 'Desirability', metrik: 'Kejelasan dan Kemudahan Penggunaan', target: 'Rata-rata ≥4 atau mayoritas "Mudah"' },
+                { validasi: 'Desirability', metrik: 'Kesediaan Membayar / Menggunakan', target: 'Mayoritas bersedia membayar/menggunakan' },
+                { validasi: 'Feasibility On Paper', metrik: 'Kelayakan teknis/operasional awal', target: 'Tidak ada blocker kritis sebelum MVP' },
+                { validasi: 'Viability On Paper', metrik: 'Potensi dampak bisnis/ekonomi awal', target: 'Terdapat potensi manfaat dan asumsi yang dapat diuji saat MVP' },
               ]
           ).map((m, idx) => (
             <View key={idx} style={[styles.tableRow, idx === 6 ? { borderBottomWidth: 0 } : {}]}>
