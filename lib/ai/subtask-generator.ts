@@ -22,15 +22,15 @@ export async function generateDynamicSubtasksForCard(params: {
     return [
       {
         title: `Persiapan, riset kebutuhan, & koordinasi: ${cardTitle.substring(0, 45)}`,
-        estimatedHours: Math.max(2, Math.round(sp * 1.2)),
+        estimatedHours: Math.max(60, Math.round(sp * 60 * 0.3)),
       },
       {
         title: `Implementasi teknis & eksekusi aktivitas utama`,
-        estimatedHours: Math.max(3, Math.round(sp * 2.0)),
+        estimatedHours: Math.max(120, Math.round(sp * 60 * 0.5)),
       },
       {
         title: `Validasi, pengujian hasil, & dokumentasi luaran`,
-        estimatedHours: Math.max(2, Math.round(sp * 1.0)),
+        estimatedHours: Math.max(60, Math.round(sp * 60 * 0.2)),
       },
     ];
   };
@@ -53,11 +53,11 @@ INFORMASI KARTU INDUK:
 - Judul: ${cardTitle}
 - Deskripsi: ${cardDesc || "-"}
 - Kriteria Penerimaan (DoD): ${acceptanceCriteria || "-"}
-- Story Point: ${sp} SP
+- Story Point: ${sp} SP (${Math.round(sp * 60)} menit)
 
 PANDUAN PEMBUATAN SUBTASK:
 1. Buat 3 sampai 5 subtask yang jelas, berurutan secara logis (Persiapan -> Eksekusi -> Validasi/Dokumentasi).
-2. Setiap subtask harus memiliki estimasi jam kerja yang realistis (angka integer antara 1 sampai 16 jam).
+2. Setiap subtask harus memiliki estimasi durasi menit kerja yang realistis (angka integer dalam skala MENIT antara 30 sampai 480 menit, misalnya 60, 90, 120, 180, 240 menit). Field tetap bernama 'estimatedHours' di JSON.
 3. Gunakan Bahasa Indonesia profesional perbankan / inovasi korporat.
 
 FORMAT KELUARAN (JSON ONLY):
@@ -65,10 +65,10 @@ FORMAT KELUARAN (JSON ONLY):
   "subtasks": [
     {
       "title": "Nama subtask tindakan spesifik",
-      "estimatedHours": 4
+      "estimatedHours": 120
     }
   ]
-}`;
+}Raw JSON only.`;
 
     const completion = await openai.chat.completions.create({
       model: modelName,
@@ -97,12 +97,16 @@ FORMAT KELUARAN (JSON ONLY):
     const validated: GeneratedSubtask[] = [];
     for (const st of rawSubtasks) {
       if (st && typeof st.title === "string" && st.title.trim().length > 0) {
-        const est = typeof st.estimatedHours === "number" && st.estimatedHours > 0
+        let est = typeof st.estimatedHours === "number" && st.estimatedHours > 0
           ? Math.round(st.estimatedHours)
-          : Math.max(2, Math.round(sp * 1.5));
+          : Math.max(60, Math.round(sp * 60 * 0.3));
+        // Jika model mengembalikan nilai skala jam kecil (1-16), konversi otomatis ke menit
+        if (est <= 16) {
+          est = est * 60;
+        }
         validated.push({
           title: st.title.trim(),
-          estimatedHours: Math.min(24, Math.max(1, est)),
+          estimatedHours: Math.min(1440, Math.max(15, est)),
         });
       }
     }

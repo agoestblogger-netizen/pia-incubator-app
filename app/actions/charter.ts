@@ -1217,12 +1217,12 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
         const subtasks = (t.subtasks && t.subtasks.length > 0)
           ? t.subtasks
           : [
-              { title: `Persiapan, riset kebutuhan, & koordinasi: ${t.judul.substring(0, 45)}`, estimatedHours: Math.max(2, Math.round(sp * 1.2)) },
-              { title: `Implementasi teknis & eksekusi aktivitas utama`, estimatedHours: Math.max(3, Math.round(sp * 2.0)) },
-              { title: `Validasi, pengujian hasil, & dokumentasi luaran`, estimatedHours: Math.max(2, Math.round(sp * 1.0)) },
+              { title: `Persiapan, riset kebutuhan, & koordinasi: ${t.judul.substring(0, 45)}`, estimatedHours: Math.max(60, Math.round(sp * 60 * 0.3)) },
+              { title: `Implementasi teknis & eksekusi aktivitas utama`, estimatedHours: Math.max(120, Math.round(sp * 60 * 0.5)) },
+              { title: `Validasi, pengujian hasil, & dokumentasi luaran`, estimatedHours: Math.max(60, Math.round(sp * 60 * 0.2)) },
             ];
 
-        const totalEstHours = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+        const totalEstMinutes = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
 
         cardsToInsert.push({
           timInovatorId: timId,
@@ -1234,9 +1234,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           sprintNumber: null,
           suggestedSprintNumber: sprintNum,
           storyPoint: sp,
-          estimasiJam: totalEstHours > 0 ? totalEstHours : null,
+          estimasiJam: totalEstMinutes > 0 ? Math.round(totalEstMinutes / 60) : null,
           label: "Draf Roadmap",
-          reviewStatus: 'ai_reference', // Backlog Referensi
+          reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
           _initialSubtasks: subtasks,
         } as any);
@@ -1251,9 +1251,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           sprint: 1,
           sp: 3,
           subtasks: [
-            { title: "Identifikasi kembali temuan masalah & sasaran pengguna", estimatedHours: 3 },
-            { title: "Sesi penyelarasan bersama Inisiator dan Promotor", estimatedHours: 3 },
-            { title: "Dokumentasikan profil target pengguna yang disepakati", estimatedHours: 2 },
+            { title: "Identifikasi kembali temuan masalah & sasaran pengguna", estimatedHours: 180 },
+            { title: "Sesi penyelarasan bersama Inisiator dan Promotor", estimatedHours: 180 },
+            { title: "Dokumentasikan profil target pengguna yang disepakati", estimatedHours: 120 },
           ],
         },
         {
@@ -1263,9 +1263,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           sprint: Math.min(totalSprints, 2),
           sp: 5,
           subtasks: [
-            { title: "Petakan cakupan fitur inti & user journey", estimatedHours: 4 },
-            { title: "Susun rancangan arsitektur sistem & integrasi data", estimatedHours: 6 },
-            { title: "Review kelayakan teknis bersama tim", estimatedHours: 3 },
+            { title: "Petakan cakupan fitur inti & user journey", estimatedHours: 240 },
+            { title: "Susun rancangan arsitektur sistem & integrasi data", estimatedHours: 360 },
+            { title: "Review kelayakan teknis bersama tim", estimatedHours: 180 },
           ],
         },
       ];
@@ -1278,15 +1278,15 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           sprint: Math.min(totalSprints, 3),
           sp: 3,
           subtasks: [
-            { title: "Inventarisir kebutuhan teknologi & anggaran", estimatedHours: 3 },
-            { title: "Jadwalkan sesi konsultasi dengan SME terkait", estimatedHours: 2 },
-            { title: "Finalisasi rencana alokasi sumber daya proyek", estimatedHours: 2 },
+            { title: "Inventarisir kebutuhan teknologi & anggaran", estimatedHours: 180 },
+            { title: "Jadwalkan sesi konsultasi dengan SME terkait", estimatedHours: 120 },
+            { title: "Finalisasi rencana alokasi sumber daya proyek", estimatedHours: 120 },
           ],
         });
       }
 
       for (const ft of fallbackTasks) {
-        const totalEstHours = ft.subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+        const totalEstMinutes = ft.subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
         cardsToInsert.push({
           timInovatorId: timId,
           judul: ft.judul,
@@ -1297,7 +1297,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           sprintNumber: null,
           suggestedSprintNumber: ft.sprint,
           storyPoint: ft.sp,
-          estimasiJam: totalEstHours > 0 ? totalEstHours : null,
+          estimasiJam: totalEstMinutes > 0 ? Math.round(totalEstMinutes / 60) : null,
           label: "Draf Roadmap",
           reviewStatus: 'ai_reference',
           urutan: cardUrutan++,
@@ -1307,12 +1307,10 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     }
   }
 
-  // 14 Template Baku (6 CV + 8 MV) dengan suggestedSprintNumber terdistribusi seimbang
   for (let cvIdx = 0; cvIdx < bakuCVTasks.length; cvIdx++) {
     const t = bakuCVTasks[cvIdx];
-    // Heuristik 6 kartu CV: Tugas 0-1 di Sprint 1, Tugas 2-3 di Sprint 2, Tugas 4-5 di Sprint 3
-    const cvSprint = totalSprints <= 2
-      ? (cvIdx < 3 ? 1 : 2)
+    const cvSprint = totalSprints <= 3
+      ? (cvIdx < 3 ? 1 : cvIdx < 5 ? 2 : 3)
       : cvIdx < 2
       ? 1
       : cvIdx < 4
@@ -1320,7 +1318,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       : Math.min(totalSprints, 3);
 
     const predefined = getPredefinedSubtasks(t.judul, t.tahap) || [];
-    const totalEstHours = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+    const totalEstMinutes = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
 
     cardsToInsert.push({
       timInovatorId: timId,
@@ -1332,9 +1330,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       sprintNumber: null,
       suggestedSprintNumber: cvSprint,
       storyPoint: t.storyPoint,
-      estimasiJam: totalEstHours > 0 ? totalEstHours : null,
+      estimasiJam: totalEstMinutes > 0 ? Math.round(totalEstMinutes / 60) : null,
       label: "Template Baku CV",
-      reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
+      reviewStatus: 'ai_reference',
       urutan: cardUrutan++,
       _initialSubtasks: predefined,
     } as any);
@@ -1342,7 +1340,6 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
 
   for (let mvIdx = 0; mvIdx < bakuMVTasks.length; mvIdx++) {
     const t = bakuMVTasks[mvIdx];
-    // Heuristik 8 kartu MV: terdistribusi di sprint fase Market Validation (Sprint 4-6 pada 6 sprint)
     const mvSprint = totalSprints <= 3
       ? totalSprints
       : totalSprints === 4
@@ -1356,7 +1353,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       : 6;
 
     const predefined = getPredefinedSubtasks(t.judul, t.tahap) || [];
-    const totalEstHours = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+    const totalEstMinutes = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
 
     cardsToInsert.push({
       timInovatorId: timId,
@@ -1368,9 +1365,9 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       sprintNumber: null,
       suggestedSprintNumber: mvSprint,
       storyPoint: t.storyPoint,
-      estimasiJam: totalEstHours > 0 ? totalEstHours : null,
+      estimasiJam: totalEstMinutes > 0 ? Math.round(totalEstMinutes / 60) : null,
       label: "Template Baku MV",
-      reviewStatus: 'ai_reference', // Backlog Referensi (belum diadopsi)
+      reviewStatus: 'ai_reference',
       urutan: cardUrutan++,
       _initialSubtasks: predefined,
     } as any);
@@ -1384,7 +1381,6 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
 
     const insertedCards = await db.insert(kanbanCard).values(insertPayload).returning();
 
-    // Bulk insert initial subtasks into kanbanSubtask table for all initial cards
     const subtaskRowsToInsert: Array<typeof kanbanSubtask.$inferInsert> = [];
     for (let i = 0; i < insertedCards.length; i++) {
       const card = insertedCards[i];
@@ -1395,7 +1391,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           subtaskRowsToInsert.push({
             taskId: card.id,
             title: st.title,
-            estimatedHours: st.estimatedHours || 3,
+            estimatedHours: st.estimatedHours || 180,
             isDone: false,
             orderIndex: sIdx,
             createdBy: null,

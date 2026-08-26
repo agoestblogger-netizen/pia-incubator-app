@@ -1442,7 +1442,7 @@ export function DiskusiCanvasClient({
                     <div key={i} className="flex items-center justify-between gap-2 p-1.5 rounded bg-white border border-gray-200 text-xs">
                       <span className="text-gray-800 truncate flex-1">{st.title}</span>
                       <span className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">
-                        {st.estimatedHours} jam
+                        {st.estimatedHours} menit
                       </span>
                     </div>
                   ))}
@@ -1691,18 +1691,18 @@ export function DiskusiCanvasClient({
                                       handleCancelEditSubtask();
                                     }
                                   }}
-                                  className="h-6 w-14 text-[10px] px-1 py-0 text-center bg-white border-[#D4AF37] font-bold"
+                                  className="h-6 w-16 text-[10px] px-1 py-0 text-center bg-white border-[#D4AF37] font-bold"
                                 />
-                                <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                                <span className="text-[10px] text-gray-500 font-semibold">menit</span>
                               </div>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => handleStartEditHours(st)}
                                 className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
-                                title="Klik untuk mengedit estimasi jam subtask"
+                                title="Klik untuk mengedit estimasi menit subtask"
                               >
-                                {st.estimatedHours ? `${st.estimatedHours} jam` : '+ jam'}
+                                {st.estimatedHours ? `${st.estimatedHours} menit` : '+ menit'}
                               </button>
                             )}
 

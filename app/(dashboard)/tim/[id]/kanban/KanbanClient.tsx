@@ -1536,7 +1536,7 @@ export function KanbanClient({
       detailSprintNumber !== null ? detailSprintNumber : selectedSprintNum;
 
     const totalSubtaskMinutes = subtasks.reduce(
-      (sum, st) => sum + ((st.estimatedHours || 0) * 60),
+      (sum, st) => sum + (st.estimatedHours || 0),
       0
     );
     const effectiveStoryPoint =
@@ -2787,7 +2787,11 @@ export function KanbanClient({
                                 · {subtasks.filter((st) => st.isDone).length}/{subtasks.length} selesai
                                 {" · "}
                                 <span className="text-[#3E9463] font-bold">
-                                  Total estimasi: {subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0)} jam
+                                  Total estimasi: {subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0)} menit ({(() => {
+                                    const totalMin = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
+                                    const h = totalMin / 60;
+                                    return Number.isInteger(h) ? `${h} jam` : `${h.toFixed(1)} jam`;
+                                  })()})
                                 </span>
                               </span>
                             </label>
@@ -2912,14 +2916,14 @@ export function KanbanClient({
                                           ))}
                                         </select>
 
-                                        {/* Edit / View Jam Subtask */}
+                                        {/* Edit / View Menit Subtask */}
                                         {isEditingHours ? (
                                           <div className="flex items-center gap-1">
                                             <input
                                               autoFocus
                                               type="number"
                                               min={0}
-                                              max={999}
+                                              max={9999}
                                               value={editHoursDraft}
                                               onChange={(e) => setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
                                               onBlur={() => handleSaveSubtaskHours(st.id)}
@@ -2927,21 +2931,21 @@ export function KanbanClient({
                                                 if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskHours(st.id); }
                                                 if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
                                               }}
-                                              className="text-[10px] font-bold w-14 text-center border border-[#3E9463] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white text-[#8A6300]"
+                                              className="text-[10px] font-bold w-16 text-center border border-[#3E9463] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white text-[#8A6300]"
                                             />
-                                            <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                                            <span className="text-[10px] text-gray-500 font-semibold">menit</span>
                                           </div>
                                         ) : (
                                           <span
                                             onClick={() => { if (canEdit) handleStartEditHours(st); }}
-                                            title={canEdit ? 'Klik untuk mengedit estimasi jam' : undefined}
+                                            title={canEdit ? 'Klik untuk mengedit estimasi durasi menit' : undefined}
                                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
                                               canEdit ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
                                             } transition-colors`}
                                           >
                                             {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
-                                              ? `${st.estimatedHours} jam`
-                                              : canEdit ? '— jam' : ''}
+                                              ? `${st.estimatedHours} menit`
+                                              : canEdit ? '— menit' : ''}
                                           </span>
                                         )}
 
@@ -3159,8 +3163,8 @@ export function KanbanClient({
                                 <Input
                                   type="number"
                                   min={0}
-                                  max={999}
-                                  placeholder="Jam"
+                                  max={9999}
+                                  placeholder="Menit"
                                   value={newSubtaskHours}
                                   onChange={(e) =>
                                     setNewSubtaskHours(
@@ -3173,9 +3177,9 @@ export function KanbanClient({
                                       handleCreateSubtask();
                                     }
                                   }}
-                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 w-14 px-1.5 text-center text-gray-900"
+                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 w-16 px-1.5 text-center text-gray-900"
                                 />
-                                <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                                <span className="text-[10px] text-gray-500 font-semibold">menit</span>
                               </div>
                               <Button
                                 type="button"
@@ -3783,7 +3787,7 @@ export function KanbanClient({
                         {/* Estimasi Waktu (Menit) & Konversi Jam (Bagian B) */}
                         {(() => {
                           const hasSubtasks = subtasks.length > 0;
-                          const subtaskTotalMinutes = subtasks.reduce((sum, st) => sum + ((st.estimatedHours || 0) * 60), 0);
+                          const subtaskTotalMinutes = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
                           const currentMinutes = hasSubtasks
                             ? subtaskTotalMinutes
                             : Math.round((detailStoryPoint ?? 3) * 60);

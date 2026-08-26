@@ -105,10 +105,16 @@ export async function getKanbanData(timId: string) {
 
   const cards = rawCards.map((c) => {
     const stInfo = subtaskMap.get(c.id);
+    const rawSubtaskEst = stInfo?.totalSubtaskHours || 0;
+    // Subtask duration in minutes is converted to hours for capacity calculation
+    const calculatedHours = rawSubtaskEst >= 15
+      ? Number((rawSubtaskEst / 60).toFixed(2))
+      : rawSubtaskEst;
+
     return {
       ...c,
       subtasksCount: stInfo?.subtasksCount || 0,
-      totalSubtaskHours: stInfo?.totalSubtaskHours || c.estimasiJam || 0,
+      totalSubtaskHours: calculatedHours || c.estimasiJam || 0,
     };
   });
 

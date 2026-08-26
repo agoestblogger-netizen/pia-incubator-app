@@ -44,9 +44,9 @@ export function getFallbackCvBacklogTasks(params: {
       sprint: 1,
       sp: 5,
       subtasks: [
-        { title: "Review kelengkapan alur dan skenario prototype", estimatedHours: 4 },
-        { title: "Lakukan internal dry-run testing alur solusi", estimatedHours: 3 },
-        { title: "Perbaiki interaksi dan navigasi yang belum lancar", estimatedHours: 3 },
+        { title: "Review kelengkapan alur dan skenario prototype", estimatedHours: 240 },
+        { title: "Lakukan internal dry-run testing alur solusi", estimatedHours: 180 },
+        { title: "Perbaiki interaksi dan navigasi yang belum lancar", estimatedHours: 180 },
       ],
     },
     {
@@ -56,9 +56,9 @@ export function getFallbackCvBacklogTasks(params: {
       sprint: 1,
       sp: 3,
       subtasks: [
-        { title: "Petakan task scenario yang akan dijalankan pengguna", estimatedHours: 3 },
-        { title: "Susun pertanyaan evaluasi 5 dimensi feedback (Usability, Functionality, Solvability, Payability)", estimatedHours: 3 },
-        { title: "Siapkan lembar informed consent dan etika data", estimatedHours: 2 },
+        { title: "Petakan task scenario yang akan dijalankan pengguna", estimatedHours: 180 },
+        { title: "Susun pertanyaan evaluasi 5 dimensi feedback (Usability, Functionality, Solvability, Payability)", estimatedHours: 180 },
+        { title: "Siapkan lembar informed consent dan etika data", estimatedHours: 120 },
       ],
     },
     {
@@ -68,9 +68,9 @@ export function getFallbackCvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 2),
       sp: 3,
       subtasks: [
-        { title: "Sebarkan screening form ke target komunitas/unit kerja", estimatedHours: 3 },
-        { title: "Kurasi kandidat sesuai kriteria seleksi early adopter", estimatedHours: 2 },
-        { title: "Konfirmasi kesediaan waktu dan kirimkan jadwal sesi", estimatedHours: 2 },
+        { title: "Sebarkan screening form ke target komunitas/unit kerja", estimatedHours: 180 },
+        { title: "Kurasi kandidat sesuai kriteria seleksi early adopter", estimatedHours: 120 },
+        { title: "Konfirmasi kesediaan waktu dan kirimkan jadwal sesi", estimatedHours: 120 },
       ],
     },
     {
@@ -80,9 +80,9 @@ export function getFallbackCvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 2),
       sp: 8,
       subtasks: [
-        { title: "Fasilitasi sesi interaksi responden dengan prototype", estimatedHours: 6 },
-        { title: "Catat skor usability, hambatan alur, dan reaksi pengguna", estimatedHours: 4 },
-        { title: "Dokumentasikan evidence dan kutipan verbatim penting", estimatedHours: 3 },
+        { title: "Fasilitasi sesi interaksi responden dengan prototype", estimatedHours: 360 },
+        { title: "Catat skor usability, hambatan alur, dan reaksi pengguna", estimatedHours: 240 },
+        { title: "Dokumentasikan evidence dan kutipan verbatim penting", estimatedHours: 180 },
       ],
     },
     {
@@ -92,9 +92,9 @@ export function getFallbackCvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 3),
       sp: 5,
       subtasks: [
-        { title: "Kelompokkan temuan kualitatif ke dalam 5 dimensi feedback", estimatedHours: 3 },
-        { title: "Hitung skor rata-rata kepuasan dan kemudahan penggunaan", estimatedHours: 3 },
-        { title: "Identifikasi pain points prioritas yang memerlukan iterasi", estimatedHours: 3 },
+        { title: "Kelompokkan temuan kualitatif ke dalam 5 dimensi feedback", estimatedHours: 180 },
+        { title: "Hitung skor rata-rata kepuasan dan kemudahan penggunaan", estimatedHours: 180 },
+        { title: "Identifikasi pain points prioritas yang memerlukan iterasi", estimatedHours: 180 },
       ],
     },
     {
@@ -104,9 +104,9 @@ export function getFallbackCvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 3),
       sp: 5,
       subtasks: [
-        { title: "Rangkum kesimpulan ketercapaian Problem-Solution Fit", estimatedHours: 3 },
-        { title: "Petakan fitur kunci yang terbukti memiliki nilai tambah tinggi", estimatedHours: 3 },
-        { title: "Finalisasi laporan dan siapkan sesi presentasi review", estimatedHours: 2 },
+        { title: "Rangkum kesimpulan ketercapaian Problem-Solution Fit", estimatedHours: 180 },
+        { title: "Petakan fitur kunci yang terbukti memiliki nilai tambah tinggi", estimatedHours: 180 },
+        { title: "Finalisasi laporan dan siapkan sesi presentasi review", estimatedHours: 120 },
       ],
     },
   ];
@@ -147,7 +147,7 @@ ATURAN STRUKTUR SETIAP TASK:
 3. ACCEPTANCE CRITERIA: Luaran selesai yang terukur dan konkret.
 4. Story Point: Estimasikan durasi pengerjaan dalam MENIT yang realistis (misal 60, 120, 180, 240, 300, 480 menit), lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit). Boleh bilangan bulat atau desimal.
 5. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi wajar pada fase Customer Validation, biasanya sprint 1-3).
-6. subtasks: 3 sampai 5 subtask konkret dengan estimatedHours (integer 1-16).
+6. subtasks: 3 sampai 5 subtask konkret dengan estimatedHours (angka integer dalam skala MENIT antara 30 sampai 480 menit, misalnya 60, 90, 120, 180, 240 menit).
 
 Output HARUS JSON murni:
 {
@@ -159,7 +159,7 @@ Output HARUS JSON murni:
       "storyPoint": 3,
       "suggestedSprintNumber": 1,
       "subtasks": [
-        { "title": "...", "estimatedHours": 3 }
+        { "title": "...", "estimatedHours": 180 }
       ]
     }
   ]
@@ -244,12 +244,15 @@ Hasilkan JSON dengan key 'tasks'.`;
         if (Array.isArray(t.subtasks)) {
           for (const st of t.subtasks) {
             if (st && typeof st.title === 'string' && st.title.trim().length > 0) {
-              const est = typeof st.estimatedHours === 'number' && st.estimatedHours > 0
+              let est = typeof st.estimatedHours === 'number' && st.estimatedHours > 0
                 ? Math.round(st.estimatedHours)
-                : Math.max(2, Math.round(sp * 1.5));
+                : Math.max(60, Math.round(sp * 60 * 0.3));
+              if (est <= 16) {
+                est = est * 60;
+              }
               subtasks.push({
                 title: st.title.trim(),
-                estimatedHours: Math.min(24, Math.max(1, est)),
+                estimatedHours: Math.min(1440, Math.max(15, est)),
               });
             }
           }
@@ -257,9 +260,9 @@ Hasilkan JSON dengan key 'tasks'.`;
 
         if (subtasks.length === 0) {
           subtasks.push(
-            { title: `Persiapan dan koordinasi teknis: ${t.judul.trim().substring(0, 45)}`, estimatedHours: Math.max(2, Math.round(sp * 1.2)) },
-            { title: `Eksekusi aktivitas pengujian dan pencatatan hasil`, estimatedHours: Math.max(3, Math.round(sp * 2.0)) },
-            { title: `Analisis luaran dan dokumentasi bukti validasi`, estimatedHours: Math.max(2, Math.round(sp * 1.0)) }
+            { title: `Persiapan dan koordinasi teknis: ${t.judul.trim().substring(0, 45)}`, estimatedHours: Math.max(60, Math.round(sp * 60 * 0.3)) },
+            { title: `Eksekusi aktivitas pengujian dan pencatatan hasil`, estimatedHours: Math.max(120, Math.round(sp * 60 * 0.5)) },
+            { title: `Analisis luaran dan dokumentasi bukti validasi`, estimatedHours: Math.max(60, Math.round(sp * 60 * 0.2)) }
           );
         }
 

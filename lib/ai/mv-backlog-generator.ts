@@ -59,9 +59,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: 1,
       sp: 5,
       subtasks: [
-        { title: "Setup server / staging environment channel rilis", estimatedHours: 4 },
-        { title: "Konfigurasi akun dan hak akses pengguna percontohan", estimatedHours: 3 },
-        { title: "Lakukan pengujian akhir sanity check alur transaksi", estimatedHours: 3 },
+        { title: "Setup server / staging environment channel rilis", estimatedHours: 240 },
+        { title: "Konfigurasi akun dan hak akses pengguna percontohan", estimatedHours: 180 },
+        { title: "Lakukan pengujian akhir sanity check alur transaksi", estimatedHours: 180 },
       ],
     },
     {
@@ -71,9 +71,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: 1,
       sp: 8,
       subtasks: [
-        { title: "Penyempurnaan antarmuka dan alur transaksi inti", estimatedHours: 6 },
-        { title: "Eksekusi skenario uji coba fungsional internal", estimatedHours: 4 },
-        { title: "Perbaikan bug minor hasil pengujian internal", estimatedHours: 4 },
+        { title: "Penyempurnaan antarmuka dan alur transaksi inti", estimatedHours: 360 },
+        { title: "Eksekusi skenario uji coba fungsional internal", estimatedHours: 240 },
+        { title: "Perbaikan bug minor hasil pengujian internal", estimatedHours: 240 },
       ],
     },
     {
@@ -83,9 +83,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 2),
       sp: 3,
       subtasks: [
-        { title: "Susun panduan operasional cepat dan daftar kontak darurat", estimatedHours: 3 },
-        { title: "Briefing PIC operasional dan agen layanan di lokasi pilot", estimatedHours: 3 },
-        { title: "Verifikasi kesiapan logistik dan data pendukung di lapangan", estimatedHours: 2 },
+        { title: "Susun panduan operasional cepat dan daftar kontak darurat", estimatedHours: 180 },
+        { title: "Briefing PIC operasional dan agen layanan di lokasi pilot", estimatedHours: 180 },
+        { title: "Verifikasi kesiapan logistik dan data pendukung di lapangan", estimatedHours: 120 },
       ],
     },
     {
@@ -95,9 +95,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 2),
       sp: 5,
       subtasks: [
-        { title: "Kirimkan undangan akses dan panduan registrasi awal", estimatedHours: 3 },
-        { title: "Monitoring aktivasi akun dan respons awal pengguna", estimatedHours: 4 },
-        { title: "Fasilitasi bantuan langsung bagi pengguna yang terkendala", estimatedHours: 3 },
+        { title: "Kirimkan undangan akses dan panduan registrasi awal", estimatedHours: 180 },
+        { title: "Monitoring aktivasi akun dan respons awal pengguna", estimatedHours: 240 },
+        { title: "Fasilitasi bantuan langsung bagi pengguna yang terkendala", estimatedHours: 180 },
       ],
     },
     {
@@ -107,9 +107,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 3),
       sp: 8,
       subtasks: [
-        { title: "Monitoring server uptime dan latency response time", estimatedHours: 4 },
-        { title: "Tracking volume transaksi dan adopsi penggunaan berulang", estimatedHours: 4 },
-        { title: "Identifikasi insiden/error dan tindak lanjut perbaikan cepat", estimatedHours: 4 },
+        { title: "Monitoring server uptime dan latency response time", estimatedHours: 240 },
+        { title: "Tracking volume transaksi dan adopsi penggunaan berulang", estimatedHours: 240 },
+        { title: "Identifikasi insiden/error dan tindak lanjut perbaikan cepat", estimatedHours: 240 },
       ],
     },
     {
@@ -119,9 +119,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 3),
       sp: 3,
       subtasks: [
-        { title: "Distribusi instrumen survey CSAT/NPS via in-app/chat", estimatedHours: 2 },
-        { title: "Lakukan wawancara mendalam dengan 5 perwakilan pengguna", estimatedHours: 4 },
-        { title: "Tabulasi dan analisis skor kepuasan serta rekomendasi", estimatedHours: 3 },
+        { title: "Distribusi instrumen survey CSAT/NPS via in-app/chat", estimatedHours: 120 },
+        { title: "Lakukan wawancara mendalam dengan 5 perwakilan pengguna", estimatedHours: 240 },
+        { title: "Tabulasi dan analisis skor kepuasan serta rekomendasi", estimatedHours: 180 },
       ],
     },
     {
@@ -131,9 +131,9 @@ export function getFallbackMvBacklogTasks(params: {
       sprint: Math.min(totalSprints, 4),
       sp: 5,
       subtasks: [
-        { title: "Kalkulasi rekapitulasi pencapaian 9 metrik DFV", estimatedHours: 3 },
-        { title: "Rumuskan kajian kelayakan skala nasional dan proyeksi ROI", estimatedHours: 3 },
-        { title: "Finalisasi lembar laporan dan periksa kelengkapan tanda tangan", estimatedHours: 3 },
+        { title: "Kalkulasi rekapitulasi pencapaian 9 metrik DFV", estimatedHours: 180 },
+        { title: "Rumuskan kajian kelayakan skala nasional dan proyeksi ROI", estimatedHours: 180 },
+        { title: "Finalisasi lembar laporan dan periksa kelengkapan tanda tangan", estimatedHours: 180 },
       ],
     },
   ];
@@ -174,7 +174,7 @@ ATURAN STRUKTUR SETIAP TASK:
 3. ACCEPTANCE CRITERIA: Luaran selesai yang terukur, dapat diverifikasi, dan konkret.
 4. Story Point: Estimasikan beban kerja (misal 3, 5, 8 story points).
 5. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi wajar sepanjang masa pilot Market Validation).
-6. subtasks: 3 sampai 4 subtask konkret dengan estimatedHours (integer 1-12).
+6. subtasks: 3 sampai 4 subtask konkret dengan estimatedHours (angka integer dalam skala MENIT antara 30 sampai 480 menit, misalnya 60, 90, 120, 180, 240 menit).
 
 Output HARUS JSON murni:
 {
@@ -186,8 +186,8 @@ Output HARUS JSON murni:
       "storyPoint": 5,
       "suggestedSprintNumber": 1,
       "subtasks": [
-        { "title": "...", "estimatedHours": 3 },
-        { "title": "...", "estimatedHours": 4 }
+        { "title": "...", "estimatedHours": 180 },
+        { "title": "...", "estimatedHours": 240 }
       ]
     }
   ]
@@ -237,10 +237,16 @@ Hasilkan 5-8 kartu Backlog Task MV yang siap dieksekusi tim!`;
       suggestedSprintNumber: Number(t.suggestedSprintNumber || t.sprint || 1),
       storyPoint: Number(t.storyPoint || t.sp || 5),
       subtasks: Array.isArray(t.subtasks)
-        ? t.subtasks.map((st: any) => ({
-            title: String(st.title || st.judul || "Aktivitas subtask"),
-            estimatedHours: Number(st.estimatedHours || st.hours || 3),
-          }))
+        ? t.subtasks.map((st: any) => {
+            let est = Number(st.estimatedHours || st.hours || 180);
+            if (est <= 16) {
+              est = est * 60;
+            }
+            return {
+              title: String(st.title || st.judul || "Aktivitas subtask"),
+              estimatedHours: Math.min(1440, Math.max(15, est)),
+            };
+          })
         : [],
     }));
   } catch (error) {
