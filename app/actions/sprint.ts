@@ -1,12 +1,17 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sprint, sprintLog, kanbanCard } from "@/lib/db/schema";
+import { sprint, sprintLog, kanbanCard, customerValidationPlan } from "@/lib/db/schema";
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
-import { generateAiSprintGoal, getHeuristicSprintGoal } from "@/lib/ai/sprint-goal-generator";
+import {
+  generateAiSprintGoal,
+  getHeuristicSprintGoal,
+  generateAiSprintGoalFromCvPlan,
+  isCvPlanFilled,
+} from "@/lib/ai/sprint-goal-generator";
 
 export async function getSprintsByTimId(timId: string) {
   let list = await db
@@ -433,7 +438,14 @@ export async function updateSprintGoalAction(timId: string, sprintId: string, sp
 
 export async function getSuggestedSprintGoalAction(timId: string, sprintNumber: number) {
   try {
-    // 1. Get cards allocated or suggested for this sprint
+    // ── 1. Get all sprints for this team (to determine position) ───────────
+    const allSprints = await db
+      .select({ id: sprint.id, nomorSprint: sprint.nomorSprint })
+      .from(sprint)
+      .where(eq(sprint.timInovatorId, timId));
+    const totalSprints = allSprints.length || 4;
+
+    // ── 2. Get adopted cards for this sprint ───────────────────────────────
     const cardsInSprint = await db
       .select({
         id: kanbanCard.id,
@@ -451,7 +463,7 @@ export async function getSuggestedSprintGoalAction(timId: string, sprintNumber: 
         )
       );
 
-    // If no adopted cards in sprint, also consider suggested cards for this sprint
+    // If no adopted cards, also check suggested cards for this sprint
     let targetCards = cardsInSprint;
     if (targetCards.length === 0) {
       const suggestedCards = await db
@@ -473,16 +485,42 @@ export async function getSuggestedSprintGoalAction(timId: string, sprintNumber: 
       targetCards = suggestedCards;
     }
 
-    if (targetCards.length === 0) {
-      return { success: true, suggestedGoal: "" };
+    // ── 3. PRIORITY: if backlog exists, generate from backlog ──────────────
+    if (targetCards.length > 0) {
+      const suggestedGoal = await generateAiSprintGoal({
+        sprintNumber,
+        cards: targetCards,
+      });
+      return { success: true, suggestedGoal };
     }
 
-    const suggestedGoal = await generateAiSprintGoal({
-      sprintNumber,
-      cards: targetCards,
-    });
+    // ── 4. FALLBACK: if no backlog, try CV Planning Form data ──────────────
+    const [cvPlanRow] = await db
+      .select({
+        projectMission: customerValidationPlan.projectMission,
+        customerDanContext: customerValidationPlan.customerDanContext,
+        problemHypothesis: customerValidationPlan.problemHypothesis,
+        hmw: customerValidationPlan.hmw,
+        solutionHypothesis: customerValidationPlan.solutionHypothesis,
+        prototypeType: customerValidationPlan.prototypeType,
+        fiturAlurDiuji: customerValidationPlan.fiturAlurDiuji,
+        targetEarlyAdopters: customerValidationPlan.targetEarlyAdopters,
+      })
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
 
-    return { success: true, suggestedGoal };
+    if (cvPlanRow && isCvPlanFilled(cvPlanRow)) {
+      const suggestedGoal = await generateAiSprintGoalFromCvPlan({
+        cvPlan: cvPlanRow,
+        sprintNumber,
+        totalSprints,
+      });
+      return { success: true, suggestedGoal };
+    }
+
+    // ── 5. Total fallback: both backlog and CV plan are empty ──────────────
+    return { success: true, suggestedGoal: "" };
   } catch (error: any) {
     console.error("[getSuggestedSprintGoalAction] Error:", error);
     return { success: false, error: error.message || "Gagal membuat saran Sprint Goal." };

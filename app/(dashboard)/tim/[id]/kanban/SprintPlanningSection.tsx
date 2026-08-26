@@ -96,22 +96,53 @@ export function SprintPlanningSection({
   const isCvUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
   const isMvUnlocked = Boolean(phaseGateStatus?.gates?.marketValidation?.unlocked);
 
-  // Auto-suggest when sprint changes or when backlogCards are present and sprintGoal is empty
+  // Auto-suggest when sprint changes:
+  // - If sprint already has a saved sprintGoal → load it as-is
+  // - If sprintGoal is empty BUT backlog has cards → instant heuristic (fast, no network)
+  // - If sprintGoal is empty AND backlog is also empty → call server action which
+  //   falls back to CV Planning Form data (or generic placeholder if form is also empty)
   React.useEffect(() => {
+    let cancelled = false;
+
     if (sprint.sprintGoal && sprint.sprintGoal.trim().length > 0) {
       setSprintGoal(sprint.sprintGoal);
       setIsSuggestedGoal(false);
-    } else {
-      if (backlogCards && backlogCards.length > 0) {
-        const suggestion = getHeuristicSprintGoal(backlogCards);
-        setSprintGoal(suggestion);
-        setIsSuggestedGoal(true);
-      } else {
-        setSprintGoal("");
-        setIsSuggestedGoal(false);
-      }
+      return;
     }
-  }, [sprint.id, sprint.sprintGoal, backlogCards]);
+
+    if (backlogCards && backlogCards.length > 0) {
+      // Instant heuristic from backlog cards (no server round-trip needed)
+      const suggestion = getHeuristicSprintGoal(backlogCards);
+      setSprintGoal(suggestion);
+      setIsSuggestedGoal(true);
+      return;
+    }
+
+    // No backlog → ask server (server checks CV plan as fallback)
+    setLoadingSuggestion(true);
+    getSuggestedSprintGoalAction(timId, sprint.nomorSprint)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.suggestedGoal) {
+          setSprintGoal(res.suggestedGoal);
+          setIsSuggestedGoal(true);
+        } else {
+          setSprintGoal("");
+          setIsSuggestedGoal(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSprintGoal("");
+          setIsSuggestedGoal(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSuggestion(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [sprint.id, sprint.sprintGoal, backlogCards, timId]);
 
   const handleSaveSprintGoal = async (valToSave?: string) => {
     const text = valToSave !== undefined ? valToSave : sprintGoal;
@@ -134,10 +165,6 @@ export function SprintPlanningSection({
   };
 
   const handleFetchAiSuggestion = async () => {
-    if (backlogCards.length === 0) {
-      toast.info("Belum ada backlog di sprint ini. Tambahkan backlog terlebih dahulu.", "Backlog Kosong");
-      return;
-    }
     setLoadingSuggestion(true);
     try {
       const res = await getSuggestedSprintGoalAction(timId, sprint.nomorSprint);
@@ -145,6 +172,8 @@ export function SprintPlanningSection({
         setSprintGoal(res.suggestedGoal);
         setIsSuggestedGoal(true);
         toast.success("Saran Sprint Goal diperbarui!", "Saran AI");
+      } else {
+        toast.info("Belum ada data yang cukup untuk membuat saran. Isi Form Perencanaan CV atau tambahkan backlog terlebih dahulu.", "Tidak Ada Saran");
       }
     } catch {
       toast.error("Gagal membuat saran Sprint Goal.");
@@ -363,7 +392,7 @@ export function SprintPlanningSection({
           </div>
 
           <div className="flex items-center gap-2">
-            {backlogCards.length > 0 && canEdit && (
+            {canEdit && (
               <Button
                 type="button"
                 variant="ghost"
