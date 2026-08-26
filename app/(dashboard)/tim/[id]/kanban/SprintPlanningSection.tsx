@@ -85,6 +85,7 @@ export function SprintPlanningSection({
 }: SprintPlanningSectionProps) {
   const [editingCapacityId, setEditingCapacityId] = useState<string | null>(null);
   const [tempCapacityVal, setTempCapacityVal] = useState<number>(2);
+  const [tempSubtaskCapacityVal, setTempSubtaskCapacityVal] = useState<number | "">("");
   const [savingCapacity, setSavingCapacity] = useState(false);
 
   // Sprint Goal state & auto-suggestion
@@ -213,20 +214,16 @@ export function SprintPlanningSection({
     });
   }, [backlogCards]);
 
-  // Capacity lookup map: anggotaTimId -> Kapasitas Jam (Default 2 jam - Paket 24a)
-  const capacityMap = useMemo(() => {
-    const map = new Map<string, number>();
-    anggotaTim.forEach((a) => {
-      const cap = capacities.find((c) => c.anggotaTimId === a.id);
-      map.set(a.id, cap ? (cap.kapasitasJam ?? 2) : 2);
-    });
-    return map;
-  }, [anggotaTim, capacities]);
+  // Anggota tim yang diikutsertakan dalam Kapasitas Sprint Planning (Paket 24b - Role Config Filter)
+  const includedMembers = useMemo(() => {
+    if (!capacities || capacities.length === 0) return [];
+    return capacities.filter((c) => c.isIncludedInCapacity !== false);
+  }, [capacities]);
 
-  // Batas Maksimal Jam Kerja Kelompok = SUM kapasitas semua anggota tim aktif
+  // Batas Maksimal Jam Kerja Kelompok = SUM kapasitas jam semua anggota tim yang diikutsertakan
   const totalTeamMaxHours = useMemo(() => {
-    return anggotaTim.reduce((sum, a) => sum + (capacityMap.get(a.id) ?? 2), 0);
-  }, [anggotaTim, capacityMap]);
+    return includedMembers.reduce((sum, c) => sum + (c.kapasitasJam ?? 2), 0);
+  }, [includedMembers]);
 
   // Akumulasi Total Durasi Subtask dari semua kartu di sprint ini (Paket 24a)
   const totalSubtaskHours = useMemo(() => {
@@ -264,8 +261,6 @@ export function SprintPlanningSection({
 
   // Handle updating owner for a card
   const handleOwnerChange = (cardId: string, newOwnerId: string | null) => {
-    // NOTE (Paket 24a): Blocking per-member capacity check is temporarily disabled
-    // (Akan dibangun kembali berbasis subtask di Paket 24b)
     setAssignments((prev) => ({
       ...prev,
       [cardId]: {
@@ -275,17 +270,25 @@ export function SprintPlanningSection({
     }));
   };
 
-  // Handle saving edited Jam capacity
+  // Handle saving edited Jam & Subtask capacity (Paket 24b)
   const handleSaveCapacity = async (anggotaId: string) => {
     setSavingCapacity(true);
+    const parsedSubtask =
+      tempSubtaskCapacityVal === "" || tempSubtaskCapacityVal === null
+        ? null
+        : Math.max(1, Number(tempSubtaskCapacityVal));
+
     const res = await upsertMemberCapacityAction(
       timId,
       anggotaId,
       sprint.nomorSprint,
-      tempCapacityVal
+      {
+        kapasitasJam: tempCapacityVal,
+        kapasitasSubtask: parsedSubtask,
+      }
     );
     if (res.success) {
-      toast.success("Kapasitas jam kerja anggota berhasil diperbarui.", "Kapasitas Disimpan");
+      toast.success("Kapasitas anggota berhasil diperbarui.", "Kapasitas Disimpan");
       setEditingCapacityId(null);
       onRefreshCapacities();
     } else {
@@ -405,7 +408,6 @@ export function SprintPlanningSection({
       {/* BAGIAN C: PANEL "BACKLOG REFERENSI" */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="space-y-3">
-        {/* Heading di luar / di atas kotak */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2">
             <span className="text-purple-600 font-extrabold text-sm">✦</span>
@@ -417,11 +419,10 @@ export function SprintPlanningSection({
             </span>
           </div>
           <span className="text-[11px] text-gray-500 font-medium">
-            Usulan AI &amp; template validasi dari proposal, lengkap dengan skor Story Point Fibonacci
+            Usulan AI &amp; template validasi dari proposal, lengkap dengan estimasi waktu &amp; Story Point
           </span>
         </div>
 
-        {/* SATU Dropdown Tunggal Backlog Referensi dengan Grouping Per Sprint */}
         <BacklogReferenceDropdown
           currentPlanningSprintNumber={sprint.nomorSprint}
           sprints={sprints}
@@ -437,7 +438,6 @@ export function SprintPlanningSection({
       {/* BAGIAN D: PANEL "SPRINT PLANNING — SPRINT N" */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div className="space-y-3">
-        {/* Heading di luar / di atas kotak */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-extrabold text-gray-900 tracking-tight">
@@ -452,14 +452,12 @@ export function SprintPlanningSection({
           </span>
         </div>
 
-        {/* Kotak Hijau Sangat Muda (#E3F0E6) dengan Border Hijau */}
         <div className="bg-[#E3F0E6] rounded-2xl border-2 border-[#3E9463]/70 p-5 shadow-xs space-y-6">
-          {/* Header Dalam Kotak: Judul Sub & Tombol "+ Tambah Backlog" */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#C9E4D0] pb-4">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-[#0B3D2E]" />
               <h4 className="text-xs font-extrabold text-[#0B3D2E] uppercase tracking-wider">
-                Panel Kapasitas Tim (Jam Kerja) &amp; Backlog Kerja
+                Panel Kapasitas Tim &amp; Backlog Kerja
               </h4>
             </div>
 
@@ -475,62 +473,70 @@ export function SprintPlanningSection({
             )}
           </div>
 
-          {/* Panel Kapasitas Tim — Sprint N */}
+          {/* Panel Kapasitas Anggota Tim — Sprint N (Paket 24a & 24b) */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-extrabold text-[#0B3D2E] flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-[#3E9463]" />
-                <span>Kapasitas Anggota Tim (Default 2 Jam per Orang)</span>
+                <span>Kapasitas Anggota Tim (Role Aktif)</span>
               </span>
               <span className="text-[11px] text-gray-500 font-medium">
-                Klik ikon pensil untuk menyesuaikan kapasitas jam per orang
+                Klik ikon pensil untuk menyesuaikan kapasitas jam &amp; batas subtask per orang
               </span>
             </div>
 
-            {anggotaTim.length === 0 ? (
+            {includedMembers.length === 0 ? (
               <div className="text-xs text-gray-500 py-3 text-center bg-[#F0F7F1] border border-[#C9E4D0] rounded-xl">
-                Belum ada anggota tim terdaftar. Tambahkan anggota di menu Charter/Tim.
+                Belum ada anggota tim dengan role aktif untuk kapasitas sprint. Periksa konfigurasi role di menu Admin.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {anggotaTim.map((anggota) => {
-                  const maxCap = capacityMap.get(anggota.id) ?? 2;
+                {includedMembers.map((member) => {
+                  const maxJam = member.kapasitasJam ?? 2;
+                  const maxSubtask = member.kapasitasSubtask;
+                  const subtaskCount = member.subtasksCount ?? 0;
+                  const isEditing = editingCapacityId === member.anggotaTimId;
+
+                  // Progress calculation if subtask cap is set
+                  const hasSubtaskCap = maxSubtask !== null && maxSubtask !== undefined && maxSubtask > 0;
+                  const subtaskPct = hasSubtaskCap ? Math.round((subtaskCount / maxSubtask) * 100) : 0;
+
+                  let progressColor = "bg-emerald-500";
+                  let textColor = "text-emerald-800";
+                  if (subtaskPct >= 100) {
+                    progressColor = "bg-red-500";
+                    textColor = "text-red-700 font-black";
+                  } else if (subtaskPct >= 60) {
+                    progressColor = "bg-amber-500";
+                    textColor = "text-amber-700 font-bold";
+                  }
 
                   return (
                     <div
-                      key={anggota.id}
-                      className="p-3.5 rounded-xl border border-l-4 border-l-[#3E9463] border-[#C9E4D0] bg-[#F0F7F1] hover:bg-white shadow-2xs transition-all"
+                      key={member.anggotaTimId}
+                      className="p-3.5 rounded-xl border border-l-4 border-l-[#3E9463] border-[#C9E4D0] bg-[#F0F7F1] hover:bg-white shadow-2xs transition-all space-y-2.5"
                     >
-                      <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-xs font-extrabold text-gray-900 truncate">
-                            {anggota.nama}
+                            {member.nama}
                           </p>
-                          <p className="text-[10px] text-gray-500 font-medium truncate">
-                            {anggota.jabatan || "Anggota Tim"}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-semibold text-[#0B3D2E] bg-emerald-50 border border-[#C9E4D0] px-1.5 py-0.2 rounded">
+                              {member.roleName || member.jabatan || "Anggota"}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Edit Capacity Trigger */}
-                        {editingCapacityId === anggota.id ? (
+                        {isEditing ? (
                           <div className="flex items-center gap-1 shrink-0">
-                            <Input
-                              type="number"
-                              min={1}
-                              max={999}
-                              value={tempCapacityVal}
-                              onChange={(e) =>
-                                setTempCapacityVal(Math.max(1, parseInt(e.target.value) || 1))
-                              }
-                              className="h-6 w-14 text-xs px-1 text-center py-0 font-bold border-[#C9E4D0] bg-white"
-                              disabled={savingCapacity}
-                            />
                             <button
                               type="button"
-                              onClick={() => handleSaveCapacity(anggota.id)}
+                              onClick={() => handleSaveCapacity(member.anggotaTimId)}
                               disabled={savingCapacity}
-                              className="h-6 w-6 rounded bg-[#3E9463] text-white flex items-center justify-center hover:bg-[#0B3D2E] disabled:opacity-50"
-                              title="Simpan kapasitas jam"
+                              className="h-6 w-6 rounded bg-[#3E9463] text-white flex items-center justify-center hover:bg-[#0B3D2E] disabled:opacity-50 cursor-pointer"
+                              title="Simpan kapasitas"
                             >
                               {savingCapacity ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -542,7 +548,7 @@ export function SprintPlanningSection({
                               type="button"
                               onClick={() => setEditingCapacityId(null)}
                               disabled={savingCapacity}
-                              className="h-6 w-6 rounded bg-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-300"
+                              className="h-6 w-6 rounded bg-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-300 cursor-pointer"
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -552,11 +558,12 @@ export function SprintPlanningSection({
                             <button
                               type="button"
                               onClick={() => {
-                                setEditingCapacityId(anggota.id);
-                                setTempCapacityVal(maxCap);
+                                setEditingCapacityId(member.anggotaTimId);
+                                setTempCapacityVal(maxJam);
+                                setTempSubtaskCapacityVal(maxSubtask ?? "");
                               }}
-                              title="Klik untuk ubah kapasitas jam kerja"
-                              className="text-gray-400 hover:text-[#3E9463] p-1 rounded hover:bg-white transition-colors"
+                              title="Klik untuk ubah kapasitas jam & batas subtask"
+                              className="text-gray-400 hover:text-[#3E9463] p-1 rounded hover:bg-white transition-colors cursor-pointer"
                             >
                               <Edit2 className="h-3 w-3" />
                             </button>
@@ -564,13 +571,83 @@ export function SprintPlanningSection({
                         )}
                       </div>
 
-                      {/* Capacity Text in Jam */}
-                      <div className="flex items-center justify-between text-xs pt-1">
-                        <span className="text-gray-600 font-medium">Kapasitas Sprint:</span>
-                        <span className="font-extrabold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] shadow-2xs">
-                          {maxCap} Jam
-                        </span>
-                      </div>
+                      {/* Edit Mode Inputs */}
+                      {isEditing ? (
+                        <div className="space-y-2 p-2 bg-white rounded-lg border border-[#C9E4D0] text-xs">
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-600 block mb-0.5">
+                              Kapasitas Jam (default 2 jam):
+                            </label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={999}
+                              value={tempCapacityVal}
+                              onChange={(e) =>
+                                setTempCapacityVal(Math.max(1, parseInt(e.target.value, 10) || 1))
+                              }
+                              className="h-7 text-xs px-2 font-bold border-[#C9E4D0]"
+                              disabled={savingCapacity}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-600 block mb-0.5">
+                              Batas Subtask (opsional / kosong = tanpa batas):
+                            </label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={999}
+                              placeholder="Tanpa Batas"
+                              value={tempSubtaskCapacityVal}
+                              onChange={(e) =>
+                                setTempSubtaskCapacityVal(
+                                  e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value, 10) || 1)
+                                )
+                              }
+                              className="h-7 text-xs px-2 font-bold border-[#C9E4D0]"
+                              disabled={savingCapacity}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        /* Normal View Metrics */
+                        <div className="space-y-2 pt-1 border-t border-[#C9E4D0]">
+                          {/* Durasi Jam */}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-600 font-medium">Kapasitas Jam:</span>
+                            <span className="font-extrabold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] shadow-2xs">
+                              {maxJam} Jam
+                            </span>
+                          </div>
+
+                          {/* Subtask Capacity (Paket 24b) */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-600 font-medium">Beban Subtask:</span>
+                              {hasSubtaskCap ? (
+                                <span className={`text-[11px] font-extrabold ${textColor}`}>
+                                  {subtaskCount} / {maxSubtask} subtask ({subtaskPct}%)
+                                </span>
+                              ) : (
+                                <span className="font-bold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] text-[11px]">
+                                  {subtaskCount} subtask diambil
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Progress bar only shown if kapasitas_subtask is set */}
+                            {hasSubtaskCap && (
+                              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${progressColor} transition-all duration-300`}
+                                  style={{ width: `${Math.min(100, subtaskPct)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

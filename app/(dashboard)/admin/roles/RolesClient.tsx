@@ -9,6 +9,10 @@ import {
   deleteCustomRoleAction,
 } from "@/app/actions/admin-roles";
 import {
+  toggleSprintCapacityRoleAction,
+  type SprintRoleConfigItem,
+} from "@/app/actions/sprint-role-config";
+import {
   createUserAction,
   updateUserNameAction,
   resetUserPasswordAction,
@@ -54,7 +58,36 @@ import {
 } from "@/lib/theme/tokens";
 
 export function RolesClient({ initialData }: { initialData: any }) {
-  const [activeTab, setActiveTab] = useState<"matrix" | "users">("matrix");
+  const [activeTab, setActiveTab] = useState<"matrix" | "users" | "sprint-capacity">("matrix");
+
+  // State for Sprint Capacity Role Config (Paket 24b)
+  const [sprintRoleConfigs, setSprintRoleConfigs] = useState<SprintRoleConfigItem[]>(
+    initialData.sprintRoleConfigs || []
+  );
+  const [togglingSprintRoleCode, setTogglingSprintRoleCode] = useState<string | null>(null);
+
+  const handleToggleSprintRole = async (roleCode: string, currentIncluded: boolean) => {
+    setTogglingSprintRoleCode(roleCode);
+    const newIncluded = !currentIncluded;
+    // Optimistic update
+    setSprintRoleConfigs((prev) =>
+      prev.map((r) => (r.roleCode === roleCode ? { ...r, isIncluded: newIncluded } : r))
+    );
+
+    const res = await toggleSprintCapacityRoleAction(roleCode, newIncluded);
+    if (res.success) {
+      toast.success(
+        `Role ${roleCode} ${newIncluded ? "sekarang dihitung" : "tidak dihitung"} di Kapasitas Sprint Planning.`
+      );
+    } else {
+      // Rollback
+      setSprintRoleConfigs((prev) =>
+        prev.map((r) => (r.roleCode === roleCode ? { ...r, isIncluded: currentIncluded } : r))
+      );
+      toast.error(res.error || "Gagal mengubah konfigurasi role.");
+    }
+    setTogglingSprintRoleCode(null);
+  };
 
   // State for RBAC Matrix
   const [rolesList, setRolesList] = useState<any[]>(initialData.roles || []);
@@ -526,6 +559,18 @@ export function RolesClient({ initialData }: { initialData: any }) {
           <Users className="h-4 w-4" />
           <span>Kelola User ({usersList.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab("sprint-capacity")}
+          className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === "sprint-capacity"
+              ? "border-[#0F5132] text-[#0F5132]"
+              : "border-transparent text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <Layers className="h-4 w-4" />
+          <span>Kapasitas Sprint ({sprintRoleConfigs.filter((r) => r.isIncluded).length} Aktif)</span>
+        </button>
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
@@ -929,6 +974,112 @@ export function RolesClient({ initialData }: { initialData: any }) {
                   )}
                 </tbody>
               </table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {/* TAB 3: PENGATURAN ROLE KAPASITAS SPRINT PLANNING (PAKET 24B) */}
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {activeTab === "sprint-capacity" && (
+        <div className="space-y-6">
+          <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 border-b border-gray-100 p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-100 text-[#0F5132] border border-emerald-200">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-extrabold text-gray-900">
+                    Pengaturan Role untuk Kapasitas Sprint Planning
+                  </CardTitle>
+                  <CardDescription className="text-xs text-gray-600 mt-1">
+                    Konfigurasi global sistem untuk menentukan role mana saja yang diikutsertakan dalam penghitungan kapasitas kerja dan alokasi subtask di panel Sprint Planning tim inovator.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-gray-50/80 text-gray-600 font-bold border-b border-gray-100 uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3.5 px-4 w-12 text-center">No</th>
+                      <th className="py-3.5 px-4">Nama Role &amp; Kode</th>
+                      <th className="py-3.5 px-4">Deskripsi / Peruntukan</th>
+                      <th className="py-3.5 px-4 text-center">Status di Sprint Planning</th>
+                      <th className="py-3.5 px-4 text-center">Aksi Toggle</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {sprintRoleConfigs.map((roleCfg, idx) => {
+                      const isToggling = togglingSprintRoleCode === roleCfg.roleCode;
+                      return (
+                        <tr key={roleCfg.roleCode} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3 px-4 text-center font-medium text-gray-400">
+                            {idx + 1}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-gray-900 text-xs">
+                              {roleCfg.roleName}
+                            </div>
+                            <code className="text-[10px] text-gray-400 font-mono">
+                              {roleCfg.roleCode}
+                            </code>
+                          </td>
+                          <td className="py-3 px-4 text-gray-500 text-xs">
+                            {roleCfg.roleCode === "co_creator" && "Anggota tim inti pelaksana teknis inovasi (Co-creator). Default: ON."}
+                            {roleCfg.roleCode === "coach" && "Pembimbing metodologi & coaching tim inovasi. Default: ON."}
+                            {roleCfg.roleCode === "inisiator" && "Pengusul ide proyek inovasi awal."}
+                            {roleCfg.roleCode === "project_owner" && "Penanggung jawab strategis proyek dari unit bisnis."}
+                            {roleCfg.roleCode === "sponsor" && "Pimpinan unit/Divisi sponsor proyek inovasi."}
+                            {roleCfg.roleCode === "promotor" && "Promotor eksekutif sponsor program."}
+                            {roleCfg.roleCode === "sme" && "Subject Matter Expert / Kolaborator pendukung teknis."}
+                            {roleCfg.roleCode === "divisi_ic" && "Tim pengelola Divisi Innovation Center."}
+                            {roleCfg.roleCode === "admin_ic" && "Administrator sistem Innovation Center."}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {roleCfg.isIncluded ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                <span>Ikut Dihitung (ON)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full border border-gray-200">
+                                <X className="h-3 w-3 text-gray-400" />
+                                <span>Tidak Dihitung (OFF)</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <Button
+                              size="sm"
+                              variant={roleCfg.isIncluded ? "destructive" : "default"}
+                              disabled={isToggling}
+                              onClick={() => handleToggleSprintRole(roleCfg.roleCode, roleCfg.isIncluded)}
+                              className={`h-8 px-3 text-xs font-bold rounded-lg cursor-pointer ${
+                                roleCfg.isIncluded
+                                  ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                  : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white"
+                              }`}
+                            >
+                              {isToggling ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : roleCfg.isIncluded ? (
+                                "Nonaktifkan"
+                              ) : (
+                                "Aktifkan"
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>

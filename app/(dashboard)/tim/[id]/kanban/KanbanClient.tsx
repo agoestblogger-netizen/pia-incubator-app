@@ -16,6 +16,7 @@ import {
   adoptAiCardAction,
   getTaskSubtasksAction,
   createTaskSubtaskAction,
+  updateSubtaskAssigneeAction,
   toggleTaskSubtaskAction,
   deleteTaskSubtaskAction,
   updateTaskSubtaskTitleAction,
@@ -750,6 +751,7 @@ export function KanbanClient({
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [newSubtaskHours, setNewSubtaskHours] = useState<number | "">("");
+  const [newSubtaskAssigneeUserId, setNewSubtaskAssigneeUserId] = useState<string | null>(null);
   const [creatingSubtask, setCreatingSubtask] = useState(false);
   const [togglingSubtaskId, setTogglingSubtaskId] = useState<string | null>(null);
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null);
@@ -804,17 +806,47 @@ export function KanbanClient({
       selectedCardForDetail.id,
       timId,
       newSubtaskTitle.trim(),
-      parsedHours
+      parsedHours,
+      newSubtaskAssigneeUserId
     );
     if (res.success && res.data) {
       setSubtasks((prev) => [...prev, res.data]);
       setNewSubtaskTitle("");
       setNewSubtaskHours("");
+      setNewSubtaskAssigneeUserId(null);
       toast.success("Subtask berhasil ditambahkan.");
     } else {
-      toast.error(res.error || "Gagal membuat subtask.");
+      toast.error(res.error || "Gagal membuat subtask.", "Gagal Menambah Subtask");
     }
     setCreatingSubtask(false);
+  };
+
+  const handleUpdateSubtaskAssignee = async (subtaskId: string, newUserId: string | null) => {
+    const original = subtasks.find((s) => s.id === subtaskId);
+    const oldUserId = original?.assigneeUserId ?? null;
+    if (newUserId === oldUserId) return;
+
+    // Optimistic update
+    setSubtasks((prev) =>
+      prev.map((s) => (s.id === subtaskId ? { ...s, assigneeUserId: newUserId } : s))
+    );
+
+    const res = await updateSubtaskAssigneeAction(
+      subtaskId,
+      timId,
+      newUserId,
+      detailSprintNumber || selectedCardForDetail?.sprintNumber
+    );
+
+    if (!res.success) {
+      // Rollback
+      setSubtasks((prev) =>
+        prev.map((s) => (s.id === subtaskId ? { ...s, assigneeUserId: oldUserId } : s))
+      );
+      toast.error(res.error || "Gagal memperbarui PIC subtask.", "Kapasitas Terlampaui");
+    } else {
+      toast.success("PIC subtask berhasil diperbarui.");
+    }
   };
 
   const handleToggleSubtask = async (subtaskId: string, currentStatus: boolean) => {
@@ -2644,6 +2676,22 @@ export function KanbanClient({
                                       )}
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                                      {/* PIC Subtask Dropdown (Paket 24b) */}
+                                      <select
+                                        value={st.assigneeUserId || ""}
+                                        disabled={!canEdit}
+                                        onChange={(e) => handleUpdateSubtaskAssignee(st.id, e.target.value || null)}
+                                        className="text-[10px] font-semibold bg-[#F0F7F1] border border-[#C9E4D0] hover:border-[#3E9463] rounded-md px-1.5 py-0.5 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#3E9463] max-w-[130px] truncate"
+                                        title={st.assigneeUserId ? `PIC: ${anggotaTim.find(a => a.userId === st.assigneeUserId)?.nama || "Ditugaskan"}` : "Pilih PIC Subtask"}
+                                      >
+                                        <option value="">👤 PIC</option>
+                                        {anggotaTim.filter(a => !!a.userId).map((a) => (
+                                          <option key={a.id} value={a.userId!}>
+                                            {a.nama}
+                                          </option>
+                                        ))}
+                                      </select>
+
                                       {isEditingHours ? (
                                         <div className="flex items-center gap-1">
                                           <input
@@ -2699,7 +2747,7 @@ export function KanbanClient({
 
                           {/* Inline Tambah Subtask */}
                           {canEdit && (
-                            <div className="flex items-center gap-1.5 pt-1">
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
                               <Input
                                 placeholder="+ Tambah subtask baru..."
                                 value={newSubtaskTitle}
@@ -2710,8 +2758,20 @@ export function KanbanClient({
                                     handleCreateSubtask();
                                   }
                                 }}
-                                className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 flex-1 text-gray-900"
+                                className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 flex-1 min-w-[150px] text-gray-900"
                               />
+                              <select
+                                value={newSubtaskAssigneeUserId || ""}
+                                onChange={(e) => setNewSubtaskAssigneeUserId(e.target.value || null)}
+                                className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 rounded-lg px-2 text-gray-800 font-semibold max-w-[130px] truncate"
+                              >
+                                <option value="">👤 PIC (opsi)</option>
+                                {anggotaTim.filter(a => !!a.userId).map((a) => (
+                                  <option key={a.id} value={a.userId!}>
+                                    {a.nama}
+                                  </option>
+                                ))}
+                              </select>
                               <div className="flex items-center gap-1 shrink-0">
                                 <Input
                                   type="number"
@@ -2730,7 +2790,7 @@ export function KanbanClient({
                                       handleCreateSubtask();
                                     }
                                   }}
-                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 w-16 px-1.5 text-center text-gray-900"
+                                  className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 w-14 px-1.5 text-center text-gray-900"
                                 />
                                 <span className="text-[10px] text-gray-500 font-semibold">jam</span>
                               </div>

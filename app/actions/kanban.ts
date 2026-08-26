@@ -10,9 +10,10 @@ import {
   kanbanComment,
   kanbanActivityLog,
   anggotaTim,
+  teamMemberCapacity,
   users,
 } from "@/lib/db/schema";
-import { eq, asc, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -843,8 +844,21 @@ export async function deleteTaskLinkAction(linkId: string, timId: string) {
 export async function getTaskSubtasksAction(taskId: string) {
   try {
     const subtasks = await db
-      .select()
+      .select({
+        id: kanbanSubtask.id,
+        taskId: kanbanSubtask.taskId,
+        title: kanbanSubtask.title,
+        estimatedHours: kanbanSubtask.estimatedHours,
+        isDone: kanbanSubtask.isDone,
+        orderIndex: kanbanSubtask.orderIndex,
+        assigneeUserId: kanbanSubtask.assigneeUserId,
+        createdBy: kanbanSubtask.createdBy,
+        createdAt: kanbanSubtask.createdAt,
+        assigneeName: users.nama,
+        assigneeAvatar: users.avatarUrl,
+      })
       .from(kanbanSubtask)
+      .leftJoin(users, eq(kanbanSubtask.assigneeUserId, users.id))
       .where(eq(kanbanSubtask.taskId, taskId))
       .orderBy(asc(kanbanSubtask.orderIndex), asc(kanbanSubtask.createdAt));
 
@@ -858,7 +872,8 @@ export async function createTaskSubtaskAction(
   taskId: string,
   timId: string,
   title: string,
-  estimatedHours?: number | null
+  estimatedHours?: number | null,
+  assigneeUserId?: string | null
 ) {
   try {
     const user = await getCurrentUser();
@@ -879,12 +894,69 @@ export async function createTaskSubtaskAction(
       return { success: false, error: "Judul subtask tidak boleh kosong." };
     }
 
+    // Validasi blocking kapasitas jika assigneeUserId diisi (Paket 24b)
+    if (assigneeUserId) {
+      const [cardRow] = await db
+        .select({ sprintNumber: kanbanCard.sprintNumber })
+        .from(kanbanCard)
+        .where(eq(kanbanCard.id, taskId))
+        .limit(1);
+
+      const targetSprint = cardRow?.sprintNumber;
+      if (targetSprint) {
+        const [member] = await db
+          .select({ id: anggotaTim.id, nama: anggotaTim.nama })
+          .from(anggotaTim)
+          .where(and(eq(anggotaTim.timInovatorId, timId), eq(anggotaTim.userId, assigneeUserId)))
+          .limit(1);
+
+        if (member) {
+          const [capacityRow] = await db
+            .select({ kapasitasSubtask: teamMemberCapacity.kapasitasSubtask })
+            .from(teamMemberCapacity)
+            .where(
+              and(
+                eq(teamMemberCapacity.timInovatorId, timId),
+                eq(teamMemberCapacity.anggotaTimId, member.id),
+                eq(teamMemberCapacity.sprintNumber, targetSprint)
+              )
+            )
+            .limit(1);
+
+          const maxCap = capacityRow?.kapasitasSubtask;
+          if (maxCap !== null && maxCap !== undefined && maxCap > 0) {
+            const [countResult] = await db
+              .select({
+                count: sql<number>`cast(count(${kanbanSubtask.id}) as int)`,
+              })
+              .from(kanbanSubtask)
+              .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
+              .where(
+                and(
+                  eq(kanbanCard.timInovatorId, timId),
+                  eq(kanbanCard.sprintNumber, targetSprint),
+                  eq(kanbanSubtask.assigneeUserId, assigneeUserId)
+                )
+              );
+
+            if ((countResult?.count || 0) + 1 > maxCap) {
+              return {
+                success: false,
+                error: `⚠ ${member.nama} sudah mencapai kapasitas ${maxCap} subtask di Sprint ${targetSprint}.`,
+              };
+            }
+          }
+        }
+      }
+    }
+
     const [subtask] = await db
       .insert(kanbanSubtask)
       .values({
         taskId,
         title: trimmed,
         estimatedHours: typeof estimatedHours === 'number' ? Math.max(0, estimatedHours) : null,
+        assigneeUserId: assigneeUserId || null,
         isDone: false,
         createdBy: user.id,
       })
@@ -895,6 +967,114 @@ export async function createTaskSubtaskAction(
     return { success: true, data: subtask };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal membuat subtask." };
+  }
+}
+
+/** Update PIC penugasan subtask dengan validasi kapasitas (Paket 24b). */
+export async function updateSubtaskAssigneeAction(
+  subtaskId: string,
+  timId: string,
+  assigneeUserId: string | null,
+  sprintNumber?: number | null
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin mengubah penugasan subtask.",
+      };
+    }
+
+    // Ambil detail subtask & card terkait
+    const [subtaskRow] = await db
+      .select({
+        id: kanbanSubtask.id,
+        taskId: kanbanSubtask.taskId,
+        currentAssignee: kanbanSubtask.assigneeUserId,
+        cardSprint: kanbanCard.sprintNumber,
+      })
+      .from(kanbanSubtask)
+      .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .limit(1);
+
+    if (!subtaskRow) {
+      return { success: false, error: "Subtask tidak ditemukan." };
+    }
+
+    const targetSprint = sprintNumber || subtaskRow.cardSprint;
+
+    // Validasi Blocking Kapasitas Subtask (Paket 24b)
+    if (assigneeUserId && targetSprint) {
+      const [member] = await db
+        .select({
+          id: anggotaTim.id,
+          nama: anggotaTim.nama,
+        })
+        .from(anggotaTim)
+        .where(and(eq(anggotaTim.timInovatorId, timId), eq(anggotaTim.userId, assigneeUserId)))
+        .limit(1);
+
+      if (member) {
+        const [capacityRow] = await db
+          .select({ kapasitasSubtask: teamMemberCapacity.kapasitasSubtask })
+          .from(teamMemberCapacity)
+          .where(
+            and(
+              eq(teamMemberCapacity.timInovatorId, timId),
+              eq(teamMemberCapacity.anggotaTimId, member.id),
+              eq(teamMemberCapacity.sprintNumber, targetSprint)
+            )
+          )
+          .limit(1);
+
+        const maxSubtaskCap = capacityRow?.kapasitasSubtask;
+
+        // Jika kapasitas_subtask SUDAH DIISI (bukan NULL) -> lakukan validasi blocking
+        if (maxSubtaskCap !== null && maxSubtaskCap !== undefined && maxSubtaskCap > 0) {
+          const [countResult] = await db
+            .select({
+              count: sql<number>`cast(count(${kanbanSubtask.id}) as int)`,
+            })
+            .from(kanbanSubtask)
+            .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
+            .where(
+              and(
+                eq(kanbanCard.timInovatorId, timId),
+                eq(kanbanCard.sprintNumber, targetSprint),
+                eq(kanbanSubtask.assigneeUserId, assigneeUserId),
+                sql`${kanbanSubtask.id} != ${subtaskId}` // jangan hitung subtask yang sedang diubah
+              )
+            );
+
+          const currentCount = countResult?.count || 0;
+          if (currentCount + 1 > maxSubtaskCap) {
+            return {
+              success: false,
+              error: `⚠ ${member.nama} sudah mencapai kapasitas ${maxSubtaskCap} subtask di Sprint ${targetSprint}.`,
+            };
+          }
+        }
+      }
+    }
+
+    const [updated] = await db
+      .update(kanbanSubtask)
+      .set({ assigneeUserId: assigneeUserId || null })
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal memperbarui PIC subtask." };
   }
 }
 

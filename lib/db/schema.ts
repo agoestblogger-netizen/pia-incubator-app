@@ -202,10 +202,12 @@ export const kanbanSubtask = pgTable('kanban_subtask', {
   estimatedHours: integer('estimated_hours'), // estimasi jam spesifik untuk subtask ini
   isDone: boolean('is_done').notNull().default(false),
   orderIndex: integer('order_index').notNull().default(0),
+  assigneeUserId: uuid('assignee_user_id').references(() => users.id, { onDelete: 'set null' }), // PIC per-subtask (Paket 24b)
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('kanban_subtask_task_idx').on(t.taskId),
+  index('kanban_subtask_assignee_idx').on(t.assigneeUserId),
 ]);
 
 export const kanbanComment = pgTable('kanban_comment', {
@@ -236,8 +238,9 @@ export const teamMemberCapacity = pgTable('team_member_capacity', {
   timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
   anggotaTimId: uuid('anggota_tim_id').notNull().references(() => anggotaTim.id, { onDelete: 'cascade' }),
   sprintNumber: integer('sprint_number').notNull(),
-  kapasitasJam: integer('kapasitas_jam').notNull().default(80), // historis/backward compatibility
-  kapasitasSp: integer('kapasitas_sp'), // kapasitas Story Point sprint (disarankan AI / diubah user)
+  kapasitasJam: integer('kapasitas_jam').notNull().default(2), // Paket 24a: default 2 jam
+  kapasitasSp: integer('kapasitas_sp'), // derived: 1 SP = 60 menit
+  kapasitasSubtask: integer('kapasitas_subtask'), // Paket 24b: batas jumlah subtask per orang (nullable, default null = tanpa batas)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -725,5 +728,15 @@ export const diskusiDocument = pgTable('diskusi_document', {
 }, (t) => [
   index('diskusi_document_board_idx').on(t.boardId),
 ]);
+
+export const sprintCapacityRoleConfig = pgTable('sprint_capacity_role_config', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  roleCode: text('role_code').notNull().unique(), // 'co_creator' | 'coach' | 'inisiator' | 'project_owner' | 'sponsor' | 'promotor' | 'sme' | 'divisi_ic' | 'admin_ic'
+  roleName: text('role_name').notNull(),
+  isIncluded: boolean('is_included').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 
 
