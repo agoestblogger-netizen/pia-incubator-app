@@ -7,6 +7,8 @@ import {
   rencanaValidasiMetrik,
   hasilValidasiMetrik,
   customerValidationDimensiFeedback,
+  customerValidationTemuanKualitatif,
+  customerTestingFeedbackResponden,
   kanbanCard,
   kanbanSubtask,
   kanbanColumn,
@@ -24,13 +26,14 @@ import { logAudit } from "@/lib/db/audit";
 import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
 import { generateFullCvPlanDraft } from "@/lib/ai/cv-plan-full-generator";
 
-
 export async function getCustomerValidationData(timId: string) {
   const [plan] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
   let report = null;
   let metrikRencana: any[] = [];
   let metrikHasil: any[] = [];
   let dimensiFeedback: any[] = [];
+  let temuanKualitatif: any[] = [];
+  let feedbackResponden: any[] = [];
 
   if (plan) {
     [report] = await db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, plan.id)).limit(1);
@@ -40,9 +43,35 @@ export async function getCustomerValidationData(timId: string) {
 
   if (report) {
     metrikHasil = await db.select().from(hasilValidasiMetrik).where(eq(hasilValidasiMetrik.reportId, report.id));
+    temuanKualitatif = await db.select().from(customerValidationTemuanKualitatif).where(eq(customerValidationTemuanKualitatif.reportId, report.id));
+    feedbackResponden = await db.select().from(customerTestingFeedbackResponden).where(eq(customerTestingFeedbackResponden.reportId, report.id));
   }
 
-  return { plan, report, metrikRencana, metrikHasil, dimensiFeedback };
+  // Cek kondisi: SEMUA kartu backlog CV (review_status = 'adopted') sudah berstatus 'Done'
+  const cvAdoptedCards = await db
+    .select({ id: kanbanCard.id, statusKolom: kanbanCard.statusKolom })
+    .from(kanbanCard)
+    .where(
+      and(
+        eq(kanbanCard.timInovatorId, timId),
+        eq(kanbanCard.tahap, 'customer_validation'),
+        eq(kanbanCard.reviewStatus, 'adopted')
+      )
+    );
+
+  const allCvBacklogDone =
+    cvAdoptedCards.length > 0 && cvAdoptedCards.every((c) => c.statusKolom === 'Done');
+
+  return {
+    plan,
+    report,
+    metrikRencana,
+    metrikHasil,
+    dimensiFeedback,
+    temuanKualitatif,
+    feedbackResponden,
+    allCvBacklogDone,
+  };
 }
 
 
@@ -725,4 +754,291 @@ export async function revokeCvPlanSignatureAction(
     return { success: false, error: error.message || 'Gagal membatalkan tanda tangan.' };
   }
 }
+
+/**
+ * Simpan lengkap Laporan Customer Validation beserta Tabel Temuan Kualitatif & Tabel Hasil Metrik
+ */
+export async function saveCustomerValidationReportFullAction(
+  timId: string,
+  reportValues: Partial<typeof customerValidationReport.$inferInsert>,
+  temuanList?: Array<{ kategori: string; pertanyaanKunci: string; temuanUtama: string }>,
+  metrikHasilList?: Array<{
+    validasi: string;
+    metrik: string;
+    target?: string;
+    hasilAktual?: string;
+    interpretasi?: string;
+    learning?: string;
+    enhancement?: string;
+  }>
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const allowed = await hasPermission(user, 'cust_val.edit', timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk mengedit Laporan Customer Validation tim ini.',
+      };
+    }
+
+    // 1. Pastikan plan ada
+    let [plan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) {
+      const [newPlan] = await db
+        .insert(customerValidationPlan)
+        .values({ timInovatorId: timId })
+        .returning();
+      plan = newPlan;
+    }
+
+    // 2. Simpan / Update Report
+    const [existingReport] = await db
+      .select()
+      .from(customerValidationReport)
+      .where(eq(customerValidationReport.planId, plan.id))
+      .limit(1);
+
+    let reportId = existingReport?.id;
+
+    if (existingReport) {
+      await db
+        .update(customerValidationReport)
+        .set({
+          ...reportValues,
+          updatedAt: new Date(),
+        })
+        .where(eq(customerValidationReport.id, existingReport.id));
+    } else {
+      const [inserted] = await db
+        .insert(customerValidationReport)
+        .values({
+          planId: plan.id,
+          ...reportValues,
+        })
+        .returning();
+      reportId = inserted.id;
+    }
+
+    // 3. Simpan / Replace Tabel 1: Temuan Kualitatif (6 baris tetap)
+    if (reportId && Array.isArray(temuanList) && temuanList.length > 0) {
+      await db
+        .delete(customerValidationTemuanKualitatif)
+        .where(eq(customerValidationTemuanKualitatif.reportId, reportId));
+
+      const temuanPayload = temuanList.map((t) => ({
+        reportId: reportId!,
+        kategori: t.kategori,
+        pertanyaanKunci: t.pertanyaanKunci,
+        temuanUtama: t.temuanUtama || '',
+      }));
+
+      await db.insert(customerValidationTemuanKualitatif).values(temuanPayload);
+    }
+
+    // 4. Simpan / Replace Tabel 2: Hasil Pengukuran Customer Validation (7 baris tetap)
+    if (reportId && Array.isArray(metrikHasilList) && metrikHasilList.length > 0) {
+      await db
+        .delete(hasilValidasiMetrik)
+        .where(
+          and(
+            eq(hasilValidasiMetrik.reportId, reportId),
+            eq(hasilValidasiMetrik.fase, 'customer_validation')
+          )
+        );
+
+      const metrikPayload = metrikHasilList.map((m) => ({
+        reportId: reportId!,
+        fase: 'customer_validation' as const,
+        validasi: m.validasi,
+        metrik: m.metrik,
+        target: m.target || null,
+        hasilAktual: m.hasilAktual || null,
+        interpretasi: m.interpretasi || null,
+        learning: m.learning || null,
+        enhancement: m.enhancement || null,
+      }));
+
+      await db.insert(hasilValidasiMetrik).values(metrikPayload);
+    }
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'CUST_VAL_REPORT_SAVE_FULL',
+      entity: 'customer_validation_report',
+      entityId: reportId,
+      details: {
+        timId,
+        planId: plan.id,
+        ketercapaianPsf: reportValues.ketercapaianPsf,
+        keputusan: reportValues.keputusan,
+      },
+    });
+
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/market-validation`);
+    return { success: true, reportId };
+  } catch (error: any) {
+    console.error('[saveCustomerValidationReportFullAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal menyimpan laporan validasi pelanggan.' };
+  }
+}
+
+/**
+ * Tanda tangani Customer Validation Report (Inisiator / Coach / PO)
+ */
+export async function signCvReportAction(
+  timId: string,
+  roleType: 'inisiator' | 'coach' | 'po',
+  signatureDataUrl?: string
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    const allowed = await hasPermission(user, 'cust_val.sign', timId);
+    if (!allowed) {
+      return { success: false, error: 'Forbidden: Anda tidak memiliki izin menandatangani laporan CV ini.' };
+    }
+
+    let [plan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) {
+      const [newPlan] = await db
+        .insert(customerValidationPlan)
+        .values({ timInovatorId: timId })
+        .returning();
+      plan = newPlan;
+    }
+
+    let [report] = await db
+      .select()
+      .from(customerValidationReport)
+      .where(eq(customerValidationReport.planId, plan.id))
+      .limit(1);
+
+    if (!report) {
+      const [newReport] = await db
+        .insert(customerValidationReport)
+        .values({ planId: plan.id })
+        .returning();
+      report = newReport;
+    }
+
+    const signatureData = {
+      userId: user.id,
+      nama: user.nama,
+      role: roleType,
+      jabatan: roleType === 'inisiator' ? 'Inisiator Inovasi' : roleType === 'coach' ? 'Innovation Coach' : 'Project Owner',
+      unit: 'PT Pegadaian',
+      status: 'signed' as const,
+      tanggal: new Date().toISOString(),
+      signatureImage: signatureDataUrl || null,
+    };
+
+    const fieldToUpdate =
+      roleType === 'inisiator'
+        ? { ttdDisusun: signatureData }
+        : roleType === 'coach'
+        ? { ttdDiperiksa: signatureData }
+        : { ttdDisetujui: signatureData };
+
+    await db
+      .update(customerValidationReport)
+      .set({
+        ...fieldToUpdate,
+        updatedAt: new Date(),
+      })
+      .where(eq(customerValidationReport.id, report.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: `CV_REPORT_SIGN_${roleType.toUpperCase()}`,
+      entity: 'customer_validation_report',
+      entityId: report.id,
+      details: { timId, roleType, signatureData },
+    });
+
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    return { success: true, signatureData };
+  } catch (error: any) {
+    console.error('[signCvReportAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal membubuhkan tanda tangan laporan.' };
+  }
+}
+
+/**
+ * Batalkan tanda tangan Customer Validation Report
+ */
+export async function revokeCvReportSignatureAction(
+  timId: string,
+  roleType: 'inisiator' | 'coach' | 'po'
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    const [plan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) return { success: false, error: 'Plan belum dibuat.' };
+
+    const [report] = await db
+      .select()
+      .from(customerValidationReport)
+      .where(eq(customerValidationReport.planId, plan.id))
+      .limit(1);
+
+    if (!report) return { success: false, error: 'Report belum dibuat.' };
+
+    const fieldToClear =
+      roleType === 'inisiator'
+        ? { ttdDisusun: null }
+        : roleType === 'coach'
+        ? { ttdDiperiksa: null }
+        : { ttdDisetujui: null };
+
+    await db
+      .update(customerValidationReport)
+      .set({
+        ...fieldToClear,
+        updatedAt: new Date(),
+      })
+      .where(eq(customerValidationReport.id, report.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: `CV_REPORT_REVOKE_SIGN_${roleType.toUpperCase()}`,
+      entity: 'customer_validation_report',
+      entityId: report.id,
+      details: { timId, roleType, revokedBy: user.nama },
+    });
+
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[revokeCvReportSignatureAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal membatalkan tanda tangan laporan.' };
+  }
+}
+
 
