@@ -7,8 +7,8 @@ import {
   signMvPlanAction,
   revokeMvPlanSignatureAction,
   saveMarketValidationReportAction,
-  approveMarketValidationReportAction,
-  revokeMarketValidationReportApprovalAction,
+  signMvReportAction,
+  revokeMvReportSignatureAction,
 } from "@/app/actions/market-validation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -39,6 +39,11 @@ import {
   KanbanSquare,
   Sparkles,
   RefreshCw,
+  Download,
+  CheckCircle2,
+  FileText,
+  Activity,
+  History,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
@@ -446,7 +451,7 @@ export function MarketValidationClient({
     }));
   };
 
-  // ── Signature State & Names ────────────────────────────────────────────────
+  // ── Signature State for MVP Plan ───────────────────────────────────────────
   const [ttdDisusun, setTtdDisusun] = useState<any | null>(
     initialData?.plan?.ttdDisusun || null
   );
@@ -623,7 +628,7 @@ export function MarketValidationClient({
     }
   };
 
-  // ── Report Tab (Tab 3) ──────────────────────────────────────────────────────
+  // ── Report Tab (Tab 3) State & Signatures ───────────────────────────────────
   const [reportForm, setReportForm] = useState({
     mvpVersionDilaporkan: initialData?.report?.mvpVersionDilaporkan || "v1.0-pilot",
     jumlahEarlyAdoptersAktual: initialData?.report?.jumlahEarlyAdoptersAktual || 45,
@@ -631,14 +636,107 @@ export function MarketValidationClient({
     kendalaUtama: initialData?.report?.kendalaUtama || "",
     kesimpulanPmf: initialData?.report?.kesimpulanPmf || "",
     keputusanGoNogo: initialData?.report?.keputusanGoNogo || "go_ke_fmi",
+    rekomendasiIterasi: initialData?.report?.rekomendasiIterasi || "",
+    rencanaMvpBerikutnya: initialData?.report?.rencanaMvpBerikutnya || "",
     rekomendasiPromotorSponsor: initialData?.report?.rekomendasiPromotorSponsor || "",
   });
 
+  const [reportTtdDisusun, setReportTtdDisusun] = useState<any | null>(
+    initialData?.report?.ttdDisusun || null
+  );
+  const [reportTtdDiperiksa, setReportTtdDiperiksa] = useState<any | null>(
+    initialData?.report?.ttdDiperiksa || null
+  );
   const [reportTtdDisetujui, setReportTtdDisetujui] = useState<any | null>(
     initialData?.report?.ttdDisetujui || null
   );
-  const [approving, setApproving] = useState(false);
-  const [isSigModalReportOpen, setIsSigModalReportOpen] = useState(false);
+
+  const [reportSigModal, setReportSigModal] = useState<{
+    isOpen: boolean;
+    roleType: "po" | "coach" | "promotor";
+    roleName: string;
+    userName?: string;
+  }>({
+    isOpen: false,
+    roleType: "po",
+    roleName: "Project Owner",
+  });
+
+  const [reportSigningRole, setReportSigningRole] = useState<string | null>(null);
+
+  const openReportSignModal = (roleType: "po" | "coach" | "promotor") => {
+    const roleName =
+      roleType === "po"
+        ? "Project Owner"
+        : roleType === "coach"
+        ? "Innovation Coach"
+        : "Promotor Inovasi";
+    const userName =
+      roleType === "po"
+        ? poCharterName || currentUser?.nama
+        : roleType === "coach"
+        ? coachCharterName || currentUser?.nama
+        : promotorCharterName || currentUser?.nama;
+
+    setReportSigModal({
+      isOpen: true,
+      roleType,
+      roleName,
+      userName,
+    });
+  };
+
+  const handleSaveReportSignature = async (dataUrl: string) => {
+    setReportSigningRole(reportSigModal.roleType);
+    try {
+      const res = await signMvReportAction(timId, reportSigModal.roleType, dataUrl);
+      if (res.success && res.signatureData) {
+        if (reportSigModal.roleType === "po") setReportTtdDisusun(res.signatureData);
+        else if (reportSigModal.roleType === "coach") setReportTtdDiperiksa(res.signatureData);
+        else setReportTtdDisetujui(res.signatureData);
+
+        toast.success(
+          `Tanda tangan Laporan MV sebagai ${reportSigModal.roleName} berhasil dibubuhkan!`,
+          "Tanda Tangan Tersimpan"
+        );
+        setReportSigModal((prev) => ({ ...prev, isOpen: false }));
+      } else {
+        toast.error(res.error || "Gagal menandatangani Laporan MV.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat menyimpan tanda tangan.", "Error");
+    } finally {
+      setReportSigningRole(null);
+    }
+  };
+
+  const handleRevokeReportSignature = async (roleType: "po" | "coach" | "promotor") => {
+    const roleName =
+      roleType === "po"
+        ? "Project Owner"
+        : roleType === "coach"
+        ? "Innovation Coach"
+        : "Promotor Inovasi";
+    if (!confirm(`Batalkan tanda tangan ${roleName} pada Laporan MV?`)) return;
+
+    setReportSigningRole(roleType);
+    try {
+      const res = await revokeMvReportSignatureAction(timId, roleType);
+      if (res.success) {
+        if (roleType === "po") setReportTtdDisusun(null);
+        else if (roleType === "coach") setReportTtdDiperiksa(null);
+        else setReportTtdDisetujui(null);
+
+        toast.info(`Tanda tangan ${roleName} telah dibatalkan.`, "Tanda Tangan Dibatalkan");
+      } else {
+        toast.error(res.error || "Gagal membatalkan tanda tangan.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan sistem.", "Error");
+    } finally {
+      setReportSigningRole(null);
+    }
+  };
 
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -657,72 +755,28 @@ export function MarketValidationClient({
       reportForm
     );
     if (res.success) {
-      toast.success("Market Validation Report berhasil disimpan!", "Laporan Tersimpan");
+      toast.success("Laporan Market Validation (PMF Report) berhasil disimpan!", "Laporan Tersimpan");
     } else {
       toast.error(res.error || "Gagal menyimpan report.", "Gagal Menyimpan");
     }
     setSaving(false);
   };
 
-  const handleApproveReport = () => {
-    if (!initialData?.report?.id) {
-      toast.error("Laporan Market Validation belum disimpan oleh tim.", "Laporan Belum Ada");
-      return;
-    }
-    setIsSigModalReportOpen(true);
-  };
-
-  const handleSaveReportSignature = async (dataUrl: string) => {
-    if (!initialData?.report?.id) return;
-    setApproving(true);
-
-    const res = await approveMarketValidationReportAction(
-      initialData.report.id,
-      timId,
-      dataUrl
-    );
-    if (res.success && res.ttdDisetujui) {
-      setReportTtdDisetujui(res.ttdDisetujui);
-      toast.success(
-        "Laporan Market Validation berhasil disetujui secara formal oleh Promotor!",
-        "Persetujuan Berhasil"
-      );
-      setIsSigModalReportOpen(false);
-    } else {
-      toast.error(res.error || "Gagal menyetujui laporan.", "Gagal Menyetujui");
-    }
-    setApproving(false);
-  };
-
-  const handleRevokeReportApproval = async () => {
-    if (!initialData?.report?.id) return;
-    if (!confirm("Batalkan persetujuan formal Laporan Market Validation ini?")) return;
-    setApproving(true);
-
-    const res = await revokeMarketValidationReportApprovalAction(
-      initialData.report.id,
-      timId
-    );
-    if (res.success) {
-      setReportTtdDisetujui(null);
-      toast.info(
-        "Persetujuan formal Laporan Market Validation telah dibatalkan untuk revisi tim.",
-        "Persetujuan Dibatalkan"
-      );
-    } else {
-      toast.error(res.error || "Gagal membatalkan persetujuan.", "Gagal Membatalkan");
-    }
-    setApproving(false);
-  };
+  // Data helpers for Tab 3 read-only sections
+  const releaseLogs = initialData?.releaseLogs || [];
+  const hasilMetrik = initialData?.hasilMetrik || [];
+  const dfvRekapitulasi = initialData?.dfv || [];
+  const sprintReviews = initialData?.sprintReviews || [];
+  const allTeamCards = initialData?.allTeamCards || [];
 
   return (
     <div className="space-y-5">
-      {/* ══ BAGIAN A: Header Read-Only (Template 3.1) ══ */}
+      {/* ══ BAGIAN A: Header Read-Only (Template 3.1 & 3.2) ══ */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
             <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-0.5 uppercase tracking-wider">
-              FR-PIA-03.1
+              FR-PIA-03.1 / 03.2
             </Badge>
             <h2 className="text-base font-extrabold text-gray-900">
               {timInfo?.namaProyekInovasi || initialData?.tim?.namaProyekInovasi || "Market Validation Planning"}
@@ -737,29 +791,41 @@ export function MarketValidationClient({
             </span>
             <span>&bull;</span>
             <span>
-              Tahap: <strong className="text-[#0B3D2E]">Market Validation (MVP Release)</strong>
+              Tahap: <strong className="text-[#0B3D2E]">Market Validation (MVP Release &amp; PMF)</strong>
             </span>
           </div>
         </div>
 
-        {/* Action Button: Generate Rekomendasi Backlog */}
-        {canEdit && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={generatingBacklog}
-            onClick={handleGenerateBacklog}
-            className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-xs font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs"
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/pdf/mv-report/${timId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-2xs transition-colors"
           >
-            {generatingBacklog ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5 text-[#F0C24B]" />
-            )}
-            <span>{generatingBacklog ? "Menghasilkan Backlog..." : "✨ Generate Rekomendasi Backlog"}</span>
-          </Button>
-        )}
+            <Download className="h-3.5 w-3.5 text-[#0B3D2E]" />
+            <span>📄 Unduh PDF Laporan MV</span>
+          </a>
+
+          {canEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={generatingBacklog}
+              onClick={handleGenerateBacklog}
+              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-xs font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs"
+            >
+              {generatingBacklog ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-[#F0C24B]" />
+              )}
+              <span>{generatingBacklog ? "Menghasilkan..." : "✨ Generate Rekomendasi Backlog"}</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="plan" className="w-full">
@@ -1562,11 +1628,6 @@ export function MarketValidationClient({
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
-                            {poCharterName
-                              ? "Nama terdaftar di Innovation Charter"
-                              : "Belum ditentukan di Charter"}
-                          </div>
                         </>
                       )}
                     </div>
@@ -1657,11 +1718,6 @@ export function MarketValidationClient({
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
-                            {coachCharterName
-                              ? "Nama terdaftar di Innovation Charter"
-                              : "Belum ditentukan di Charter"}
-                          </div>
                         </>
                       )}
                     </div>
@@ -1751,11 +1807,6 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
-                          </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
-                            {promotorCharterName
-                              ? "Nama terdaftar di Innovation Charter"
-                              : "Belum ditentukan di Charter"}
                           </div>
                         </>
                       )}
@@ -1864,23 +1915,56 @@ export function MarketValidationClient({
         </TabsContent>
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* TAB 3: PMF & GO/NO-GO REPORT */}
+        {/* TAB 3: PMF & GO/NO-GO REPORT (TEMPLATE 3.2 LENGKAP) */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="report" className="space-y-4 mt-4">
-          <form onSubmit={handleSaveReport} className="space-y-4">
-            <Card className="rounded-2xl border-gray-200">
-              <CardHeader>
-                <CardTitle className="text-base font-bold">
-                  Laporan Hasil Pasar &amp; Keputusan Go / No-Go FMI
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Evaluasi ketercapaian Product-Market Fit (PMF) dan kesiapan sidang Forum Manajemen Inovasi
-                </CardDescription>
+        <TabsContent value="report" className="space-y-5 mt-4">
+          <form onSubmit={handleSaveReport} className="space-y-5">
+            {/* ── 1. Ringkasan Rilis & Operasional MVP (Read-Only dari Kartu MVP Release) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                      <Rocket className="h-4 w-4 text-[#3E9463]" />
+                      <span>1. Ringkasan Rilis &amp; Operasional MVP Pilot</span>
+                    </CardTitle>
+                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                      Data hasil peluncuran MVP di lapangan (tersinkronisasi dari kartu Kanban "MVP Release").
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50">
+                    Template 3.2
+                  </Badge>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-gray-50/70 rounded-xl border border-gray-200">
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase block">Versi MVP</span>
+                    <span className="text-xs font-extrabold text-gray-900">
+                      {initialData?.report?.mvpVersionDilaporkan || initialData?.plan?.mvpVersion || "v1.0-pilot"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase block">Periode Rilis</span>
+                    <span className="text-xs font-extrabold text-gray-900">
+                      {formatDateIndo(initialData?.report?.periodeRilisMulai || initialData?.plan?.periodeReleaseMulai)} s.d.{" "}
+                      {formatDateIndo(initialData?.report?.periodeRilisSelesai || initialData?.plan?.periodeReleaseSelesai)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase block">Lokasi / Channel Rilis</span>
+                    <span className="text-xs font-extrabold text-gray-900">
+                      {initialData?.report?.lokasiChannelRilis || initialData?.plan?.channelRelease || "-"}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-700">Pengguna Aktif Aktual</label>
+                    <label className="text-xs font-semibold text-gray-700">
+                      Pengguna Aktif Aktual (Adopters)
+                    </label>
                     <Input
                       disabled={!canEdit}
                       type="number"
@@ -1891,21 +1975,23 @@ export function MarketValidationClient({
                           jumlahEarlyAdoptersAktual: Number(e.target.value),
                         })
                       }
-                      className="disabled:bg-gray-50"
+                      className="text-xs font-bold"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-700">Keputusan Go / No-Go</label>
+                    <label className="text-xs font-semibold text-gray-700">
+                      Keputusan Go / No-Go (Gerbang FMI)
+                    </label>
                     <select
                       disabled={!canEdit}
-                      className="w-full h-10 px-3 py-2 text-xs bg-white border border-gray-300 rounded-lg disabled:bg-gray-50"
+                      className="w-full h-9 px-3 text-xs bg-white border border-gray-300 rounded-lg font-bold"
                       value={reportForm.keputusanGoNogo}
                       onChange={(e) =>
                         setReportForm({ ...reportForm, keputusanGoNogo: e.target.value })
                       }
                     >
-                      <option value="go_ke_fmi">🟢 GO — Lanjut ke Forum Manajemen Inovasi (FMI)</option>
+                      <option value="go_ke_fmi">🟢 GO — Lanjut ke Sidang Forum Manajemen Inovasi (FMI)</option>
                       <option value="iterasi_mvp">🟡 ITERASI — Lakukan sprint perbaikan MVP</option>
                       <option value="hold">⏸️ HOLD — Tunda keputusan</option>
                       <option value="stop">🔴 STOP — Dihentikan</option>
@@ -1925,7 +2011,7 @@ export function MarketValidationClient({
                     onChange={(e) =>
                       setReportForm({ ...reportForm, ringkasanAktivitasRilis: e.target.value })
                     }
-                    className="disabled:bg-gray-50"
+                    className="text-xs leading-relaxed"
                   />
                 </div>
 
@@ -1941,10 +2027,349 @@ export function MarketValidationClient({
                     onChange={(e) =>
                       setReportForm({ ...reportForm, kendalaUtama: e.target.value })
                     }
-                    className="disabled:bg-gray-50"
+                    className="text-xs"
                   />
                 </div>
+              </CardContent>
+            </Card>
 
+            {/* ── 2. Log Aktivitas Rilis & Evidence (Read-Only dari mvReleaseLog) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <History className="h-4 w-4 text-[#3E9463]" />
+                  <span>2. Log Aktivitas Rilis &amp; Evidence (Release Log)</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Riwayat tanggal, output, dan evidence kegiatan peluncuran MVP.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {releaseLogs.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2.5 w-[110px]">Tanggal</th>
+                          <th className="p-2.5 w-[200px]">Aktivitas</th>
+                          <th className="p-2.5 w-[160px]">Output</th>
+                          <th className="p-2.5 w-[160px]">Data / Evidence</th>
+                          <th className="p-2.5 w-[100px]">PIC</th>
+                          <th className="p-2.5">Catatan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {releaseLogs.map((log: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50/70">
+                            <td className="p-2.5 font-mono text-[11px]">{formatDateIndo(log.tanggal)}</td>
+                            <td className="p-2.5 font-bold text-gray-900">{log.aktivitas}</td>
+                            <td className="p-2.5 text-gray-700">{log.output || "-"}</td>
+                            <td className="p-2.5 text-gray-700">{log.dataEvidence || "-"}</td>
+                            <td className="p-2.5 text-gray-700">{log.pic || "-"}</td>
+                            <td className="p-2.5 text-gray-500">{log.catatan || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                    Belum ada release log yang disimpan dari kartu Kanban "MVP Release".
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 3. Sprint Review — Outcome (Read-Only dari sprintReview) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-[#3E9463]" />
+                  <span>3. Sprint Review — Outcome</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Demonstrasi luaran, feedback reviewer, dan value yang dihasilkan pada sprint Market Validation.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {sprintReviews.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2.5 w-[100px]">Sprint / Tgl</th>
+                          <th className="p-2.5 w-[180px]">Demo / Deliverable</th>
+                          <th className="p-2.5 w-[180px]">Feedback Reviewer</th>
+                          <th className="p-2.5 w-[160px]">Value Dihasilkan</th>
+                          <th className="p-2.5 w-[140px]">Learning</th>
+                          <th className="p-2.5">Questions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {sprintReviews.map((sr: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50/70">
+                            <td className="p-2.5">
+                              <span className="font-bold text-[#0B3D2E] block">Sprint {sr.sprintNumber}</span>
+                              <span className="text-[10px] text-gray-400 font-mono">
+                                {formatDateIndo(sr.tanggalReview)}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-gray-800">{sr.demo || sr.demoOutput || "-"}</td>
+                            <td className="p-2.5 text-gray-800">{sr.feedback || sr.ringkasanPencapaian || "-"}</td>
+                            <td className="p-2.5 text-gray-800 font-semibold">{sr.value || "-"}</td>
+                            <td className="p-2.5 text-gray-600">{sr.pembelajaran || "-"}</td>
+                            <td className="p-2.5 text-gray-600">{sr.questions || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                    Belum ada data Sprint Review. Lengkapi review saat menyelesaikan sprint di Tab Backlog &amp; Sprint.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 4. Sprint Review — Backlog (Read-Only dari allTeamCards) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <KanbanSquare className="h-4 w-4 text-[#3E9463]" />
+                  <span>4. Sprint Review — Backlog</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Daftar backlog kartu kerja yang diverifikasi dan diselesaikan pada iterasi Market Validation.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {allTeamCards.filter((c: any) => c.tahap === "market_validation" && c.sprintNumber).length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2.5 w-[80px]">Sprint</th>
+                          <th className="p-2.5 w-[250px]">Backlog yang Diverifikasi</th>
+                          <th className="p-2.5 w-[110px]">Status</th>
+                          <th className="p-2.5 w-[200px]">Acceptance Criteria / Hasil</th>
+                          <th className="p-2.5">Owner</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {allTeamCards
+                          .filter((c: any) => c.tahap === "market_validation" && c.sprintNumber)
+                          .map((card: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-gray-50/70">
+                              <td className="p-2.5 font-bold text-[#0B3D2E]">Sprint {card.sprintNumber}</td>
+                              <td className="p-2.5 font-bold text-gray-900">{card.judul}</td>
+                              <td className="p-2.5">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                    card.statusKolom === "Done"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-amber-100 text-amber-800"
+                                  }`}
+                                >
+                                  {card.statusKolom}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-gray-600">{card.acceptanceCriteria || "-"}</td>
+                              <td className="p-2.5 text-gray-500">{card.ownerAnggotaId || "Team"}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                    Belum ada backlog yang dialokasikan pada sprint Market Validation.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 5. Sprint Retrospective (Read-Only dari sprintReview) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-[#3E9463]" />
+                  <span>5. Sprint Retrospective</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Pembelajaran tim secara kualitatif: Hal yang dilanjutkan (Continue), dihentikan (Stop), dan dimulai (Start).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {sprintReviews.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2.5 w-[80px]">Sprint</th>
+                          <th className="p-2.5 w-[220px]">Continue (Pertahankan)</th>
+                          <th className="p-2.5 w-[200px]">Stop (Hentikan)</th>
+                          <th className="p-2.5 w-[200px]">Start (Mulai Baru)</th>
+                          <th className="p-2.5">Owner / Target Next Sprint</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {sprintReviews.map((sr: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50/70">
+                            <td className="p-2.5 font-bold text-[#0B3D2E]">Sprint {sr.sprintNumber}</td>
+                            <td className="p-2.5 text-emerald-800">{sr.continueItems || "-"}</td>
+                            <td className="p-2.5 text-red-800">{sr.stopItems || "-"}</td>
+                            <td className="p-2.5 text-amber-800">{sr.startItems || "-"}</td>
+                            <td className="p-2.5 text-gray-700 font-semibold">{sr.ownerTargetSprint || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                    Belum ada data Retrospective sprint.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 6. Hasil Pengukuran DFV dan Traction (9 Baris Tetap dari hasilMetrik) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-[#3E9463]" />
+                  <span>6. Hasil Pengukuran DFV dan Traction (9 Parameter Baku)</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Capaian aktual metrik Desirability, Feasibility, dan Viability hasil uji coba pasar.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {hasilMetrik.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2.5 w-[110px]">Validasi</th>
+                          <th className="p-2.5 w-[180px]">Metrik</th>
+                          <th className="p-2.5 w-[110px]">Target</th>
+                          <th className="p-2.5 w-[110px]">Hasil Aktual</th>
+                          <th className="p-2.5 w-[90px] text-center">% Capai</th>
+                          <th className="p-2.5 w-[90px] text-center">Status</th>
+                          <th className="p-2.5">Learning / Enhancement</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {hasilMetrik.map((m: any, idx: number) => {
+                          const isLolos = m.status === "lolos" || (m.persenTercapai && m.persenTercapai >= 70);
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50/70">
+                              <td className="p-2.5 font-bold text-gray-700">{m.validasi}</td>
+                              <td className="p-2.5 font-semibold text-gray-900">{m.metrik}</td>
+                              <td className="p-2.5 text-gray-600">{m.target || "-"}</td>
+                              <td className="p-2.5 font-bold text-gray-900">{m.hasilAktual || "-"}</td>
+                              <td className="p-2.5 text-center font-bold">
+                                {m.persenTercapai !== null ? `${m.persenTercapai}%` : "-"}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <Badge
+                                  className={
+                                    isLolos
+                                      ? "bg-emerald-100 text-emerald-800 border-none text-[10px]"
+                                      : "bg-amber-100 text-amber-800 border-none text-[10px]"
+                                  }
+                                >
+                                  {isLolos ? "Lolos" : "Belum"}
+                                </Badge>
+                              </td>
+                              <td className="p-2.5 text-gray-600 text-[11px]">{m.learning || m.enhancement || "-"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                    Hasil pengukuran DFV belum diisi dari kartu Kanban "Market Testing (ukur metrik DFV)".
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 7. Rekapitulasi Ketercapaian DFV (3 Baris Tetap dari dfv) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <Table2 className="h-4 w-4 text-[#3E9463]" />
+                  <span>7. Rekapitulasi Ketercapaian DFV</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Rata-rata persentase capaian per dimensi validasi terhadap threshold standar (70%).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {dfvRekapitulasi.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2.5 w-[160px]">Kategori DFV</th>
+                          <th className="p-2.5 w-[130px] text-center">Rata-Rata Capai</th>
+                          <th className="p-2.5 w-[110px] text-center">Threshold</th>
+                          <th className="p-2.5 w-[120px] text-center">Status Kelolosan</th>
+                          <th className="p-2.5">Catatan Keputusan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {dfvRekapitulasi.map((r: any, idx: number) => {
+                          const isLolos = r.status === "lolos" || r.rataRataKetercapaian >= (r.threshold || 70);
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50/70">
+                              <td className="p-2.5 font-bold text-gray-900">{r.kategoriDfv}</td>
+                              <td className="p-2.5 text-center font-extrabold text-gray-900">
+                                {r.rataRataKetercapaian}%
+                              </td>
+                              <td className="p-2.5 text-center text-gray-500">{r.threshold || 70}%</td>
+                              <td className="p-2.5 text-center">
+                                <Badge
+                                  className={
+                                    isLolos
+                                      ? "bg-emerald-100 text-emerald-800 border-none text-[10px]"
+                                      : "bg-amber-100 text-amber-800 border-none text-[10px]"
+                                  }
+                                >
+                                  {isLolos ? "Lolos" : "Belum Lolos"}
+                                </Badge>
+                              </td>
+                              <td className="p-2.5 text-gray-600">{r.catatanKeputusan || "-"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                    Rekapitulasi DFV belum diisi dari kartu Kanban "Analisis hasil &amp; isi Laporan MV".
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 8. Evaluasi PMF & Rencana Tindak Lanjut ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-[#3E9463]" />
+                  <span>8. Evaluasi Product-Market Fit &amp; Rekomendasi Sidang FMI</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Kesimpulan kualitatif kesesuaian produk terhadap kebutuhan pasar dan masukan promotor inovasi.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700">
                     Kesimpulan Product-Market Fit (PMF)
@@ -1957,13 +2382,47 @@ export function MarketValidationClient({
                     onChange={(e) =>
                       setReportForm({ ...reportForm, kesimpulanPmf: e.target.value })
                     }
-                    className="disabled:bg-gray-50"
+                    className="text-xs"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Rekomendasi Iterasi
+                    </label>
+                    <Textarea
+                      disabled={!canEdit}
+                      rows={2}
+                      placeholder="Hal-hal yang perlu disempurnakan pada fitur atau proses..."
+                      value={reportForm.rekomendasiIterasi}
+                      onChange={(e) =>
+                        setReportForm({ ...reportForm, rekomendasiIterasi: e.target.value })
+                      }
+                      className="text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Rencana MVP Tahap Berikutnya
+                    </label>
+                    <Textarea
+                      disabled={!canEdit}
+                      rows={2}
+                      placeholder="Rencana perluasan skala rilis atau scaling operasional..."
+                      value={reportForm.rencanaMvpBerikutnya}
+                      onChange={(e) =>
+                        setReportForm({ ...reportForm, rencanaMvpBerikutnya: e.target.value })
+                      }
+                      className="text-xs"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700">
-                    Rekomendasi Promotor / Sponsor
+                    Rekomendasi Promotor / Sponsor Inovasi
                   </label>
                   <Textarea
                     disabled={!canEdit}
@@ -1976,25 +2435,312 @@ export function MarketValidationClient({
                         rekomendasiPromotorSponsor: e.target.value,
                       })
                     }
-                    className="disabled:bg-gray-50"
+                    className="text-xs"
                   />
                 </div>
               </CardContent>
             </Card>
 
+            {/* ── 9. Lembar Pengesahan Laporan MV (3 Pihak: PO, Coach, Promotor) ── */}
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <Stamp className="h-4 w-4 text-[#3E9463]" />
+                  <span>9. Lembar Pengesahan Laporan Market Validation</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                  Pengesahan formal hasil pasar untuk prasyarat maju ke sidang Forum Manajemen Inovasi (FMI).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 1. Project Owner */}
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                        Disusun Oleh (PO)
+                      </span>
+                      {reportTtdDisusun?.status === "signed" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Ditandatangani</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Ditandatangani
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs">
+                      {reportTtdDisusun?.status === "signed" ? (
+                        <>
+                          <div className="font-bold text-gray-900">{reportTtdDisusun.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{reportTtdDisusun.jabatan || "Project Owner"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{reportTtdDisusun.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {reportTtdDisusun.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={reportTtdDisusun.signatureImage}
+                                alt="Tanda Tangan PO"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {reportTtdDisusun.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(reportTtdDisusun.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {poCharterName || "( Project Owner )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>Project Owner</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>PT Pegadaian</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {reportTtdDisusun?.status === "signed" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={reportSigningRole === "po"}
+                          onClick={() => handleRevokeReportSignature("po")}
+                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          <span>Batalkan Tanda Tangan</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={reportSigningRole === "po"}
+                          onClick={() => openReportSignModal("po")}
+                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                        >
+                          <Stamp className="h-3.5 w-3.5 mr-1" />
+                          <span>Tandatangani sbg PO</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Innovation Coach */}
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                        Diperiksa Oleh (Coach)
+                      </span>
+                      {reportTtdDiperiksa?.status === "signed" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Ditandatangani</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Ditandatangani
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs">
+                      {reportTtdDiperiksa?.status === "signed" ? (
+                        <>
+                          <div className="font-bold text-gray-900">{reportTtdDiperiksa.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{reportTtdDiperiksa.jabatan || "Innovation Coach"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{reportTtdDiperiksa.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {reportTtdDiperiksa.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={reportTtdDiperiksa.signatureImage}
+                                alt="Tanda Tangan Coach"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {reportTtdDiperiksa.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(reportTtdDiperiksa.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {coachCharterName || "( Innovation Coach )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>Innovation Coach</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>PT Pegadaian</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {reportTtdDiperiksa?.status === "signed" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={reportSigningRole === "coach"}
+                          onClick={() => handleRevokeReportSignature("coach")}
+                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          <span>Batalkan Tanda Tangan</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={reportSigningRole === "coach"}
+                          onClick={() => openReportSignModal("coach")}
+                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                        >
+                          <Stamp className="h-3.5 w-3.5 mr-1" />
+                          <span>Tandatangani sbg Coach</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. Promotor Inovasi */}
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                        Disetujui Oleh (Promotor)
+                      </span>
+                      {reportTtdDisetujui?.status === "approved" || reportTtdDisetujui?.status === "signed" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Disetujui</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Disetujui
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-xs">
+                      {reportTtdDisetujui?.status === "approved" || reportTtdDisetujui?.status === "signed" ? (
+                        <>
+                          <div className="font-bold text-gray-900">{reportTtdDisetujui.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{reportTtdDisetujui.jabatan || "Promotor Inovasi"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{reportTtdDisetujui.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {reportTtdDisetujui.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={reportTtdDisetujui.signatureImage}
+                                alt="Tanda Tangan Promotor"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {reportTtdDisetujui.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(reportTtdDisetujui.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {promotorCharterName || "( Promotor Inovasi )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>Promotor Inovasi</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>PT Pegadaian</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {reportTtdDisetujui?.status === "approved" || reportTtdDisetujui?.status === "signed" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={reportSigningRole === "promotor"}
+                          onClick={() => handleRevokeReportSignature("promotor")}
+                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          <span>Batalkan Persetujuan</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={reportSigningRole === "promotor"}
+                          onClick={() => openReportSignModal("promotor")}
+                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                        >
+                          <Stamp className="h-3.5 w-3.5 mr-1" />
+                          <span>Setujui sbg Promotor</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submit Button */}
             {canEdit && (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white gap-2 h-10 px-6 rounded-xl font-bold text-xs"
+                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs cursor-pointer active:scale-98 transition-all"
                 >
                   {saving ? (
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                   ) : (
                     <Save className="h-4 w-4 text-[#F0C24B]" />
                   )}
-                  <span>{saving ? "Menyimpan..." : "Simpan PMF Report"}</span>
+                  <span>{saving ? "Menyimpan..." : "Simpan Laporan Market Validation"}</span>
                 </Button>
               </div>
             )}
@@ -2012,14 +2758,14 @@ export function MarketValidationClient({
         userName={sigModal.userName}
       />
 
-      {/* Signature Pad Modal for Report Approval */}
+      {/* Signature Pad Modal for MVP Report */}
       <SignaturePadModal
-        isOpen={isSigModalReportOpen}
-        onClose={() => setIsSigModalReportOpen(false)}
+        isOpen={reportSigModal.isOpen}
+        onClose={() => setReportSigModal((prev) => ({ ...prev, isOpen: false }))}
         onSave={handleSaveReportSignature}
-        title="Persetujuan Formal Laporan Market Validation — Promotor Inovasi"
-        roleName="Promotor Inovasi"
-        userName={promotorCharterName || currentUser?.nama}
+        title={`Tanda Tangan Digital Laporan MV — ${reportSigModal.roleName}`}
+        roleName={reportSigModal.roleName}
+        userName={reportSigModal.userName}
       />
     </div>
   );

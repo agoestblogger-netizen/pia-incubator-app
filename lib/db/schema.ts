@@ -132,6 +132,38 @@ export const sprintLog = pgTable('sprint_log', {
   index('sprint_log_tim_idx').on(t.timInovatorId),
 ]);
 
+export const sprintReview = pgTable('sprint_review', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sprintId: uuid('sprint_id').notNull().references(() => sprint.id, { onDelete: 'cascade' }),
+  timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  sprintNumber: integer('sprint_number').notNull(),
+  tanggalReview: timestamp('tanggal_review', { withTimezone: true }).notNull().defaultNow(),
+
+  // Kolom ringkasan umum (Paket 24c):
+  ringkasanPencapaian: text('ringkasan_pencapaian'),
+  demoOutput: text('demo_output'),
+  kendalaBlocker: text('kendala_blocker'),
+  pembelajaran: text('pembelajaran'),
+  rencanaTindakLanjut: text('rencana_tindak_lanjut'),
+
+  // Kolom resmi Template 3.2 (Paket 21c):
+  demo: text('demo'),
+  feedback: text('feedback'),
+  value: text('value'),
+  questions: text('questions'),
+  evidence: jsonb('evidence').notNull().default(sql`'[]'`),
+  continueItems: text('continue_items'),
+  stopItems: text('stop_items'),
+  startItems: text('start_items'),
+  ownerTargetSprint: text('owner_target_sprint'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('sprint_review_tim_idx').on(t.timInovatorId),
+  index('sprint_review_sprint_idx').on(t.sprintId),
+]);
+
 export const kanbanColumn = pgTable('kanban_column', {
   id: uuid('id').primaryKey().defaultRandom(),
   timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),

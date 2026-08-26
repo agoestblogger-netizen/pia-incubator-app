@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { sprint, sprintLog, kanbanCard, customerValidationPlan } from "@/lib/db/schema";
+import { sprint, sprintLog, kanbanCard, customerValidationPlan, sprintReview } from "@/lib/db/schema";
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
@@ -316,7 +316,26 @@ export async function startSprintAction(
 export async function completeSprintAction(
   timId: string,
   sprintId: string,
-  cardMovements?: Array<{ cardId: string; destination: "backlog" | "next_sprint"; nextSprintNumber?: number | null }>
+  cardMovements?: Array<{
+    cardId: string;
+    destination: "backlog" | "next_sprint";
+    nextSprintNumber?: number | null;
+  }>,
+  reviewData?: {
+    demo?: string | null;
+    feedback?: string | null;
+    value?: string | null;
+    questions?: string | null;
+    evidence?: any;
+    continueItems?: string | null;
+    stopItems?: string | null;
+    startItems?: string | null;
+    ownerTargetSprint?: string | null;
+    ringkasanPencapaian?: string | null;
+    pembelajaran?: string | null;
+    kendalaBlocker?: string | null;
+    rencanaTindakLanjut?: string | null;
+  }
 ) {
   try {
     const user = await getCurrentUser();
@@ -366,16 +385,49 @@ export async function completeSprintAction(
       })
       .where(eq(sprint.id, sprintId));
 
+    // Save Sprint Review if reviewData provided
+    if (reviewData) {
+      const [existingReview] = await db
+        .select()
+        .from(sprintReview)
+        .where(eq(sprintReview.sprintId, sprintId))
+        .limit(1);
+
+      if (existingReview) {
+        await db
+          .update(sprintReview)
+          .set({
+            ...reviewData,
+            updatedAt: new Date(),
+          })
+          .where(eq(sprintReview.id, existingReview.id));
+      } else {
+        await db.insert(sprintReview).values({
+          sprintId,
+          timInovatorId: timId,
+          sprintNumber: targetSprint.nomorSprint,
+          ...reviewData,
+        });
+      }
+    }
+
     await logAudit({
       userId: user.id,
       userName: user.nama,
       action: "SPRINT_COMPLETE",
       entity: "sprint",
       entityId: sprintId,
-      details: { timId, nomorSprint: targetSprint.nomorSprint, cardMovementsCount: cardMovements?.length || 0 },
+      details: {
+        timId,
+        nomorSprint: targetSprint.nomorSprint,
+        cardMovementsCount: cardMovements?.length || 0,
+        hasReviewData: !!reviewData,
+      },
     });
 
     revalidatePath(`/tim/${timId}/kanban`);
+    revalidatePath(`/tim/${timId}/market-validation`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
     revalidatePath(`/tim/${timId}/overview`);
     revalidatePath(`/dashboard`);
     return { success: true };

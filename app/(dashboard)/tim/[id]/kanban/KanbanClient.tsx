@@ -655,6 +655,14 @@ export function KanbanClient({
   const [incompleteCardsDestinations, setIncompleteCardsDestinations] = useState<
     Record<string, "backlog" | "next_sprint">
   >({});
+  const [reviewDemo, setReviewDemo] = useState("");
+  const [reviewFeedback, setReviewFeedback] = useState("");
+  const [reviewValue, setReviewValue] = useState("");
+  const [reviewQuestions, setReviewQuestions] = useState("");
+  const [reviewContinue, setReviewContinue] = useState("");
+  const [reviewStop, setReviewStop] = useState("");
+  const [reviewStart, setReviewStart] = useState("");
+  const [reviewOwnerTarget, setReviewOwnerTarget] = useState("");
 
   // Sprint Count Dialog State
   const [isSprintCountModalOpen, setIsSprintCountModalOpen] = useState(false);
@@ -3727,10 +3735,10 @@ export function KanbanClient({
 
           <div className="space-y-4 py-2 text-xs">
             {incompleteCardsInCurrentSprint.length === 0 ? (
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
                 <p className="font-bold">🎉 Luar Biasa!</p>
                 <p className="text-[11px] text-emerald-800">
-                  Semua kartu kerja pada Sprint {currentSprintObj?.nomorSprint} telah berstatus <strong>Done</strong>. Anda dapat langsung menyelesaikan sprint ini.
+                  Semua kartu kerja pada Sprint {currentSprintObj?.nomorSprint} telah berstatus <strong>Done</strong>.
                 </p>
               </div>
             ) : (
@@ -3745,11 +3753,11 @@ export function KanbanClient({
                   </p>
                 </div>
 
-                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
                   {incompleteCardsInCurrentSprint.map((card) => (
                     <div
                       key={card.id}
-                      className="p-2.5 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between gap-3"
+                      className="p-2 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between gap-3"
                     >
                       <div className="space-y-0.5 overflow-hidden">
                         <p className="font-bold text-gray-900 truncate">{card.judul}</p>
@@ -3759,7 +3767,7 @@ export function KanbanClient({
                       </div>
 
                       <select
-                        className="text-xs bg-white border border-gray-200 rounded-lg p-1.5 font-semibold text-gray-700 shrink-0"
+                        className="text-xs bg-white border border-gray-200 rounded-lg p-1 font-semibold text-gray-700 shrink-0"
                         value={incompleteCardsDestinations[card.id] || "backlog"}
                         onChange={(e) => {
                           const val = e.target.value as "backlog" | "next_sprint";
@@ -3779,6 +3787,134 @@ export function KanbanClient({
                 </div>
               </div>
             )}
+
+            {/* ══ Sprint Review & Retrospective Form (Template 3.2) ══ */}
+            <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
+              <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+                <div>
+                  <h4 className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Sprint Review &amp; Retrospective (Template 3.2)</span>
+                  </h4>
+                  <p className="text-[10px] text-blue-700">
+                    Data ini otomatis mengalir ke Laporan Market Validation.
+                  </p>
+                </div>
+              </div>
+
+              {/* Review Section */}
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-800 block">
+                    Demo / Fitur yang Didemonstrasikan
+                  </label>
+                  <Textarea
+                    rows={2}
+                    placeholder="Apa saja luaran/fitur yang didemokan ke stakeholder..."
+                    value={reviewDemo}
+                    onChange={(e) => setReviewDemo(e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-800 block">
+                      Feedback Reviewer
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Umpan balik dari Coach / SME / User..."
+                      value={reviewFeedback}
+                      onChange={(e) => setReviewFeedback(e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-gray-800 block">
+                      Value / Dampak yang Dihasilkan
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Nilai tambah atau capaian sprint ini..."
+                      value={reviewValue}
+                      onChange={(e) => setReviewValue(e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-800 block">
+                    Questions (Pertanyaan Terbuka untuk Sprint Berikutnya)
+                  </label>
+                  <Input
+                    placeholder="Pertanyaan strategis atau hal yang masih perlu dijawab..."
+                    value={reviewQuestions}
+                    onChange={(e) => setReviewQuestions(e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Retrospective Section */}
+              <div className="pt-2 border-t border-blue-200 space-y-2">
+                <span className="text-[11px] font-extrabold text-blue-900 block uppercase tracking-wide">
+                  Retrospective (Continue / Stop / Start)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-emerald-800 block">
+                      Continue (Pertahankan)
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Praktik baik yang dilanjutkan..."
+                      value={reviewContinue}
+                      onChange={(e) => setReviewContinue(e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-red-800 block">
+                      Stop (Hentikan)
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Hambatan/kebiasaan yang dihentikan..."
+                      value={reviewStop}
+                      onChange={(e) => setReviewStop(e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-amber-800 block">
+                      Start (Mulai Baru)
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Inisiatif baru di sprint depan..."
+                      value={reviewStart}
+                      onChange={(e) => setReviewStart(e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-700 block">
+                    Owner / Target Sprint Tindak Lanjut
+                  </label>
+                  <Input
+                    placeholder="PIC / Target sprint berikutnya..."
+                    value={reviewOwnerTarget}
+                    onChange={(e) => setReviewOwnerTarget(e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="pt-2">
@@ -3799,7 +3935,7 @@ export function KanbanClient({
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5"
             >
               {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              <span>Konfirmasi Selesaikan Sprint</span>
+              <span>Konfirmasi &amp; Simpan Sprint Review</span>
             </Button>
           </DialogFooter>
         </DialogContent>

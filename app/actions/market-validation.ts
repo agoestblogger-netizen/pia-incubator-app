@@ -16,8 +16,10 @@ import {
   kanbanCard,
   kanbanSubtask,
   sprint,
+  sprintReview,
+  hasilValidasiMetrik,
 } from "@/lib/db/schema";
-import { eq, and, ne, inArray, desc } from "drizzle-orm";
+import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -48,6 +50,7 @@ export async function getMarketValidationData(timId: string) {
   let metrikRencana: any[] = [];
   let releaseLogs: any[] = [];
   let dfv: any[] = [];
+  let hasilMetrik: any[] = [];
 
   if (plan) {
     [report] = await db.select().from(marketValidationReport).where(eq(marketValidationReport.planId, plan.id)).limit(1);
@@ -65,11 +68,54 @@ export async function getMarketValidationData(timId: string) {
   }
 
   if (report) {
-    releaseLogs = await db.select().from(mvReleaseLog).where(eq(mvReleaseLog.reportId, report.id));
+    releaseLogs = await db.select().from(mvReleaseLog).where(eq(mvReleaseLog.reportId, report.id)).orderBy(asc(mvReleaseLog.tanggal));
     dfv = await db.select().from(dfvRekapitulasi).where(eq(dfvRekapitulasi.reportId, report.id));
+    hasilMetrik = await db
+      .select()
+      .from(hasilValidasiMetrik)
+      .where(
+        and(
+          eq(hasilValidasiMetrik.reportId, report.id),
+          eq(hasilValidasiMetrik.fase, "market_validation")
+        )
+      );
   }
 
   const teamMembers = await db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, timId));
+
+  // Ambil sprint review untuk sprint-sprint yang memiliki kartu ber-tag market_validation
+  const mvCards = await db
+    .select({ sprintNumber: kanbanCard.sprintNumber })
+    .from(kanbanCard)
+    .where(
+      and(
+        eq(kanbanCard.timInovatorId, timId),
+        eq(kanbanCard.tahap, "market_validation")
+      )
+    );
+
+  const mvSprintNumbers = Array.from(
+    new Set(mvCards.map((c) => c.sprintNumber).filter((s): s is number => s !== null && s !== undefined))
+  );
+
+  const sprintReviews = await db
+    .select()
+    .from(sprintReview)
+    .where(eq(sprintReview.timInovatorId, timId))
+    .orderBy(asc(sprintReview.sprintNumber));
+
+  // Filter atau sertakan semua sprint review (jika mvSprintNumbers kosong, ambil semua)
+  const filteredSprintReviews =
+    mvSprintNumbers.length > 0
+      ? sprintReviews.filter((sr) => mvSprintNumbers.includes(sr.sprintNumber))
+      : sprintReviews;
+
+  // Ambil kartu per sprint untuk Sprint Review - Backlog
+  const allTeamCards = await db
+    .select()
+    .from(kanbanCard)
+    .where(eq(kanbanCard.timInovatorId, timId))
+    .orderBy(asc(kanbanCard.urutan));
 
   return {
     tim,
@@ -82,6 +128,9 @@ export async function getMarketValidationData(timId: string) {
     teamMembers,
     releaseLogs,
     dfv,
+    hasilMetrik,
+    sprintReviews: filteredSprintReviews,
+    allTeamCards,
   };
 }
 
@@ -577,6 +626,154 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal membatalkan persetujuan Market Validation Report.' };
+  }
+}
+
+export async function signMvReportAction(
+  timId: string,
+  roleType: "po" | "coach" | "promotor",
+  signatureDataUrl: string
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    let [plan] = await db
+      .select()
+      .from(marketValidationPlan)
+      .where(eq(marketValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) {
+      const [newPlan] = await db
+        .insert(marketValidationPlan)
+        .values({ timInovatorId: timId })
+        .returning();
+      plan = newPlan;
+    }
+
+    let [report] = await db
+      .select()
+      .from(marketValidationReport)
+      .where(eq(marketValidationReport.planId, plan.id))
+      .limit(1);
+
+    if (!report) {
+      const [newReport] = await db
+        .insert(marketValidationReport)
+        .values({ planId: plan.id })
+        .returning();
+      report = newReport;
+    }
+
+    const [anggota] = await db
+      .select()
+      .from(anggotaTim)
+      .where(and(eq(anggotaTim.timInovatorId, timId), eq(anggotaTim.userId, user.id)))
+      .limit(1);
+
+    const processedImageUrl = await processMvSignatureImage(timId, signatureDataUrl);
+
+    const defaultJabatan =
+      roleType === "po"
+        ? "Project Owner"
+        : roleType === "coach"
+        ? "Innovation Coach"
+        : "Promotor Inovasi";
+
+    const signatureData = {
+      userId: user.id,
+      nama: user.nama,
+      jabatan: anggota?.jabatan || defaultJabatan,
+      unit: anggota?.unitKerja || "PT Pegadaian",
+      tanggal: new Date().toISOString(),
+      status: "signed",
+      signatureImage: processedImageUrl,
+    };
+
+    const updateField =
+      roleType === "po"
+        ? { ttdDisusun: signatureData }
+        : roleType === "coach"
+        ? { ttdDiperiksa: signatureData }
+        : { ttdDisetujui: signatureData };
+
+    await db
+      .update(marketValidationReport)
+      .set({
+        ...updateField,
+        updatedAt: new Date(),
+      })
+      .where(eq(marketValidationReport.id, report.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "MV_REPORT_SIGN",
+      entity: "market_validation_report",
+      entityId: report.id,
+      details: { timId, roleType, signer: user.nama },
+    });
+
+    revalidatePath(`/tim/${timId}/market-validation`);
+    return { success: true, signatureData };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menandatangani Laporan Market Validation." };
+  }
+}
+
+export async function revokeMvReportSignatureAction(
+  timId: string,
+  roleType: "po" | "coach" | "promotor"
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized." };
+
+    const [plan] = await db
+      .select()
+      .from(marketValidationPlan)
+      .where(eq(marketValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    if (!plan) return { success: false, error: "Plan tidak ditemukan." };
+
+    const [report] = await db
+      .select()
+      .from(marketValidationReport)
+      .where(eq(marketValidationReport.planId, plan.id))
+      .limit(1);
+
+    if (!report) return { success: false, error: "Laporan tidak ditemukan." };
+
+    const updateField =
+      roleType === "po"
+        ? { ttdDisusun: null }
+        : roleType === "coach"
+        ? { ttdDiperiksa: null }
+        : { ttdDisetujui: null };
+
+    await db
+      .update(marketValidationReport)
+      .set({
+        ...updateField,
+        updatedAt: new Date(),
+      })
+      .where(eq(marketValidationReport.id, report.id));
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: "MV_REPORT_REVOKE_SIGN",
+      entity: "market_validation_report",
+      entityId: report.id,
+      details: { timId, roleType, revokedBy: user.nama },
+    });
+
+    revalidatePath(`/tim/${timId}/market-validation`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal membatalkan tanda tangan." };
   }
 }
 
