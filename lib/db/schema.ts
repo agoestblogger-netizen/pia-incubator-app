@@ -236,6 +236,7 @@ export const kanbanSubtask = pgTable('kanban_subtask', {
   isDone: boolean('is_done').notNull().default(false),
   orderIndex: integer('order_index').notNull().default(0),
   assigneeUserId: uuid('assignee_user_id').references(() => users.id, { onDelete: 'set null' }), // PIC per-subtask (Paket 24b)
+  attachmentData: jsonb('attachment_data').$type<any[]>().default([]), // Lampiran bukti kerja per-subtask (Paket 24/Penyempurnaan Modal)
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

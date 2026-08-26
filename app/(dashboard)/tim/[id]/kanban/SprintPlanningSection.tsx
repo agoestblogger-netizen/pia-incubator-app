@@ -763,7 +763,7 @@ export function SprintPlanningSection({
                               <span>Estimasi Waktu (menit)</span>
                             </label>
                             <span className="text-[10px] font-extrabold text-[#8A6300] bg-[#FBF3DD] px-1.5 py-0.5 rounded border border-[#D4AF37]">
-                              ≈ {Number(currentSp.toFixed(2))} SP
+                              {currentMinutes} menit ({Number.isInteger(currentMinutes / 60) ? `${currentMinutes / 60} jam` : `${(currentMinutes / 60).toFixed(1)} jam`})
                             </span>
                           </div>
                           <Input
@@ -781,7 +781,7 @@ export function SprintPlanningSection({
                         <div>
                           <label className="text-[11px] font-bold text-gray-800 block mb-1 flex items-center gap-1.5">
                             <User className="h-3.5 w-3.5 text-[#3E9463]" />
-                            <span>Owner / PIC Anggota</span>
+                            <span>Koordinator / Penanggung Jawab Utama</span>
                           </label>
                           <select
                             value={currentOwnerId || ""}

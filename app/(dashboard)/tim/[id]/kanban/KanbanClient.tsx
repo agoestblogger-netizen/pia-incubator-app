@@ -21,6 +21,8 @@ import {
   deleteTaskSubtaskAction,
   updateTaskSubtaskTitleAction,
   updateTaskSubtaskHoursAction,
+  addSubtaskAttachmentAction,
+  deleteSubtaskAttachmentAction,
   getTaskCommentsAction,
   createTaskCommentAction,
   getTaskActivityLogsAction,
@@ -947,6 +949,157 @@ export function KanbanClient({
     }
   };
 
+  // Subtask Attachments State & Handlers (Bagian D & E)
+  const [activeSubtaskPopoverId, setActiveSubtaskPopoverId] = useState<string | null>(null);
+  const [subtaskUploadingId, setSubtaskUploadingId] = useState<string | null>(null);
+  const [subtaskLinkUrl, setSubtaskLinkUrl] = useState("");
+  const [subtaskLinkLabel, setSubtaskLinkLabel] = useState("");
+  const [addingSubtaskLink, setAddingSubtaskLink] = useState(false);
+  const [deletingSubtaskAttId, setDeletingSubtaskAttId] = useState<string | null>(null);
+
+  const handleUploadSubtaskFile = async (subtaskId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSubtaskUploadingId(subtaskId);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("timId", timId);
+      formData.append("contextType", "subtask");
+
+      const res = await fetch("/api/tasks/upload-attachment", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success && json.publicUrl) {
+        const attPayload = {
+          type: "file" as const,
+          name: file.name,
+          url: json.publicUrl,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+        const dbRes = await addSubtaskAttachmentAction(subtaskId, timId, attPayload);
+        if (dbRes.success && dbRes.data) {
+          setSubtasks((prev) =>
+            prev.map((s) =>
+              s.id === subtaskId ? { ...s, attachmentData: dbRes.data.attachmentData } : s
+            )
+          );
+          toast.success(`Bukti kerja "${file.name}" berhasil diunggah!`, "Bukti Tersimpan");
+        } else {
+          toast.error(dbRes.error || "Gagal menyimpan lampiran subtask.");
+        }
+      } else {
+        toast.error(json.message || "Gagal mengunggah berkas.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat mengunggah.");
+    } finally {
+      setSubtaskUploadingId(null);
+      e.target.value = "";
+    }
+  };
+
+  const handleAddSubtaskLink = async (subtaskId: string) => {
+    if (!subtaskLinkUrl.trim()) return;
+    setAddingSubtaskLink(true);
+    try {
+      const attPayload = {
+        type: "link" as const,
+        name: subtaskLinkLabel.trim() || subtaskLinkUrl.trim(),
+        url: subtaskLinkUrl.trim(),
+        uploadedAt: new Date().toISOString(),
+      };
+      const dbRes = await addSubtaskAttachmentAction(subtaskId, timId, attPayload);
+      if (dbRes.success && dbRes.data) {
+        setSubtasks((prev) =>
+          prev.map((s) =>
+            s.id === subtaskId ? { ...s, attachmentData: dbRes.data.attachmentData } : s
+          )
+        );
+        setSubtaskLinkUrl("");
+        setSubtaskLinkLabel("");
+        toast.success("Tautan bukti kerja berhasil ditambahkan!", "Tautan Tersimpan");
+      } else {
+        toast.error(dbRes.error || "Gagal menambah tautan subtask.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan.");
+    } finally {
+      setAddingSubtaskLink(false);
+    }
+  };
+
+  const handleDeleteSubtaskAttachment = async (subtaskId: string, attId: string) => {
+    setDeletingSubtaskAttId(attId);
+    try {
+      const dbRes = await deleteSubtaskAttachmentAction(subtaskId, timId, attId);
+      if (dbRes.success && dbRes.data) {
+        setSubtasks((prev) =>
+          prev.map((s) =>
+            s.id === subtaskId
+              ? { ...s, attachmentData: dbRes.data.attachmentData, isDone: dbRes.data.isDone }
+              : s
+          )
+        );
+        toast.success("Bukti kerja berhasil dihapus.");
+      } else {
+        toast.error(dbRes.error || "Gagal menghapus bukti kerja.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan.");
+    } finally {
+      setDeletingSubtaskAttId(null);
+    }
+  };
+
+  // Warning Nudge: Auto-Assign Koordinator dari Subtasks (Bagian F)
+  const subtasksWithPic = useMemo(
+    () => subtasks.filter((st) => Boolean(st.assigneeUserId)),
+    [subtasks]
+  );
+  const showCoordinatorWarning = subtasksWithPic.length > 0 && !detailOwnerAnggotaId;
+
+  const handleAutoAssignCoordinatorFromSubtasks = () => {
+    if (subtasksWithPic.length === 0) return;
+    const counts: Record<string, number> = {};
+    const firstSeenIndex: Record<string, number> = {};
+    subtasksWithPic.forEach((st, idx) => {
+      const uId = st.assigneeUserId!;
+      counts[uId] = (counts[uId] || 0) + 1;
+      if (firstSeenIndex[uId] === undefined) {
+        firstSeenIndex[uId] = idx;
+      }
+    });
+
+    let topUserId = subtasksWithPic[0].assigneeUserId!;
+    let maxCount = 0;
+    for (const uId of Object.keys(counts)) {
+      const c = counts[uId];
+      if (c > maxCount) {
+        maxCount = c;
+        topUserId = uId;
+      } else if (c === maxCount) {
+        if (firstSeenIndex[uId] < firstSeenIndex[topUserId]) {
+          topUserId = uId;
+        }
+      }
+    }
+
+    const targetMember = anggotaTim.find(
+      (a) => a.userId === topUserId || a.id === topUserId
+    );
+    if (targetMember) {
+      setDetailOwnerAnggotaId(targetMember.id);
+      toast.success(
+        `Koordinator otomatis diatur ke ${targetMember.nama}.`,
+        "Koordinator Ditetapkan"
+      );
+    }
+  };
+
 
   // Comments State
   const [comments, setComments] = useState<any[]>([]);
@@ -1382,6 +1535,16 @@ export function KanbanClient({
     const targetSprint =
       detailSprintNumber !== null ? detailSprintNumber : selectedSprintNum;
 
+    const totalSubtaskMinutes = subtasks.reduce(
+      (sum, st) => sum + ((st.estimatedHours || 0) * 60),
+      0
+    );
+    const effectiveStoryPoint =
+      subtasks.length > 0
+        ? Number((totalSubtaskMinutes / 60).toFixed(2))
+        : (detailStoryPoint ?? 3);
+    const effectiveEstimasiJam = Math.round(effectiveStoryPoint);
+
     // Case 1: Created from "+ Tambah Backlog"
     if (selectedCardForDetail.isNewBacklog) {
       if (selectedRefCardId) {
@@ -1394,8 +1557,8 @@ export function KanbanClient({
             judul: detailJudul,
             deskripsi: detailDeskripsi,
             acceptanceCriteria: detailAcceptanceCriteria,
-            estimasiJam: detailEstimasiJam,
-            storyPoint: detailStoryPoint ?? 3,
+            estimasiJam: effectiveEstimasiJam,
+            storyPoint: effectiveStoryPoint,
             ownerAnggotaId: detailOwnerAnggotaId,
           }
         );
@@ -1422,8 +1585,8 @@ export function KanbanClient({
           sprintNumber: targetSprint,
           statusKolom: detailStatusKolom || "To Do",
           ownerAnggotaId: detailOwnerAnggotaId,
-          estimasiJam: detailEstimasiJam,
-          storyPoint: detailStoryPoint ?? 3,
+          estimasiJam: effectiveEstimasiJam,
+          storyPoint: effectiveStoryPoint,
           label: detailLabel,
           tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
           tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
@@ -1455,8 +1618,8 @@ export function KanbanClient({
           judul: detailJudul,
           deskripsi: detailDeskripsi,
           acceptanceCriteria: detailAcceptanceCriteria,
-          estimasiJam: detailEstimasiJam,
-          storyPoint: detailStoryPoint ?? 3,
+          estimasiJam: effectiveEstimasiJam,
+          storyPoint: effectiveStoryPoint,
           ownerAnggotaId: detailOwnerAnggotaId,
         }
       );
@@ -1484,8 +1647,8 @@ export function KanbanClient({
         sprintNumber: detailSprintNumber,
         statusKolom: detailStatusKolom,
         ownerAnggotaId: detailOwnerAnggotaId,
-        estimasiJam: detailEstimasiJam,
-        storyPoint: detailStoryPoint ?? 3,
+        estimasiJam: effectiveEstimasiJam,
+        storyPoint: effectiveStoryPoint,
         label: detailLabel,
         tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
         tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
@@ -2646,117 +2809,319 @@ export function KanbanClient({
                               Belum ada subtask pada kartu ini.
                             </p>
                           ) : (
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                               {subtasks.map((st) => {
                                 const isEditingTitle = editingSubtaskId === st.id && editingSubtaskField === 'title';
                                 const isEditingHours = editingSubtaskId === st.id && editingSubtaskField === 'hours';
+                                const attachments = Array.isArray(st.attachmentData) ? st.attachmentData : [];
+                                const hasProof = attachments.length > 0;
+                                const isPopoverOpen = activeSubtaskPopoverId === st.id;
+
                                 return (
                                   <div
                                     key={st.id}
-                                    className="flex items-start justify-between gap-2.5 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-colors group"
+                                    className="p-2.5 rounded-xl bg-white border border-[#C9E4D0] hover:border-[#3E9463]/60 transition-all space-y-2 group shadow-2xs"
                                   >
-                                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                                      <button
-                                        type="button"
-                                        disabled={!canEdit || togglingSubtaskId === st.id || isEditingTitle}
-                                        onClick={() => !isEditingTitle && canEdit && handleToggleSubtask(st.id, st.isDone)}
-                                        className={`text-[#3E9463] focus:outline-none shrink-0 mt-0.5 ${canEdit && !isEditingTitle ? 'cursor-pointer' : 'cursor-default'}`}
-                                      >
-                                        {st.isDone ? (
-                                          <CheckSquare className="h-4 w-4 text-[#3E9463]" />
+                                    <div className="flex items-start justify-between gap-2.5">
+                                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                                        {/* Checkbox or Lock */}
+                                        {!hasProof ? (
+                                          <div
+                                            className="p-1 text-amber-700 bg-amber-50 rounded-md border border-amber-200 shrink-0 mt-0.5"
+                                            title="Checklist terkunci: Harap lampirkan bukti kerja terlebih dahulu"
+                                          >
+                                            <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                          </div>
                                         ) : (
-                                          <Square className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                                          <button
+                                            type="button"
+                                            disabled={!canEdit || togglingSubtaskId === st.id || isEditingTitle}
+                                            onClick={() => !isEditingTitle && canEdit && handleToggleSubtask(st.id, st.isDone)}
+                                            className={`text-[#3E9463] focus:outline-none shrink-0 mt-0.5 ${canEdit && !isEditingTitle ? 'cursor-pointer' : 'cursor-default'}`}
+                                            title={st.isDone ? "Tandai belum selesai" : "Tandai selesai"}
+                                          >
+                                            {st.isDone ? (
+                                              <CheckSquare className="h-4 w-4 text-[#3E9463]" />
+                                            ) : (
+                                              <Square className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                                            )}
+                                          </button>
                                         )}
-                                      </button>
-                                      {isEditingTitle ? (
-                                        <input
-                                          autoFocus
-                                          type="text"
-                                          value={editTitleDraft}
-                                          onChange={(e) => setEditTitleDraft(e.target.value)}
-                                          onBlur={() => handleSaveSubtaskTitle(st.id)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskTitle(st.id); }
-                                            if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
-                                          }}
-                                          className="text-xs leading-relaxed font-medium text-gray-900 flex-1 min-w-0 border border-[#3E9463] rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white"
-                                        />
-                                      ) : (
-                                        <span
-                                          onClick={() => { if (canEdit) handleStartEditTitle(st); }}
-                                          title={canEdit ? 'Klik untuk mengedit judul subtask' : undefined}
-                                          className={`text-xs break-words leading-relaxed whitespace-normal flex-1 ${
-                                            st.isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'
-                                          } ${canEdit ? 'cursor-text hover:text-[#0B3D2E]' : ''} transition-colors`}
-                                        >
-                                          {st.title}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                                      {/* PIC Subtask Dropdown (Paket 24b) */}
-                                      <select
-                                        value={st.assigneeUserId || ""}
-                                        disabled={!canEdit}
-                                        onChange={(e) => handleUpdateSubtaskAssignee(st.id, e.target.value || null)}
-                                        className="text-[10px] font-semibold bg-[#F0F7F1] border border-[#C9E4D0] hover:border-[#3E9463] rounded-md px-1.5 py-0.5 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#3E9463] max-w-[130px] truncate"
-                                        title={st.assigneeUserId ? `PIC: ${anggotaTim.find(a => a.userId === st.assigneeUserId)?.nama || "Ditugaskan"}` : "Pilih PIC Subtask"}
-                                      >
-                                        <option value="">👤 PIC</option>
-                                        {anggotaTim.filter(a => !!a.userId).map((a) => (
-                                          <option key={a.id} value={a.userId!}>
-                                            {a.nama}
-                                          </option>
-                                        ))}
-                                      </select>
 
-                                      {isEditingHours ? (
-                                        <div className="flex items-center gap-1">
-                                          <input
-                                            autoFocus
-                                            type="number"
-                                            min={0}
-                                            max={999}
-                                            value={editHoursDraft}
-                                            onChange={(e) => setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
-                                            onBlur={() => handleSaveSubtaskHours(st.id)}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskHours(st.id); }
-                                              if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
-                                            }}
-                                            className="text-[10px] font-bold w-14 text-center border border-[#3E9463] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white text-[#8A6300]"
-                                          />
-                                          <span className="text-[10px] text-gray-500 font-semibold">jam</span>
-                                        </div>
-                                      ) : (
-                                        <span
-                                          onClick={() => { if (canEdit) handleStartEditHours(st); }}
-                                          title={canEdit ? 'Klik untuk mengedit estimasi jam' : undefined}
-                                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
-                                            canEdit ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
-                                          } transition-colors`}
-                                        >
-                                          {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
-                                            ? `${st.estimatedHours} jam`
-                                            : canEdit ? '— jam' : ''}
-                                        </span>
-                                      )}
-                                      {canEdit && (
-                                        <button
-                                          type="button"
-                                          disabled={deletingSubtaskId === st.id}
-                                          onClick={() => handleDeleteSubtask(st.id)}
-                                          className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                                          title="Hapus subtask"
-                                        >
-                                          {deletingSubtaskId === st.id ? (
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                        <div className="flex-1 min-w-0">
+                                          {isEditingTitle ? (
+                                            <input
+                                              autoFocus
+                                              type="text"
+                                              value={editTitleDraft}
+                                              onChange={(e) => setEditTitleDraft(e.target.value)}
+                                              onBlur={() => handleSaveSubtaskTitle(st.id)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskTitle(st.id); }
+                                                if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
+                                              }}
+                                              className="text-xs leading-relaxed font-medium text-gray-900 w-full border border-[#3E9463] rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white"
+                                            />
                                           ) : (
-                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <span
+                                              onClick={() => { if (canEdit) handleStartEditTitle(st); }}
+                                              title={canEdit ? 'Klik untuk mengedit judul subtask' : undefined}
+                                              className={`text-xs break-words leading-relaxed whitespace-normal block ${
+                                                st.isDone
+                                                  ? 'line-through text-gray-400 font-normal'
+                                                  : !hasProof
+                                                  ? 'text-gray-500 font-normal'
+                                                  : 'text-gray-900 font-semibold'
+                                              } ${canEdit ? 'cursor-text hover:text-[#0B3D2E]' : ''} transition-colors`}
+                                            >
+                                              {st.title}
+                                            </span>
                                           )}
-                                        </button>
-                                      )}
+
+                                          {/* Keterangan Bukti Kerja */}
+                                          {!hasProof ? (
+                                            <span className="text-[10px] text-amber-700 font-medium block mt-0.5">
+                                              🔒 Belum ada bukti kerja — checklist terkunci sampai lampiran ditambahkan
+                                            </span>
+                                          ) : st.isDone ? (
+                                            <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">
+                                              ✓ Sudah ada bukti kerja ({attachments.length} lampiran)
+                                            </span>
+                                          ) : (
+                                            <span className="text-[10px] text-gray-500 font-medium block mt-0.5">
+                                              📎 {attachments.length} bukti kerja terlampir — siap dituntaskan
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                                        {/* PIC Subtask Dropdown (Lebar ~170px) */}
+                                        <select
+                                          value={st.assigneeUserId || ""}
+                                          disabled={!canEdit}
+                                          onChange={(e) => handleUpdateSubtaskAssignee(st.id, e.target.value || null)}
+                                          className="text-[10px] font-semibold bg-[#F0F7F1] border border-[#C9E4D0] hover:border-[#3E9463] rounded-md px-2 py-0.5 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#3E9463] w-[170px] min-w-[170px] max-w-[170px] truncate"
+                                          title={st.assigneeUserId ? `PIC: ${anggotaTim.find(a => a.userId === st.assigneeUserId)?.nama || "Ditugaskan"}` : "Pilih PIC Subtask"}
+                                        >
+                                          <option value="">👤 Pilih PIC...</option>
+                                          {anggotaTim.filter(a => !!a.userId).map((a) => (
+                                            <option key={a.id} value={a.userId!}>
+                                              {a.nama}
+                                            </option>
+                                          ))}
+                                        </select>
+
+                                        {/* Edit / View Jam Subtask */}
+                                        {isEditingHours ? (
+                                          <div className="flex items-center gap-1">
+                                            <input
+                                              autoFocus
+                                              type="number"
+                                              min={0}
+                                              max={999}
+                                              value={editHoursDraft}
+                                              onChange={(e) => setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))}
+                                              onBlur={() => handleSaveSubtaskHours(st.id)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtaskHours(st.id); }
+                                                if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
+                                              }}
+                                              className="text-[10px] font-bold w-14 text-center border border-[#3E9463] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3E9463] bg-white text-[#8A6300]"
+                                            />
+                                            <span className="text-[10px] text-gray-500 font-semibold">jam</span>
+                                          </div>
+                                        ) : (
+                                          <span
+                                            onClick={() => { if (canEdit) handleStartEditHours(st); }}
+                                            title={canEdit ? 'Klik untuk mengedit estimasi jam' : undefined}
+                                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
+                                              canEdit ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
+                                            } transition-colors`}
+                                          >
+                                            {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
+                                              ? `${st.estimatedHours} jam`
+                                              : canEdit ? '— jam' : ''}
+                                          </span>
+                                        )}
+
+                                        {/* Tombol Lampiran Bukti Kerja (📎) */}
+                                        <div className="relative">
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveSubtaskPopoverId(isPopoverOpen ? null : st.id)}
+                                            className={`p-1 rounded-md border transition-colors relative cursor-pointer ${
+                                              isPopoverOpen
+                                                ? "bg-[#0B3D2E] text-white border-[#0B3D2E]"
+                                                : hasProof
+                                                ? "bg-emerald-50 text-[#0B3D2E] border-emerald-300 hover:bg-emerald-100"
+                                                : "bg-white text-gray-400 border-gray-200 hover:text-gray-700 hover:bg-gray-50"
+                                            }`}
+                                            title={`Lampiran Bukti Kerja (${attachments.length} terunggah)`}
+                                          >
+                                            <Paperclip className="h-3.5 w-3.5" />
+                                            {hasProof && (
+                                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+                                            )}
+                                          </button>
+                                        </div>
+
+                                        {/* Tombol Hapus Subtask */}
+                                        {canEdit && (
+                                          <button
+                                            type="button"
+                                            disabled={deletingSubtaskId === st.id}
+                                            onClick={() => handleDeleteSubtask(st.id)}
+                                            className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 cursor-pointer"
+                                            title="Hapus subtask"
+                                          >
+                                            {deletingSubtaskId === st.id ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
+                                            ) : (
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
+
+                                    {/* ── Popover / Panel Lampiran Bukti Kerja Subtask (Bagian D) ── */}
+                                    {isPopoverOpen && (
+                                      <div className="p-3 bg-[#F8FAF9] rounded-xl border border-[#C9E4D0] space-y-2.5 mt-2 transition-all">
+                                        <div className="flex items-center justify-between border-b border-[#C9E4D0] pb-1.5">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#0B3D2E]">
+                                            <Paperclip className="h-3.5 w-3.5 text-[#3E9463]" />
+                                            <span>Lampiran Bukti Kerja Subtask</span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveSubtaskPopoverId(null)}
+                                            className="text-[10px] text-gray-400 hover:text-gray-600 font-semibold px-1.5 py-0.5 rounded hover:bg-gray-100 cursor-pointer"
+                                          >
+                                            Tutup ✕
+                                          </button>
+                                        </div>
+
+                                        {/* Daftar Lampiran yang Ada */}
+                                        {attachments.length > 0 ? (
+                                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                                            {attachments.map((att: any, attIdx: number) => (
+                                              <div
+                                                key={att.id || attIdx}
+                                                className="flex items-center justify-between p-1.5 bg-white rounded-lg border border-gray-200 text-xs shadow-2xs"
+                                              >
+                                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                                  {att.type === 'link' ? (
+                                                    <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                                  ) : (
+                                                    <FileText className="h-3.5 w-3.5 text-[#3E9463] shrink-0" />
+                                                  )}
+                                                  <a
+                                                    href={att.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[11px] font-semibold text-gray-800 hover:text-[#0B3D2E] truncate block hover:underline"
+                                                  >
+                                                    {att.name}
+                                                  </a>
+                                                </div>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                  <a
+                                                    href={att.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-50"
+                                                    title="Buka lampiran"
+                                                  >
+                                                    <ExternalLink className="h-3 w-3" />
+                                                  </a>
+                                                  {canEdit && (
+                                                    <button
+                                                      type="button"
+                                                      disabled={deletingSubtaskAttId === (att.id || att.url)}
+                                                      onClick={() => handleDeleteSubtaskAttachment(st.id, att.id || att.url)}
+                                                      className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 cursor-pointer"
+                                                      title="Hapus bukti kerja"
+                                                    >
+                                                      {deletingSubtaskAttId === (att.id || att.url) ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin text-red-600" />
+                                                      ) : (
+                                                        <Trash2 className="h-3 w-3" />
+                                                      )}
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-[10px] text-gray-400 italic">
+                                            Belum ada bukti kerja. Unggah dokumen atau masukkan tautan untuk membuka kunci checklist.
+                                          </p>
+                                        )}
+
+                                        {/* Upload File & Input Link */}
+                                        {canEdit && (
+                                          <div className="space-y-2 pt-1.5 border-t border-[#C9E4D0]">
+                                            {/* File Upload Button */}
+                                            <div>
+                                              <input
+                                                type="file"
+                                                id={`subtask-file-${st.id}`}
+                                                className="sr-only"
+                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
+                                                disabled={subtaskUploadingId === st.id}
+                                                onChange={(e) => handleUploadSubtaskFile(st.id, e)}
+                                              />
+                                              <label
+                                                htmlFor={`subtask-file-${st.id}`}
+                                                className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border border-dashed border-[#3E9463] bg-emerald-50/50 hover:bg-emerald-100/50 transition-colors cursor-pointer text-[11px] font-bold text-[#0B3D2E] ${
+                                                  subtaskUploadingId === st.id ? "opacity-60 cursor-not-allowed" : ""
+                                                }`}
+                                              >
+                                                {subtaskUploadingId === st.id ? (
+                                                  <>
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
+                                                    <span>Mengunggah dokumen...</span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <UploadCloud className="h-3.5 w-3.5 text-[#3E9463]" />
+                                                    <span>Unggah Dokumen Bukti (Maks 10MB)</span>
+                                                  </>
+                                                )}
+                                              </label>
+                                            </div>
+
+                                            {/* Input Tautan Bukti */}
+                                            <div className="flex items-center gap-1.5">
+                                              <Input
+                                                placeholder="https://drive.google.com/..."
+                                                value={activeSubtaskPopoverId === st.id ? subtaskLinkUrl : ""}
+                                                onChange={(e) => setSubtaskLinkUrl(e.target.value)}
+                                                className="text-[11px] h-7 bg-white flex-1"
+                                              />
+                                              <Input
+                                                placeholder="Label tautan (opsi)"
+                                                value={activeSubtaskPopoverId === st.id ? subtaskLinkLabel : ""}
+                                                onChange={(e) => setSubtaskLinkLabel(e.target.value)}
+                                                className="text-[11px] h-7 bg-white w-28"
+                                              />
+                                              <Button
+                                                type="button"
+                                                size="sm"
+                                                disabled={addingSubtaskLink || !subtaskLinkUrl.trim()}
+                                                onClick={() => handleAddSubtaskLink(st.id)}
+                                                className="text-[10px] h-7 px-2.5 bg-[#3E9463] hover:bg-[#0B3D2E] text-white font-bold cursor-pointer"
+                                              >
+                                                {addingSubtaskLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                                <span>Tambah</span>
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -2781,7 +3146,7 @@ export function KanbanClient({
                               <select
                                 value={newSubtaskAssigneeUserId || ""}
                                 onChange={(e) => setNewSubtaskAssigneeUserId(e.target.value || null)}
-                                className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 rounded-lg px-2 text-gray-800 font-semibold max-w-[130px] truncate"
+                                className="text-xs bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] h-8 rounded-lg px-2 text-gray-800 font-semibold w-[170px] min-w-[170px] max-w-[170px] truncate"
                               >
                                 <option value="">👤 PIC (opsi)</option>
                                 {anggotaTim.filter(a => !!a.userId).map((a) => (
@@ -3377,11 +3742,11 @@ export function KanbanClient({
                           Detail Kartu
                         </h4>
 
-                        {/* Assignee / Owner PIC */}
+                        {/* Assignee / Koordinator Utama (Bagian A & F) */}
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-gray-800 block flex items-center gap-1.5">
                             <User className="h-4 w-4 text-gray-500" />
-                            <span>Assignee (Owner / PIC)</span>
+                            <span>Koordinator / Penanggung Jawab Utama</span>
                           </label>
                           <select
                             value={detailOwnerAnggotaId || ""}
@@ -3396,33 +3761,71 @@ export function KanbanClient({
                               </option>
                             ))}
                           </select>
+
+                          {/* Warning Nudge: Subtask punya PIC tapi kartu belum ada Koordinator (Bagian F) */}
+                          {showCoordinatorWarning && (
+                            <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mt-1.5 shadow-2xs">
+                              <div className="flex items-center gap-1.5 font-medium min-w-0">
+                                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                                <span>Beberapa subtask sudah punya PIC, tapi kartu ini belum ada koordinator.</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleAutoAssignCoordinatorFromSubtasks}
+                                className="text-[11px] font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 px-2.5 py-1 rounded-lg shrink-0 cursor-pointer transition-colors shadow-2xs"
+                              >
+                                Isi otomatis dari PIC terbanyak
+                              </button>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Estimasi Waktu (Menit) & Story Point (Paket 24a) */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-[#8A6300] flex items-center gap-1.5">
-                              <Clock className="h-4 w-4 text-[#B8860B]" />
-                              <span>Estimasi Waktu (menit)</span>
-                            </label>
-                            <span className="text-[10px] font-black text-[#8A6300] bg-[#FBF3DD] px-2 py-0.5 rounded-md border border-[#D4AF37] shadow-2xs">
-                              ≈ {Number((detailStoryPoint ?? 3).toFixed(2))} SP
-                            </span>
-                          </div>
-                          <Input
-                            type="number"
-                            min={1}
-                            step={15}
-                            disabled={!canEdit}
-                            value={Math.round((detailStoryPoint ?? 3) * 60)}
-                            onChange={(e) => {
-                              const min = Math.max(1, parseInt(e.target.value, 10) || 60);
-                              setDetailStoryPoint(Number((min / 60).toFixed(2)));
-                            }}
-                            className="w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37]"
-                            placeholder="Contoh: 120"
-                          />
-                        </div>
+                        {/* Estimasi Waktu (Menit) & Konversi Jam (Bagian B) */}
+                        {(() => {
+                          const hasSubtasks = subtasks.length > 0;
+                          const subtaskTotalMinutes = subtasks.reduce((sum, st) => sum + ((st.estimatedHours || 0) * 60), 0);
+                          const currentMinutes = hasSubtasks
+                            ? subtaskTotalMinutes
+                            : Math.round((detailStoryPoint ?? 3) * 60);
+
+                          const hoursVal = currentMinutes / 60;
+                          const hoursDisplay = Number.isInteger(hoursVal) ? `${hoursVal} jam` : `${hoursVal.toFixed(1)} jam`;
+
+                          return (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-[#8A6300] flex items-center gap-1.5">
+                                  <Clock className="h-4 w-4 text-[#B8860B]" />
+                                  <span>Estimasi Waktu (menit)</span>
+                                </label>
+                                <span className="text-[11px] font-black text-[#8A6300] bg-[#FBF3DD] px-2 py-0.5 rounded-md border border-[#D4AF37] shadow-2xs">
+                                  {currentMinutes} menit ({hoursDisplay})
+                                </span>
+                              </div>
+                              <Input
+                                type="number"
+                                min={1}
+                                step={15}
+                                disabled={!canEdit || hasSubtasks}
+                                value={currentMinutes}
+                                onChange={(e) => {
+                                  if (hasSubtasks) return;
+                                  const min = Math.max(1, parseInt(e.target.value, 10) || 60);
+                                  setDetailStoryPoint(Number((min / 60).toFixed(2)));
+                                }}
+                                className={`w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37] ${
+                                  hasSubtasks ? "opacity-80 bg-gray-50 cursor-not-allowed" : ""
+                                }`}
+                                placeholder="Contoh: 120"
+                              />
+                              {hasSubtasks && (
+                                <p className="text-[10px] text-gray-500 italic mt-0.5">
+                                  (read-only, mengikuti total subtask)
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Penugasan Sprint */}
                         <div className="space-y-1">

@@ -854,6 +854,7 @@ export async function getTaskSubtasksAction(taskId: string) {
         isDone: kanbanSubtask.isDone,
         orderIndex: kanbanSubtask.orderIndex,
         assigneeUserId: kanbanSubtask.assigneeUserId,
+        attachmentData: kanbanSubtask.attachmentData,
         createdBy: kanbanSubtask.createdBy,
         createdAt: kanbanSubtask.createdAt,
         assigneeName: users.nama,
@@ -1173,6 +1174,24 @@ export async function toggleTaskSubtaskAction(
       };
     }
 
+    const [st] = await db
+      .select()
+      .from(kanbanSubtask)
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .limit(1);
+
+    if (!st) {
+      return { success: false, error: "Subtask tidak ditemukan." };
+    }
+
+    const atts = Array.isArray(st.attachmentData) ? st.attachmentData : [];
+    if (isDone && atts.length === 0) {
+      return {
+        success: false,
+        error: "Checklist terkunci: Harap lampirkan bukti kerja terlebih dahulu.",
+      };
+    }
+
     const [updated] = await db
       .update(kanbanSubtask)
       .set({ isDone })
@@ -1184,6 +1203,120 @@ export async function toggleTaskSubtaskAction(
     return { success: true, data: updated };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal memperbarui status subtask." };
+  }
+}
+
+export async function addSubtaskAttachmentAction(
+  subtaskId: string,
+  timId: string,
+  attachment: {
+    id?: string;
+    type: "file" | "link";
+    name: string;
+    url: string;
+    size?: number;
+    uploadedAt?: string;
+  }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin menambah lampiran subtask.",
+      };
+    }
+
+    const [st] = await db
+      .select()
+      .from(kanbanSubtask)
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .limit(1);
+
+    if (!st) {
+      return { success: false, error: "Subtask tidak ditemukan." };
+    }
+
+    const existingAtts = Array.isArray(st.attachmentData) ? st.attachmentData : [];
+    const newAtt = {
+      id: attachment.id || `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      type: attachment.type,
+      name: attachment.name,
+      url: attachment.url,
+      size: attachment.size,
+      uploadedAt: attachment.uploadedAt || new Date().toISOString(),
+    };
+    const updatedAtts = [...existingAtts, newAtt];
+
+    const [updated] = await db
+      .update(kanbanSubtask)
+      .set({ attachmentData: updatedAtts })
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menambah lampiran subtask." };
+  }
+}
+
+export async function deleteSubtaskAttachmentAction(
+  subtaskId: string,
+  timId: string,
+  attachmentId: string
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const allowed = await hasPermission(user, "kanban.edit", timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin menghapus lampiran subtask.",
+      };
+    }
+
+    const [st] = await db
+      .select()
+      .from(kanbanSubtask)
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .limit(1);
+
+    if (!st) {
+      return { success: false, error: "Subtask tidak ditemukan." };
+    }
+
+    const existingAtts = Array.isArray(st.attachmentData) ? st.attachmentData : [];
+    const updatedAtts = existingAtts.filter(
+      (a: any) => a.id !== attachmentId && a.url !== attachmentId
+    );
+    // Jika semua lampiran dihapus dan subtask sudah centang, otomatis uncheck
+    const isDone = updatedAtts.length === 0 ? false : st.isDone;
+
+    const [updated] = await db
+      .update(kanbanSubtask)
+      .set({
+        attachmentData: updatedAtts,
+        isDone,
+      })
+      .where(eq(kanbanSubtask.id, subtaskId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}`);
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menghapus lampiran subtask." };
   }
 }
 
