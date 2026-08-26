@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
-  LayoutDashboard,
   FileText,
-  Kanban,
+  Users,
+  TrendingUp,
   MessageSquare,
   Wallet,
   Lock,
@@ -55,66 +55,43 @@ export function TimPhaseGateNav({
 
   const { timId, namaTim, activeSprint, gates } = phaseGateStatus;
 
+  // ── 3 Kotak Fase Resmi ─────────────────────────────────────────────────────
   const gateItems = [
     {
-      id: "overview",
-      name: "Overview Tim",
-      description: "Profil tim, anggota & tahapan",
-      href: gates.overview.href,
-      icon: LayoutDashboard,
-      unlocked: true,
-      reason: null,
-      isComingSoon: false,
-      badge: null,
-      token: PHASE_TOKENS.phase1,
-    },
-    {
       id: "innovation_setup",
+      phase: "Tahap 1",
       name: "Innovation Setup",
-      description: "Charter & hipotesis DFV",
+      description: "Penyusunan Innovation Charter, Backlog, dan Sprint MVP",
       href: gates.innovationSetup.href,
       icon: FileText,
-      unlocked: gates.innovationSetup.unlocked,
-      reason: gates.innovationSetup.reason,
-      isComingSoon: false,
+      unlocked: true, // selalu terbuka
+      reason: null,
       badge: gates.innovationSetup.isFilled ? "Terisi" : null,
-      token: PHASE_TOKENS.phase2,
+      token: PHASE_TOKENS.phase1, // ungu
     },
     {
-      id: "sprint_kanban",
-      name: "Sprint Planning & Roadmap",
-      description: "Kanban board & eksekusi sprint",
-      href: `/tim/${timId}/kanban`,
-      icon: Kanban,
-      unlocked: true,
-      reason: null,
-      isComingSoon: false,
+      id: "customer_validation",
+      phase: "Tahap 2",
+      name: "Customer Validation",
+      description: "Uji Problem-Solution Fit dengan early adopter di unit kerja",
+      href: gates.customerValidation.href,
+      icon: Users,
+      unlocked: gates.customerValidation.unlocked,
+      reason: gates.customerValidation.reason,
       badge: null,
-      token: PHASE_TOKENS.phase3,
+      token: PHASE_TOKENS.phase2, // kuning/amber
     },
     {
-      id: "ruang_diskusi",
-      name: "Ruang Diskusi",
-      description: "Diskusi & kolaborasi ide",
-      href: `/tim/${timId}/diskusi`,
-      icon: MessageSquare,
-      unlocked: true,
-      reason: null,
-      isComingSoon: false,
+      id: "market_validation",
+      phase: "Tahap 3",
+      name: "Market Validation",
+      description: "Uji Product-Market Fit, evaluasi bisnis, dan FMI Decision",
+      href: gates.marketValidation.href,
+      icon: TrendingUp,
+      unlocked: gates.marketValidation.unlocked,
+      reason: gates.marketValidation.reason,
       badge: null,
-      token: PHASE_TOKENS.phase4,
-    },
-    {
-      id: "keuangan",
-      name: "RAB & LPJ",
-      description: "Anggaran & realisasi biaya",
-      href: gates.keuangan.href,
-      icon: Wallet,
-      unlocked: gates.keuangan.unlocked,
-      reason: gates.keuangan.reason,
-      isComingSoon: false,
-      badge: null,
-      token: PHASE_TOKENS.phase5,
+      token: PHASE_TOKENS.phase3, // hijau
     },
   ];
 
@@ -125,14 +102,14 @@ export function TimPhaseGateNav({
         isOpen: true,
         title: item.name,
         reason: item.reason || "Syarat fase sebelumnya belum terpenuhi.",
-        isComingSoon: !!item.isComingSoon,
+        isComingSoon: false,
       });
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* 1. Header Workspace: Nama Tim, Status Sprint, dan Tombol Dashboard */}
+      {/* 1. Header Workspace: Nama Tim, Status Sprint, dan Tombol Akses */}
       <div
         style={PEGADAIAN_HEADER_GRADIENT_STYLE}
         className="rounded-2xl p-5 text-white shadow-md space-y-4 border border-white/10"
@@ -162,8 +139,9 @@ export function TimPhaseGateNav({
           </h1>
         </div>
 
-        {/* Baris Tombol Menu: Dashboard (Segera Hadir - Solid Hijau Tua Huruf Putih) */}
+        {/* Baris Tombol Menu: Dashboard (Segera Hadir) + Ruang Diskusi + RAB & LPJ */}
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/15">
+          {/* Dashboard — disabled, Segera Hadir */}
           <button
             type="button"
             disabled
@@ -187,20 +165,48 @@ export function TimPhaseGateNav({
               Segera Hadir
             </span>
           </button>
+
+          {/* Ruang Diskusi — aktif */}
+          <Link
+            href={`/tim/${timId}/diskusi`}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border transition-all ${
+              pathname.startsWith(`/tim/${timId}/diskusi`)
+                ? "bg-white text-[#0B3D2E] border-white shadow-sm"
+                : "bg-white/15 text-white border-white/30 hover:bg-white/25 hover:border-white/50"
+            }`}
+            title="Buka Ruang Diskusi & Ideasi Tim"
+          >
+            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+            <span>Ruang Diskusi</span>
+          </Link>
+
+          {/* RAB & LPJ — aktif */}
+          <Link
+            href={`/tim/${timId}/keuangan`}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border transition-all ${
+              pathname.startsWith(`/tim/${timId}/keuangan`)
+                ? "bg-white text-[#0B3D2E] border-white shadow-sm"
+                : "bg-white/15 text-white border-white/30 hover:bg-white/25 hover:border-white/50"
+            }`}
+            title="Buka RAB & LPJ (Anggaran & Realisasi Biaya)"
+          >
+            <Wallet className="h-3.5 w-3.5 shrink-0" />
+            <span>RAB &amp; LPJ</span>
+          </Link>
         </div>
       </div>
 
-      {/* 2. Grid 5 Kotak Menu Navigasi & Gerbang Fase */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+      {/* 2. Grid 3 Kotak Fase Resmi */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
         {gateItems.map((item) => {
           const isActive =
-            item.id === "overview"
-              ? pathname === gates.overview.href || pathname === `/tim/${timId}` || pathname.endsWith("/overview")
-              : item.id === "sprint_kanban"
-              ? pathname.startsWith(`/tim/${timId}/kanban`)
-              : item.id === "ruang_diskusi"
-              ? false
-              : pathname.startsWith(item.href);
+            item.id === "innovation_setup"
+              ? pathname.startsWith(`/tim/${timId}/charter`)
+              : item.id === "customer_validation"
+              ? pathname.startsWith(`/tim/${timId}/customer-validation`)
+              : item.id === "market_validation"
+              ? pathname.startsWith(`/tim/${timId}/market-validation`)
+              : false;
 
           const Icon = item.icon;
           const token = item.token;
@@ -212,35 +218,29 @@ export function TimPhaseGateNav({
                 type="button"
                 onClick={(e) => handleBoxClick(item, e)}
                 style={{ background: token.solidGradientCss }}
-                className={`relative text-left p-3.5 rounded-2xl text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[96px] border border-white/20`}
-                title={
-                  item.isComingSoon
-                    ? "Fitur Ruang Diskusi Segera Hadir"
-                    : "Klik untuk melihat syarat pembukaan fase ini"
-                }
+                className="relative text-left p-5 rounded-2xl text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[130px] border border-white/20"
+                title="Klik untuk melihat syarat pembukaan fase ini"
               >
                 <div className="flex items-start justify-between gap-1 w-full">
-                  <div className="p-1.5 rounded-xl bg-black/20 text-white backdrop-blur-xs">
-                    <Icon className="h-4 w-4" />
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
+                      {item.phase}
+                    </span>
+                    <div className="p-2 rounded-xl bg-black/20 text-white backdrop-blur-xs w-fit">
+                      <Icon className="h-5 w-5" />
+                    </div>
                   </div>
-                  {item.isComingSoon ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/30 text-white/90 border border-white/25 backdrop-blur-xs">
-                      <Clock className="h-2.5 w-2.5" />
-                      <span>Segera Hadir</span>
-                    </span>
-                  ) : (
-                    <span className="p-1.5 rounded-full bg-black/30 text-white/90 border border-white/30 backdrop-blur-xs group-hover:bg-black/50 transition-colors shadow-xs">
-                      <Lock className="h-3.5 w-3.5" />
-                    </span>
-                  )}
+                  <span className="p-1.5 rounded-full bg-black/30 text-white/90 border border-white/30 backdrop-blur-xs group-hover:bg-black/50 transition-colors shadow-xs mt-0.5">
+                    <Lock className="h-4 w-4" />
+                  </span>
                 </div>
 
-                <div className="mt-2 space-y-0.5">
-                  <span className="text-xs font-extrabold text-white block line-clamp-1 drop-shadow-2xs">
+                <div className="mt-3 space-y-0.5">
+                  <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
                     {item.name}
                   </span>
-                  <span className="text-[10px] text-white/80 block line-clamp-1 font-medium">
-                    {item.isComingSoon ? "✨ Segera Hadir" : "🔒 Terkunci"}
+                  <span className="text-[11px] text-white/75 block font-medium leading-snug">
+                    🔒 Terkunci — {item.description}
                   </span>
                 </div>
               </button>
@@ -252,34 +252,39 @@ export function TimPhaseGateNav({
               key={item.id}
               href={item.href}
               style={{ background: token.solidGradientCss }}
-              className={`relative p-3.5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[96px] group border border-white/20 ${
+              className={`relative p-5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[130px] group border border-white/20 ${
                 isActive
                   ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md"
                   : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
               }`}
             >
               <div className="flex items-start justify-between gap-1">
-                <div className="p-1.5 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors">
-                  <Icon className="h-4 w-4" />
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
+                    {item.phase}
+                  </span>
+                  <div className="p-2 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors w-fit">
+                    <Icon className="h-5 w-5" />
+                  </div>
                 </div>
 
                 {item.badge ? (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-xs">
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-xs mt-0.5">
                     <CheckCircle2 className="h-2.5 w-2.5" />
                     {item.badge}
                   </span>
                 ) : isActive ? (
-                  <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs">
+                  <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs mt-0.5">
                     Aktif
                   </span>
                 ) : null}
               </div>
 
-              <div className="mt-2 space-y-0.5">
-                <span className="text-xs font-extrabold text-white block line-clamp-1 drop-shadow-2xs">
+              <div className="mt-3 space-y-0.5">
+                <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
                   {item.name}
                 </span>
-                <span className="text-[10px] text-white/85 block line-clamp-1 font-medium">
+                <span className="text-[11px] text-white/85 block font-medium leading-snug">
                   {item.description}
                 </span>
               </div>
@@ -288,7 +293,7 @@ export function TimPhaseGateNav({
         })}
       </div>
 
-      {/* Dialog Penjelasan Kotak Terkunci / Segera Hadir */}
+      {/* Dialog Penjelasan Kotak Terkunci */}
       <Dialog
         open={lockedModal.isOpen}
         onOpenChange={(open) =>
@@ -299,38 +304,22 @@ export function TimPhaseGateNav({
           <DialogHeader>
             <div className="flex items-center gap-2 text-amber-700 mb-1">
               <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
-                {lockedModal.isComingSoon ? (
-                  <Sparkles className="h-5 w-5" />
-                ) : (
-                  <Lock className="h-5 w-5" />
-                )}
+                <Lock className="h-5 w-5" />
               </div>
               <DialogTitle className="text-base font-bold text-gray-900">
-                {lockedModal.isComingSoon
-                  ? `${lockedModal.title} — Segera Hadir`
-                  : `Fase ${lockedModal.title} Masih Terkunci`}
+                Fase {lockedModal.title} Masih Terkunci
               </DialogTitle>
             </div>
             <DialogDescription className="text-xs text-gray-500 pt-1">
-              {lockedModal.isComingSoon
-                ? "Fitur ini sedang dalam tahap pengembangan dan akan segera dirilis."
-                : "Fase inkubasi ini memiliki gerbang kelulusan formal yang harus diselesaikan terlebih dahulu."}
+              Fase inkubasi ini memiliki gerbang kelulusan formal yang harus diselesaikan terlebih dahulu.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-3">
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5 text-xs">
               <p className="font-bold flex items-center gap-1.5 text-amber-950">
-                {lockedModal.isComingSoon ? (
-                  <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                )}
-                <span>
-                  {lockedModal.isComingSoon
-                    ? "Status Pengembangan:"
-                    : "Syarat Pembukaan Gerbang:"}
-                </span>
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>Syarat Pembukaan Gerbang:</span>
               </p>
               <p className="text-[11px] text-amber-900 leading-relaxed font-medium pl-5.5">
                 {lockedModal.reason}
@@ -355,12 +344,12 @@ export function TimPhaseGateNav({
               size="sm"
               onClick={() => {
                 setLockedModal((prev) => ({ ...prev, isOpen: false }));
-                router.push(`/tim/${timId}/kanban`);
+                router.push(gates.innovationSetup.href);
               }}
               className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 cursor-pointer"
             >
-              <Kanban className="h-3.5 w-3.5" />
-              <span>Buka Kanban Board</span>
+              <FileText className="h-3.5 w-3.5" />
+              <span>Selesaikan Innovation Setup</span>
             </Button>
           </DialogFooter>
         </DialogContent>
