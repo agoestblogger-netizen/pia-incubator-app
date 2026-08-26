@@ -2014,25 +2014,87 @@ export function CustomerValidationClient({
                   />
                 </div>
 
-                {/* Bukti Pendukung / Review SME */}
-                {Array.isArray(initialData?.report?.buktiPendukung) && initialData.report.buktiPendukung.length > 0 && (
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
-                    <span className="text-xs font-bold text-gray-700 block">
-                      Bukti Pendukung &amp; Review SME ({initialData.report.buktiPendukung.length} Catatan):
+                {/* 📎 Dokumen Preliminary Review (Read-only list dari kartu Kanban) */}
+                <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 via-white to-emerald-50/40 rounded-2xl border border-[#C9E4D0] space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-[#0B3D2E] flex items-center gap-1.5">
+                      <Paperclip className="h-4 w-4 text-[#3E9463]" />
+                      <span>Dokumen Preliminary Review (Hasil Review SME / Coach)</span>
                     </span>
-                    <div className="space-y-1.5">
-                      {initialData.report.buktiPendukung.map((b: any, idx: number) => (
-                        <div key={idx} className="p-2 bg-white rounded-lg border border-gray-200 text-xs">
-                          <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
-                            <span>Review SME / Coach: {b.smeNama || "SME"}</span>
-                            <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
-                          </div>
-                          <p className="text-gray-600 text-[11px] mt-1">{b.content || b.catatan || JSON.stringify(b)}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
+                      Dikelola via Kartu Kanban &ldquo;Preliminary Review (SME)&rdquo;
+                    </span>
                   </div>
-                )}
+
+                  {Array.isArray(initialData?.report?.buktiPendukung) &&
+                  initialData.report.buktiPendukung.filter((b: any) => b.type === "dokumen_preliminary_review").length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {initialData.report.buktiPendukung
+                        .filter((b: any) => b.type === "dokumen_preliminary_review")
+                        .map((doc: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs hover:border-[#3E9463] transition-all"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                              <FileCheck className="h-4 w-4 text-[#3E9463] shrink-0" />
+                              <div className="min-w-0">
+                                <a
+                                  href={doc.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-bold text-gray-800 hover:text-[#0B3D2E] truncate block hover:underline"
+                                >
+                                  {doc.file_name || "Dokumen Preliminary Review"}
+                                </a>
+                                {doc.tanggal && (
+                                  <span className="text-[10px] text-gray-400">
+                                    {formatDateIndo(doc.tanggal)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <a
+                              href={doc.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-[#0B3D2E] bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors shrink-0"
+                              title="Buka / Unduh Dokumen"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 italic bg-white/70 p-2.5 rounded-xl border border-dashed border-gray-200">
+                      Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Kanban &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan CV&rdquo;.
+                    </p>
+                  )}
+                </div>
+
+                {/* Bukti Pendukung / Catatan Review SME Lainnya */}
+                {Array.isArray(initialData?.report?.buktiPendukung) &&
+                  initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length > 0 && (
+                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                      <span className="text-xs font-bold text-gray-700 block">
+                        Catatan Review SME ({initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length} Catatan):
+                      </span>
+                      <div className="space-y-1.5">
+                        {initialData.report.buktiPendukung
+                          .filter((b: any) => b.type !== "dokumen_preliminary_review")
+                          .map((b: any, idx: number) => (
+                            <div key={idx} className="p-2.5 bg-white rounded-lg border border-gray-200 text-xs">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                                <span>Reviewer: {b.reviewer || b.smeNama || "SME / Coach"}</span>
+                                <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
+                              </div>
+                              <p className="text-gray-600 text-[11px] mt-1 whitespace-pre-wrap">{b.content || b.catatan || JSON.stringify(b)}</p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
               </CardContent>
             </Card>
 

@@ -36,6 +36,10 @@ import {
   UserCheck,
   Table2,
   ArrowUpRight,
+  Paperclip,
+  Upload,
+  X,
+  FileCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -108,6 +112,56 @@ export function CvCardWorkDocumentSection({
   const handleRemoveFeedbackRow = (index: number) => {
     const updated = feedbackRows.filter((_, i) => i !== index);
     updateField("feedbackRows", updated);
+  };
+
+  // Upload Dokumen Preliminary Review (SME)
+  const [uploadingSmeFile, setUploadingSmeFile] = useState(false);
+
+  const handleUploadSmeFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingSmeFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("timId", timId);
+      formData.append("contextType", "customer_validation");
+
+      const res = await fetch("/api/cv/upload-attachment", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+
+      if (json.success && json.publicUrl) {
+        const newFile = {
+          url: json.publicUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadedAt: new Date().toISOString(),
+        };
+        const currentFiles = Array.isArray(docData.dokumenFiles) ? docData.dokumenFiles : [];
+        updateField("dokumenFiles", [...currentFiles, newFile]);
+        toast.success(`File "${file.name}" berhasil diunggah!`, "Upload Berhasil");
+      } else {
+        toast.error(json.message || "Gagal mengunggah dokumen.", "Upload Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat upload.", "Error");
+    } finally {
+      setUploadingSmeFile(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveSmeFile = (indexToRemove: number) => {
+    const currentFiles = Array.isArray(docData.dokumenFiles) ? docData.dokumenFiles : [];
+    updateField(
+      "dokumenFiles",
+      currentFiles.filter((_, idx) => idx !== indexToRemove)
+    );
   };
 
   // Execute Sync to Customer Validation Report
@@ -572,6 +626,108 @@ export function CvCardWorkDocumentSection({
               onChange={(e) => updateField("catatanSme", e.target.value)}
               className="text-xs bg-white border-[#C9E4D0] focus:border-[#3E9463] leading-relaxed font-normal"
             />
+          </div>
+
+          {/* Dokumen Hasil Preliminary Review (Upload File) */}
+          <div className="space-y-2 pt-2 border-t border-[#C9E4D0]/60">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#0B3D2E] flex items-center gap-1.5">
+                <Paperclip className="h-3.5 w-3.5 text-[#3E9463]" />
+                <span>Dokumen Hasil Preliminary Review:</span>
+              </label>
+              <span className="text-[10px] text-gray-500 font-medium">
+                PDF, Word, Excel, Gambar (Maks 10MB)
+              </span>
+            </div>
+
+            {/* Upload Area */}
+            {canEdit && (
+              <div className="relative">
+                <input
+                  type="file"
+                  id="sme-file-upload"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
+                  disabled={uploadingSmeFile}
+                  onChange={handleUploadSmeFile}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="sme-file-upload"
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#C9E4D0] bg-white/70 hover:bg-[#EBF5EE] transition-colors cursor-pointer text-xs font-semibold text-[#0B3D2E] ${
+                    uploadingSmeFile ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {uploadingSmeFile ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-[#3E9463]" />
+                      <span>Mengunggah dokumen review...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 text-[#3E9463]" />
+                      <span>Unggah Dokumen Preliminary Review</span>
+                    </>
+                  )}
+                </label>
+              </div>
+            )}
+
+            {/* List Dokumen Terupload */}
+            {Array.isArray(docData.dokumenFiles) && docData.dokumenFiles.length > 0 ? (
+              <div className="space-y-1.5 mt-2">
+                {docData.dokumenFiles.map((file: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs hover:border-[#3E9463]/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <FileCheck className="h-4 w-4 text-[#3E9463] shrink-0" />
+                      <div className="min-w-0">
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-gray-800 hover:text-[#0B3D2E] truncate block hover:underline"
+                        >
+                          {file.name}
+                        </a>
+                        {file.size && (
+                          <span className="text-[10px] text-gray-400">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 text-gray-500 hover:text-[#0B3D2E] rounded-md hover:bg-gray-100 transition-colors"
+                        title="Buka Dokumen"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSmeFile(idx)}
+                          className="p-1 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                          title="Hapus File"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400 italic">
+                Belum ada file dokumen review yang diunggah.
+              </p>
+            )}
           </div>
         </div>
       )}

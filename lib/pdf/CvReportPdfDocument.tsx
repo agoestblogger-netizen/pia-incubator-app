@@ -512,10 +512,24 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
             <Text style={styles.tableCellLabel}>Catatan MVP Planning</Text>
             <Text style={styles.tableCellValue}>{data.catatanMvpPlanning || '-'}</Text>
           </View>
-          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+          <View style={styles.tableRow}>
             <Text style={styles.tableCellLabel}>Kesimpulan &amp; Pembelajaran</Text>
             <Text style={styles.tableCellValue}>{data.kesimpulan || '-'}</Text>
           </View>
+          {data.buktiPendukung && data.buktiPendukung.length > 0 ? (
+            <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+              <Text style={styles.tableCellLabel}>Dokumen Review &amp; Bukti</Text>
+              <View style={styles.tableCellValue}>
+                {data.buktiPendukung.map((b: any, bIdx: number) => (
+                  <Text key={bIdx} style={{ marginBottom: 2 }}>
+                    • {b.type === 'dokumen_preliminary_review'
+                      ? `[Dokumen Review] ${b.file_name || 'Lampiran'}`
+                      : `[Review SME - ${b.reviewer || 'SME'}]: ${b.content || b.catatan || ''}`}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* Section G: Tanda Tangan 3 Kolom */}

@@ -292,25 +292,50 @@ export async function syncCardCustomDocToReportAction(
       }
 
       case "sme": {
-        // APPEND sebagai 1 entri baru ke bukti_pendukung (jsonb[]) Report
+        // APPEND sebagai entri baru ke bukti_pendukung (jsonb[]) Report
         const existingBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
-        const newSmeEntry = {
-          id: randomUUID(),
-          type: "catatan_sme",
-          content: customDocData.catatanSme || "",
-          reviewer: customDocData.reviewerNama || "SME / Innovation Coach",
-          tanggal: customDocData.tanggalReview || new Date().toISOString(),
-          sourceCardId: cardId,
-        };
 
-        // Filter out older entry from same card if updating, or just append
+        // Filter out older entries from this card
         const filtered = existingBukti.filter(
-          (b: any) => !(b.sourceCardId === cardId && b.type === "catatan_sme")
+          (b: any) =>
+            !(
+              b.sourceCardId === cardId &&
+              (b.type === "catatan_sme" || b.type === "dokumen_preliminary_review")
+            )
         );
-        filtered.push(newSmeEntry);
+
+        // 1. Catatan SME (jika ada)
+        if (customDocData.catatanSme?.trim()) {
+          filtered.push({
+            id: randomUUID(),
+            type: "catatan_sme",
+            content: customDocData.catatanSme.trim(),
+            reviewer: customDocData.reviewerNama || "SME / Innovation Coach",
+            tanggal: customDocData.tanggalReview || new Date().toISOString(),
+            sourceCardId: cardId,
+          });
+        }
+
+        // 2. Dokumen Hasil Preliminary Review (jika ada file di-upload)
+        const files: Array<{ url: string; name: string; size?: number; type?: string }> =
+          Array.isArray(customDocData.dokumenFiles) ? customDocData.dokumenFiles : [];
+
+        for (const f of files) {
+          if (f.url) {
+            filtered.push({
+              id: randomUUID(),
+              type: "dokumen_preliminary_review",
+              file_url: f.url,
+              file_name: f.name || "Dokumen Preliminary Review",
+              file_size: f.size || null,
+              tanggal: new Date().toISOString(),
+              sourceCardId: cardId,
+            });
+          }
+        }
 
         reportUpdates.buktiPendukung = filtered;
-        syncedDetails = `Catatan Review SME ditambahkan ke Bukti Pendukung`;
+        syncedDetails = `Review SME & ${files.length} Dokumen ditambahkan ke Bukti Pendukung`;
         break;
       }
 
