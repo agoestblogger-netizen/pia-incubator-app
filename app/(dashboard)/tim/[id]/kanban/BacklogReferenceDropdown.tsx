@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 
 interface BacklogReferenceDropdownProps {
   currentPlanningSprintNumber: number;
@@ -313,6 +314,9 @@ export function BacklogReferenceDropdown({
                           const isHovered = hoveredCard?.id === card.id;
                           const isTouched = touchCard?.id === card.id;
                           const isSelected = isHovered || isTouched;
+                          const isBakuCv =
+                            detectCvBakuCardType(card.judul, card.tahap) !== null ||
+                            card.label === "Template Baku CV";
 
                           return (
                             <div
@@ -333,20 +337,30 @@ export function BacklogReferenceDropdown({
                                   : "hover:bg-purple-50/50 text-gray-800"
                               }`}
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                 {isLocked ? (
                                   <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                 ) : (
-                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotColor}`} />
+                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isBakuCv ? "bg-rose-500" : dotColor}`} />
                                 )}
 
                                 <span
                                   className={`truncate ${
-                                    isLocked ? "line-through text-gray-400" : ""
+                                    isLocked
+                                      ? "line-through text-gray-400"
+                                      : isBakuCv
+                                      ? "text-rose-700 font-bold"
+                                      : ""
                                   }`}
                                 >
                                   {isLocked ? `🔒 ${card.judul} — fase terkunci` : card.judul}
                                 </span>
+
+                                {isBakuCv && (
+                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shrink-0">
+                                    Wajib
+                                  </span>
+                                )}
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0">
@@ -400,25 +414,35 @@ export function BacklogReferenceDropdown({
                 const { isLocked, reason } = getPhaseLockInfo(activePreviewCard);
                 const isCardInActiveSprint =
                   (activePreviewCard.suggestedSprintNumber || 1) === currentPlanningSprintNumber;
+                const isPreviewBakuCv =
+                  detectCvBakuCardType(activePreviewCard.judul, activePreviewCard.tahap) !== null ||
+                  activePreviewCard.label === "Template Baku CV";
 
                 return (
                   <div className="space-y-3 flex-1 flex flex-col justify-between">
                     <div className="space-y-2.5">
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border shadow-2xs ${
-                            activePreviewCard.label?.includes("CV") ||
-                            activePreviewCard.tahap === "customer_validation"
-                              ? "bg-blue-100 text-blue-900 border-blue-300"
-                              : activePreviewCard.label?.includes("MV") ||
-                                activePreviewCard.tahap === "market_validation"
-                              ? "bg-indigo-100 text-indigo-900 border-indigo-300"
-                              : "bg-purple-100 text-purple-900 border-purple-300"
-                          }`}
-                        >
-                          <Sparkles className="w-2.5 h-2.5" />
-                          {activePreviewCard.label || "Draf Roadmap"}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isPreviewBakuCv && (
+                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
+                              Wajib
+                            </span>
+                          )}
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border shadow-2xs ${
+                              activePreviewCard.label?.includes("CV") ||
+                              activePreviewCard.tahap === "customer_validation"
+                                ? "bg-blue-100 text-blue-900 border-blue-300"
+                                : activePreviewCard.label?.includes("MV") ||
+                                  activePreviewCard.tahap === "market_validation"
+                                ? "bg-indigo-100 text-indigo-900 border-indigo-300"
+                                : "bg-purple-100 text-purple-900 border-purple-300"
+                            }`}
+                          >
+                            <Sparkles className="w-2.5 h-2.5" />
+                            {activePreviewCard.label || "Draf Roadmap"}
+                          </span>
+                        </div>
 
                         <div className="flex items-center gap-1.5">
                           <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-800 font-bold border border-gray-200 text-[10px]">
@@ -431,7 +455,7 @@ export function BacklogReferenceDropdown({
                         </div>
                       </div>
 
-                      <h4 className="font-extrabold text-gray-900 text-sm leading-snug line-clamp-2">
+                      <h4 className={`font-extrabold text-sm leading-snug line-clamp-2 ${isPreviewBakuCv ? "text-rose-700" : "text-gray-900"}`}>
                         {activePreviewCard.judul}
                       </h4>
 

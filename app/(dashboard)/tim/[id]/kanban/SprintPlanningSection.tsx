@@ -29,6 +29,7 @@ import { updateSprintGoalAction, getSuggestedSprintGoalAction } from "@/app/acti
 import { getHeuristicSprintGoal } from "@/lib/ai/sprint-goal-generator";
 import { toast } from "@/components/ui/ToastProvider";
 import { getPhaseTokenBySlug } from "@/lib/theme/tokens";
+import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 
 import { BacklogReferenceDropdown } from "./BacklogReferenceDropdown";
 
@@ -722,37 +723,45 @@ export function SprintPlanningSection({
                   const currentOwnerId = currentAsg.ownerAnggotaId;
                   const currentSp = currentAsg.storyPoint ?? (card.storyPoint ?? 3);
                   const currentMinutes = Math.round(currentSp * 60);
+                  const isBakuCv =
+                    detectCvBakuCardType(card.judul, card.tahap) !== null ||
+                    card.label === "Template Baku CV";
 
                   return (
                     <div
                       key={card.id}
                       className="bg-[#F0F7F1] rounded-xl border border-[#C9E4D0] p-3.5 shadow-2xs hover:border-[#3E9463]/50 transition-all space-y-3"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#3E9463] text-white shadow-2xs">
-                              {card.tahap ? card.tahap.replace(/_/g, " ") : "Innovation Setup"}
-                            </span>
-                            {card.label && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-md bg-[#B8860B] text-white shadow-2xs">
-                                🏷️ {card.label}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-extrabold text-gray-900 truncate">
-                            {card.judul}
-                          </p>
-                        </div>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                {isBakuCv && (
+                                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
+                                    Wajib
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#3E9463] text-white shadow-2xs">
+                                  {card.tahap ? card.tahap.replace(/_/g, " ") : "Innovation Setup"}
+                                </span>
+                                {card.label && (
+                                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-md bg-[#B8860B] text-white shadow-2xs">
+                                    🏷️ {card.label}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-xs font-extrabold truncate ${isBakuCv ? "text-rose-700" : "text-gray-900"}`}>
+                                {card.judul}
+                              </p>
+                            </div>
 
-                        <button
-                          type="button"
-                          onClick={() => onOpenCardDetail(card)}
-                          className="text-xs text-[#3E9463] hover:text-[#0B3D2E] font-bold hover:underline shrink-0 self-start sm:self-center cursor-pointer"
-                        >
-                          Sunting Detail
-                        </button>
-                      </div>
+                            <button
+                              type="button"
+                              onClick={() => onOpenCardDetail(card)}
+                              className="text-xs text-[#3E9463] hover:text-[#0B3D2E] font-bold hover:underline shrink-0 self-start sm:self-center cursor-pointer"
+                            >
+                              Sunting Detail
+                            </button>
+                          </div>
 
                       {/* Inputs: Estimasi Waktu (Menit) + Owner PIC (Paket 24a) */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-[#C9E4D0]">

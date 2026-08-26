@@ -34,6 +34,7 @@ import {
   deleteTaskAttachmentAction,
 } from '@/app/actions/kanban';
 import { toast } from '@/components/ui/ToastProvider';
+import { detectCvBakuCardType } from '@/lib/utils/cv-cards';
 import {
   StickyNote,
   Plus,
@@ -1149,6 +1150,9 @@ export function DiskusiCanvasClient({
                     const isPinned = notes.some((n) => n.kanbanCardId === card.id);
                     const phaseToken = getPhaseTokenBySlug(card.tahap);
                     const cardIsLocked = isPhaseLocked(card);
+                    const isBakuCv =
+                      detectCvBakuCardType(card.judul, card.tahap) !== null ||
+                      card.label === 'Template Baku CV';
 
                     return (
                       <div
@@ -1162,7 +1166,12 @@ export function DiskusiCanvasClient({
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1.5">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {isBakuCv && (
+                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300">
+                                Wajib
+                              </span>
+                            )}
                             <span
                               className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${phaseToken.badgeClass}`}
                             >
@@ -1207,7 +1216,7 @@ export function DiskusiCanvasClient({
                           </div>
                         </div>
 
-                        <p className="text-xs font-bold text-gray-800 leading-snug line-clamp-2">{card.judul}</p>
+                        <p className={`text-xs font-bold leading-snug line-clamp-2 ${isBakuCv ? 'text-rose-700' : 'text-gray-800'}`}>{card.judul}</p>
 
                         {cardIsLocked && (
                           <p className="text-[9px] text-amber-700 font-medium">

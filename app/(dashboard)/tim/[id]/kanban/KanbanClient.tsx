@@ -274,6 +274,10 @@ function SortableCard({
       ? getPastelCardVariant(cardIndex)
       : null;
 
+  const isBakuCv =
+    detectCvBakuCardType(card.judul, card.tahap) !== null ||
+    card.label === "Template Baku CV";
+
   return (
     <div
       ref={setNodeRef}
@@ -300,6 +304,12 @@ function SortableCard({
           onClick={() => onSelectCard(card)}
           className="flex flex-wrap items-center gap-1.5 cursor-pointer"
         >
+          {isBakuCv && (
+            <span className="inline-flex items-center text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
+              Wajib
+            </span>
+          )}
+
           {card.label && (
             <span
               className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -340,7 +350,9 @@ function SortableCard({
       >
         <h4
           className={`text-xs font-bold leading-tight transition-colors ${
-            isOverdue
+            isBakuCv
+              ? "text-rose-700 font-extrabold group-hover:text-rose-800"
+              : isOverdue
               ? "text-red-950"
               : pastel
               ? "text-gray-900 group-hover:text-gray-950"
@@ -1687,6 +1699,16 @@ export function KanbanClient({
       setSelectedCardForDetail(null);
       return;
     }
+    const isBaku =
+      detectCvBakuCardType(selectedCardForDetail.judul, selectedCardForDetail.tahap) !== null ||
+      selectedCardForDetail.label === "Template Baku CV" ||
+      detailLabel === "Template Baku CV";
+
+    if (isBaku) {
+      toast.error("Kartu Template Baku CV tidak dapat dihapus karena merupakan struktur baku resmi Juklak.");
+      return;
+    }
+
     if (!confirm(`Hapus kartu "${selectedCardForDetail.judul}" secara permanen?`)) return;
     setDeletingCard(true);
     setErrorMessage(null);
@@ -2825,6 +2847,11 @@ export function KanbanClient({
                                 const hasProof = attachments.length > 0;
                                 const isPopoverOpen = activeSubtaskPopoverId === st.id;
                                 const isMandatory = st.subtaskType === 'mandatory_simple' || st.subtaskType === 'mandatory_complex';
+                                const isCardBakuCv = selectedCardForDetail
+                                  ? detectCvBakuCardType(detailJudul || selectedCardForDetail.judul, detailTahap || selectedCardForDetail.tahap) !== null ||
+                                    detailLabel === "Template Baku CV" ||
+                                    selectedCardForDetail.label === "Template Baku CV"
+                                  : false;
 
                                 return (
                                   <div
@@ -3018,8 +3045,8 @@ export function KanbanClient({
                                           </div>
                                         )}
 
-                                        {/* Tombol Hapus Subtask (hanya untuk subtask non-wajib) */}
-                                        {canEdit && !isMandatory && (
+                                        {/* Tombol Hapus Subtask (hanya untuk subtask non-wajib pada kartu non-Baku CV) */}
+                                        {canEdit && !isMandatory && !isCardBakuCv && (
                                           <button
                                             type="button"
                                             disabled={deletingSubtaskId === st.id}
@@ -3964,7 +3991,16 @@ export function KanbanClient({
                   {/* Modal Footer */}
                   {/* ───────────────────────────────────────────────────────── */}
                   <DialogFooter className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-[#C9E4D0]">
-                    {canEdit ? (
+                    {canEdit &&
+                    !selectedCardForDetail?.isNewBacklog &&
+                    !(
+                      detectCvBakuCardType(
+                        detailJudul || selectedCardForDetail?.judul,
+                        detailTahap || selectedCardForDetail?.tahap
+                      ) !== null ||
+                      detailLabel === "Template Baku CV" ||
+                      selectedCardForDetail?.label === "Template Baku CV"
+                    ) ? (
                       <Button
                         type="button"
                         variant="outline"

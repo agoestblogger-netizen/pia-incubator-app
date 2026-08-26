@@ -615,6 +615,32 @@ export async function deleteKanbanCardAction(timId: string, cardId: string) {
       };
     }
 
+    const [card] = await db
+      .select({
+        id: kanbanCard.id,
+        judul: kanbanCard.judul,
+        tahap: kanbanCard.tahap,
+        label: kanbanCard.label,
+      })
+      .from(kanbanCard)
+      .where(eq(kanbanCard.id, cardId))
+      .limit(1);
+
+    if (!card) {
+      return { success: false, error: "Kartu tidak ditemukan." };
+    }
+
+    const isBakuCv =
+      detectCvBakuCardType(card.judul, card.tahap || undefined) !== null ||
+      card.label === "Template Baku CV";
+
+    if (isBakuCv) {
+      return {
+        success: false,
+        error: "Kartu Template Baku CV tidak dapat dihapus karena merupakan struktur baku resmi Juklak.",
+      };
+    }
+
     const [deleted] = await db
       .delete(kanbanCard)
       .where(eq(kanbanCard.id, cardId))
@@ -1377,12 +1403,34 @@ export async function deleteTaskSubtaskAction(subtaskId: string, timId: string) 
     }
 
     const [st] = await db
-      .select({ id: kanbanSubtask.id, subtaskType: kanbanSubtask.subtaskType })
+      .select({
+        id: kanbanSubtask.id,
+        subtaskType: kanbanSubtask.subtaskType,
+        cardJudul: kanbanCard.judul,
+        cardTahap: kanbanCard.tahap,
+        cardLabel: kanbanCard.label,
+      })
       .from(kanbanSubtask)
+      .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
       .where(eq(kanbanSubtask.id, subtaskId))
       .limit(1);
 
-    if (st && st.subtaskType && st.subtaskType !== "regular") {
+    if (!st) {
+      return { success: false, error: "Subtask tidak ditemukan." };
+    }
+
+    const isBakuCv =
+      detectCvBakuCardType(st.cardJudul, st.cardTahap || undefined) !== null ||
+      st.cardLabel === "Template Baku CV";
+
+    if (isBakuCv) {
+      return {
+        success: false,
+        error: "Subtask pada kartu Template Baku CV tidak dapat dihapus karena merupakan bagian dari struktur baku resmi Juklak.",
+      };
+    }
+
+    if (st.subtaskType && st.subtaskType !== "regular") {
       return {
         success: false,
         error: "Subtask wajib tidak dapat dihapus.",
