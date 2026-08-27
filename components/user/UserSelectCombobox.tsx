@@ -126,8 +126,8 @@ export function UserSelectCombobox({
       setOpen(false);
       setNewNama('');
       setNewEmail('');
-      setNewPassword('password123');
-      setNewConfirmPassword('password123');
+      setNewPassword('gadai123');
+      setNewConfirmPassword('gadai123');
     } else {
       setCreateError(res.error || 'Gagal membuat user baru.');
     }

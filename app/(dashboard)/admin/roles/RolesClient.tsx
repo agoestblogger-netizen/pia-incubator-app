@@ -117,8 +117,8 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [newNama, setNewNama] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("password123");
-  const [newConfirmPassword, setNewConfirmPassword] = useState("password123");
+  const [newPassword, setNewPassword] = useState("gadai123");
+  const [newConfirmPassword, setNewConfirmPassword] = useState("gadai123");
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [showNewUserConfirmPassword, setShowNewUserConfirmPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
@@ -350,8 +350,8 @@ export function RolesClient({ initialData }: { initialData: any }) {
       setIsCreateUserOpen(false);
       setNewNama("");
       setNewEmail("");
-      setNewPassword("password123");
-      setNewConfirmPassword("password123");
+      setNewPassword("gadai123");
+      setNewConfirmPassword("gadai123");
     } else {
       const errMsg = res.error || "Gagal membuat user.";
       toast.error(errMsg, "Gagal Membuat User");
