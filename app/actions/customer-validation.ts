@@ -253,17 +253,33 @@ export async function saveCustomerValidationPlanFullAction(
       }
     }
 
-    await logAudit({
-      userId: user.id,
-      userName: user.nama,
-      action: 'CUST_VAL_PLAN_FULL_SAVE',
-      entity: 'customer_validation_plan',
-      entityId: planId,
-      details: { timId },
-    });
+    // Auto-generate AI backlog only if this is the first time (no Rekomendasi CV cards exist yet)
+    const existingRekomendasi = await db
+      .select({ id: kanbanCard.id })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.tahap, 'customer_validation'),
+          eq(kanbanCard.label, 'Rekomendasi CV')
+        )
+      )
+      .limit(1);
+
+    let backlogGenerated = false;
+    let backlogCount = 0;
+
+    if (existingRekomendasi.length === 0) {
+      const genRes = await generateCvBacklogAction(timId);
+      if (genRes.success) {
+        backlogGenerated = true;
+        backlogCount = genRes.count || 0;
+      }
+    }
 
     revalidatePath(`/tim/${timId}/customer-validation`);
-    return { success: true, planId };
+    revalidatePath(`/tim/${timId}/kanban`);
+    return { success: true, planId, backlogGenerated, backlogCount };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menyimpan rencana validasi pelanggan.' };
   }

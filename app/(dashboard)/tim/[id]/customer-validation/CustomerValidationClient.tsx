@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   saveCustomerValidationPlanFullAction,
   saveCustomerValidationReportAction,
@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
-  Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck
+  Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { KanbanClient } from "../kanban/KanbanClient";
@@ -224,6 +224,13 @@ export function CustomerValidationClient({
   currentUser?: any;
   phaseGateStatus?: any;
 }) {
+  const router = useRouter();
+
+  // ── Admin & Sign Lock States ───────────────────────────────────────────────
+  const isAdmin = Boolean(
+    currentUser?.globalRoles?.some((r: string) => ['super_admin', 'admin_ic', 'admin'].includes(r))
+  );
+
   // ── Plan state ─────────────────────────────────────────────────────────────
   const [planForm, setPlanForm] = useState({
     projectMission: initialData?.plan?.projectMission || "",
@@ -279,6 +286,9 @@ export function CustomerValidationClient({
   const [ttdDisusun, setTtdDisusun] = useState<any>(initialData?.plan?.ttdDisusun || null);
   const [ttdDiperiksa, setTtdDiperiksa] = useState<any>(initialData?.plan?.ttdDiperiksa || null);
   const [ttdDisetujui, setTtdDisetujui] = useState<any>(initialData?.plan?.ttdDisetujui || null);
+
+  const isPlanSigned = Boolean(ttdDisusun || ttdDiperiksa || ttdDisetujui);
+  const isSectionAbcLocked = isPlanSigned && !isAdmin;
 
   // ── Report Signatures state ────────────────────────────────────────────────
   const [reportTtdDisusun, setReportTtdDisusun] = useState<any>(initialData?.report?.ttdDisusun || null);
@@ -449,7 +459,15 @@ export function CustomerValidationClient({
       metrikCatatan,
     );
     if (res.success) {
-      toast.success("Customer Validation Plan berhasil disimpan!", "Plan Tersimpan");
+      if ((res as any).backlogGenerated) {
+        toast.success(
+          `Validation Plan tersimpan. ${(res as any).backlogCount} kartu rekomendasi backlog berhasil dibuat — cek Tab Backlog & Sprint.`,
+          "Plan & Backlog Tersimpan"
+        );
+      } else {
+        toast.success("Customer Validation Plan berhasil disimpan!", "Plan Tersimpan");
+      }
+      router.refresh();
     } else {
       toast.error((res as any).error || "Gagal menyimpan.", "Gagal Menyimpan");
     }
@@ -720,6 +738,30 @@ export function CustomerValidationClient({
               </div>
             </div>
 
+            {/* ── BANNER STATUS KUNCI TANDA TANGAN ────────────────────────── */}
+            {isPlanSigned && (
+              isSectionAbcLocked ? (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start sm:items-center gap-3 shadow-2xs">
+                  <Lock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+                  <div className="text-xs">
+                    <strong className="font-bold">🔒 Perencanaan Dikunci:</strong> Perencanaan ini sudah ditandatangani sebagian/seluruhnya dan dikunci. Hubungi Admin untuk melakukan perubahan.
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-purple-50 border border-purple-300 text-purple-900 flex items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3 text-xs">
+                    <ShieldCheck className="h-5 w-5 text-purple-600 shrink-0" />
+                    <div>
+                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-200 text-purple-900 border border-purple-300 mr-2">
+                        Mode Admin — Kunci dilewati
+                      </span>
+                      <span>Perencanaan telah ditandatangani, namun Anda memiliki hak akses Admin untuk mengubah form kapan saja.</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+
             {/* ── BAGIAN 1: Konteks & Hipotesis ────────────────────────────── */}
             <Card>
               <CardHeader>
@@ -732,7 +774,7 @@ export function CustomerValidationClient({
                       Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
                     </CardDescription>
                   </div>
-                  {canEditCv && (
+                  {canEditCv && !isSectionAbcLocked && (
                     <Button
                       type="button"
                       variant="outline"
@@ -760,6 +802,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Rumusan aspiratif, kuantitatif, dan time-bound dari proyek inovasi ini..."
                     value={planForm.projectMission}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, projectMission: e.target.value })}
                   />
                 </div>
@@ -772,6 +816,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Customer prioritas dan area bantuan (job-to-be-done) yang diuji..."
                     value={planForm.customerDanContext}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, customerDanContext: e.target.value })}
                   />
                 </div>
@@ -784,6 +830,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Asumsi masalah yang akan divalidasi, termasuk bukti awal yang mendukung hipotesis ini..."
                     value={planForm.problemHypothesis}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, problemHypothesis: e.target.value })}
                   />
                 </div>
@@ -796,6 +844,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Pertanyaan peluang yang menghubungkan customer, problem, dan outcome yang diinginkan..."
                     value={planForm.hmw}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, hmw: e.target.value })}
                   />
                 </div>
@@ -808,6 +858,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Asumsi solusi/prototype yang akan diuji kepada customer, termasuk manfaat utamanya..."
                     value={planForm.solutionHypothesis}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, solutionHypothesis: e.target.value })}
                   />
                 </div>
@@ -832,6 +884,8 @@ export function CustomerValidationClient({
                   <Input
                     placeholder="Figma / Clickable Prototype, Wireframe, dll..."
                     value={planForm.prototypeType}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, prototypeType: e.target.value })}
                   />
                 </div>
@@ -844,6 +898,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Alur verifikasi identitas, kalkulasi otomatis, dll..."
                     value={planForm.fiturAlurDiuji}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, fiturAlurDiuji: e.target.value })}
                   />
                 </div>
@@ -856,6 +912,8 @@ export function CustomerValidationClient({
                     rows={3}
                     placeholder="Instruksi tugas yang diberikan kepada responden saat mencoba prototype..."
                     value={planForm.skenarioUserTesting}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, skenarioUserTesting: e.target.value })}
                   />
                 </div>
@@ -868,6 +926,8 @@ export function CustomerValidationClient({
                     rows={3}
                     placeholder="Daftar pertanyaan, survey, form observasi, panduan wawancara yang digunakan..."
                     value={planForm.instrumenValidasi}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, instrumenValidasi: e.target.value })}
                   />
                 </div>
@@ -897,34 +957,38 @@ export function CustomerValidationClient({
                           <a href={url} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3 w-3 text-gray-400 hover:text-blue-600" />
                           </a>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(url)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-50"
-                            title="Hapus lampiran"
-                          >
-                            <X className="h-3.5 w-3.5 text-red-500" />
-                          </button>
+                          {!isSectionAbcLocked && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(url)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-50"
+                              title="Hapus lampiran"
+                            >
+                              <X className="h-3.5 w-3.5 text-red-500" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-semibold text-gray-600 transition-colors">
-                    {uploading ? (
-                      <span className="animate-spin h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full inline-block" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5" />
-                    )}
-                    <span>{uploading ? "Mengunggah..." : "Unggah File (PDF, Word, Excel, Gambar, maks 10MB)"}</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                      disabled={uploading}
-                      onChange={handleUploadFile}
-                    />
-                  </label>
+                  {!isSectionAbcLocked && (
+                    <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-semibold text-gray-600 transition-colors">
+                      {uploading ? (
+                        <span className="animate-spin h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full inline-block" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      <span>{uploading ? "Mengunggah..." : "Unggah File (PDF, Word, Excel, Gambar, maks 10MB)"}</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                        disabled={uploading}
+                        onChange={handleUploadFile}
+                      />
+                    </label>
+                  )}
                   <p className="text-[10px] text-gray-400">
                     File disimpan ke kolom <code>data_dukung</code> (jsonb[]) di database.
                     Hapus data lokal saja — file di storage tidak dihapus otomatis.
@@ -952,6 +1016,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Profil early adopters awal berskala kecil yang relevan dengan customer prioritas..."
                     value={planForm.targetEarlyAdopters}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })}
                   />
                 </div>
@@ -964,6 +1030,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Kriteria inklusi/eksklusi responden; contoh: segmen, lokasi, perilaku..."
                     value={planForm.kriteriaSeleksi}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, kriteriaSeleksi: e.target.value })}
                   />
                 </div>
@@ -977,6 +1045,8 @@ export function CustomerValidationClient({
                       type="number"
                       min={1}
                       value={planForm.jumlahTargetResponden}
+                      disabled={!canEditCv || isSectionAbcLocked}
+                      className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                       onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: Number(e.target.value) })}
                     />
                   </div>
@@ -988,6 +1058,8 @@ export function CustomerValidationClient({
                     <Input
                       placeholder="Cabang Kramat Jati & Rawamangun / Online Meet..."
                       value={planForm.lokasiChannelTesting}
+                      disabled={!canEditCv || isSectionAbcLocked}
+                      className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                       onChange={(e) => setPlanForm({ ...planForm, lokasiChannelTesting: e.target.value })}
                     />
                   </div>
@@ -1001,6 +1073,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Cara mendapatkan responden dan pihak yang bertanggung jawab merekrut..."
                     value={planForm.metodeRekrutmen}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, metodeRekrutmen: e.target.value })}
                   />
                 </div>
@@ -1013,6 +1087,8 @@ export function CustomerValidationClient({
                     rows={2}
                     placeholder="Persetujuan penggunaan data, kerahasiaan, dokumentasi, dan perlindungan responden..."
                     value={planForm.etikaPersetujuanData}
+                    disabled={!canEditCv || isSectionAbcLocked}
+                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
                     onChange={(e) => setPlanForm({ ...planForm, etikaPersetujuanData: e.target.value })}
                   />
                 </div>
@@ -1145,39 +1221,36 @@ export function CustomerValidationClient({
               </CardContent>
             </Card>
 
-            {/* ── ACTION BUTTONS: Generate Backlog & Simpan Plan ────────────── */}
+            {/* ── ACTION BUTTONS: Simpan Plan & Admin Re-generate ────────────── */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <div className="flex items-center gap-2">
-                {initialData?.plan?.id ? (
+              <div>
+                {isAdmin && initialData?.plan?.id && (
                   <Button
                     type="button"
                     onClick={handleGenerateBacklog}
                     disabled={generatingBacklog || saving}
-                    className="bg-purple-700 hover:bg-purple-800 text-white gap-2 h-10 px-5 rounded-xl shadow-xs cursor-pointer"
+                    className="bg-purple-700 hover:bg-purple-800 text-white gap-2 h-10 px-5 rounded-xl shadow-xs cursor-pointer text-xs font-bold"
                   >
                     {generatingBacklog ? (
                       <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                     ) : (
                       <Sparkles className="h-4 w-4 text-amber-300" />
                     )}
-                    <span>{generatingBacklog ? "Menghasilkan Backlog AI..." : "✨ Generate Rekomendasi Backlog"}</span>
+                    <span>{generatingBacklog ? "Menghasilkan..." : "✨ Generate Ulang Backlog (Admin)"}</span>
                   </Button>
-                ) : (
-                  <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                    <span>Simpan rencana validasi minimal 1x untuk membuka tombol Generate Rekomendasi Backlog.</span>
-                  </div>
                 )}
               </div>
 
-              <Button type="submit" disabled={saving} className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white gap-2 h-10 px-6 rounded-xl shadow-xs">
-                {saving ? (
-                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span>{saving ? "Menyimpan..." : "Simpan Validation Plan"}</span>
-              </Button>
+              {canEditCv && (
+                <Button type="submit" disabled={saving} className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white gap-2 h-10 px-6 rounded-xl shadow-xs cursor-pointer">
+                  {saving ? (
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  <span>{saving ? "Menyimpan..." : "Simpan Validation Plan"}</span>
+                </Button>
+              )}
             </div>
 
             {/* ── BLOK TANDA TANGAN FORMAL (3 PIHAK) ────────────────────────── */}
@@ -1508,20 +1581,20 @@ export function CustomerValidationClient({
                 <strong>Workspace Backlog &amp; Sprint: Customer Validation</strong> &mdash; Kelola sprint planning, penugasan story point, dan eksekusi kartu validasi pelanggan.
               </div>
             </div>
-            {initialData?.plan?.id && (
+            {isAdmin && initialData?.plan?.id && (
               <Button
                 type="button"
                 size="sm"
                 onClick={handleGenerateBacklog}
                 disabled={generatingBacklog}
-                className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs"
+                className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs font-bold cursor-pointer"
               >
                 {generatingBacklog ? (
                   <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full inline-block" />
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5 text-amber-300" />
                 )}
-                <span>{generatingBacklog ? "Menghasilkan..." : "Generate Ulang Backlog"}</span>
+                <span>{generatingBacklog ? "Menghasilkan..." : "Generate Ulang Backlog (Admin)"}</span>
               </Button>
             )}
           </div>
