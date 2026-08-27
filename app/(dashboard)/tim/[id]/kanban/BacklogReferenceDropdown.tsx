@@ -38,7 +38,6 @@ export function BacklogReferenceDropdown({
   const [hoveredCard, setHoveredCard] = useState<any | null>(null);
   const [touchCard, setTouchCard] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [displayLimit, setDisplayLimit] = useState(10);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,7 +49,6 @@ export function BacklogReferenceDropdown({
         setHoveredCard(null);
         setTouchCard(null);
         setSearchQuery("");
-        setDisplayLimit(10);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -75,7 +73,6 @@ export function BacklogReferenceDropdown({
     setHoveredCard(null);
     setTouchCard(null);
     setSearchQuery("");
-    setDisplayLimit(10);
   };
 
   const handleTouchItem = (card: any, isPhaseLocked: boolean) => {
@@ -142,15 +139,8 @@ export function BacklogReferenceDropdown({
     });
   }, [allOrderedCards, searchQuery]);
 
-  // 4. Paginate / limit cards when search is not active
-  const isSearchActive = searchQuery.trim().length > 0;
-  const visibleCards = useMemo(() => {
-    if (isSearchActive) return searchedCards;
-    return searchedCards.slice(0, displayLimit);
-  }, [searchedCards, isSearchActive, displayLimit]);
-
-  const hasMoreCards = !isSearchActive && searchedCards.length > displayLimit;
-  const remainingCount = searchedCards.length - displayLimit;
+  // 4. Visible cards across all sprints
+  const visibleCards = searchedCards;
 
   // Active preview card for desktop side / mobile bottom preview
   const activePreviewCard = hoveredCard || touchCard;
@@ -386,23 +376,6 @@ export function BacklogReferenceDropdown({
                     </div>
                   );
                 })
-              )}
-
-              {/* Load More Button if cards exceed displayLimit */}
-              {hasMoreCards && (
-                <div className="p-2.5 bg-gray-50 text-center border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDisplayLimit((prev) => prev + 10);
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline cursor-pointer"
-                  >
-                    <span>Lihat {remainingCount} kartu lainnya</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                </div>
               )}
             </div>
           </div>

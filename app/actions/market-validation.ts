@@ -888,6 +888,9 @@ export async function generateMvBacklogAction(timId: string) {
       .orderBy(desc(kanbanCard.urutan))
       .limit(1);
 
+    const cvSprintSpan = Math.max(1, Math.min(2, Math.floor(totalSprints / 2)));
+    const mvMinSprint = Math.min(totalSprints, cvSprintSpan + 1);
+
     let nextUrutan = (latestCard?.urutan ?? 0) + 1;
 
     // Insert new AI recommendation cards
@@ -903,7 +906,7 @@ export async function generateMvBacklogAction(timId: string) {
         statusKolom: "To Do",
         tahap: "market_validation",
         sprintNumber: null,
-        suggestedSprintNumber: t.suggestedSprintNumber || 1,
+        suggestedSprintNumber: t.suggestedSprintNumber || mvMinSprint,
         storyPoint: t.storyPoint || 3,
         estimasiJam: totalEstHours > 0 ? totalEstHours : null,
         label: "Rekomendasi MV",

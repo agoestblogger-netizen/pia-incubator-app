@@ -44,6 +44,10 @@ export function getFallbackMvBacklogTasks(params: {
   const targetSegment = plan.targetEarlyAdopters || "Early Adopters";
   const fiturDirilis = plan.fiturMvpDirilis || "Modul Utama MVP";
 
+  const cvSprintSpan = Math.max(1, Math.min(2, Math.floor(totalSprints / 2)));
+  const mvMinSprint = Math.min(totalSprints, cvSprintSpan + 1);
+  const mvSprintSpan = Math.max(1, totalSprints - mvMinSprint + 1);
+
   const tasks: Array<{
     judul: string;
     deskripsi: string;
@@ -56,7 +60,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Konfigurasi lingkungan rilis ${version} pada channel ${channel}`,
       deskripsi: `Siapkan infrastruktur, kredensial akses, database pilot, dan verifikasi konektivitas channel ${channel} sebelum onboarding pengguna.`,
       acceptanceCriteria: `Environment ${channel} aktif, database siap, integrasi API terhubung tanpa error kritis.`,
-      sprint: 1,
+      sprint: mvMinSprint,
       sp: 5,
       subtasks: [
         { title: "Setup server / staging environment channel rilis", estimatedHours: 240 },
@@ -68,7 +72,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Finalisasi modul fitur MVP: ${fiturDirilis.slice(0, 50)}...`,
       deskripsi: `Selesaikan pengembangan dan pengujian fungsional fitur MVP yang dijadwalkan dirilis untuk memastikan keandalan alur operasional.`,
       acceptanceCriteria: `Fitur lulus User Acceptance Test (UAT) internal dan siap diakses pengguna di lokasi pilot.`,
-      sprint: 1,
+      sprint: mvMinSprint,
       sp: 8,
       subtasks: [
         { title: "Penyempurnaan antarmuka dan alur transaksi inti", estimatedHours: 360 },
@@ -80,7 +84,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Koordinasi kesiapan sumber daya & sosialisasi tim operasional ${lokasi}`,
       deskripsi: `Lakukan briefing teknis kepada tim pendukung dan PIC ${lokasi} mengenai SOP operasional sementara dan eskalasi issue.`,
       acceptanceCriteria: `SOP sementara terdistribusi, staf lini depan memahami alur bantuan, dan kesiapan resource terverifikasi.`,
-      sprint: Math.min(totalSprints, 2),
+      sprint: Math.min(totalSprints, mvMinSprint + (mvSprintSpan > 2 ? 1 : 0)),
       sp: 3,
       subtasks: [
         { title: "Susun panduan operasional cepat dan daftar kontak darurat", estimatedHours: 180 },
@@ -92,7 +96,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Onboarding ${userCount} early adopters segmen ${targetSegment}`,
       deskripsi: `Aktivasi akun pengguna awal di ${lokasi}, dampingi proses login pertama, dan pastikan pemahaman penggunaan fitur.`,
       acceptanceCriteria: `Minimal ${Math.floor(userCount * 0.8)} pengguna teraktivasi dan berhasil melakukan interaksi pertama pada sistem.`,
-      sprint: Math.min(totalSprints, 2),
+      sprint: Math.min(totalSprints, mvMinSprint + (mvSprintSpan > 2 ? 1 : 0)),
       sp: 5,
       subtasks: [
         { title: "Kirimkan undangan akses dan panduan registrasi awal", estimatedHours: 180 },
@@ -104,7 +108,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Monitoring operasional pilot & logging data metrik DFV harian`,
       deskripsi: `Pantau stabilitas sistem, waktu respon, tingkat kegagalan, dan rekapitulasi transaksi harian untuk pembuktian DFV.`,
       acceptanceCriteria: `Dashboard analitik pilot terbarui harian dan log transaksi tercatat dengan evidence valid.`,
-      sprint: Math.min(totalSprints, 3),
+      sprint: Math.min(totalSprints, mvMinSprint + Math.floor(mvSprintSpan / 2)),
       sp: 8,
       subtasks: [
         { title: "Monitoring server uptime dan latency response time", estimatedHours: 240 },
@@ -116,7 +120,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Sebarkan survey kepuasan CSAT & evaluasi NPS ke pengguna aktif`,
       deskripsi: `Kumpulkan umpan balik terstruktur mengenai tingkat kepuasan, kemudahan, dan kesediaan merekomendasikan solusi.`,
       acceptanceCriteria: `Data kuesioner terkumpul dari minimal 70% pengguna aktif dengan dokumentasi verbatim testimonial.`,
-      sprint: Math.min(totalSprints, 3),
+      sprint: Math.min(totalSprints, Math.max(mvMinSprint, totalSprints - 1)),
       sp: 3,
       subtasks: [
         { title: "Distribusi instrumen survey CSAT/NPS via in-app/chat", estimatedHours: 120 },
@@ -128,7 +132,7 @@ export function getFallbackMvBacklogTasks(params: {
       judul: `Rekapitulasi pencapaian DFV & susun Laporan Market Validation`,
       deskripsi: `Hitung rata-rata ketercapaian DFV, rumuskan kesimpulan Product-Market Fit (PMF), dan siapkan rekomendasi keputusan Go/No-Go.`,
       acceptanceCriteria: `Laporan Market Validation selesai lengkap dengan skor DFV dan rekomendasi tindak lanjut implementasi.`,
-      sprint: Math.min(totalSprints, 4),
+      sprint: totalSprints,
       sp: 5,
       subtasks: [
         { title: "Kalkulasi rekapitulasi pencapaian 9 metrik DFV", estimatedHours: 180 },
@@ -156,6 +160,10 @@ export async function generateAiBacklogFromMvPlan(params: {
 }): Promise<AiBacklogTask[]> {
   const { teamId, namaProyek, plan, totalSprints = 4 } = params;
 
+  const cvSprintSpan = Math.max(1, Math.min(2, Math.floor(totalSprints / 2)));
+  const mvMinSprint = Math.min(totalSprints, cvSprintSpan + 1);
+  const mvSprintSpan = Math.max(1, totalSprints - mvMinSprint + 1);
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     console.log(`[AI MV Backlog] OpenAI API key not found, using curated fallback tasks for ${namaProyek}.`);
@@ -173,7 +181,7 @@ ATURAN STRUKTUR SETIAP TASK:
 2. DESKRIPSI: Instruksi operasional ringkas dan jelas tanpa subjek "Tim".
 3. ACCEPTANCE CRITERIA: Luaran selesai yang terukur, dapat diverifikasi, dan konkret.
 4. Story Point: Estimasikan beban kerja (misal 3, 5, 8 story points).
-5. suggestedSprintNumber: integer antara 1 sampai ${totalSprints} (terdistribusi wajar sepanjang masa pilot Market Validation).
+5. suggestedSprintNumber: integer antara ${mvMinSprint} sampai ${totalSprints} (terdistribusi secara proporsional sepanjang masa pilot Market Validation mulai Sprint ${mvMinSprint} hingga Sprint ${totalSprints}). JANGAN gunakan sprint sebelum Sprint ${mvMinSprint}.
 6. subtasks: 3 sampai 4 subtask konkret dengan estimatedHours (angka integer dalam skala MENIT antara 30 sampai 480 menit, misalnya 60, 90, 120, 180, 240 menit).
 
 Output HARUS JSON murni:
@@ -184,7 +192,7 @@ Output HARUS JSON murni:
       "deskripsi": "...",
       "acceptanceCriteria": "...",
       "storyPoint": 5,
-      "suggestedSprintNumber": 1,
+      "suggestedSprintNumber": ${mvMinSprint},
       "subtasks": [
         { "title": "...", "estimatedHours": 180 },
         { "title": "...", "estimatedHours": 240 }
@@ -204,9 +212,9 @@ FITUR MVP DIRILIS: ${plan.fiturMvpDirilis || "-"}
 MAPPING FITUR: ${JSON.stringify(plan.mappingFitur || [])}
 RESOURCES NEEDED: ${JSON.stringify(plan.resources || [])}
 METRIK DFV: ${JSON.stringify(plan.metrik || [])}
-TOTAL SPRINT: ${totalSprints}
+TOTAL SPRINT: ${totalSprints} (MV Sprints: ${mvMinSprint}-${totalSprints})
 
-Hasilkan 5-8 kartu Backlog Task MV yang siap dieksekusi tim!`;
+Hasilkan 5-8 kartu Backlog Task MV yang terdistribusi antara Sprint ${mvMinSprint} sampai Sprint ${totalSprints}!`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -230,25 +238,32 @@ Hasilkan 5-8 kartu Backlog Task MV yang siap dieksekusi tim!`;
       return getFallbackMvBacklogTasks({ namaProyek, plan, totalSprints });
     }
 
-    return taskList.map((t: any) => ({
-      judul: String(t.judul || t.title || "Tugas Market Validation"),
-      deskripsi: String(t.deskripsi || t.description || ""),
-      acceptanceCriteria: String(t.acceptanceCriteria || t.acceptance_criteria || ""),
-      suggestedSprintNumber: Number(t.suggestedSprintNumber || t.sprint || 1),
-      storyPoint: Number(t.storyPoint || t.sp || 5),
-      subtasks: Array.isArray(t.subtasks)
-        ? t.subtasks.map((st: any) => {
-            let est = Number(st.estimatedHours || st.hours || 180);
-            if (est <= 16) {
-              est = est * 60;
-            }
-            return {
-              title: String(st.title || st.judul || "Aktivitas subtask"),
-              estimatedHours: Math.min(1440, Math.max(15, est)),
-            };
-          })
-        : [],
-    }));
+    return taskList.map((t: any, idx: number) => {
+      let sprintNum = Number(t.suggestedSprintNumber || t.sprint || mvMinSprint);
+      if (isNaN(sprintNum) || sprintNum < mvMinSprint || sprintNum > totalSprints) {
+        sprintNum = mvMinSprint + (idx % mvSprintSpan);
+      }
+
+      return {
+        judul: String(t.judul || t.title || "Tugas Market Validation"),
+        deskripsi: String(t.deskripsi || t.description || ""),
+        acceptanceCriteria: String(t.acceptanceCriteria || t.acceptance_criteria || ""),
+        suggestedSprintNumber: sprintNum,
+        storyPoint: Number(t.storyPoint || t.sp || 5),
+        subtasks: Array.isArray(t.subtasks)
+          ? t.subtasks.map((st: any) => {
+              let est = Number(st.estimatedHours || st.hours || 180);
+              if (est <= 16) {
+                est = est * 60;
+              }
+              return {
+                title: String(st.title || st.judul || "Aktivitas subtask"),
+                estimatedHours: Math.min(1440, Math.max(15, est)),
+              };
+            })
+          : [],
+      };
+    });
   } catch (error) {
     console.error('[generateAiBacklogFromMvPlan] AI generation failed, falling back to curated tasks:', error);
     return getFallbackMvBacklogTasks({ namaProyek, plan, totalSprints });
