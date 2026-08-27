@@ -392,6 +392,17 @@ export function CharterFormClient({
                 unitKerja: anggota?.unitKerja || "",
               });
             });
+          } else {
+            // ALWAYS ensure every role has at least 1 input row available
+            newItems.push({
+              id: `empty-${config.roleCode}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              roleCode: config.roleCode,
+              userId: null,
+              userName: "",
+              userEmail: "",
+              jabatan: "",
+              unitKerja: "",
+            });
           }
         }
         setRoleAssignments(newItems);
@@ -586,8 +597,20 @@ export function CharterFormClient({
                         <td colSpan={4} className="p-0 align-top">
                           <div className="divide-y divide-gray-100">
                             {roleItems.length === 0 ? (
-                              <div className="p-3 text-center text-gray-400 italic text-xs">
-                                Belum ada orang ditugaskan.
+                              <div className="p-3.5 text-gray-400 italic text-xs flex items-center justify-between">
+                                <span>Belum ada orang ditugaskan.</span>
+                                {!isReadOnly && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAddPerson(config.roleCode)}
+                                    className="h-7 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1 cursor-pointer"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    <span>+ Tugaskan {config.title}</span>
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               roleItems.map((item, index) => {
@@ -597,7 +620,7 @@ export function CharterFormClient({
                                       nama: item.userName || "",
                                       email: item.userEmail || "",
                                     }
-                                  : null;
+                                  : (item.userName ? { id: item.userId || "", nama: item.userName, email: item.userEmail || "" } : null);
 
                                 return (
                                   <div
@@ -655,11 +678,11 @@ export function CharterFormClient({
 
                                     {/* Action Delete */}
                                     <div className="text-center">
-                                      {config.isMulti && !isReadOnly && (
+                                      {config.isMulti && !isReadOnly && roleItems.length > 1 && (
                                         <button
                                           type="button"
                                           onClick={() => handleRemovePerson(item.id)}
-                                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
                                           title="Hapus baris orang"
                                         >
                                           <Trash2 className="h-4 w-4" />
@@ -672,14 +695,14 @@ export function CharterFormClient({
                             )}
 
                             {/* Multi-add Button for multi-person roles */}
-                            {config.isMulti && !isReadOnly && (
+                            {config.isMulti && !isReadOnly && roleItems.length > 0 && (
                               <div className="p-2.5 bg-gray-50/50 border-t border-gray-100 flex justify-end">
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleAddPerson(config.roleCode)}
-                                  className="h-8 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5"
+                                  className="h-8 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5 cursor-pointer"
                                 >
                                   <Plus className="h-3.5 w-3.5" />
                                   <span>+ Tambah {config.title}</span>
