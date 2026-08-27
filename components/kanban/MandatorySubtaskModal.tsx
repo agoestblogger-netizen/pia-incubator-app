@@ -43,9 +43,62 @@ interface MandatorySubtaskModalProps {
     id: string;
     title: string;
     subtaskType: string;
-    reportFieldMapping?: Record<string, any> | null;
+    reportFieldMapping?: Record<string, any> | string | null;
   } | null;
   onSuccess: (subtaskId: string) => void;
+}
+
+function extractMappingField(st: MandatorySubtaskModalProps["subtask"]): string {
+  if (!st) return "";
+  let mapping: any = st.reportFieldMapping;
+  if (typeof mapping === "string") {
+    try {
+      mapping = JSON.parse(mapping);
+    } catch {}
+  }
+  if (mapping && typeof mapping === "object" && mapping.field) {
+    return mapping.field;
+  }
+
+  // Fallback pattern matching dari title
+  const title = (st.title || "").toLowerCase();
+  if (
+    title.includes("kesimpulan & keputusan go/no-go") ||
+    (title.includes("kesimpulan") && (title.includes("go/no-go") || title.includes("market validation") || title.includes("pmf")))
+  ) {
+    return "kesimpulan_keputusan_mv";
+  }
+  if (title.includes("rilis mvp") || title.includes("data rilis")) {
+    return "mvp_release_data";
+  }
+  if (title.includes("pengukuran dfv") || title.includes("traction") || title.includes("metrik dfv")) {
+    return "dfv_traction_measurement";
+  }
+  if (title.includes("preliminary review") || (title.includes("catatan review") && title.includes("sme"))) {
+    return "preliminary_review_mv";
+  }
+  if (title.includes("prototype") || title.includes("tautan prototype")) {
+    return "prototype_link";
+  }
+  if (title.includes("responden") || title.includes("profil responden")) {
+    return "responden_profil";
+  }
+  if (title.includes("mekanisme") || title.includes("lokasi testing")) {
+    return "mekanisme_lokasi";
+  }
+  if (title.includes("feedback matrix") || title.includes("matriks feedback")) {
+    return "feedback_matrix";
+  }
+  if (title.includes("validated solution") || title.includes("psf")) {
+    return "validated_solution_psf";
+  }
+  if (title.includes("kesimpulan") && title.includes("pembelajaran")) {
+    return "kesimpulan_pembelajaran";
+  }
+  if (title.includes("keputusan lanjut") || title.includes("keputusan fit")) {
+    return "keputusan_lanjut";
+  }
+  return "";
 }
 
 export function MandatorySubtaskModal({
@@ -62,9 +115,9 @@ export function MandatorySubtaskModal({
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
-  const mappingField = subtask?.reportFieldMapping?.field || "";
+  const mappingField = extractMappingField(subtask);
   const isComplex = subtask?.subtaskType === "mandatory_complex";
-  const isMvField = ["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv"].includes(mappingField);
+  const isMvField = ["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv", "preliminary_review_mv"].includes(mappingField);
 
   useEffect(() => {
     if (isOpen && subtask && mappingField) {
@@ -581,8 +634,8 @@ export function MandatorySubtaskModal({
               </div>
             )}
 
-            {/* 7. Preliminary Review SME */}
-            {mappingField === "preliminary_review" && (
+            {/* 7. Preliminary Review SME (CV & MV) */}
+            {(mappingField === "preliminary_review" || mappingField === "preliminary_review_mv") && (
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="space-y-1">
