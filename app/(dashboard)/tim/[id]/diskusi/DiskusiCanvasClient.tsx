@@ -701,7 +701,7 @@ export function DiskusiCanvasClient({
       (sum, st) => sum + (st.estimatedMinutes || (st as any).estimatedHours || 60),
       0
     );
-    const calculatedSP = Number((totalMinutes / 60).toFixed(2));
+    const calculatedSP = Math.max(1, Math.round(totalMinutes / 60));
 
     try {
       // 1. Create the new Kanban Card (timId first, cardData second)

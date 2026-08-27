@@ -159,7 +159,9 @@ export async function createKanbanCardAction(
         urutan: cardData.urutan || 0,
         reviewStatus: 'adopted', // kartu manual selalu adopted
         estimasiJam: cardData.estimasiJam ?? null,
-        storyPoint: cardData.storyPoint ?? 3,
+        storyPoint: cardData.storyPoint !== undefined && cardData.storyPoint !== null
+          ? Math.max(1, Math.round(Number(cardData.storyPoint)))
+          : 3,
       })
       .returning();
 

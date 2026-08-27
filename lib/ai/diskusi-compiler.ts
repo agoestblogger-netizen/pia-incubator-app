@@ -116,7 +116,7 @@ Susun draf kartu backlog lengkap berdasarkan ide-ide di atas dalam format JSON.`
   });
 
   const totalMinutes = normalizedSubtasks.reduce((sum, st) => sum + st.estimatedMinutes, 0);
-  const calculatedStoryPoint = Number((totalMinutes / 60).toFixed(2));
+  const calculatedStoryPoint = Math.max(1, Math.round(totalMinutes / 60));
 
   return {
     judul: (parsed.judul || frameLabel || 'Inisiatif Baru').substring(0, 100),
