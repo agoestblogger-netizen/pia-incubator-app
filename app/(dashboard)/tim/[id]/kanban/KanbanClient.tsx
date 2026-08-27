@@ -2524,9 +2524,11 @@ export function KanbanClient({
                     canEdit={canEdit}
                     currentUser={currentUser}
                     isAdmin={isAdmin}
+                    isCoachOrAdmin={isCoachOrAdmin}
                     phaseGateStatus={phaseGateStatus}
                     onOpenCardDetail={handleOpenCardDetail}
                     onOpenCreateBacklogModal={handleOpenCreateBacklogModal}
+                    onOpenCreateIssueModal={() => setIsNewIssueOpen(true)}
                     onRefreshCapacities={() => fetchCapacities(selectedSprintNum)}
                     onStartSprint={handleStartSprintFromPlanning}
                     startingSprint={startingSprint}

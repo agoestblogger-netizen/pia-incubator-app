@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Clock,
   ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,9 +54,11 @@ interface SprintPlanningSectionProps {
   canEdit: boolean;
   currentUser?: any;
   isAdmin?: boolean;
+  isCoachOrAdmin?: boolean;
   phaseGateStatus?: any;
   onOpenCardDetail: (card: any, forceSprintNum?: number) => void;
   onOpenCreateBacklogModal: (sprintNum: number) => void;
+  onOpenCreateIssueModal?: (sprintNum: number) => void;
   onRefreshCapacities: () => void;
   onStartSprint: (
     sprintId: string,
@@ -87,9 +90,11 @@ export function SprintPlanningSection({
   phaseGateStatus,
   onOpenCardDetail,
   onOpenCreateBacklogModal,
+  onOpenCreateIssueModal,
   onRefreshCapacities,
   onStartSprint,
   startingSprint,
+  isCoachOrAdmin: propIsCoachOrAdmin,
 }: SprintPlanningSectionProps) {
   const router = useRouter();
   const [editingCapacityId, setEditingCapacityId] = useState<string | null>(null);
@@ -109,7 +114,7 @@ export function SprintPlanningSection({
     userRole === "innovation_coach" ||
     currentUser?.globalRoles?.some((r: string) => ["coach", "innovation_coach"].includes(r))
   );
-  const isAdminOrCoach = isAdmin || isCoach;
+  const isAdminOrCoach = propIsCoachOrAdmin ?? (isAdmin || isCoach);
 
   // Sprint Goal state & auto-suggestion
   const [savedGoal, setSavedGoal] = useState<string>(sprint.sprintGoal || "");
@@ -510,14 +515,26 @@ export function SprintPlanningSection({
             </div>
 
             {canEdit && (
-              <Button
-                size="sm"
-                onClick={() => onOpenCreateBacklogModal(sprint.nomorSprint)}
-                className="bg-[#3E9463] hover:bg-[#0B3D2E] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs gap-1.5 cursor-pointer active:scale-98 transition-all"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>+ Tambah Backlog</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                {isAdminOrCoach && onOpenCreateIssueModal && (
+                  <Button
+                    size="sm"
+                    onClick={() => onOpenCreateIssueModal(sprint.nomorSprint)}
+                    className="border border-orange-300 bg-orange-50/90 hover:bg-orange-100 text-orange-950 font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs gap-1.5 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
+                    <span>+ Tambah Issue</span>
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  onClick={() => onOpenCreateBacklogModal(sprint.nomorSprint)}
+                  className="bg-[#3E9463] hover:bg-[#0B3D2E] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs gap-1.5 cursor-pointer active:scale-98 transition-all"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>+ Tambah Backlog</span>
+                </Button>
+              </div>
             )}
           </div>
 
