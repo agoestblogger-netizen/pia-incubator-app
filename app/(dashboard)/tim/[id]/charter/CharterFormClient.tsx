@@ -264,7 +264,7 @@ export function CharterFormClient({
     currentUser?.timRoles?.some((tr: any) => tr.timId === timId && tr.roleCode === "coach") ||
     currentUser?.globalRoles?.includes("coach")
   );
-  const isRolesEditable = Boolean(canEdit && (canEditRoles || isAdmin || isCoach));
+  const isRolesEditable = Boolean(canEdit && canEditRoles && (isAdmin || isCoach));
 
   const isReadOnly = !canEdit;
   const isRolesReadOnly = Boolean(isReadOnly || !isRolesEditable);
