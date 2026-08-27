@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Sparkles,
   ArrowRight,
@@ -20,6 +21,7 @@ import {
   Target,
   RefreshCw,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +50,8 @@ interface SprintPlanningSectionProps {
   backlogCards: any[];
   capacities: MemberCapacityInfo[];
   canEdit: boolean;
+  currentUser?: any;
+  isAdmin?: boolean;
   phaseGateStatus?: any;
   onOpenCardDetail: (card: any, forceSprintNum?: number) => void;
   onOpenCreateBacklogModal: (sprintNum: number) => void;
@@ -77,6 +81,8 @@ export function SprintPlanningSection({
   backlogCards,
   capacities,
   canEdit,
+  currentUser,
+  isAdmin: propIsAdmin,
   phaseGateStatus,
   onOpenCardDetail,
   onOpenCreateBacklogModal,
@@ -84,16 +90,29 @@ export function SprintPlanningSection({
   onStartSprint,
   startingSprint,
 }: SprintPlanningSectionProps) {
+  const router = useRouter();
   const [editingCapacityId, setEditingCapacityId] = useState<string | null>(null);
   const [tempCapacityVal, setTempCapacityVal] = useState<number>(2);
   const [tempSubtaskCapacityVal, setTempSubtaskCapacityVal] = useState<number | "">("");
   const [savingCapacity, setSavingCapacity] = useState(false);
 
+  // Admin status check
+  const isAdmin = propIsAdmin ?? Boolean(
+    currentUser?.globalRoles?.some((r: string) =>
+      ["super_admin", "admin_ic", "admin"].includes(r)
+    )
+  );
+
   // Sprint Goal state & auto-suggestion
+  const [savedGoal, setSavedGoal] = useState<string>(sprint.sprintGoal || "");
   const [sprintGoal, setSprintGoal] = useState<string>(sprint.sprintGoal || "");
   const [isSuggestedGoal, setIsSuggestedGoal] = useState<boolean>(false);
   const [savingGoal, setSavingGoal] = useState<boolean>(false);
   const [loadingSuggestion, setLoadingSuggestion] = useState<boolean>(false);
+
+  // Check if goal is already saved
+  const isGoalSaved = Boolean(savedGoal && savedGoal.trim().length > 0);
+  const isGoalLocked = isGoalSaved && !isAdmin;
 
   // Phase gating check
   const isCvUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
@@ -106,6 +125,7 @@ export function SprintPlanningSection({
   //   falls back to CV Planning Form data (or generic placeholder if form is also empty)
   React.useEffect(() => {
     let cancelled = false;
+    setSavedGoal(sprint.sprintGoal || "");
 
     if (sprint.sprintGoal && sprint.sprintGoal.trim().length > 0) {
       setSprintGoal(sprint.sprintGoal);
@@ -148,15 +168,20 @@ export function SprintPlanningSection({
   }, [sprint.id, sprint.sprintGoal, backlogCards, timId]);
 
   const handleSaveSprintGoal = async (valToSave?: string) => {
-    const text = valToSave !== undefined ? valToSave : sprintGoal;
-    if (text.trim() === (sprint.sprintGoal || "").trim()) return;
+    const text = (valToSave !== undefined ? valToSave : sprintGoal).trim();
+    if (!text) return;
+    if (text === (savedGoal || "").trim()) return;
     setSavingGoal(true);
     try {
       const res = await updateSprintGoalAction(timId, sprint.id, text);
       if (res.success) {
+        setSavedGoal(text);
+        setSprintGoal(text);
+        sprint.sprintGoal = text;
         setIsSuggestedGoal(false);
         toast.success("Sprint Goal berhasil disimpan!", "Goal Tersimpan");
         if (onRefreshCapacities) onRefreshCapacities();
+        router.refresh();
       } else {
         toast.error(res.error || "Gagal menyimpan Sprint Goal.", "Gagal");
       }
@@ -334,10 +359,21 @@ export function SprintPlanningSection({
             <div>
               <h3 className="text-xs sm:text-sm font-extrabold text-gray-900 flex items-center gap-2 flex-wrap">
                 <span>Sprint Goal — Sasaran Utama Sprint {sprint.nomorSprint}</span>
-                {isSuggestedGoal && (
+                {isGoalSaved ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                    <span>Goal Disimpan</span>
+                  </span>
+                ) : isSuggestedGoal ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full border border-purple-200 shadow-2xs">
                     <Sparkles className="h-3 w-3 text-amber-500" />
                     <span>Saran Otomatis AI</span>
+                  </span>
+                ) : null}
+                {isGoalSaved && isAdmin && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-900 bg-purple-200 px-2 py-0.5 rounded-full border border-purple-300 shadow-2xs">
+                    <ShieldCheck className="h-3 w-3 text-purple-700" />
+                    <span>Mode Admin — Kunci dilewati</span>
                   </span>
                 )}
               </h3>
@@ -347,8 +383,8 @@ export function SprintPlanningSection({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {canEdit && (
+          {canEdit && (!isGoalSaved || isAdmin) && (
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="ghost"
@@ -365,8 +401,6 @@ export function SprintPlanningSection({
                 )}
                 <span>Saran Ulang AI</span>
               </Button>
-            )}
-            {canEdit && (
               <Button
                 type="button"
                 size="sm"
@@ -381,27 +415,32 @@ export function SprintPlanningSection({
                 )}
                 <span>{savingGoal ? "Menyimpan..." : "Simpan Goal"}</span>
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="relative">
-          <Textarea
-            rows={2}
-            disabled={!canEdit}
-            value={sprintGoal}
-            onChange={(e) => {
-              setSprintGoal(e.target.value);
-              setIsSuggestedGoal(false);
-            }}
-            onBlur={() => handleSaveSprintGoal()}
-            placeholder="Belum ada saran — tambahkan backlog dulu atau isi manual sasaran utama sprint ini..."
-            className={`text-xs sm:text-sm resize-none rounded-xl transition-all ${
-              isSuggestedGoal
-                ? "italic text-purple-950 border-purple-300 bg-purple-50/40 focus:bg-white focus:not-italic"
-                : "text-gray-900 border-gray-300 bg-white"
-            }`}
-          />
+          {isGoalLocked ? (
+            <div className="p-3.5 sm:p-4 rounded-xl bg-white/95 border border-purple-200/90 text-xs sm:text-sm text-purple-950 font-medium leading-relaxed shadow-2xs italic">
+              &ldquo;{sprintGoal || savedGoal}&rdquo;
+            </div>
+          ) : (
+            <Textarea
+              rows={2}
+              disabled={!canEdit}
+              value={sprintGoal}
+              onChange={(e) => {
+                setSprintGoal(e.target.value);
+                setIsSuggestedGoal(false);
+              }}
+              placeholder="Belum ada saran — tambahkan backlog dulu atau isi manual sasaran utama sprint ini..."
+              className={`text-xs sm:text-sm resize-none rounded-xl transition-all ${
+                isSuggestedGoal
+                  ? "italic text-purple-950 border-purple-300 bg-purple-50/40 focus:bg-white focus:not-italic"
+                  : "text-gray-900 border-gray-300 bg-white"
+              }`}
+            />
+          )}
         </div>
       </div>
 

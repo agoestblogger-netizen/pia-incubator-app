@@ -628,6 +628,12 @@ export function KanbanClient({
   phaseGateStatus?: any;
   tahapScope?: string;
 }) {
+  const isAdmin = Boolean(
+    currentUser?.globalRoles?.some((r: string) =>
+      ["super_admin", "admin_ic", "admin"].includes(r)
+    )
+  );
+
   const [viewMode, setViewMode] = useState<"board" | "timeline">("board");
   const [cards, setCards] = useState<any[]>(initialCards);
   const [sprints, setSprints] = useState<any[]>(initialSprints);
@@ -2404,6 +2410,8 @@ export function KanbanClient({
                     backlogCards={plannedCardsForSelectedSprint}
                     capacities={capacities}
                     canEdit={canEdit}
+                    currentUser={currentUser}
+                    isAdmin={isAdmin}
                     phaseGateStatus={phaseGateStatus}
                     onOpenCardDetail={handleOpenCardDetail}
                     onOpenCreateBacklogModal={handleOpenCreateBacklogModal}

@@ -483,6 +483,32 @@ export async function updateSprintGoalAction(timId: string, sprintId: string, sp
       return { success: false, error: "Forbidden: Anda tidak memiliki izin mengedit sprint tim ini." };
     }
 
+    const [currentSprint] = await db
+      .select()
+      .from(sprint)
+      .where(and(eq(sprint.id, sprintId), eq(sprint.timInovatorId, timId)))
+      .limit(1);
+
+    if (!currentSprint) {
+      return { success: false, error: "Sprint tidak ditemukan." };
+    }
+
+    const isAdmin = user.globalRoles.some((r) =>
+      ["super_admin", "admin_ic", "admin"].includes(r)
+    );
+
+    // If goal is already saved and non-empty, only admin can update it
+    if (
+      currentSprint.sprintGoal &&
+      currentSprint.sprintGoal.trim().length > 0 &&
+      !isAdmin
+    ) {
+      return {
+        success: false,
+        error: "Sprint Goal telah disimpan dan dikunci. Hanya Admin yang dapat mengubahnya.",
+      };
+    }
+
     const [updated] = await db
       .update(sprint)
       .set({
