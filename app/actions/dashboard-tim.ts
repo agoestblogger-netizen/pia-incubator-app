@@ -111,16 +111,25 @@ export async function getTimDashboardDataAction(
         );
     }
 
+    const normalizeStatus = (status: string | null | undefined): "todo" | "in_progress" | "review" | "done" => {
+      if (!status) return "todo";
+      const s = status.toLowerCase().replace(/[\s\-_/]/g, "");
+      if (s.includes("progress")) return "in_progress";
+      if (s.includes("review") || s.includes("qa")) return "review";
+      if (s.includes("done") || s.includes("selesai")) return "done";
+      return "todo";
+    };
+
     const totalCardsInActiveSprint = sprintCards.length;
     const cardsCompletedInActiveSprint = sprintCards.filter(
-      (c) => c.statusKolom === "done"
+      (c) => normalizeStatus(c.statusKolom) === "done"
     ).length;
 
     const cardDistribution = {
-      todo: sprintCards.filter((c) => c.statusKolom === "todo" || !c.statusKolom).length,
-      in_progress: sprintCards.filter((c) => c.statusKolom === "in_progress").length,
-      review: sprintCards.filter((c) => c.statusKolom === "review").length,
-      done: sprintCards.filter((c) => c.statusKolom === "done").length,
+      todo: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "todo").length,
+      in_progress: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "in_progress").length,
+      review: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "review").length,
+      done: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "done").length,
     };
 
     // 3. Query Seluruh Kartu Tim untuk Kartu Wajib & Tenggat Mendekat
