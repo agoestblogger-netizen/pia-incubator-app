@@ -95,39 +95,57 @@ export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
 
   // ─── 7 TEMPLATE BAKU MARKET VALIDATION ───
   "MVP Planning": [
-    { title: "Petakan spesifikasi fungsional fitur inti MVP", estimatedHours: 240 },
-    { title: "Alokasikan kebutuhan sumber daya (teknologi, anggaran, tim)", estimatedHours: 180 },
-    { title: "Susun timeline rilis MVP & jadwal monitoring pilot", estimatedHours: 180 },
+    { title: "Petakan spesifikasi fungsional fitur inti MVP", estimatedHours: 240, subtaskType: "regular" },
+    { title: "Alokasikan kebutuhan sumber daya (teknologi, anggaran, tim)", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Susun timeline rilis MVP & jadwal monitoring pilot", estimatedHours: 180, subtaskType: "regular" },
   ],
   "MVP Development": [
-    { title: "Kembangkan komponen antarmuka pengguna (Frontend MVP)", estimatedHours: 720 },
-    { title: "Kembangkan backend, database, & integrasi modul MVP", estimatedHours: 840 },
-    { title: "Lakukan quality assurance (QA) & pengujian performa sistem", estimatedHours: 360 },
+    { title: "Kembangkan komponen antarmuka pengguna (Frontend MVP)", estimatedHours: 720, subtaskType: "regular" },
+    { title: "Kembangkan backend, database, & integrasi modul MVP", estimatedHours: 840, subtaskType: "regular" },
+    { title: "Lakukan quality assurance (QA) & pengujian performa sistem", estimatedHours: 360, subtaskType: "regular" },
   ],
   "MVP Release": [
-    { title: "Setup environment produksi / staging pilot", estimatedHours: 240 },
-    { title: "Luncurkan rilis resmi MVP ke segmen pengguna sasaran", estimatedHours: 240 },
-    { title: "Distribusikan panduan penggunaan & buka kanal bantuan", estimatedHours: 180 },
+    {
+      title: "Isi Data Rilis MVP",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "mvp_release_data" },
+    },
+    { title: "Setup environment produksi / staging pilot", estimatedHours: 240, subtaskType: "regular" },
+    { title: "Luncurkan rilis resmi MVP ke segmen pengguna sasaran", estimatedHours: 240, subtaskType: "regular" },
+    { title: "Distribusikan panduan penggunaan & buka kanal bantuan", estimatedHours: 180, subtaskType: "regular" },
   ],
   "Market Testing (ukur metrik DFV)": [
-    { title: "Pantau metrik Desirability (adopsi, retensi, kepuasan pengguna)", estimatedHours: 300 },
-    { title: "Pantau metrik Feasibility (keandalan sistem & operasional)", estimatedHours: 300 },
-    { title: "Pantau metrik Viability (dampak finansial/non-finansial & unit economics)", estimatedHours: 300 },
+    {
+      title: "Isi Hasil Pengukuran DFV & Traction",
+      estimatedHours: 180,
+      subtaskType: "mandatory_complex",
+      reportFieldMapping: { field: "dfv_traction_measurement" },
+    },
+    { title: "Pantau metrik Desirability (adopsi, retensi, kepuasan pengguna)", estimatedHours: 300, subtaskType: "regular" },
+    { title: "Pantau metrik Feasibility (keandalan sistem & operasional)", estimatedHours: 300, subtaskType: "regular" },
+    { title: "Pantau metrik Viability (dampak finansial/non-finansial & unit economics)", estimatedHours: 300, subtaskType: "regular" },
   ],
   "Preliminary Review (SME) - MV": [
-    { title: "Rekapitulasi data performa pasar MVP & analisis DFV", estimatedHours: 180 },
-    { title: "Sesi konsultasi evaluasi strategi bersama SME & Coach", estimatedHours: 120 },
-    { title: "Susun rencana penyempurnaan berdasarkan masukan SME", estimatedHours: 180 },
+    { title: "Rekapitulasi data performa pasar MVP & analisis DFV", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Sesi konsultasi evaluasi strategi bersama SME & Coach", estimatedHours: 120, subtaskType: "regular" },
+    { title: "Susun rencana penyempurnaan berdasarkan masukan SME", estimatedHours: 180, subtaskType: "regular" },
   ],
   "Analisis hasil & isi Laporan Market Validation": [
-    { title: "Hitung skor akhir PMF dan capaian metrik pilot", estimatedHours: 180 },
-    { title: "Rumuskan analisis kelayakan skala implementasi luas", estimatedHours: 180 },
-    { title: "Isi dan submit Laporan Market Validation di sistem", estimatedHours: 180 },
+    {
+      title: "Isi Kesimpulan & Keputusan Go/No-Go",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "kesimpulan_keputusan_mv" },
+    },
+    { title: "Hitung skor akhir PMF dan capaian metrik pilot", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Rumuskan analisis kelayakan skala implementasi luas", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Isi dan submit Laporan Market Validation di sistem", estimatedHours: 180, subtaskType: "regular" },
   ],
   "Persiapan Forum Manajemen Inovasi": [
-    { title: "Susun slide executive summary DFV untuk Dewan Direksi", estimatedHours: 240 },
-    { title: "Siapkan data dukung finansial, operasional, & rekomendasi scale-up", estimatedHours: 180 },
-    { title: "Simulasi presentasi dan finalisasi materi sidang FMI", estimatedHours: 180 },
+    { title: "Susun slide executive summary DFV untuk Dewan Direksi", estimatedHours: 240, subtaskType: "regular" },
+    { title: "Siapkan data dukung finansial, operasional, & rekomendasi scale-up", estimatedHours: 180, subtaskType: "regular" },
+    { title: "Simulasi presentasi dan finalisasi materi sidang FMI", estimatedHours: 180, subtaskType: "regular" },
   ],
 };
 

@@ -21,6 +21,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPredefinedSubtasks } from "@/lib/data/subtask-templates";
 import { generateDynamicSubtasksForCard } from "@/lib/ai/subtask-generator";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
+import { detectMvBakuCardType, isMvMandatoryCard } from "@/lib/utils/mv-cards";
 
 export async function logKanbanActivity(params: {
   taskId: string;
@@ -243,10 +244,11 @@ export async function updateKanbanCardStatusAction(
       return { success: false, error: "Kartu tidak ditemukan." };
     }
 
-    // ── BAGIAN C: Validasi Kartu Template Baku CV wajib selesai semua subtask wajib sebelum Done ──
+    // ── BAGIAN C: Validasi Kartu Template Baku CV & MV wajib selesai semua subtask wajib sebelum Done ──
     if (newStatusKolom === "Done") {
       const isBakuCv = detectCvBakuCardType(oldCard.judul, oldCard.tahap || undefined);
-      if (isBakuCv) {
+      const isBakuMv = isMvMandatoryCard(oldCard.judul, oldCard.tahap || undefined);
+      if (isBakuCv || isBakuMv) {
         const mandatorySubtasks = await db
           .select({
             id: kanbanSubtask.id,
@@ -633,11 +635,14 @@ export async function deleteKanbanCardAction(timId: string, cardId: string) {
     const isBakuCv =
       detectCvBakuCardType(card.judul, card.tahap || undefined) !== null ||
       card.label === "Template Baku CV";
+    const isBakuMv =
+      detectMvBakuCardType(card.judul, card.tahap || undefined) !== null ||
+      card.label === "Template Baku MV";
 
-    if (isBakuCv) {
+    if (isBakuCv || isBakuMv) {
       return {
         success: false,
-        error: "Kartu Template Baku CV tidak dapat dihapus karena merupakan struktur baku resmi Juklak.",
+        error: `Kartu ${isBakuCv ? "Template Baku CV" : "Template Baku MV"} tidak dapat dihapus karena merupakan struktur baku resmi Juklak.`,
       };
     }
 
@@ -1422,11 +1427,14 @@ export async function deleteTaskSubtaskAction(subtaskId: string, timId: string) 
     const isBakuCv =
       detectCvBakuCardType(st.cardJudul, st.cardTahap || undefined) !== null ||
       st.cardLabel === "Template Baku CV";
+    const isBakuMv =
+      detectMvBakuCardType(st.cardJudul, st.cardTahap || undefined) !== null ||
+      st.cardLabel === "Template Baku MV";
 
-    if (isBakuCv) {
+    if (isBakuCv || isBakuMv) {
       return {
         success: false,
-        error: "Subtask pada kartu Template Baku CV tidak dapat dihapus karena merupakan bagian dari struktur baku resmi Juklak.",
+        error: `Subtask pada kartu ${isBakuCv ? "Template Baku CV" : "Template Baku MV"} tidak dapat dihapus karena merupakan bagian dari struktur baku resmi Juklak.`,
       };
     }
 

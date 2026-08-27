@@ -40,6 +40,7 @@ import { SprintPlanningSection } from "./SprintPlanningSection";
 import { MandatorySubtaskModal } from "@/components/kanban/MandatorySubtaskModal";
 import { MvCardWorkDocumentSection } from "@/components/kanban/MvCardWorkDocumentSection";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
+import { detectMvBakuCardType, isMvMandatoryCard } from "@/lib/utils/mv-cards";
 import { toast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -277,6 +278,8 @@ function SortableCard({
   const isBakuCv =
     detectCvBakuCardType(card.judul, card.tahap) !== null ||
     card.label === "Template Baku CV";
+  const isMandatoryMv = isMvMandatoryCard(card.judul, card.tahap);
+  const isMandatoryCard = isBakuCv || isMandatoryMv;
 
   return (
     <div
@@ -304,7 +307,7 @@ function SortableCard({
           onClick={() => onSelectCard(card)}
           className="flex flex-wrap items-center gap-1.5 cursor-pointer"
         >
-          {isBakuCv && (
+          {isMandatoryCard && (
             <span className="inline-flex items-center text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
               Wajib
             </span>
@@ -350,7 +353,7 @@ function SortableCard({
       >
         <h4
           className={`text-xs font-bold leading-tight transition-colors ${
-            isBakuCv
+            isMandatoryCard
               ? "text-rose-700 font-extrabold group-hover:text-rose-800"
               : isOverdue
               ? "text-red-950"

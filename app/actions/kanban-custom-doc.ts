@@ -12,6 +12,8 @@ import {
   mvReleaseLog,
   hasilValidasiMetrik,
   dfvRekapitulasi,
+  hasilPengukuranDfvTraction,
+  rencanaValidasiMetrik,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -658,6 +660,18 @@ export async function syncCardCustomDocToReportAction(
   }
 }
 
+const DEFAULT_MV_DFV_METRICS = [
+  { validasi: "desirability", metrik: "Tingkat adopsi fitur inti MVP oleh early adopters", baseline: "0%", target: "80%", threshold: "70%" },
+  { validasi: "desirability", metrik: "Tingkat retensi mingguan pengguna aktif MVP", baseline: "0%", target: "60%", threshold: "50%" },
+  { validasi: "desirability", metrik: "Skor kepuasan pengguna (CSAT / NPS) terhadap MVP", baseline: "0", target: "4.0/5.0", threshold: "3.5/5.0" },
+  { validasi: "feasibility", metrik: "Tingkat ketersediaan & stabilitas sistem MVP (Uptime)", baseline: "0%", target: "99%", threshold: "95%" },
+  { validasi: "feasibility", metrik: "Kecepatan response time & performa transaksi inti", baseline: "0s", target: "< 3 detik", threshold: "< 5 detik" },
+  { validasi: "feasibility", metrik: "Kepatuhan SOP & integrasi operasional unit kerja", baseline: "0%", target: "100%", threshold: "80%" },
+  { validasi: "viability", metrik: "Rasio efisiensi biaya & waktu proses per transaksi", baseline: "0%", target: "50%", threshold: "30%" },
+  { validasi: "viability", metrik: "Proyeksi potensi revenue / cost savings per bulan", baseline: "Rp 0", target: "Rp 100 Juta", threshold: "Rp 50 Juta" },
+  { validasi: "viability", metrik: "Unit economics & payback period model bisnis", baseline: "0 bln", target: "< 12 bulan", threshold: "< 18 bulan" },
+];
+
 /**
  * Mengambil data awal untuk modal subtask wajib (mandatory subtask)
  */
@@ -667,6 +681,131 @@ export async function getMandatorySubtaskDataAction(
   mappingField: string
 ) {
   try {
+    // ── MV Mapping Fields ──
+    if (["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv"].includes(mappingField)) {
+      let [mvPlan] = await db
+        .select()
+        .from(marketValidationPlan)
+        .where(eq(marketValidationPlan.timInovatorId, timId))
+        .limit(1);
+
+      let [mvReport] = mvPlan
+        ? await db
+            .select()
+            .from(marketValidationReport)
+            .where(eq(marketValidationReport.planId, mvPlan.id))
+            .limit(1)
+        : [null];
+
+      let data: Record<string, any> = {};
+
+      switch (mappingField) {
+        case "mvp_release_data":
+          data = {
+            mvpVersionDilaporkan: mvReport?.mvpVersionDilaporkan || "MVP 1.0",
+            periodeRilisMulai: mvReport?.periodeRilisMulai
+              ? new Date(mvReport.periodeRilisMulai).toISOString().split("T")[0]
+              : "",
+            periodeRilisSelesai: mvReport?.periodeRilisSelesai
+              ? new Date(mvReport.periodeRilisSelesai).toISOString().split("T")[0]
+              : "",
+            lokasiChannelRilis: mvReport?.lokasiChannelRilis || "",
+            jumlahEarlyAdoptersAktual: mvReport?.jumlahEarlyAdoptersAktual ?? "",
+            ringkasanAktivitasRilis: mvReport?.ringkasanAktivitasRilis || "",
+            kendalaUtama: mvReport?.kendalaUtama || "",
+            perubahanDariPlan: mvReport?.perubahanDariPlan || "",
+          };
+          break;
+
+        case "dfv_traction_measurement": {
+          const existingRows = await db
+            .select()
+            .from(hasilPengukuranDfvTraction)
+            .where(
+              and(
+                eq(hasilPengukuranDfvTraction.timInovatorId, timId),
+                eq(hasilPengukuranDfvTraction.kanbanCardId, cardId)
+              )
+            );
+
+          if (existingRows.length > 0) {
+            data = {
+              dfvMeasurementRows: existingRows.map((r) => ({
+                id: r.id,
+                validasi: r.validasi,
+                metrik: r.metrik,
+                baseline: r.baseline || "-",
+                target: r.target || "-",
+                threshold: r.threshold || "70%",
+                hasilAktual: r.hasilAktual || "",
+                persenTercapai: r.persenTercapai,
+                status: r.status || "belum",
+                learning: r.learning || "",
+                enhancement: r.enhancement || "",
+              })),
+            };
+          } else {
+            let planMetrikRows: any[] = [];
+            if (mvPlan) {
+              planMetrikRows = await db
+                .select()
+                .from(rencanaValidasiMetrik)
+                .where(
+                  and(
+                    eq(rencanaValidasiMetrik.planId, mvPlan.id),
+                    eq(rencanaValidasiMetrik.fase, "market_validation")
+                  )
+                );
+            }
+
+            if (planMetrikRows.length >= 9) {
+              data = {
+                dfvMeasurementRows: planMetrikRows.map((r) => ({
+                  id: r.id,
+                  validasi: r.validasi,
+                  metrik: r.metrik,
+                  baseline: r.baseline || "-",
+                  target: r.target || "-",
+                  threshold: r.threshold || "70%",
+                  hasilAktual: "",
+                  persenTercapai: null,
+                  status: "belum",
+                  learning: "",
+                  enhancement: "",
+                })),
+              };
+            } else {
+              data = {
+                dfvMeasurementRows: DEFAULT_MV_DFV_METRICS.map((m, idx) => ({
+                  id: `default_${idx}`,
+                  ...m,
+                  hasilAktual: "",
+                  persenTercapai: null,
+                  status: "belum",
+                  learning: "",
+                  enhancement: "",
+                })),
+              };
+            }
+          }
+          break;
+        }
+
+        case "kesimpulan_keputusan_mv":
+          data = {
+            kesimpulanPmf: mvReport?.kesimpulanPmf || "",
+            keputusanGoNogo: mvReport?.keputusanGoNogo || "go_ke_fmi",
+            rekomendasiIterasi: mvReport?.rekomendasiIterasi || "",
+            rencanaMvpBerikutnya: mvReport?.rencanaMvpBerikutnya || "",
+            rekomendasiPromotorSponsor: mvReport?.rekomendasiPromotorSponsor || "",
+          };
+          break;
+      }
+
+      return { success: true, data };
+    }
+
+    // ── CV Mapping Fields (Default) ──
     let [plan] = await db
       .select()
       .from(customerValidationPlan)
@@ -777,7 +916,7 @@ export async function getMandatorySubtaskDataAction(
 }
 
 /**
- * Menyimpan data dari modal subtask wajib ke Laporan CV dan otomatis mencentang subtask (isDone = true)
+ * Menyimpan data dari modal subtask wajib ke Laporan CV/MV dan otomatis mencentang subtask (isDone = true)
  */
 export async function saveMandatorySubtaskDataAction(
   timId: string,
@@ -792,6 +931,175 @@ export async function saveMandatorySubtaskDataAction(
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
+    // ── Check if this is an MV mapping field ──
+    const isMvField = ["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv"].includes(mappingField);
+
+    if (isMvField) {
+      const allowedMv = await hasPermission(user, "market_val.edit", timId);
+      if (!allowedMv) {
+        return {
+          success: false,
+          error: "Forbidden: Anda tidak memiliki izin untuk mengedit Market Validation tim ini.",
+        };
+      }
+
+      let [mvPlan] = await db
+        .select()
+        .from(marketValidationPlan)
+        .where(eq(marketValidationPlan.timInovatorId, timId))
+        .limit(1);
+
+      if (!mvPlan) {
+        const [newPlan] = await db
+          .insert(marketValidationPlan)
+          .values({ timInovatorId: timId })
+          .returning();
+        mvPlan = newPlan;
+      }
+
+      let [mvReport] = await db
+        .select()
+        .from(marketValidationReport)
+        .where(eq(marketValidationReport.planId, mvPlan.id))
+        .limit(1);
+
+      if (!mvReport) {
+        const [newReport] = await db
+          .insert(marketValidationReport)
+          .values({ planId: mvPlan.id })
+          .returning();
+        mvReport = newReport;
+      }
+
+      const mvReportUpdates: any = { updatedAt: new Date() };
+
+      switch (mappingField) {
+        case "mvp_release_data":
+          mvReportUpdates.mvpVersionDilaporkan = payload.mvpVersionDilaporkan || null;
+          mvReportUpdates.periodeRilisMulai = payload.periodeRilisMulai ? new Date(payload.periodeRilisMulai) : null;
+          mvReportUpdates.periodeRilisSelesai = payload.periodeRilisSelesai ? new Date(payload.periodeRilisSelesai) : null;
+          mvReportUpdates.lokasiChannelRilis = payload.lokasiChannelRilis || null;
+          mvReportUpdates.jumlahEarlyAdoptersAktual =
+            payload.jumlahEarlyAdoptersAktual !== undefined &&
+            payload.jumlahEarlyAdoptersAktual !== null &&
+            payload.jumlahEarlyAdoptersAktual !== ""
+              ? Number(payload.jumlahEarlyAdoptersAktual)
+              : null;
+          mvReportUpdates.ringkasanAktivitasRilis = payload.ringkasanAktivitasRilis || null;
+          mvReportUpdates.kendalaUtama = payload.kendalaUtama || null;
+          mvReportUpdates.perubahanDariPlan = payload.perubahanDariPlan || null;
+          break;
+
+        case "dfv_traction_measurement": {
+          const rows: any[] = Array.isArray(payload.dfvMeasurementRows) ? payload.dfvMeasurementRows : [];
+          await db
+            .delete(hasilPengukuranDfvTraction)
+            .where(
+              and(
+                eq(hasilPengukuranDfvTraction.timInovatorId, timId),
+                eq(hasilPengukuranDfvTraction.kanbanCardId, cardId)
+              )
+            );
+
+          if (rows.length > 0) {
+            const insertPayload = rows.map((r) => {
+              let pct = typeof r.persenTercapai === "number" ? r.persenTercapai : null;
+              if (pct === null && r.hasilAktual && r.target) {
+                const numActual = parseFloat(String(r.hasilAktual).replace(/[^0-9.-]/g, ""));
+                const numTarget = parseFloat(String(r.target).replace(/[^0-9.-]/g, ""));
+                if (!isNaN(numActual) && !isNaN(numTarget) && numTarget > 0) {
+                  pct = Math.round((numActual / numTarget) * 100);
+                }
+              }
+              const threshNum = parseFloat(String(r.threshold || "70").replace(/[^0-9.-]/g, "")) || 70;
+              const status = pct !== null && pct >= threshNum ? "lolos" : "belum";
+
+              return {
+                timInovatorId: timId,
+                kanbanCardId: cardId,
+                reportId: mvReport.id,
+                validasi: r.validasi || "desirability",
+                metrik: r.metrik || "",
+                baseline: r.baseline || null,
+                target: r.target || null,
+                threshold: r.threshold || null,
+                hasilAktual: r.hasilAktual || null,
+                persenTercapai: pct,
+                status: status,
+                learning: r.learning || null,
+                enhancement: r.enhancement || null,
+              };
+            });
+
+            await db.insert(hasilPengukuranDfvTraction).values(insertPayload);
+
+            // Update dfv_rekapitulasi (3 rows: desirability, feasibility, viability)
+            const categories = ["desirability", "feasibility", "viability"];
+            const rekapRows = [];
+
+            for (const cat of categories) {
+              const catRows = insertPayload.filter((p) => (p.validasi || "").toLowerCase() === cat);
+              const validPcts = catRows
+                .map((c) => c.persenTercapai)
+                .filter((p): p is number => p !== null && !isNaN(p));
+              const avgPct =
+                validPcts.length > 0
+                  ? Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length)
+                  : 0;
+              const thresholdVal = 70.0;
+              const catStatus = avgPct >= thresholdVal ? "lolos" : "belum";
+
+              rekapRows.push({
+                reportId: mvReport.id,
+                kategoriDfv: cat,
+                rataRataKetercapaian: avgPct,
+                threshold: thresholdVal,
+                status: catStatus,
+                catatanKeputusan: `Rata-rata capaian metrik ${cat}: ${avgPct}% (Target threshold: ${thresholdVal}%)`,
+              });
+            }
+
+            await db.delete(dfvRekapitulasi).where(eq(dfvRekapitulasi.reportId, mvReport.id));
+            await db.insert(dfvRekapitulasi).values(rekapRows);
+          }
+          break;
+        }
+
+        case "kesimpulan_keputusan_mv":
+          mvReportUpdates.kesimpulanPmf = payload.kesimpulanPmf || null;
+          mvReportUpdates.keputusanGoNogo = payload.keputusanGoNogo || "go_ke_fmi"; // 4 opsi resmi: go_ke_fmi, iterasi_mvp, hold, stop
+          mvReportUpdates.rekomendasiIterasi = payload.rekomendasiIterasi || null;
+          mvReportUpdates.rencanaMvpBerikutnya = payload.rencanaMvpBerikutnya || null;
+          mvReportUpdates.rekomendasiPromotorSponsor = payload.rekomendasiPromotorSponsor || null;
+          break;
+      }
+
+      await db
+        .update(marketValidationReport)
+        .set(mvReportUpdates)
+        .where(eq(marketValidationReport.id, mvReport.id));
+
+      await db
+        .update(kanbanSubtask)
+        .set({ isDone: true })
+        .where(eq(kanbanSubtask.id, subtaskId));
+
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: "MANDATORY_SUBTASK_SAVE",
+        entity: "market_validation_report",
+        entityId: mvReport.id,
+        details: { timId, cardId, subtaskId, mappingField },
+      });
+
+      revalidatePath(`/tim/${timId}/kanban`);
+      revalidatePath(`/tim/${timId}/market-validation`);
+
+      return { success: true };
+    }
+
+    // ── CV Field Handling ──
     const allowed = await hasPermission(user, "cust_val.edit", timId);
     if (!allowed) {
       return {
@@ -971,4 +1279,5 @@ export async function saveMandatorySubtaskDataAction(
     };
   }
 }
+
 

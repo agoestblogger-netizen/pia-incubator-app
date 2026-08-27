@@ -30,3 +30,11 @@ export function detectMvBakuCardType(judul: string, tahap?: string): MvBakuCardT
 
   return null;
 }
+
+export function isMvMandatoryCard(judul: string, tahap?: string): boolean {
+  const cardType = detectMvBakuCardType(judul, tahap);
+  return cardType === "mvp_release" || cardType === "market_testing" || cardType === "analisis_mv";
+}
+
+
+

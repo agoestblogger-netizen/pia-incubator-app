@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   HelpCircle,
   FileText,
+  Sparkles,
 } from "lucide-react";
 import {
   getMandatorySubtaskDataAction,
@@ -63,6 +64,7 @@ export function MandatorySubtaskModal({
 
   const mappingField = subtask?.reportFieldMapping?.field || "";
   const isComplex = subtask?.subtaskType === "mandatory_complex";
+  const isMvField = ["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv"].includes(mappingField);
 
   useEffect(() => {
     if (isOpen && subtask && mappingField) {
@@ -104,7 +106,7 @@ export function MandatorySubtaskModal({
       if (res.success) {
         toast.success(
           `Subtask wajib "${subtask.title}" berhasil disimpan dan dicentang selesai!`,
-          "Tersimpan ke Laporan CV"
+          isMvField ? "Tersimpan ke Laporan MV" : "Tersimpan ke Laporan CV"
         );
         onSuccess(subtask.id);
         onClose();
@@ -118,7 +120,39 @@ export function MandatorySubtaskModal({
     }
   };
 
-  // ── Feedback Matrix Rows Handling (for mandatory_complex) ──
+  // ── DFV Traction Measurement Rows Handling (for Market Testing mandatory_complex) ──
+  const dfvMeasurementRows: any[] = Array.isArray(formData.dfvMeasurementRows) ? formData.dfvMeasurementRows : [];
+
+  const handleUpdateDfvMeasurementRow = (idx: number, key: string, val: any) => {
+    const next = [...dfvMeasurementRows];
+    const row = { ...next[idx], [key]: val };
+
+    if (key === "hasilAktual") {
+      const numActual = parseFloat(String(val).replace(/[^0-9.-]/g, ""));
+      const numTarget = parseFloat(String(row.target).replace(/[^0-9.-]/g, ""));
+      if (!isNaN(numActual) && !isNaN(numTarget) && numTarget > 0) {
+        const pct = Math.round((numActual / numTarget) * 100);
+        row.persenTercapai = pct;
+        const thresh = parseFloat(String(row.threshold || "70").replace(/[^0-9.-]/g, "")) || 70;
+        row.status = pct >= thresh ? "lolos" : "belum";
+      } else if (val === "" || val === null) {
+        row.persenTercapai = null;
+        row.status = "belum";
+      }
+    }
+
+    if (key === "persenTercapai") {
+      const pct = typeof val === "number" ? val : parseFloat(val) || 0;
+      row.persenTercapai = pct;
+      const thresh = parseFloat(String(row.threshold || "70").replace(/[^0-9.-]/g, "")) || 70;
+      row.status = pct >= thresh ? "lolos" : "belum";
+    }
+
+    next[idx] = row;
+    updateField("dfvMeasurementRows", next);
+  };
+
+  // ── Feedback Matrix Rows Handling (for CV mandatory_complex) ──
   const feedbackRows: any[] = Array.isArray(formData.feedbackRows) ? formData.feedbackRows : [];
 
   const handleAddFeedbackRow = () => {
@@ -220,7 +254,7 @@ export function MandatorySubtaskModal({
             <span>{subtask.title}</span>
           </DialogTitle>
           <DialogDescription className="text-xs text-gray-600">
-            Isian ini langsung terintegrasi dan menyinkronkan data ke Laporan Customer Validation.
+            Isian ini langsung terintegrasi dan menyinkronkan data ke Laporan {isMvField ? "Market Validation" : "Customer Validation"}.
           </DialogDescription>
         </DialogHeader>
 
@@ -710,6 +744,391 @@ export function MandatorySubtaskModal({
               </div>
             )}
 
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* 9. DATA RILIS MVP (MV Mandatory Simple) */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {mappingField === "mvp_release_data" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      MVP Version yang Dilaporkan *
+                    </label>
+                    <Input
+                      required
+                      placeholder="Contoh: MVP 1.0"
+                      value={formData.mvpVersionDilaporkan || ""}
+                      onChange={(e) => updateField("mvpVersionDilaporkan", e.target.value)}
+                      className="text-xs bg-white font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Periode Rilis Mulai *
+                    </label>
+                    <Input
+                      type="date"
+                      required
+                      value={formData.periodeRilisMulai || ""}
+                      onChange={(e) => updateField("periodeRilisMulai", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Periode Rilis Selesai *
+                    </label>
+                    <Input
+                      type="date"
+                      required
+                      value={formData.periodeRilisSelesai || ""}
+                      onChange={(e) => updateField("periodeRilisSelesai", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Lokasi / Kanal Distribusi Rilis *
+                    </label>
+                    <Input
+                      required
+                      placeholder="Contoh: Aplikasi Web Internal, 5 Outlet Pegadaian Area Jakarta"
+                      value={formData.lokasiChannelRilis || ""}
+                      onChange={(e) => updateField("lokasiChannelRilis", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Jumlah Early Adopters Aktual *
+                    </label>
+                    <Input
+                      type="number"
+                      min={0}
+                      required
+                      placeholder="Contoh: 50"
+                      value={formData.jumlahEarlyAdoptersAktual ?? ""}
+                      onChange={(e) => updateField("jumlahEarlyAdoptersAktual", e.target.value)}
+                      className="text-xs bg-white font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-800 block">
+                    Ringkasan Aktivitas Rilis &amp; Go-Live *
+                  </label>
+                  <Textarea
+                    required
+                    rows={3}
+                    placeholder="Uraikan rangkaian proses deployment, sosialisasi pengguna, dan kickoff uji coba operasional MVP..."
+                    value={formData.ringkasanAktivitasRilis || ""}
+                    onChange={(e) => updateField("ringkasanAktivitasRilis", e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Kendala Utama yang Dihadapi
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Catat isu teknis/operasional selama rilis jika ada..."
+                      value={formData.kendalaUtama || ""}
+                      onChange={(e) => updateField("kendalaUtama", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Perubahan / Deviasi dari MVP Plan
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Perubahan skop fitur atau jadwal rilis dibanding rencana awal..."
+                      value={formData.perubahanDariPlan || ""}
+                      onChange={(e) => updateField("perubahanDariPlan", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    Otomatis Tersinkronkan ke Laporan Market Validation
+                  </p>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    Data rilis ini langsung mengisi section <strong>Pelaksanaan Rilis MVP</strong> pada Laporan Resmi Market Validation.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* 10. HASIL PENGUKURAN DFV & TRAKSI (MV Mandatory Complex - 9 Baris) */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {mappingField === "dfv_traction_measurement" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-gray-800 text-xs flex items-center gap-1.5">
+                      <Table2 className="h-4 w-4 text-[#3E9463]" />
+                      <span>Tabel Pengukuran 9 Metrik DFV &amp; Traksi Pasar</span>
+                    </label>
+                    <p className="text-[10px] text-gray-500">
+                      Isi kolom Hasil Aktual, Learning, dan Enhancement. Nilai % Tercapai dan Status dihitung otomatis dibanding Threshold.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto max-h-[52vh]">
+                    <table className="min-w-[1250px] w-full text-[11px] text-left border-collapse">
+                      <thead className="bg-[#0B3D2E] text-white font-bold sticky top-0 z-10 text-[10.5px]">
+                        <tr>
+                          <th className="p-2.5 border-r border-emerald-900 w-10 text-center">#</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-28">Kategori</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-56">Metrik Target</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-20 text-center">Baseline</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-24 text-center">Target</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-20 text-center">Threshold</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-28 text-center bg-emerald-950">
+                            Hasil Aktual *
+                          </th>
+                          <th className="p-2.5 border-r border-emerald-900 w-24 text-center">
+                            % Tercapai
+                          </th>
+                          <th className="p-2.5 border-r border-emerald-900 w-20 text-center">
+                            Status
+                          </th>
+                          <th className="p-2.5 border-r border-emerald-900 w-44">Learning</th>
+                          <th className="p-2.5 w-44">Enhancement</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {dfvMeasurementRows.map((row, idx) => {
+                          const catName = String(row.validasi || "").toLowerCase();
+                          const isDesirability = catName === "desirability";
+                          const isFeasibility = catName === "feasibility";
+                          const isViability = catName === "viability";
+
+                          return (
+                            <tr key={row.id || idx} className="hover:bg-gray-50/80 transition-colors">
+                              <td className="p-2.5 font-bold text-gray-500 text-center border-r border-gray-100 align-top pt-3">
+                                {idx + 1}
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                    isDesirability
+                                      ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                      : isFeasibility
+                                      ? "bg-blue-100 text-blue-900 border border-blue-300"
+                                      : "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                  }`}
+                                >
+                                  {isDesirability ? "Desirability" : isFeasibility ? "Feasibility" : "Viability"}
+                                </span>
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <div className="font-semibold text-gray-900 leading-snug">
+                                  {row.metrik}
+                                </div>
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top text-center text-gray-500 font-mono">
+                                {row.baseline || "-"}
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top text-center font-bold text-gray-800 font-mono">
+                                {row.target || "-"}
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top text-center text-gray-600 font-mono">
+                                {row.threshold || "70%"}
+                              </td>
+                              <td className="p-1.5 border-r border-gray-100 align-top bg-emerald-50/30">
+                                <Input
+                                  required
+                                  placeholder="Contoh: 85%"
+                                  value={row.hasilAktual || ""}
+                                  onChange={(e) => handleUpdateDfvMeasurementRow(idx, "hasilAktual", e.target.value)}
+                                  className="h-8 text-xs font-bold text-center bg-white border-emerald-300 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                                />
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top text-center">
+                                {row.persenTercapai !== null && row.persenTercapai !== undefined ? (
+                                  <span className="font-extrabold text-xs text-gray-900 font-mono">
+                                    {row.persenTercapai}%
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 font-mono">-</span>
+                                )}
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top text-center">
+                                {row.status === "lolos" ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                    <span>Lolos</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                                    <span>Belum</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-1.5 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Pembelajaran dari data pasar..."
+                                  value={row.learning || ""}
+                                  onChange={(e) => handleUpdateDfvMeasurementRow(idx, "learning", e.target.value)}
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] leading-snug w-full"
+                                />
+                              </td>
+                              <td className="p-1.5 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Tindakan penyempurnaan..."
+                                  value={row.enhancement || ""}
+                                  onChange={(e) => handleUpdateDfvMeasurementRow(idx, "enhancement", e.target.value)}
+                                  className="text-xs p-1.5 resize-none bg-white rounded-md border border-gray-200 focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] leading-snug w-full"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Rekapitulasi DFV Preview Banner */}
+                <div className="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 rounded-xl border border-emerald-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#0B3D2E] flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-[#F0C24B]" />
+                      Sinkronisasi Otomatis ke Rekapitulasi DFV (3 Baris Resmi):
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      Threshold Kelolosan Kategori: ≥ 70%
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {["desirability", "feasibility", "viability"].map((cat) => {
+                      const catRows = dfvMeasurementRows.filter((r) => (r.validasi || "").toLowerCase() === cat);
+                      const validPcts = catRows.map((c) => c.persenTercapai).filter((p): p is number => typeof p === "number" && !isNaN(p));
+                      const avg = validPcts.length > 0 ? Math.round(validPcts.reduce((a, b) => a + b, 0) / validPcts.length) : 0;
+                      const isPass = avg >= 70;
+
+                      return (
+                        <div key={cat} className="p-2 bg-white rounded-lg border border-gray-200 flex items-center justify-between">
+                          <span className="font-bold capitalize text-gray-800">{cat}</span>
+                          <div className="flex items-center gap-2 font-mono">
+                            <span className="font-extrabold text-gray-900">{avg}%</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${isPass ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                              {isPass ? "Lolos" : "Belum"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* 11. KESIMPULAN & KEPUTUSAN GO/NO-GO (MV Mandatory Simple) */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {mappingField === "kesimpulan_keputusan_mv" && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-800 block">
+                    Kesimpulan Product-Market Fit (PMF) *
+                  </label>
+                  <Textarea
+                    required
+                    rows={3}
+                    placeholder="Jelaskan kesimpulan akhir apakah produk telah mencapai kecocokan pasar (PMF), tingkat respon traksi pasar, dan kelayakan kelanjutan inovasi..."
+                    value={formData.kesimpulanPmf || ""}
+                    onChange={(e) => updateField("kesimpulanPmf", e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-800 block">
+                    Keputusan Go / No-Go (Gerbang Forum Manajemen Inovasi) *
+                  </label>
+                  <select
+                    required
+                    value={formData.keputusanGoNogo || "go_ke_fmi"}
+                    onChange={(e) => updateField("keputusanGoNogo", e.target.value)}
+                    className="text-xs bg-white border-2 border-emerald-600 rounded-lg p-2.5 font-bold text-[#0B3D2E] w-full focus:ring-1 focus:ring-[#3E9463]"
+                  >
+                    <option value="go_ke_fmi">🚀 Go ke Forum Manajemen Inovasi (Scale-Up Bisnis)</option>
+                    <option value="iterasi_mvp">🔄 Iterasi MVP &amp; Lanjutkan Pilot Uji Coba</option>
+                    <option value="hold">⏸️ Hold / Tunda</option>
+                    <option value="stop">🛑 Stop (Hentikan Proyek)</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Rekomendasi Iterasi
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Rencana perbaikan fitur atau model operasional..."
+                      value={formData.rekomendasiIterasi || ""}
+                      onChange={(e) => updateField("rekomendasiIterasi", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-gray-800 block">
+                      Rencana MVP Tahap Berikutnya
+                    </label>
+                    <Textarea
+                      rows={2}
+                      placeholder="Roadmap ekspansi atau perilisan versi berikutnya..."
+                      value={formData.rencanaMvpBerikutnya || ""}
+                      onChange={(e) => updateField("rencanaMvpBerikutnya", e.target.value)}
+                      className="text-xs bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-800 block">
+                    Rekomendasi untuk Promotor &amp; Sponsor Inovasi
+                  </label>
+                  <Textarea
+                    rows={2}
+                    placeholder="Poin strategis yang perlu didukung oleh manajemen atau divisi sponsor..."
+                    value={formData.rekomendasiPromotorSponsor || ""}
+                    onChange={(e) => updateField("rekomendasiPromotorSponsor", e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <HelpCircle className="h-4 w-4 text-amber-700" />
+                    Gerbang Kelolosan Fase Market Validation → FMI
+                  </p>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Keputusan <strong>&quot;Go ke Forum Manajemen Inovasi&quot;</strong> akan membuka akses tim ke menu Governance &amp; Sidang FMI bersama Dewan Direksi.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <DialogFooter className="pt-3 border-t border-gray-100 flex flex-row items-center justify-end gap-2 shrink-0">
               <Button
                 type="button"
@@ -735,7 +1154,7 @@ export function MandatorySubtaskModal({
                 ) : (
                   <>
                     <Save className="h-3.5 w-3.5" />
-                    <span>Simpan ke Laporan CV</span>
+                    <span>Simpan ke Laporan {isMvField ? "MV" : "CV"}</span>
                   </>
                 )}
               </Button>

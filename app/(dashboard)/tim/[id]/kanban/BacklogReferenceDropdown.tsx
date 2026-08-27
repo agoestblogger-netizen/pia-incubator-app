@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
+import { isMvMandatoryCard } from "@/lib/utils/mv-cards";
 
 interface BacklogReferenceDropdownProps {
   currentPlanningSprintNumber: number;
@@ -307,6 +308,7 @@ export function BacklogReferenceDropdown({
                           const isBakuCv =
                             detectCvBakuCardType(card.judul, card.tahap) !== null ||
                             card.label === "Template Baku CV";
+                          const isMandatory = isBakuCv || isMvMandatoryCard(card.judul, card.tahap);
 
                           return (
                             <div
@@ -331,14 +333,14 @@ export function BacklogReferenceDropdown({
                                 {isLocked ? (
                                   <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                 ) : (
-                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isBakuCv ? "bg-rose-500" : dotColor}`} />
+                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isMandatory ? "bg-rose-500" : dotColor}`} />
                                 )}
 
                                 <span
                                   className={`truncate ${
                                     isLocked
                                       ? "line-through text-gray-400"
-                                      : isBakuCv
+                                      : isMandatory
                                       ? "text-rose-700 font-bold"
                                       : ""
                                   }`}
@@ -346,7 +348,7 @@ export function BacklogReferenceDropdown({
                                   {isLocked ? `🔒 ${card.judul} — fase terkunci` : card.judul}
                                 </span>
 
-                                {isBakuCv && (
+                                {isMandatory && (
                                   <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shrink-0">
                                     Wajib
                                   </span>
@@ -390,13 +392,14 @@ export function BacklogReferenceDropdown({
                 const isPreviewBakuCv =
                   detectCvBakuCardType(activePreviewCard.judul, activePreviewCard.tahap) !== null ||
                   activePreviewCard.label === "Template Baku CV";
+                const isPreviewMandatory = isPreviewBakuCv || isMvMandatoryCard(activePreviewCard.judul, activePreviewCard.tahap);
 
                 return (
                   <div className="space-y-3 flex-1 flex flex-col justify-between">
                     <div className="space-y-2.5">
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {isPreviewBakuCv && (
+                          {isPreviewMandatory && (
                             <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
                               Wajib
                             </span>

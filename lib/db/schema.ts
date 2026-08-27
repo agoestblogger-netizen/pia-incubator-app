@@ -554,6 +554,26 @@ export const dfvRekapitulasi = pgTable('dfv_rekapitulasi', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const hasilPengukuranDfvTraction = pgTable('hasil_pengukuran_dfv_traction', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timInovatorId: uuid('tim_inovator_id').references(() => timInovator.id, { onDelete: 'cascade' }),
+  kanbanCardId: uuid('kanban_card_id').references(() => kanbanCard.id, { onDelete: 'set null' }),
+  reportId: uuid('report_id').references(() => marketValidationReport.id, { onDelete: 'cascade' }),
+  validasi: text('validasi').notNull(), // 'desirability' | 'feasibility' | 'viability'
+  metrik: text('metrik').notNull(),
+  baseline: text('baseline'),
+  target: text('target'),
+  threshold: text('threshold'),
+  hasilAktual: text('hasil_aktual'),
+  persenTercapai: doublePrecision('persen_tercapai'),
+  status: text('status'), // 'lolos' | 'belum'
+  learning: text('learning'),
+  enhancement: text('enhancement'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GRUP F — KEUANGAN (RAB & LPJ)
 // ═══════════════════════════════════════════════════════════════════════════════

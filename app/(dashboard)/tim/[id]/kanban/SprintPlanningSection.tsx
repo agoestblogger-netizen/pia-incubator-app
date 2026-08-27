@@ -32,6 +32,7 @@ import { getHeuristicSprintGoal } from "@/lib/ai/sprint-goal-generator";
 import { toast } from "@/components/ui/ToastProvider";
 import { getPhaseTokenBySlug } from "@/lib/theme/tokens";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
+import { isMvMandatoryCard } from "@/lib/utils/mv-cards";
 
 import { BacklogReferenceDropdown } from "./BacklogReferenceDropdown";
 
@@ -765,6 +766,7 @@ export function SprintPlanningSection({
                   const isBakuCv =
                     detectCvBakuCardType(card.judul, card.tahap) !== null ||
                     card.label === "Template Baku CV";
+                  const isMandatory = isBakuCv || isMvMandatoryCard(card.judul, card.tahap);
 
                   return (
                     <div
@@ -774,7 +776,7 @@ export function SprintPlanningSection({
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2 mb-1">
-                                {isBakuCv && (
+                                {isMandatory && (
                                   <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
                                     Wajib
                                   </span>
