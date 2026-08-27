@@ -1715,13 +1715,17 @@ export function KanbanClient({
       setSelectedCardForDetail(null);
       return;
     }
-    const isBaku =
+    const isBakuCv =
       detectCvBakuCardType(selectedCardForDetail.judul, selectedCardForDetail.tahap) !== null ||
       selectedCardForDetail.label === "Template Baku CV" ||
       detailLabel === "Template Baku CV";
+    const isMandatoryMv = isMvMandatoryCard(
+      detailJudul || selectedCardForDetail.judul,
+      detailTahap || selectedCardForDetail.tahap
+    );
 
-    if (isBaku) {
-      toast.error("Kartu Template Baku CV tidak dapat dihapus karena merupakan struktur baku resmi Juklak.");
+    if (isBakuCv || isMandatoryMv) {
+      toast.error(`Kartu ${isBakuCv ? "Template Baku CV" : "WAJIB Market Validation"} tidak dapat dihapus karena merupakan struktur baku resmi Juklak.`);
       return;
     }
 
@@ -2865,10 +2869,11 @@ export function KanbanClient({
                                 const hasProof = attachments.length > 0;
                                 const isPopoverOpen = activeSubtaskPopoverId === st.id;
                                 const isMandatory = st.subtaskType === 'mandatory_simple' || st.subtaskType === 'mandatory_complex';
-                                const isCardBakuCv = selectedCardForDetail
+                                const isCardProtected = selectedCardForDetail
                                   ? detectCvBakuCardType(detailJudul || selectedCardForDetail.judul, detailTahap || selectedCardForDetail.tahap) !== null ||
                                     detailLabel === "Template Baku CV" ||
-                                    selectedCardForDetail.label === "Template Baku CV"
+                                    selectedCardForDetail.label === "Template Baku CV" ||
+                                    isMvMandatoryCard(detailJudul || selectedCardForDetail.judul, detailTahap || selectedCardForDetail.tahap)
                                   : false;
 
                                 return (
@@ -3063,8 +3068,8 @@ export function KanbanClient({
                                           </div>
                                         )}
 
-                                        {/* Tombol Hapus Subtask (hanya untuk subtask non-wajib pada kartu non-Baku CV) */}
-                                        {canEdit && !isMandatory && !isCardBakuCv && (
+                                        {/* Tombol Hapus Subtask (hanya untuk subtask non-wajib pada kartu non-Baku / non-Wajib) */}
+                                        {canEdit && !isMandatory && !isCardProtected && (
                                           <button
                                             type="button"
                                             disabled={deletingSubtaskId === st.id}
@@ -4017,7 +4022,11 @@ export function KanbanClient({
                         detailTahap || selectedCardForDetail?.tahap
                       ) !== null ||
                       detailLabel === "Template Baku CV" ||
-                      selectedCardForDetail?.label === "Template Baku CV"
+                      selectedCardForDetail?.label === "Template Baku CV" ||
+                      isMvMandatoryCard(
+                        detailJudul || selectedCardForDetail?.judul,
+                        detailTahap || selectedCardForDetail?.tahap
+                      )
                     ) ? (
                       <Button
                         type="button"

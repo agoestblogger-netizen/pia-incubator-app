@@ -225,8 +225,10 @@ export function CharterFormClient({
     return [
       { nomorSprint: 1, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Problem Validation & Setup" },
       { nomorSprint: 2, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Solution Exploration & Prototyping" },
-      { nomorSprint: 3, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "MVP Development & Testing" },
-      { nomorSprint: 4, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Market Validation & Pitch Preparation" },
+      { nomorSprint: 3, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Customer Validation & Testing" },
+      { nomorSprint: 4, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "MVP Development & Pilot Prep" },
+      { nomorSprint: 5, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Market Validation & Pilot Execution" },
+      { nomorSprint: 6, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Pitch & FMI Preparation" },
     ];
   });
 

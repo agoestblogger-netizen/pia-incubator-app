@@ -35,6 +35,8 @@ import {
 } from '@/app/actions/kanban';
 import { toast } from '@/components/ui/ToastProvider';
 import { detectCvBakuCardType } from '@/lib/utils/cv-cards';
+import { isMvMandatoryCard } from '@/lib/utils/mv-cards';
+import Link from 'next/link';
 import {
   StickyNote,
   Plus,
@@ -60,6 +62,7 @@ import {
   MessageSquare,
   FolderOpen,
   ArrowRight,
+  ArrowLeft,
   Edit3,
   Zap,
   Lock,
@@ -203,16 +206,21 @@ function getRandomPastelColor(): string {
 // ─── Component ─────────────────────────────────────────────────────────────────
 export function DiskusiCanvasClient({
   timId,
+  canvasId,
   timNama,
+  canvasJudul,
   currentUser,
   initialData,
   isCvUnlocked = false,
   isMvUnlocked = false,
 }: {
   timId: string;
+  canvasId?: string;
   timNama: string;
+  canvasJudul?: string;
   currentUser: CurrentUser;
   initialData: {
+    canvas?: any;
     board: any;
     notes: DiskusiNoteItem[];
     frames: DiskusiFrameItem[];
@@ -236,10 +244,63 @@ export function DiskusiCanvasClient({
   const [onlineUsers, setOnlineUsers] = useState<Record<string, PresenceUser>>({});
 
   // Layout & View states
+  const [sidebarOpen, setSidebarOpen] = useState(false); // DEFAULT: Collapsed
+  const [zoom, setZoom] = useState<number>(100); // DEFAULT: 100% (Range 25% - 200%)
   const [previewDoc, setPreviewDoc] = useState<DiskusiDocumentItem | null>(null);
   const [tahapFilter, setTahapFilter] = useState<string>('all');
   const [sidebarTab, setSidebarTab] = useState<'referensi' | 'dokumen'>('referensi');
   const [uploadingDoc, setUploadingDoc] = useState(false);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => Math.min(200, Math.round((prev + 15) / 5) * 5));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => Math.max(25, Math.round((prev - 15) / 5) * 5));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(100);
+  }, []);
+
+  // Kartu yang berstatus Pin di kanvas aktif saat ini (untuk target subtask picker)
+  const pinnedCards = useMemo(() => {
+    const pinNotes = notes.filter((n) => n.type === 'pin' && n.kanbanCardId);
+    const list: Array<{ id: string; judul: string; storyPoint: number; label: string }> = [];
+    const seenIds = new Set<string>();
+
+    for (const pn of pinNotes) {
+      if (!pn.kanbanCardId || seenIds.has(pn.kanbanCardId)) continue;
+      seenIds.add(pn.kanbanCardId);
+      const fullCard = cards.find((c) => c.id === pn.kanbanCardId);
+      list.push({
+        id: pn.kanbanCardId,
+        judul: fullCard?.judul || pn.cardJudul || 'Kartu Referensi',
+        storyPoint: fullCard?.storyPoint || pn.cardStoryPoint || 3,
+        label: fullCard?.label || pn.cardLabel || 'Referensi',
+      });
+    }
+    return list;
+  }, [notes, cards]);
+
+  // Wheel & Trackpad Pinch-to-Zoom Listener
+  useEffect(() => {
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const zoomDelta = e.deltaY < 0 ? 5 : -5;
+        setZoom((prev) => Math.min(200, Math.max(25, prev + zoomDelta)));
+      }
+    };
+
+    canvasEl.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      canvasEl.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   // Card Detail Modal state
   const [selectedCardForDetail, setSelectedCardForDetail] = useState<KanbanCardItem | null>(null);
@@ -263,17 +324,21 @@ export function DiskusiCanvasClient({
   const myColor = colorForUser(clientId);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // ─── Realtime Channel & Presence ───────────────────────────────────────────
+  // ─── Realtime Channel & Presence (Scoped per Canvas) ────────────────────────
   useEffect(() => {
-    const channel = supabase.current.channel(`diskusi-board-${timId}`, {
+    const channelName = canvasId ? `diskusi_presence_${canvasId}` : `diskusi-board-${timId}`;
+    const channel = supabase.current.channel(channelName, {
       config: { presence: { key: clientId } },
     });
     channelRef.current = channel;
 
+    const noteFilter = canvasId ? `canvas_id=eq.${canvasId}` : `board_id=eq.${initialData.board.id}`;
+    const frameFilter = canvasId ? `canvas_id=eq.${canvasId}` : `board_id=eq.${initialData.board.id}`;
+
     // 1. Postgres Changes — Notes
     channel.on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'diskusi_note', filter: `board_id=eq.${initialData.board.id}` },
+      { event: '*', schema: 'public', table: 'diskusi_note', filter: noteFilter },
       (payload) => {
         const eventType = payload.eventType;
         const newRow = payload.new as any;
@@ -334,7 +399,7 @@ export function DiskusiCanvasClient({
     // 2. Postgres Changes — Frames
     channel.on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'diskusi_frame', filter: `board_id=eq.${initialData.board.id}` },
+      { event: '*', schema: 'public', table: 'diskusi_frame', filter: frameFilter },
       (payload) => {
         const eventType = payload.eventType;
         const newRow = payload.new as any;
@@ -443,12 +508,16 @@ export function DiskusiCanvasClient({
 
     if (e && canvasRef.current) {
       const rect = canvasRef.current.getBoundingClientRect();
-      posX = Math.max(20, e.clientX - rect.left - 96);
-      posY = Math.max(20, e.clientY - rect.top - 60);
+      const scale = (zoom || 100) / 100;
+      const scrollLeft = canvasRef.current.scrollLeft || 0;
+      const scrollTop = canvasRef.current.scrollTop || 0;
+      posX = Math.max(20, Math.round((e.clientX - rect.left + scrollLeft) / scale - 96));
+      posY = Math.max(20, Math.round((e.clientY - rect.top + scrollTop) / scale - 60));
     }
 
     const res = await createDiskusiStickyNoteAction({
       boardId: initialData.board.id,
+      canvasId,
       timId,
       content: 'Catatan ide baru...',
       posX,
@@ -475,6 +544,7 @@ export function DiskusiCanvasClient({
 
     const res = await createDiskusiFrameAction({
       boardId: initialData.board.id,
+      canvasId,
       timId,
       label: `Kelompok Ide #${frames.length + 1}`,
       posX,
@@ -504,6 +574,7 @@ export function DiskusiCanvasClient({
 
     const res = await createDiskusiPinAction({
       boardId: initialData.board.id,
+      canvasId,
       timId,
       cardId,
       posX,
@@ -829,13 +900,17 @@ export function DiskusiCanvasClient({
     setSendingComment(false);
   };
 
-  // ─── Filtered Reference Cards ──────────────────────────────────────────────
+  // ─── Reference Cards (Unified with Sprint Planning aiReferenceCards) ───────
+  const referenceCards = useMemo(() => {
+    return cards.filter((c) => c.reviewStatus === 'ai_reference');
+  }, [cards]);
+
   const filteredReferenceCards = useMemo(() => {
-    return cards.filter((c) => {
+    return referenceCards.filter((c) => {
       if (tahapFilter === 'all') return true;
       return c.tahap === tahapFilter;
     });
-  }, [cards, tahapFilter]);
+  }, [referenceCards, tahapFilter]);
 
   // ─── File Upload Handler ───────────────────────────────────────────────────
   const handleUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -880,26 +955,37 @@ export function DiskusiCanvasClient({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#F8FAF9] font-sans overflow-hidden border border-gray-200/80 rounded-2xl shadow-xs">
+    <div className="flex flex-col h-[calc(100vh-6.5rem)] min-h-[620px] bg-[#F8FAF9] font-sans overflow-hidden border border-gray-200/80 rounded-2xl shadow-xs">
       {/* ───────────────────────────────────────────────────────────────────── */}
       {/* HEADER BAR */}
       {/* ───────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between px-5 py-3 bg-white border-b border-[#C9E4D0] shadow-2xs z-30">
-        {/* Left: Title & Toolbar */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#0F5132] text-white flex items-center justify-center shadow-xs">
+      <div className="flex flex-wrap items-center justify-between px-4 sm:px-5 py-2.5 bg-white border-b border-[#C9E4D0] shadow-2xs z-30 gap-2">
+        {/* Left: Back to Team Workspace, Title & Toolbar */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <Link
+            href={`/tim/${timId}/diskusi`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#0F5132] hover:bg-[#146C43] shadow-xs transition-all border border-[#0B3D2E] cursor-pointer shrink-0"
+            title="Kembali ke Daftar Kanvas Diskusi Tim"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+            <span>Daftar Kanvas</span>
+          </Link>
+
+          <div className="h-5 w-px bg-gray-200" />
+
+          <div className="flex items-center gap-2 max-w-[280px] sm:max-w-md">
+            <div className="w-8 h-8 rounded-lg bg-[#0F5132] text-white flex items-center justify-center shadow-xs shrink-0">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <div>
-              <h1 className="text-sm font-extrabold text-[#0B3D2E] leading-tight">
-                Ruang Diskusi &amp; Ideasi
+            <div className="min-w-0">
+              <h1 className="text-sm font-extrabold text-[#0B3D2E] leading-tight truncate" title={canvasJudul || initialData.canvas?.judul || 'Ruang Diskusi & Ideasi'}>
+                {canvasJudul || initialData.canvas?.judul || 'Ruang Diskusi & Ideasi'}
               </h1>
-              <p className="text-[11px] text-gray-500 font-medium">{timNama}</p>
+              <p className="text-[11px] text-gray-500 font-medium truncate">{timNama}</p>
             </div>
           </div>
 
-          <div className="h-5 w-px bg-gray-200 mx-1" />
+          <div className="h-5 w-px bg-gray-200 mx-1 hidden sm:block" />
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5">
@@ -918,12 +1004,12 @@ export function DiskusiCanvasClient({
               className="border-[#C9E4D0] hover:bg-[#F0F7F1] text-[#0B3D2E] text-xs font-bold gap-1.5 h-8 px-3 rounded-lg cursor-pointer"
             >
               <Layers className="h-3.5 w-3.5 text-[#3E9463]" />
-              <span>+ Tambah Kelompok</span>
+              <span className="hidden sm:inline">+ Tambah Kelompok</span>
             </Button>
           </div>
         </div>
 
-        {/* Right: Presence Avatars */}
+        {/* Right: Presence Avatars & Panel Toggle */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-[#F0F7F1] px-2.5 py-1 rounded-full border border-[#C9E4D0]">
             <span className="text-[10px] font-bold text-[#0B3D2E]">
@@ -946,165 +1032,284 @@ export function DiskusiCanvasClient({
               ))}
             </div>
           </div>
+
+          {/* Toggle Button for Backlog Referensi & Dokumen */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className={`border-[#C9E4D0] text-xs font-bold gap-1.5 h-8 px-2.5 rounded-lg cursor-pointer transition-all ${
+              sidebarOpen
+                ? 'bg-[#0F5132] text-white hover:bg-[#146C43]'
+                : 'bg-white text-[#0B3D2E] hover:bg-[#F0F7F1]'
+            }`}
+            title={sidebarOpen ? 'Tutup Panel Referensi & Dokumen' : 'Buka Panel Referensi & Dokumen'}
+          >
+            {sidebarOpen ? (
+              <>
+                <ChevronRight className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Tutup Panel</span>
+              </>
+            ) : (
+              <>
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Panel Referensi ({referenceCards.length})</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────── */}
-      {/* MAIN CONTENT AREA: 2-3 COLUMNS */}
+      {/* MAIN CONTENT AREA: 2 COLUMNS (COLLAPSIBLE SIDEBAR) */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* KOLOM 1: KANVAS KOLABORATIF (LEFT) */}
+        {/* KOLOM 1: KANVAS KOLABORATIF (LEFT - MAXIMIZED WITH ZOOM SUPPORT) */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
         <div
           ref={canvasRef}
           onDoubleClick={(e) => {
-            if (e.target === e.currentTarget) handleAddSticky(e);
+            if (
+              e.target === e.currentTarget ||
+              (e.target as HTMLElement).classList.contains('canvas-surface') ||
+              (e.target as HTMLElement).classList.contains('canvas-grid-bg')
+            ) {
+              handleAddSticky(e);
+            }
           }}
           className="flex-1 relative overflow-auto select-none bg-[#FAFCFB] min-w-0"
         >
-          {/* Dot Grid Background */}
+          {/* Transformable Canvas Surface */}
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="canvas-surface relative min-w-[3600px] min-h-[2600px] origin-top-left transition-transform duration-75"
             style={{
-              backgroundImage: 'radial-gradient(circle, #CBD5E1 1.2px, transparent 1.2px)',
-              backgroundSize: '24px 24px',
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: '0 0',
             }}
-          />
+          >
+            {/* Dot Grid Background */}
+            <div
+              className="canvas-grid-bg absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle, #CBD5E1 1.2px, transparent 1.2px)',
+                backgroundSize: '24px 24px',
+              }}
+            />
 
-          <p className="absolute top-3 left-1/2 -translate-x-1/2 text-[11px] text-gray-400 font-medium pointer-events-none select-none bg-white/70 px-3 py-1 rounded-full border border-gray-200/60 shadow-2xs backdrop-blur-xs">
-            💡 Double-click pada kanvas untuk menambah sticky note baru
-          </p>
+            {/* 1. Frames (Grouping Boxes) */}
+            {frames.map((frame) => {
+              const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
+              const frameNotes = notes.filter((n) => n.frameId === frame.id || (
+                n.posX >= frame.posX &&
+                n.posX <= frame.posX + frame.width &&
+                n.posY >= frame.posY &&
+                n.posY <= frame.posY + frame.height
+              ));
+              const validNotesCount = frameNotes.filter(
+                (n) => n.type === 'sticky' && n.content?.trim() && !PLACEHOLDERS.includes(n.content.trim())
+              ).length;
 
-          {/* 1. Frames (Grouping Boxes) */}
-          {frames.map((frame) => {
-            const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
-            const frameNotes = notes.filter((n) => n.frameId === frame.id || (
-              n.posX >= frame.posX &&
-              n.posX <= frame.posX + frame.width &&
-              n.posY >= frame.posY &&
-              n.posY <= frame.posY + frame.height
-            ));
-            const validNotesCount = frameNotes.filter(
-              (n) => n.type === 'sticky' && n.content?.trim() && !PLACEHOLDERS.includes(n.content.trim())
-            ).length;
-
-            return (
-              <FrameCard
-                key={frame.id}
-                frame={frame}
-                noteCount={frameNotes.length}
-                validNotesCount={validNotesCount}
-                isCompiling={compilingFrameId === frame.id}
-                onUpdate={async (fId, label, x, y, w, h) => {
-                  await updateDiskusiFrameAction({ frameId: fId, label, posX: x, posY: y, width: w, height: h });
-                }}
-                onDelete={async (fId) => {
-                  await deleteDiskusiFrameAction(fId, timId);
-                  setFrames((prev) => prev.filter((f) => f.id !== fId));
-                  toast.success('Kelompok ide dihapus');
-                }}
-                onCompile={() => handleCompileFrame(frame.id)}
-              />
-            );
-          })}
-
-          {/* 2. Notes (Sticky Notes & Pin Cards) */}
-          {notes.map((note) => {
-            if (note.type === 'pin') {
-              const pinCard = cards.find((c) => c.id === note.kanbanCardId);
-              const pinIsLocked = pinCard ? isPhaseLocked(pinCard) : false;
               return (
-                <PinCard
+                <FrameCard
+                  key={frame.id}
+                  frame={frame}
+                  zoom={zoom}
+                  noteCount={frameNotes.length}
+                  validNotesCount={validNotesCount}
+                  isCompiling={compilingFrameId === frame.id}
+                  onUpdate={async (fId, label, x, y, w, h) => {
+                    await updateDiskusiFrameAction({ frameId: fId, label, posX: x, posY: y, width: w, height: h });
+                  }}
+                  onDelete={async (fId) => {
+                    await deleteDiskusiFrameAction(fId, timId);
+                    setFrames((prev) => prev.filter((f) => f.id !== fId));
+                    toast.success('Kelompok ide dihapus');
+                  }}
+                  onCompile={() => handleCompileFrame(frame.id)}
+                />
+              );
+            })}
+
+            {/* 2. Notes (Sticky Notes & Pin Cards) */}
+            {notes.map((note) => {
+              if (note.type === 'pin') {
+                const pinCard = cards.find((c) => c.id === note.kanbanCardId);
+                const pinIsLocked = pinCard ? isPhaseLocked(pinCard) : false;
+                return (
+                  <PinCard
+                    key={note.id}
+                    note={note}
+                    zoom={zoom}
+                    isLocked={pinIsLocked}
+                    presenceUsers={onlineUsers}
+                    currentClientId={clientId}
+                    onUpdatePosition={async (id, x, y) => {
+                      await updateDiskusiNotePositionAction({ noteId: id, posX: x, posY: y });
+                    }}
+                    onDelete={async (id) => {
+                      await deleteDiskusiNoteAction(id, timId);
+                      setNotes((prev) => prev.filter((n) => n.id !== id));
+                      toast.success('Pin dilepas dari kanvas');
+                    }}
+                    onClickDetail={() => {
+                      const card = cards.find((c) => c.id === note.kanbanCardId);
+                      if (card) openCardDetailModal(card);
+                    }}
+                    onFocusEnter={() => updatePresenceFocus(note.id)}
+                    onFocusLeave={() => updatePresenceFocus(null)}
+                  />
+                );
+              }
+
+              return (
+                <StickyNoteCard
                   key={note.id}
                   note={note}
-                  isLocked={pinIsLocked}
+                  zoom={zoom}
+                  pinnedCards={pinnedCards}
                   presenceUsers={onlineUsers}
                   currentClientId={clientId}
+                  onUpdateContent={async (id, content) => {
+                    await updateDiskusiNoteContentAction(id, content, timId);
+                  }}
                   onUpdatePosition={async (id, x, y) => {
-                    await updateDiskusiNotePositionAction({ noteId: id, posX: x, posY: y });
+                    // Check frame overlap
+                    const matchedFrame = frames.find(
+                      (f) => x >= f.posX && x <= f.posX + f.width && y >= f.posY && y <= f.posY + f.height
+                    );
+                    await updateDiskusiNotePositionAction({
+                      noteId: id,
+                      posX: x,
+                      posY: y,
+                      frameId: matchedFrame ? matchedFrame.id : null,
+                    });
+                    // Check collision with Pin
+                    await checkStickyToPinCollision(note, x, y);
                   }}
                   onDelete={async (id) => {
                     await deleteDiskusiNoteAction(id, timId);
                     setNotes((prev) => prev.filter((n) => n.id !== id));
-                    toast.success('Pin dilepas dari kanvas');
+                    toast.success('Sticky note dihapus');
                   }}
-                  onClickDetail={() => {
-                    const card = cards.find((c) => c.id === note.kanbanCardId);
-                    if (card) openCardDetailModal(card);
-                  }}
+                  onConvertToSubtask={(targetCardId) => handleConvertStickyToSubtask(note.id, targetCardId)}
                   onFocusEnter={() => updatePresenceFocus(note.id)}
                   onFocusLeave={() => updatePresenceFocus(null)}
                 />
               );
-            }
+            })}
+          </div>
 
-            return (
-              <StickyNoteCard
-                key={note.id}
-                note={note}
-                workCards={cards}
-                presenceUsers={onlineUsers}
-                currentClientId={clientId}
-                onUpdateContent={async (id, content) => {
-                  await updateDiskusiNoteContentAction(id, content, timId);
-                }}
-                onUpdatePosition={async (id, x, y) => {
-                  // Check frame overlap
-                  const matchedFrame = frames.find(
-                    (f) => x >= f.posX && x <= f.posX + f.width && y >= f.posY && y <= f.posY + f.height
-                  );
-                  await updateDiskusiNotePositionAction({
-                    noteId: id,
-                    posX: x,
-                    posY: y,
-                    frameId: matchedFrame ? matchedFrame.id : null,
-                  });
-                  // Check collision with Pin
-                  await checkStickyToPinCollision(note, x, y);
-                }}
-                onDelete={async (id) => {
-                  await deleteDiskusiNoteAction(id, timId);
-                  setNotes((prev) => prev.filter((n) => n.id !== id));
-                  toast.success('Sticky note dihapus');
-                }}
-                onConvertToSubtask={(targetCardId) => handleConvertStickyToSubtask(note.id, targetCardId)}
-                onFocusEnter={() => updatePresenceFocus(note.id)}
-                onFocusLeave={() => updatePresenceFocus(null)}
-              />
-            );
-          })}
+          {/* Floating Instruction Banner (Top Center) */}
+          <p className="absolute top-3 left-1/2 -translate-x-1/2 text-[11px] text-gray-400 font-medium pointer-events-none select-none bg-white/80 px-3 py-1 rounded-full border border-gray-200/70 shadow-2xs backdrop-blur-xs z-10">
+            💡 Double-click kanvas untuk tambah sticky • Ctrl+Scroll untuk zoom
+          </p>
+
+          {/* Floating Zoom Controls Widget (Bottom Right) */}
+          <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white/95 backdrop-blur-md rounded-xl p-1.5 border border-[#C9E4D0] shadow-md select-none">
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              disabled={zoom <= 25}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-700 hover:bg-[#F0F7F1] hover:text-[#0F5132] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold cursor-pointer"
+              title="Zoom Out (-15%)"
+            >
+              −
+            </button>
+
+            <button
+              type="button"
+              onClick={handleZoomReset}
+              className="px-2 h-7 flex items-center justify-center rounded-lg text-xs font-extrabold text-[#0B3D2E] hover:bg-[#F0F7F1] transition-colors min-w-[50px] text-center cursor-pointer"
+              title="Klik untuk Reset Zoom ke 100%"
+            >
+              {zoom}%
+            </button>
+
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              disabled={zoom >= 200}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-700 hover:bg-[#F0F7F1] hover:text-[#0F5132] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold cursor-pointer"
+              title="Zoom In (+15%)"
+            >
+              +
+            </button>
+
+            <div className="h-4 w-px bg-gray-200 mx-0.5" />
+
+            <button
+              type="button"
+              onClick={handleZoomReset}
+              className="px-2 h-7 flex items-center justify-center rounded-lg text-[10px] font-bold text-gray-600 hover:text-[#0F5132] hover:bg-[#F0F7F1] transition-colors cursor-pointer"
+              title="Kembali ke ukuran 100%"
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* KOLOM 2: PANEL SUMBER & REFERENSI (RIGHT SIDEBAR) */}
+        {/* KOLOM 2: PANEL SUMBER & REFERENSI (COLLAPSIBLE RIGHT SIDEBAR) */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="w-80 bg-white border-l border-[#C9E4D0] flex flex-col z-20 shadow-xs shrink-0">
-          {/* Tab Selector */}
-          <div className="flex border-b border-[#C9E4D0] bg-[#F0F7F1]/50 p-1.5 gap-1">
-            <button
-              onClick={() => setSidebarTab('referensi')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                sidebarTab === 'referensi'
-                  ? 'bg-[#0F5132] text-white shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Pin className="h-3.5 w-3.5" />
-              <span>Backlog Referensi</span>
-            </button>
-            <button
-              onClick={() => setSidebarTab('dokumen')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                sidebarTab === 'dokumen'
-                  ? 'bg-[#0F5132] text-white shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FolderOpen className="h-3.5 w-3.5" />
-              <span>Dokumen ({documents.length})</span>
-            </button>
-          </div>
+        {!sidebarOpen ? (
+          /* COLLAPSED STRIP: Minimal vertical bar on the right */
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="w-10 bg-white border-l border-[#C9E4D0] hover:bg-[#F0F7F1] flex flex-col items-center justify-start py-4 gap-4 cursor-pointer transition-all z-20 shadow-2xs shrink-0 group select-none"
+            title="Klik untuk membuka panel Backlog Referensi & Dokumen"
+          >
+            <div className="p-1.5 rounded-md bg-[#0F5132]/10 text-[#0F5132] group-hover:bg-[#0F5132] group-hover:text-white transition-colors shadow-2xs">
+              <ChevronLeft className="h-4 w-4" />
+            </div>
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <span className="text-[10px] font-extrabold text-[#0B3D2E] [writing-mode:vertical-rl] tracking-wider uppercase flex items-center gap-1.5 group-hover:text-[#0F5132]">
+                <Pin className="h-3 w-3 rotate-90 text-[#3E9463]" />
+                Referensi ({referenceCards.length})
+              </span>
+              <span className="text-[10px] font-bold text-gray-500 [writing-mode:vertical-rl] tracking-wider uppercase flex items-center gap-1.5 group-hover:text-[#0F5132]">
+                <FolderOpen className="h-3 w-3 rotate-90" />
+                Dokumen ({documents.length})
+              </span>
+            </div>
+          </button>
+        ) : (
+          /* EXPANDED PANEL: Full width right sidebar */
+          <div className="w-80 bg-white border-l border-[#C9E4D0] flex flex-col z-20 shadow-xs shrink-0">
+            {/* Tab Selector with Close Button */}
+            <div className="flex items-center border-b border-[#C9E4D0] bg-[#F0F7F1]/50 p-1.5 gap-1">
+              <button
+                onClick={() => setSidebarTab('referensi')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  sidebarTab === 'referensi'
+                    ? 'bg-[#0F5132] text-white shadow-2xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Pin className="h-3.5 w-3.5" />
+                <span>Backlog ({referenceCards.length})</span>
+              </button>
+              <button
+                onClick={() => setSidebarTab('dokumen')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  sidebarTab === 'dokumen'
+                    ? 'bg-[#0F5132] text-white shadow-2xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                <span>Dokumen ({documents.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200/80 transition-all cursor-pointer shrink-0"
+                title="Tutup Panel (Collapse)"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
 
           {/* TAB 1: BACKLOG REFERENSI */}
           {sidebarTab === 'referensi' && (
@@ -1118,7 +1323,6 @@ export function DiskusiCanvasClient({
                 <div className="flex flex-wrap gap-1">
                   {[
                     { id: 'all', label: 'Semua' },
-                    { id: 'innovation_setup', label: 'Setup' },
                     { id: 'customer_validation', label: 'CV' },
                     { id: 'market_validation', label: 'MV' },
                   ].map((f) => (
@@ -1150,9 +1354,10 @@ export function DiskusiCanvasClient({
                     const isPinned = notes.some((n) => n.kanbanCardId === card.id);
                     const phaseToken = getPhaseTokenBySlug(card.tahap);
                     const cardIsLocked = isPhaseLocked(card);
-                    const isBakuCv =
+                    const isMandatory =
                       detectCvBakuCardType(card.judul, card.tahap) !== null ||
-                      card.label === 'Template Baku CV';
+                      card.label === 'Template Baku CV' ||
+                      isMvMandatoryCard(card.judul, card.tahap);
 
                     return (
                       <div
@@ -1167,7 +1372,7 @@ export function DiskusiCanvasClient({
                       >
                         <div className="flex items-start justify-between gap-1.5">
                           <div className="flex items-center gap-1 flex-wrap">
-                            {isBakuCv && (
+                            {isMandatory && (
                               <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300">
                                 Wajib
                               </span>
@@ -1216,7 +1421,7 @@ export function DiskusiCanvasClient({
                           </div>
                         </div>
 
-                        <p className={`text-xs font-bold leading-snug line-clamp-2 ${isBakuCv ? 'text-rose-700' : 'text-gray-800'}`}>{card.judul}</p>
+                        <p className={`text-xs font-bold leading-snug line-clamp-2 ${isMandatory ? 'text-rose-700 font-extrabold' : 'text-gray-800'}`}>{card.judul}</p>
 
                         {cardIsLocked && (
                           <p className="text-[9px] text-amber-700 font-medium">
@@ -1298,6 +1503,7 @@ export function DiskusiCanvasClient({
             </div>
           )}
         </div>
+      )}
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
         {/* KOLOM 3: DOCUMENT PREVIEWER (SLIDE-OVER / IN-PAGE VIEWER) */}
@@ -1810,6 +2016,7 @@ export function DiskusiCanvasClient({
 // ─── Component: FrameCard (Kelompok Ide) ─────────────────────────────────────────
 function FrameCard({
   frame,
+  zoom = 100,
   noteCount,
   validNotesCount,
   isCompiling,
@@ -1818,6 +2025,7 @@ function FrameCard({
   onCompile,
 }: {
   frame: DiskusiFrameItem;
+  zoom?: number;
   noteCount: number;
   validNotesCount: number;
   isCompiling: boolean;
@@ -1840,17 +2048,20 @@ function FrameCard({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (editingLabel) return;
     dragging.current = true;
-    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    const scale = (zoom || 100) / 100;
+    dragOffset.current = { x: e.clientX / scale - pos.x, y: e.clientY / scale - pos.y };
 
     const handleMouseMove = (e2: MouseEvent) => {
       if (!dragging.current) return;
-      setPos({ x: e2.clientX - dragOffset.current.x, y: e2.clientY - dragOffset.current.y });
+      const curScale = (zoom || 100) / 100;
+      setPos({ x: e2.clientX / curScale - dragOffset.current.x, y: e2.clientY / curScale - dragOffset.current.y });
     };
     const handleMouseUp = async (e2: MouseEvent) => {
       if (!dragging.current) return;
       dragging.current = false;
-      const newX = e2.clientX - dragOffset.current.x;
-      const newY = e2.clientY - dragOffset.current.y;
+      const curScale = (zoom || 100) / 100;
+      const newX = Math.round(e2.clientX / curScale - dragOffset.current.x);
+      const newY = Math.round(e2.clientY / curScale - dragOffset.current.y);
       setPos({ x: newX, y: newY });
       await onUpdate(frame.id, labelDraft, newX, newY, size.w, size.h);
       window.removeEventListener('mousemove', handleMouseMove);
@@ -1951,6 +2162,7 @@ function FrameCard({
 // ─── Component: PinCard (Referenced Backlog Card on Canvas) ─────────────────────
 function PinCard({
   note,
+  zoom = 100,
   isLocked = false,
   presenceUsers,
   currentClientId,
@@ -1961,6 +2173,7 @@ function PinCard({
   onFocusLeave,
 }: {
   note: DiskusiNoteItem;
+  zoom?: number;
   isLocked?: boolean;
   presenceUsers: Record<string, PresenceUser>;
   currentClientId: string;
@@ -1985,17 +2198,20 @@ function PinCard({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     dragging.current = true;
-    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    const scale = (zoom || 100) / 100;
+    dragOffset.current = { x: e.clientX / scale - pos.x, y: e.clientY / scale - pos.y };
 
     const handleMouseMove = (e2: MouseEvent) => {
       if (!dragging.current) return;
-      setPos({ x: e2.clientX - dragOffset.current.x, y: e2.clientY - dragOffset.current.y });
+      const curScale = (zoom || 100) / 100;
+      setPos({ x: e2.clientX / curScale - dragOffset.current.x, y: e2.clientY / curScale - dragOffset.current.y });
     };
     const handleMouseUp = async (e2: MouseEvent) => {
       if (!dragging.current) return;
       dragging.current = false;
-      const newX = e2.clientX - dragOffset.current.x;
-      const newY = e2.clientY - dragOffset.current.y;
+      const curScale = (zoom || 100) / 100;
+      const newX = Math.round(e2.clientX / curScale - dragOffset.current.x);
+      const newY = Math.round(e2.clientY / curScale - dragOffset.current.y);
       setPos({ x: newX, y: newY });
       await onUpdatePosition(note.id, newX, newY);
       window.removeEventListener('mousemove', handleMouseMove);
@@ -2093,7 +2309,8 @@ function PinCard({
 // ─── Component: StickyNoteCard ──────────────────────────────────────────────────
 function StickyNoteCard({
   note,
-  workCards,
+  zoom = 100,
+  pinnedCards = [],
   presenceUsers,
   currentClientId,
   onUpdateContent,
@@ -2104,7 +2321,8 @@ function StickyNoteCard({
   onFocusLeave,
 }: {
   note: DiskusiNoteItem;
-  workCards: KanbanCardItem[];
+  zoom?: number;
+  pinnedCards: Array<{ id: string; judul: string; storyPoint: number; label: string }>;
   presenceUsers: Record<string, PresenceUser>;
   currentClientId: string;
   onUpdateContent: (id: string, content: string) => Promise<void>;
@@ -2140,17 +2358,20 @@ function StickyNoteCard({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (editing) return;
     dragging.current = true;
-    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    const scale = (zoom || 100) / 100;
+    dragOffset.current = { x: e.clientX / scale - pos.x, y: e.clientY / scale - pos.y };
 
     const handleMouseMove = (e2: MouseEvent) => {
       if (!dragging.current) return;
-      setPos({ x: e2.clientX - dragOffset.current.x, y: e2.clientY - dragOffset.current.y });
+      const curScale = (zoom || 100) / 100;
+      setPos({ x: e2.clientX / curScale - dragOffset.current.x, y: e2.clientY / curScale - dragOffset.current.y });
     };
     const handleMouseUp = async (e2: MouseEvent) => {
       if (!dragging.current) return;
       dragging.current = false;
-      const newX = e2.clientX - dragOffset.current.x;
-      const newY = e2.clientY - dragOffset.current.y;
+      const curScale = (zoom || 100) / 100;
+      const newX = Math.round(e2.clientX / curScale - dragOffset.current.x);
+      const newY = Math.round(e2.clientY / curScale - dragOffset.current.y);
       setPos({ x: newX, y: newY });
       await onUpdatePosition(note.id, newX, newY);
       window.removeEventListener('mousemove', handleMouseMove);
@@ -2205,34 +2426,54 @@ function StickyNoteCard({
               <PopoverTrigger asChild>
                 <button
                   className="text-gray-500 hover:text-[#0F5132] p-0.5 rounded hover:bg-black/10"
-                  title="Jadikan subtask dari kartu kerja"
+                  title="Jadikan subtask dari kartu yang di-pin di kanvas ini"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ArrowRight className="h-3 w-3" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-2 bg-white text-xs shadow-xl rounded-xl border border-gray-200" align="end">
-                <span className="font-bold text-gray-800 text-[11px] block mb-1">
-                  Pilih Kartu Target Subtask:
+              <PopoverContent className="w-72 p-2.5 bg-white text-xs shadow-xl rounded-xl border border-[#C9E4D0]" align="end">
+                <span className="font-bold text-[#0B3D2E] text-[11px] block mb-1.5 flex items-center gap-1.5">
+                  <Pin className="h-3 w-3 text-[#3E9463] rotate-45" />
+                  <span>Pilih Kartu Target Subtask:</span>
                 </span>
-                <div className="space-y-1 max-h-36 overflow-y-auto">
-                  {workCards.length === 0 ? (
-                    <p className="text-[10px] text-gray-400 italic">Belum ada kartu di tim ini.</p>
-                  ) : (
-                    workCards.map((c) => (
+
+                {pinnedCards.length === 0 ? (
+                  <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-lg text-center space-y-1">
+                    <p className="text-[11px] font-bold text-amber-900 leading-tight">
+                      Belum ada kartu yang di-pin ke kanvas ini.
+                    </p>
+                    <p className="text-[10px] text-amber-700 leading-normal">
+                      Sematkan (Pin) kartu dari panel <strong>Backlog Referensi</strong> terlebih dahulu.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+                    {pinnedCards.map((c) => (
                       <button
                         key={c.id}
+                        type="button"
                         onClick={() => {
                           onConvertToSubtask(c.id);
                           setConvertPopoverOpen(false);
                         }}
-                        className="w-full text-left p-1.5 rounded hover:bg-[#F0F7F1] text-[11px] font-medium text-gray-800 truncate block border border-transparent hover:border-[#C9E4D0]"
+                        className="w-full text-left p-2 rounded-lg hover:bg-[#F0F7F1] border border-gray-100 hover:border-[#C9E4D0] transition-colors cursor-pointer group"
                       >
-                        {c.judul}
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <span className="text-[9px] font-bold text-[#0F5132] bg-[#E3F0E6] px-1.5 py-0.2 rounded">
+                            📌 Pin Kanvas
+                          </span>
+                          <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                            {c.storyPoint} SP
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-gray-800 truncate group-hover:text-[#0B3D2E]" title={c.judul}>
+                          {c.judul}
+                        </p>
                       </button>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
 

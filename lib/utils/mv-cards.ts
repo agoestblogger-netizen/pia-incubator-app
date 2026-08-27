@@ -33,7 +33,12 @@ export function detectMvBakuCardType(judul: string, tahap?: string): MvBakuCardT
 
 export function isMvMandatoryCard(judul: string, tahap?: string): boolean {
   const cardType = detectMvBakuCardType(judul, tahap);
-  return cardType === "mvp_release" || cardType === "market_testing" || cardType === "analisis_mv";
+  return (
+    cardType === "mvp_release" ||
+    cardType === "market_testing" ||
+    cardType === "sme_mv" ||      // ← Preliminary Review (SME) — MV WAJIB (Paket 40)
+    cardType === "analisis_mv"
+  );
 }
 
 

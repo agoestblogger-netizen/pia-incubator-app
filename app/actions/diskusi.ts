@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import {
   diskusiBoard,
+  discussionCanvas,
   diskusiNote,
   diskusiFrame,
   diskusiDocument,
@@ -13,7 +14,7 @@ import {
   users,
 } from '@/lib/db/schema';
 import { eq, and, sql, desc, inArray, asc } from 'drizzle-orm';
-import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
+import { getCurrentUser } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { compileStickyNotesToBacklog, type CompiledBacklogDraft } from '@/lib/ai/diskusi-compiler';
 
@@ -30,6 +31,249 @@ const PASTEL_COLORS = [
 
 function getRandomPastelColor(): string {
   return PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
+}
+
+function isUserAdminOrCoach(user: any, timId: string): boolean {
+  if (!user) return false;
+  const adminCoachRoles = ['admin', 'admin_ic', 'divisi_ic', 'coach'];
+  if (user.globalRoles?.some((r: string) => adminCoachRoles.includes(r))) return true;
+  if (user.timRoles?.some((tr: any) => tr.timId === timId && adminCoachRoles.includes(tr.roleCode))) return true;
+  return false;
+}
+
+// ─── 0. Multi-Canvas List & Management Actions ───────────────────────────────
+
+export type DiscussionCanvasListItem = {
+  id: string;
+  timInovatorId: string;
+  judul: string;
+  createdByUserId: string | null;
+  createdByName: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  stickyCount: number;
+  frameCount: number;
+  pinCount: number;
+};
+
+export async function getDiscussionCanvasListAction(timId: string) {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timId);
+    if (!isUuid) return { success: false, error: 'ID Tim tidak valid' };
+
+    const user = await getCurrentUser();
+    const canManageAny = isUserAdminOrCoach(user, timId);
+
+    // Ensure board exists for auto-seeding documents
+    await getOrCreateDiskusiBoard(timId);
+
+    // Fetch canvases with creator user
+    const rows = await db
+      .select({
+        id: discussionCanvas.id,
+        timInovatorId: discussionCanvas.timInovatorId,
+        judul: discussionCanvas.judul,
+        createdByUserId: discussionCanvas.createdByUserId,
+        createdByName: users.nama,
+        createdAt: discussionCanvas.createdAt,
+        updatedAt: discussionCanvas.updatedAt,
+      })
+      .from(discussionCanvas)
+      .leftJoin(users, eq(discussionCanvas.createdByUserId, users.id))
+      .where(eq(discussionCanvas.timInovatorId, timId))
+      .orderBy(desc(discussionCanvas.updatedAt), desc(discussionCanvas.createdAt));
+
+    // Fetch notes & frames count per canvas
+    const canvasIds = rows.map((r) => r.id);
+    let countsByCanvas: Record<string, { sticky: number; pin: number; frame: number }> = {};
+
+    if (canvasIds.length > 0) {
+      const [noteCounts, frameCounts] = await Promise.all([
+        db
+          .select({
+            canvasId: diskusiNote.canvasId,
+            type: diskusiNote.type,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(diskusiNote)
+          .where(inArray(diskusiNote.canvasId, canvasIds))
+          .groupBy(diskusiNote.canvasId, diskusiNote.type),
+        db
+          .select({
+            canvasId: diskusiFrame.canvasId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(diskusiFrame)
+          .where(inArray(diskusiFrame.canvasId, canvasIds))
+          .groupBy(diskusiFrame.canvasId),
+      ]);
+
+      for (const nc of noteCounts) {
+        if (!nc.canvasId) continue;
+        if (!countsByCanvas[nc.canvasId]) countsByCanvas[nc.canvasId] = { sticky: 0, pin: 0, frame: 0 };
+        if (nc.type === 'sticky') countsByCanvas[nc.canvasId].sticky += nc.count;
+        if (nc.type === 'pin') countsByCanvas[nc.canvasId].pin += nc.count;
+      }
+
+      for (const fc of frameCounts) {
+        if (!fc.canvasId) continue;
+        if (!countsByCanvas[fc.canvasId]) countsByCanvas[fc.canvasId] = { sticky: 0, pin: 0, frame: 0 };
+        countsByCanvas[fc.canvasId].frame += fc.count;
+      }
+    }
+
+    const canvases: DiscussionCanvasListItem[] = rows.map((r) => ({
+      ...r,
+      stickyCount: countsByCanvas[r.id]?.sticky || 0,
+      frameCount: countsByCanvas[r.id]?.frame || 0,
+      pinCount: countsByCanvas[r.id]?.pin || 0,
+    }));
+
+    return {
+      success: true,
+      data: {
+        canvases,
+        currentUserId: user?.id ?? null,
+        canManageAny,
+      },
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal memuat daftar kanvas' };
+  }
+}
+
+export async function createDiscussionCanvasAction({
+  timId,
+  judul,
+}: {
+  timId: string;
+  judul: string;
+}) {
+  try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timId);
+    if (!isUuid) return { success: false, error: 'ID Tim tidak valid' };
+
+    const trimmedJudul = judul?.trim();
+    if (!trimmedJudul) {
+      return { success: false, error: 'Judul diskusi harus diisi' };
+    }
+
+    const user = await getCurrentUser();
+
+    // Ensure board exists
+    await getOrCreateDiskusiBoard(timId);
+
+    const [newCanvas] = await db
+      .insert(discussionCanvas)
+      .values({
+        timInovatorId: timId,
+        judul: trimmedJudul,
+        createdByUserId: user?.id ?? null,
+      })
+      .returning();
+
+    revalidatePath(`/tim/${timId}/diskusi`);
+    return { success: true, data: newCanvas };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal membuat kanvas diskusi baru' };
+  }
+}
+
+export async function renameDiscussionCanvasAction({
+  canvasId,
+  timId,
+  judul,
+}: {
+  canvasId: string;
+  timId: string;
+  judul: string;
+}) {
+  try {
+    const trimmedJudul = judul?.trim();
+    if (!trimmedJudul) {
+      return { success: false, error: 'Judul diskusi tidak boleh kosong' };
+    }
+
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Sesi Anda telah kedaluwarsa. Silakan masuk kembali.' };
+    }
+
+    const [canvas] = await db
+      .select()
+      .from(discussionCanvas)
+      .where(and(eq(discussionCanvas.id, canvasId), eq(discussionCanvas.timInovatorId, timId)))
+      .limit(1);
+
+    if (!canvas) {
+      return { success: false, error: 'Kanvas diskusi tidak ditemukan' };
+    }
+
+    const isCreator = canvas.createdByUserId === user.id;
+    const isCoachOrAdmin = isUserAdminOrCoach(user, timId);
+
+    if (!isCreator && !isCoachOrAdmin) {
+      return {
+        success: false,
+        error: 'Hanya pembuat kanvas, Admin, atau Innovation Coach yang dapat mengubah nama kanvas ini.',
+      };
+    }
+
+    const [updated] = await db
+      .update(discussionCanvas)
+      .set({
+        judul: trimmedJudul,
+        updatedAt: new Date(),
+      })
+      .where(eq(discussionCanvas.id, canvasId))
+      .returning();
+
+    revalidatePath(`/tim/${timId}/diskusi`);
+    revalidatePath(`/tim/${timId}/diskusi/${canvasId}`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal mengubah nama kanvas' };
+  }
+}
+
+export async function deleteDiscussionCanvasAction({
+  canvasId,
+  timId,
+}: {
+  canvasId: string;
+  timId: string;
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Sesi Anda telah kedaluwarsa. Silakan masuk kembali.' };
+    }
+
+    const isCoachOrAdmin = isUserAdminOrCoach(user, timId);
+    if (!isCoachOrAdmin) {
+      return {
+        success: false,
+        error: 'Hanya Admin atau Innovation Coach yang memiliki wewenang untuk menghapus kanvas diskusi.',
+      };
+    }
+
+    const [canvas] = await db
+      .select()
+      .from(discussionCanvas)
+      .where(and(eq(discussionCanvas.id, canvasId), eq(discussionCanvas.timInovatorId, timId)))
+      .limit(1);
+
+    if (!canvas) {
+      return { success: false, error: 'Kanvas diskusi tidak ditemukan' };
+    }
+
+    await db.delete(discussionCanvas).where(eq(discussionCanvas.id, canvasId));
+
+    revalidatePath(`/tim/${timId}/diskusi`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menghapus kanvas diskusi' };
+  }
 }
 
 // ─── 1. Get or Create Board & Auto-Seed Dossier Documents ─────────────────────
@@ -133,9 +377,39 @@ export async function getOrCreateDiskusiBoard(timId: string) {
   }
 }
 
-// ─── 2. Get Full Board Data (Notes, Frames, Documents, Reference Cards) ───────
-export async function getDiskusiBoardData(timId: string) {
+// ─── 2. Get Canvas-Scoped Board Data (Notes, Frames, Documents, Reference Cards)
+export async function getDiskusiCanvasData({
+  timId,
+  canvasId,
+}: {
+  timId: string;
+  canvasId: string;
+}) {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timId);
+    const isCanvasUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(canvasId);
+    if (!isUuid || !isCanvasUuid) return { success: false, error: 'ID Tim atau ID Kanvas tidak valid' };
+
+    // Fetch Canvas Info
+    const [canvas] = await db
+      .select({
+        id: discussionCanvas.id,
+        timInovatorId: discussionCanvas.timInovatorId,
+        judul: discussionCanvas.judul,
+        createdByUserId: discussionCanvas.createdByUserId,
+        createdByName: users.nama,
+        createdAt: discussionCanvas.createdAt,
+        updatedAt: discussionCanvas.updatedAt,
+      })
+      .from(discussionCanvas)
+      .leftJoin(users, eq(discussionCanvas.createdByUserId, users.id))
+      .where(and(eq(discussionCanvas.id, canvasId), eq(discussionCanvas.timInovatorId, timId)))
+      .limit(1);
+
+    if (!canvas) {
+      return { success: false, error: 'Kanvas diskusi tidak ditemukan' };
+    }
+
     const boardRes = await getOrCreateDiskusiBoard(timId);
     if (!boardRes.success || !boardRes.board) {
       return { success: false, error: boardRes.error || 'Board tidak ditemukan' };
@@ -144,11 +418,12 @@ export async function getDiskusiBoardData(timId: string) {
     const board = boardRes.board;
 
     const [notes, frames, documents, cards] = await Promise.all([
-      // Notes & Pins on the canvas
+      // Notes & Pins scoped to this canvas
       db
         .select({
           id: diskusiNote.id,
           boardId: diskusiNote.boardId,
+          canvasId: diskusiNote.canvasId,
           type: diskusiNote.type,
           content: diskusiNote.content,
           kanbanCardId: diskusiNote.kanbanCardId,
@@ -170,24 +445,24 @@ export async function getDiskusiBoardData(timId: string) {
         })
         .from(diskusiNote)
         .leftJoin(kanbanCard, eq(diskusiNote.kanbanCardId, kanbanCard.id))
-        .where(eq(diskusiNote.boardId, board.id))
+        .where(eq(diskusiNote.canvasId, canvasId))
         .orderBy(asc(diskusiNote.createdAt)),
 
-      // Frames (Groups)
+      // Frames (Groups) scoped to this canvas
       db
         .select()
         .from(diskusiFrame)
-        .where(eq(diskusiFrame.boardId, board.id))
+        .where(eq(diskusiFrame.canvasId, canvasId))
         .orderBy(asc(diskusiFrame.createdAt)),
 
-      // Source Documents
+      // Source Documents (Team-wide / Board-wide)
       db
         .select()
         .from(diskusiDocument)
         .where(eq(diskusiDocument.boardId, board.id))
         .orderBy(desc(diskusiDocument.uploadedAt)),
 
-      // Kanban Cards for Right Panel (both Reference & Active Work Backlog)
+      // Kanban Cards for Right Panel (Team-wide Reference & Active Work Backlog)
       db
         .select({
           id: kanbanCard.id,
@@ -210,6 +485,7 @@ export async function getDiskusiBoardData(timId: string) {
     return {
       success: true,
       data: {
+        canvas,
         board,
         notes,
         frames,
@@ -218,13 +494,27 @@ export async function getDiskusiBoardData(timId: string) {
       },
     };
   } catch (error: any) {
-    return { success: false, error: error.message || 'Gagal mengambil data diskusi' };
+    return { success: false, error: error.message || 'Gagal mengambil data kanvas diskusi' };
+  }
+}
+
+// ─── Legacy Fallback / Compatibility ─────────────────────────────────────────
+export async function getDiskusiBoardData(timId: string) {
+  try {
+    const listRes = await getDiscussionCanvasListAction(timId);
+    if (!listRes.success || !listRes.data || listRes.data.canvases.length === 0) {
+      return { success: false, error: 'Tidak ada kanvas diskusi' };
+    }
+    return getDiskusiCanvasData({ timId, canvasId: listRes.data.canvases[0].id });
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
 // ─── 3. Note / Sticky / Pin Actions ──────────────────────────────────────────
 export async function createDiskusiStickyNoteAction({
   boardId,
+  canvasId,
   timId,
   content = 'Ide / catatan baru...',
   posX = 150,
@@ -233,6 +523,7 @@ export async function createDiskusiStickyNoteAction({
   frameId = null,
 }: {
   boardId: string;
+  canvasId?: string;
   timId: string;
   content?: string;
   posX?: number;
@@ -248,6 +539,7 @@ export async function createDiskusiStickyNoteAction({
       .insert(diskusiNote)
       .values({
         boardId,
+        canvasId: canvasId || null,
         type: 'sticky',
         content,
         posX,
@@ -259,6 +551,10 @@ export async function createDiskusiStickyNoteAction({
       })
       .returning();
 
+    if (canvasId) {
+      await db.update(discussionCanvas).set({ updatedAt: new Date() }).where(eq(discussionCanvas.id, canvasId));
+      revalidatePath(`/tim/${timId}/diskusi/${canvasId}`);
+    }
     revalidatePath(`/tim/${timId}/diskusi`);
     return { success: true, data: newNote };
   } catch (error: any) {
@@ -268,6 +564,7 @@ export async function createDiskusiStickyNoteAction({
 
 export async function createDiskusiPinAction({
   boardId,
+  canvasId,
   timId,
   cardId,
   posX = 200,
@@ -275,6 +572,7 @@ export async function createDiskusiPinAction({
   frameId = null,
 }: {
   boardId: string;
+  canvasId?: string;
   timId: string;
   cardId: string;
   posX?: number;
@@ -284,21 +582,26 @@ export async function createDiskusiPinAction({
   try {
     const user = await getCurrentUser();
 
-    // Check if card is already pinned
+    // Check if card is already pinned in this canvas
+    const condition = canvasId
+      ? and(eq(diskusiNote.canvasId, canvasId), eq(diskusiNote.kanbanCardId, cardId))
+      : and(eq(diskusiNote.boardId, boardId), eq(diskusiNote.kanbanCardId, cardId));
+
     const existing = await db
       .select({ id: diskusiNote.id })
       .from(diskusiNote)
-      .where(and(eq(diskusiNote.boardId, boardId), eq(diskusiNote.kanbanCardId, cardId)))
+      .where(condition)
       .limit(1);
 
     if (existing.length > 0) {
-      return { success: false, error: 'Kartu ini sudah disematkan (pin) di kanvas.' };
+      return { success: false, error: 'Kartu ini sudah disematkan (pin) di kanvas ini.' };
     }
 
     const [newPin] = await db
       .insert(diskusiNote)
       .values({
         boardId,
+        canvasId: canvasId || null,
         type: 'pin',
         kanbanCardId: cardId,
         posX,
@@ -310,6 +613,10 @@ export async function createDiskusiPinAction({
       })
       .returning();
 
+    if (canvasId) {
+      await db.update(discussionCanvas).set({ updatedAt: new Date() }).where(eq(discussionCanvas.id, canvasId));
+      revalidatePath(`/tim/${timId}/diskusi/${canvasId}`);
+    }
     revalidatePath(`/tim/${timId}/diskusi`);
     return { success: true, data: newPin };
   } catch (error: any) {
@@ -368,6 +675,7 @@ export async function deleteDiskusiNoteAction(noteId: string, timId: string) {
 // ─── 4. Frame / Kelompok Ide Actions ──────────────────────────────────────────
 export async function createDiskusiFrameAction({
   boardId,
+  canvasId,
   timId,
   label = 'Kelompok Ide',
   posX = 100,
@@ -376,6 +684,7 @@ export async function createDiskusiFrameAction({
   height = 300,
 }: {
   boardId: string;
+  canvasId?: string;
   timId: string;
   label?: string;
   posX?: number;
@@ -390,6 +699,7 @@ export async function createDiskusiFrameAction({
       .insert(diskusiFrame)
       .values({
         boardId,
+        canvasId: canvasId || null,
         label,
         posX,
         posY,
@@ -400,6 +710,10 @@ export async function createDiskusiFrameAction({
       })
       .returning();
 
+    if (canvasId) {
+      await db.update(discussionCanvas).set({ updatedAt: new Date() }).where(eq(discussionCanvas.id, canvasId));
+      revalidatePath(`/tim/${timId}/diskusi/${canvasId}`);
+    }
     revalidatePath(`/tim/${timId}/diskusi`);
     return { success: true, data: newFrame };
   } catch (error: any) {

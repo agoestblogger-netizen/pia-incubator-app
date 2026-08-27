@@ -635,14 +635,12 @@ export async function deleteKanbanCardAction(timId: string, cardId: string) {
     const isBakuCv =
       detectCvBakuCardType(card.judul, card.tahap || undefined) !== null ||
       card.label === "Template Baku CV";
-    const isBakuMv =
-      detectMvBakuCardType(card.judul, card.tahap || undefined) !== null ||
-      card.label === "Template Baku MV";
+    const isMandatoryMv = isMvMandatoryCard(card.judul, card.tahap || undefined);
 
-    if (isBakuCv || isBakuMv) {
+    if (isBakuCv || isMandatoryMv) {
       return {
         success: false,
-        error: `Kartu ${isBakuCv ? "Template Baku CV" : "Template Baku MV"} tidak dapat dihapus karena merupakan struktur baku resmi Juklak.`,
+        error: `Kartu ${isBakuCv ? "Template Baku CV" : "WAJIB Market Validation"} tidak dapat dihapus karena merupakan struktur baku resmi Juklak.`,
       };
     }
 
@@ -1427,14 +1425,12 @@ export async function deleteTaskSubtaskAction(subtaskId: string, timId: string) 
     const isBakuCv =
       detectCvBakuCardType(st.cardJudul, st.cardTahap || undefined) !== null ||
       st.cardLabel === "Template Baku CV";
-    const isBakuMv =
-      detectMvBakuCardType(st.cardJudul, st.cardTahap || undefined) !== null ||
-      st.cardLabel === "Template Baku MV";
+    const isMandatoryMv = isMvMandatoryCard(st.cardJudul, st.cardTahap || undefined);
 
-    if (isBakuCv || isBakuMv) {
+    if (isBakuCv || isMandatoryMv) {
       return {
         success: false,
-        error: `Subtask pada kartu ${isBakuCv ? "Template Baku CV" : "Template Baku MV"} tidak dapat dihapus karena merupakan bagian dari struktur baku resmi Juklak.`,
+        error: `Subtask pada kartu ${isBakuCv ? "Template Baku CV" : "WAJIB Market Validation"} tidak dapat dihapus karena merupakan bagian dari struktur baku resmi Juklak.`,
       };
     }
 

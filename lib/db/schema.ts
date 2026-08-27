@@ -703,7 +703,7 @@ export const taskDismissal = pgTable('task_dismissal', {
 ]);
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GRUP RUANG DISKUSI (KOLABORATIF REAL-TIME)
+// GRUP RUANG DISKUSI (KOLABORATIF REAL-TIME - MULTI-KANVAS)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const diskusiBoard = pgTable('diskusi_board', {
@@ -716,9 +716,22 @@ export const diskusiBoard = pgTable('diskusi_board', {
   uniqueIndex('diskusi_board_tim_unique').on(t.timInovatorId),
 ]);
 
+export const discussionCanvas = pgTable('discussion_canvas', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
+  judul: text('judul').notNull(),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('discussion_canvas_tim_idx').on(t.timInovatorId),
+  index('discussion_canvas_created_by_idx').on(t.createdByUserId),
+]);
+
 export const diskusiFrame = pgTable('diskusi_frame', {
   id: uuid('id').primaryKey().defaultRandom(),
   boardId: uuid('board_id').notNull().references(() => diskusiBoard.id, { onDelete: 'cascade' }),
+  canvasId: uuid('canvas_id').references(() => discussionCanvas.id, { onDelete: 'cascade' }),
   label: text('label').notNull().default('Kelompok Ide'),
   posX: doublePrecision('pos_x').notNull().default(100),
   posY: doublePrecision('pos_y').notNull().default(100),
@@ -730,11 +743,13 @@ export const diskusiFrame = pgTable('diskusi_frame', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('diskusi_frame_board_idx').on(t.boardId),
+  index('diskusi_frame_canvas_idx').on(t.canvasId),
 ]);
 
 export const diskusiNote = pgTable('diskusi_note', {
   id: uuid('id').primaryKey().defaultRandom(),
   boardId: uuid('board_id').notNull().references(() => diskusiBoard.id, { onDelete: 'cascade' }),
+  canvasId: uuid('canvas_id').references(() => discussionCanvas.id, { onDelete: 'cascade' }),
   type: text('type').notNull().default('sticky'), // 'sticky' | 'pin'
   content: text('content'),
   kanbanCardId: uuid('kanban_card_id').references(() => kanbanCard.id, { onDelete: 'set null' }),
@@ -750,6 +765,7 @@ export const diskusiNote = pgTable('diskusi_note', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('diskusi_note_board_idx').on(t.boardId),
+  index('diskusi_note_canvas_idx').on(t.canvasId),
   index('diskusi_note_frame_idx').on(t.frameId),
   index('diskusi_note_card_idx').on(t.kanbanCardId),
 ]);

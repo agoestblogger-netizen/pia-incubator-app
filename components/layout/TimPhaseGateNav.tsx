@@ -139,7 +139,7 @@ export function TimPhaseGateNav({
           </h1>
         </div>
 
-        {/* Baris Tombol Menu: Dashboard (Segera Hadir) + Ruang Diskusi + RAB & LPJ */}
+        {/* Baris Tombol Menu: Dashboard (Segera Hadir) */}
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/15">
           {/* Dashboard — disabled, Segera Hadir */}
           <button
@@ -165,132 +165,203 @@ export function TimPhaseGateNav({
               Segera Hadir
             </span>
           </button>
-
-          {/* Ruang Diskusi — aktif */}
-          <Link
-            href={`/tim/${timId}/diskusi`}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border transition-all ${
-              pathname.startsWith(`/tim/${timId}/diskusi`)
-                ? "bg-white text-[#0B3D2E] border-white shadow-sm"
-                : "bg-white/15 text-white border-white/30 hover:bg-white/25 hover:border-white/50"
-            }`}
-            title="Buka Ruang Diskusi & Ideasi Tim"
-          >
-            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-            <span>Ruang Diskusi</span>
-          </Link>
-
-          {/* RAB & LPJ — aktif */}
-          <Link
-            href={`/tim/${timId}/keuangan`}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border transition-all ${
-              pathname.startsWith(`/tim/${timId}/keuangan`)
-                ? "bg-white text-[#0B3D2E] border-white shadow-sm"
-                : "bg-white/15 text-white border-white/30 hover:bg-white/25 hover:border-white/50"
-            }`}
-            title="Buka RAB & LPJ (Anggaran & Realisasi Biaya)"
-          >
-            <Wallet className="h-3.5 w-3.5 shrink-0" />
-            <span>RAB &amp; LPJ</span>
-          </Link>
         </div>
       </div>
 
-      {/* 2. Grid 3 Kotak Fase Resmi */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-        {gateItems.map((item) => {
-          const isActive =
-            item.id === "innovation_setup"
-              ? pathname.startsWith(`/tim/${timId}/charter`) || pathname.startsWith(`/tim/${timId}/kanban`)
-              : item.id === "customer_validation"
-              ? pathname.startsWith(`/tim/${timId}/customer-validation`)
-              : item.id === "market_validation"
-              ? pathname.startsWith(`/tim/${timId}/market-validation`)
-              : false;
+      {/* 2. Baris Utama: 3 Kotak Fase Resmi + Garis Pembatas Vertikal + Ruang Diskusi & RAB LPJ (Vertikal) */}
+      <div className="flex flex-col lg:flex-row items-stretch gap-4 sm:gap-5">
+        {/* 3 Kotak Fase Resmi (Flex 1) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 flex-1 min-w-0">
+          {gateItems.map((item) => {
+            const isActive =
+              item.id === "innovation_setup"
+                ? pathname.startsWith(`/tim/${timId}/charter`) || pathname.startsWith(`/tim/${timId}/kanban`)
+                : item.id === "customer_validation"
+                ? pathname.startsWith(`/tim/${timId}/customer-validation`)
+                : item.id === "market_validation"
+                ? pathname.startsWith(`/tim/${timId}/market-validation`)
+                : false;
 
-          const Icon = item.icon;
-          const token = item.token;
+            const Icon = item.icon;
+            const token = item.token;
 
-          if (!item.unlocked) {
+            if (!item.unlocked) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={(e) => handleBoxClick(item, e)}
+                  style={{ background: token.solidGradientCss }}
+                  className="relative text-left p-5 rounded-2xl text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[130px] border border-white/20"
+                  title="Klik untuk melihat syarat pembukaan fase ini"
+                >
+                  <div className="flex items-start justify-between gap-1 w-full">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
+                        {item.phase}
+                      </span>
+                      <div className="p-2 rounded-xl bg-black/20 text-white backdrop-blur-xs w-fit">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <span className="p-1.5 rounded-full bg-black/30 text-white/90 border border-white/30 backdrop-blur-xs group-hover:bg-black/50 transition-colors shadow-xs mt-0.5">
+                      <Lock className="h-4 w-4" />
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-0.5">
+                    <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
+                      {item.name}
+                    </span>
+                    <span className="text-[11px] text-white/75 block font-medium leading-snug">
+                      🔒 Terkunci — {item.description}
+                    </span>
+                  </div>
+                </button>
+              );
+            }
+
             return (
-              <button
+              <Link
                 key={item.id}
-                type="button"
-                onClick={(e) => handleBoxClick(item, e)}
+                href={item.href}
                 style={{ background: token.solidGradientCss }}
-                className="relative text-left p-5 rounded-2xl text-white shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-h-[130px] border border-white/20"
-                title="Klik untuk melihat syarat pembukaan fase ini"
+                className={`relative p-5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[130px] group border border-white/20 ${
+                  isActive
+                    ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md"
+                    : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
+                }`}
               >
-                <div className="flex items-start justify-between gap-1 w-full">
+                <div className="flex items-start justify-between gap-1">
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
                       {item.phase}
                     </span>
-                    <div className="p-2 rounded-xl bg-black/20 text-white backdrop-blur-xs w-fit">
+                    <div className="p-2 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors w-fit">
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
-                  <span className="p-1.5 rounded-full bg-black/30 text-white/90 border border-white/30 backdrop-blur-xs group-hover:bg-black/50 transition-colors shadow-xs mt-0.5">
-                    <Lock className="h-4 w-4" />
-                  </span>
+
+                  {item.badge ? (
+                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-xs mt-0.5">
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      {item.badge}
+                    </span>
+                  ) : isActive ? (
+                    <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs mt-0.5">
+                      Aktif
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="mt-3 space-y-0.5">
                   <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
                     {item.name}
                   </span>
-                  <span className="text-[11px] text-white/75 block font-medium leading-snug">
-                    🔒 Terkunci — {item.description}
+                  <span className="text-[11px] text-white/85 block font-medium leading-snug">
+                    {item.description}
                   </span>
                 </div>
-              </button>
+              </Link>
             );
-          }
+          })}
+        </div>
 
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              style={{ background: token.solidGradientCss }}
-              className={`relative p-5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[130px] group border border-white/20 ${
-                isActive
-                  ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md"
-                  : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-1">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
-                    {item.phase}
-                  </span>
-                  <div className="p-2 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors w-fit">
-                    <Icon className="h-5 w-5" />
+        {/* Garis Pembatas Vertikal (Desktop) */}
+        <div className="hidden lg:block w-[2px] bg-gray-300 rounded-full self-stretch my-1" />
+
+        {/* Menu Pendukung Samping: Ruang Diskusi & RAB LPJ (Tersusun Vertikal dengan Warna Selaras) */}
+        <div className="flex flex-row lg:flex-col justify-between gap-3 lg:w-48 xl:w-56 shrink-0">
+          {/* Ruang Diskusi — Ocean Blue Gradient */}
+          {(() => {
+            const isDiskusiActive = pathname.startsWith(`/tim/${timId}/diskusi`);
+            return (
+              <Link
+                href={`/tim/${timId}/diskusi`}
+                style={{
+                  background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)",
+                }}
+                className={`relative p-3.5 sm:p-4 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex-1 flex flex-col justify-between group border border-white/20 ${
+                  isDiskusiActive
+                    ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md opacity-100"
+                    : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
+                }`}
+                title="Buka Ruang Diskusi & Ideasi Tim"
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
+                      Kolaborasi
+                    </span>
+                    <div className="p-1.5 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors w-fit">
+                      <MessageSquare className="h-4 w-4" />
+                    </div>
                   </div>
+
+                  {isDiskusiActive && (
+                    <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs mt-0.5">
+                      Aktif
+                    </span>
+                  )}
                 </div>
 
-                {item.badge ? (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-xs mt-0.5">
-                    <CheckCircle2 className="h-2.5 w-2.5" />
-                    {item.badge}
+                <div className="mt-2 space-y-0.5">
+                  <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
+                    Ruang Diskusi
                   </span>
-                ) : isActive ? (
-                  <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs mt-0.5">
-                    Aktif
+                  <span className="text-[11px] text-white/85 block font-medium leading-snug">
+                    Ideasi &amp; kolaborasi tim
                   </span>
-                ) : null}
-              </div>
+                </div>
+              </Link>
+            );
+          })()}
 
-              <div className="mt-3 space-y-0.5">
-                <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
-                  {item.name}
-                </span>
-                <span className="text-[11px] text-white/85 block font-medium leading-snug">
-                  {item.description}
-                </span>
-              </div>
-            </Link>
-          );
-        })}
+          {/* RAB & LPJ — Teal Gradient (Sesuai Phase 4 Token) */}
+          {(() => {
+            const isKeuanganActive = pathname.startsWith(`/tim/${timId}/keuangan`);
+            return (
+              <Link
+                href={`/tim/${timId}/keuangan`}
+                style={{
+                  background: PHASE_TOKENS.phase4?.solidGradientCss || "linear-gradient(135deg, #1F98A8 0%, #0E6E7A 100%)",
+                }}
+                className={`relative p-3.5 sm:p-4 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex-1 flex flex-col justify-between group border border-white/20 ${
+                  isKeuanganActive
+                    ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md opacity-100"
+                    : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
+                }`}
+                title="Buka RAB & LPJ (Anggaran & Realisasi Biaya)"
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/70 block mb-1">
+                      Keuangan
+                    </span>
+                    <div className="p-1.5 rounded-xl bg-white/20 text-white backdrop-blur-xs group-hover:bg-white/30 transition-colors w-fit">
+                      <Wallet className="h-4 w-4" />
+                    </div>
+                  </div>
+
+                  {isKeuanganActive && (
+                    <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/30 text-white backdrop-blur-xs mt-0.5">
+                      Aktif
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2 space-y-0.5">
+                  <span className="text-sm font-extrabold text-white block drop-shadow-2xs">
+                    RAB &amp; LPJ
+                  </span>
+                  <span className="text-[11px] text-white/85 block font-medium leading-snug">
+                    Anggaran &amp; realisasi biaya
+                  </span>
+                </div>
+              </Link>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Dialog Penjelasan Kotak Terkunci */}

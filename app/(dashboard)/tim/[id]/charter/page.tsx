@@ -1,5 +1,6 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getCharterByTimId, getCharterRolesData } from "@/app/actions/charter";
+import { getSprintsByTimId } from "@/app/actions/sprint";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
@@ -18,10 +19,11 @@ export default async function CharterPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const [initialData, rolesData, phaseGateStatus, canEdit, canApprove] = await Promise.all([
+  const [initialData, rolesData, phaseGateStatus, sprintsData, canEdit, canApprove] = await Promise.all([
     getCharterByTimId(tim.id),
     getCharterRolesData(tim.id),
     getTeamPhaseGateStatus(tim.id),
+    getSprintsByTimId(tim.id),
     user ? hasPermission(user, 'charter.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'charter.approve', tim.id) : Promise.resolve(false),
   ]);
@@ -43,6 +45,7 @@ export default async function CharterPage({
         timId={tim.id}
         initialData={initialData.charter}
         initialRolesData={rolesData}
+        initialSprints={sprintsData}
         autoFilledFields={initialData.autoFilledFields}
         usulanPromotorHint={initialData.usulanPromotorHint}
         usulanPoHint={initialData.usulanPoHint}

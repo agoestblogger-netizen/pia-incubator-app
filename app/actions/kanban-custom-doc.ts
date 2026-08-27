@@ -192,9 +192,15 @@ export async function checkReportFieldHasDataAction(timId: string, cardId: strin
           }
           break;
         }
-        case "sme_mv":
-          hasData = false;
+        case "sme_mv": {
+          const mvBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+          const mvCatatan = mvBukti.find((b: any) => b.type === "catatan_sme");
+          if (mvCatatan?.content?.trim()) {
+            hasData = true;
+            currentPreview = `Review oleh ${mvCatatan.reviewer || "SME"} — ${mvCatatan.content.slice(0, 40)}...`;
+          }
           break;
+        }
         case "analisis_mv":
           if (report.kesimpulanPmf || report.keputusanGoNogo) {
             hasData = true;
@@ -681,7 +687,7 @@ export async function getMandatorySubtaskDataAction(
 ) {
   try {
     // ── MV Mapping Fields ──
-    if (["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv"].includes(mappingField)) {
+    if (["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv", "preliminary_review_mv"].includes(mappingField)) {
       let [mvPlan] = await db
         .select()
         .from(marketValidationPlan)
@@ -802,6 +808,30 @@ export async function getMandatorySubtaskDataAction(
             rekomendasiPromotorSponsor: mvReport?.rekomendasiPromotorSponsor || "",
           };
           break;
+
+        case "preliminary_review_mv": {
+          // Load existing catatan SME dan dokumen dari buktiPendukung MV
+          const mvBukti = Array.isArray(mvReport?.buktiPendukung) ? mvReport!.buktiPendukung : [];
+          const mvCatatanObj = mvBukti.find(
+            (b: any) => b.type === "catatan_sme" && b.sourceCardId === cardId
+          );
+          const mvDocs = mvBukti.filter(
+            (b: any) => b.type === "dokumen_preliminary_review" && b.sourceCardId === cardId
+          );
+          data = {
+            catatanSme: mvCatatanObj?.content || "",
+            reviewerNama: mvCatatanObj?.reviewer || "",
+            tanggalReview: mvCatatanObj?.tanggal
+              ? new Date(mvCatatanObj.tanggal).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
+            dokumenFiles: mvDocs.map((d: any) => ({
+              name: d.file_name || d.name,
+              url: d.file_url || d.url,
+              size: d.size,
+            })),
+          };
+          break;
+        }
       }
 
       return { success: true, data };
@@ -934,7 +964,7 @@ export async function saveMandatorySubtaskDataAction(
     }
 
     // ── Check if this is an MV mapping field ──
-    const isMvField = ["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv"].includes(mappingField);
+    const isMvField = ["mvp_release_data", "dfv_traction_measurement", "kesimpulan_keputusan_mv", "preliminary_review_mv"].includes(mappingField);
 
     if (isMvField) {
       const allowedMv = await hasPermission(user, "market_val.edit", timId);
@@ -1071,6 +1101,50 @@ export async function saveMandatorySubtaskDataAction(
           mvReportUpdates.rencanaMvpBerikutnya = payload.rencanaMvpBerikutnya || null;
           mvReportUpdates.rekomendasiPromotorSponsor = payload.rekomendasiPromotorSponsor || null;
           break;
+
+        case "preliminary_review_mv": {
+          // Simpan catatan SME + dokumen ke buktiPendukung MV (pola sama dengan CV)
+          const existingMvBukti = Array.isArray(mvReport.buktiPendukung)
+            ? mvReport.buktiPendukung
+            : [];
+          const filteredMvBukti = (existingMvBukti as any[]).filter(
+            (b: any) =>
+              !(
+                b.sourceCardId === cardId &&
+                (b.type === "catatan_sme" || b.type === "dokumen_preliminary_review")
+              )
+          );
+
+          if (payload.catatanSme?.trim()) {
+            filteredMvBukti.push({
+              id: randomUUID(),
+              type: "catatan_sme",
+              content: payload.catatanSme.trim(),
+              reviewer: payload.reviewerNama || "SME / Innovation Coach",
+              tanggal: payload.tanggalReview || new Date().toISOString(),
+              sourceCardId: cardId,
+            });
+          }
+
+          const reviewFiles: Array<{ url: string; name: string; size?: number }> =
+            Array.isArray(payload.dokumenFiles) ? payload.dokumenFiles : [];
+          for (const f of reviewFiles) {
+            if (f.url) {
+              filteredMvBukti.push({
+                id: randomUUID(),
+                type: "dokumen_preliminary_review",
+                file_url: f.url,
+                file_name: f.name || "Dokumen Preliminary Review",
+                file_size: f.size || null,
+                tanggal: new Date().toISOString(),
+                sourceCardId: cardId,
+              });
+            }
+          }
+
+          mvReportUpdates.buktiPendukung = filteredMvBukti;
+          break;
+        }
       }
 
       await db

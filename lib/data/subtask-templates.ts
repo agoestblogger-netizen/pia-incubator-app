@@ -127,6 +127,12 @@ export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
     { title: "Pantau metrik Viability (dampak finansial/non-finansial & unit economics)", estimatedHours: 300, subtaskType: "regular" },
   ],
   "Preliminary Review (SME) - MV": [
+    {
+      title: "Isi Catatan Review & Upload Dokumen",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "preliminary_review_mv" },
+    },
     { title: "Rekapitulasi data performa pasar MVP & analisis DFV", estimatedHours: 180, subtaskType: "regular" },
     { title: "Sesi konsultasi evaluasi strategi bersama SME & Coach", estimatedHours: 120, subtaskType: "regular" },
     { title: "Susun rencana penyempurnaan berdasarkan masukan SME", estimatedHours: 180, subtaskType: "regular" },
