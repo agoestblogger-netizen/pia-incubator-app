@@ -467,6 +467,7 @@ export function CustomerValidationClient({
       } else {
         toast.success("Customer Validation Plan berhasil disimpan!", "Plan Tersimpan");
       }
+      setActiveTab("backlog");
       router.refresh();
     } else {
       toast.error((res as any).error || "Gagal menyimpan.", "Gagal Menyimpan");
