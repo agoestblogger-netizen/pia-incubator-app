@@ -697,7 +697,11 @@ export function DiskusiCanvasClient({
 
   const handleSaveCompiledCard = async (targetSprintNumber: number | null = null) => {
     if (!compiledDraft || !compiledDraft.judul.trim()) return;
-    setSavingCompiledCard(true);
+    const totalMinutes = compiledDraft.subtasks.reduce(
+      (sum, st) => sum + (st.estimatedMinutes || (st as any).estimatedHours || 60),
+      0
+    );
+    const calculatedSP = Number((totalMinutes / 60).toFixed(2));
 
     try {
       // 1. Create the new Kanban Card (timId first, cardData second)
@@ -706,14 +710,18 @@ export function DiskusiCanvasClient({
         judul: compiledDraft.judul.trim(),
         deskripsi: compiledDraft.deskripsi,
         acceptanceCriteria: compiledDraft.acceptanceCriteria,
-        storyPoint: compiledDraft.storyPoint || 3,
+        storyPoint: calculatedSP,
+        estimasiJam: totalMinutes,
         statusKolom: targetSprintNumber ? 'To Do' : 'To Do',
         sprintNumber: targetSprintNumber,
         reviewStatus: 'adopted',
         tahap: compiledDraft.tahap,
         label: 'Hasil Kompilasi Diskusi',
         suggestedSprintNumber: targetSprintNumber || 1,
-        _initialSubtasks: compiledDraft.subtasks,
+        _initialSubtasks: compiledDraft.subtasks.map((st) => ({
+          title: st.title,
+          estimatedHours: st.estimatedMinutes || (st as any).estimatedHours || 60,
+        })),
       } as any);
 
       if (res.success && res.data) {
@@ -1667,37 +1675,45 @@ export function DiskusiCanvasClient({
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-gray-800">Estimasi Waktu</label>
+                      <label className="font-bold text-gray-800">Estimasi Waktu Total</label>
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                        ≈ {Number((compiledDraft.storyPoint || 3).toFixed(2))} SP
+                        ≈ {Number((
+                          compiledDraft.subtasks.reduce((sum, st) => sum + (st.estimatedMinutes || (st as any).estimatedHours || 60), 0) / 60
+                        ).toFixed(2))} SP
                       </span>
                     </div>
-                    <Input
-                      type="number"
-                      min={1}
-                      step={15}
-                      value={Math.round((compiledDraft.storyPoint || 3) * 60)}
-                      onChange={(e) => {
-                        const min = Math.max(1, parseInt(e.target.value, 10) || 60);
-                        setCompiledDraft({ ...compiledDraft, storyPoint: Number((min / 60).toFixed(2)) });
-                      }}
-                      className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132]"
-                      placeholder="Menit (contoh: 120)"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        readOnly
+                        value={compiledDraft.subtasks.reduce((sum, st) => sum + (st.estimatedMinutes || (st as any).estimatedHours || 60), 0)}
+                        className="w-full text-xs p-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-semibold cursor-not-allowed pr-14"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400">
+                        menit
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Subtasks List */}
                 <div className="space-y-1.5 p-3 rounded-xl bg-[#F0F7F1] border border-[#C9E4D0]">
-                  <span className="font-bold text-[#0B3D2E] text-xs block">
-                    Draf Subtasks ({compiledDraft.subtasks.length}):
-                  </span>
-                  <div className="space-y-1 max-h-40 overflow-y-auto pr-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#0B3D2E] text-xs block">
+                      Draf Subtasks ({compiledDraft.subtasks.length} item = 1:1 dari Sticky Notes):
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      Total: {compiledDraft.subtasks.reduce((sum, st) => sum + (st.estimatedMinutes || (st as any).estimatedHours || 60), 0)} menit
+                    </span>
+                  </div>
+                  <div className="space-y-1 max-h-44 overflow-y-auto pr-0.5">
                     {compiledDraft.subtasks.map((st, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2 p-1.5 rounded bg-white border border-gray-200 text-xs">
-                        <span className="text-gray-800 truncate flex-1">{st.title}</span>
-                        <span className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">
-                          {st.estimatedHours} jam
+                      <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] text-xs">
+                        <span className="text-gray-800 font-medium truncate flex-1" title={st.title}>
+                          {i + 1}. {st.title}
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-800 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 shrink-0">
+                          {st.estimatedMinutes || (st as any).estimatedHours || 60} menit
                         </span>
                       </div>
                     ))}
