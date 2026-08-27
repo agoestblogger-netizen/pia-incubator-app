@@ -537,12 +537,6 @@ export function CharterFormClient({
             </div>
 
             <div className="flex items-center gap-2.5">
-              {!isRolesEditable && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
-                  <Lock className="h-3 w-3 text-slate-500" />
-                  <span>Read-Only</span>
-                </span>
-              )}
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5142D6]/10 text-[#5142D6] text-xs font-bold border border-[#5142D6]/20">
                 <UserCheck className="h-3.5 w-3.5" />
                 <span>{roleAssignments.filter((r) => r.userId || r.userName).length} Akun Terdaftar</span>
