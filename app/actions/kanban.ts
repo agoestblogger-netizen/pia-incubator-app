@@ -196,11 +196,14 @@ export async function createKanbanCardAction(
         acceptanceCriteria: cardData.acceptanceCriteria,
         dependencyRisiko: cardData.dependencyRisiko,
         urutan: cardData.urutan || 0,
-        reviewStatus: 'adopted', // kartu manual selalu adopted
+        // Allow caller to set reviewStatus (e.g. 'ai_reference' for AI-compiled backlog cards)
+        // Falls back to 'adopted' for normal manual cards
+        reviewStatus: cardData.reviewStatus ?? 'adopted',
         estimasiJam: cardData.estimasiJam ?? null,
         storyPoint: cardData.storyPoint !== undefined && cardData.storyPoint !== null
           ? Math.max(1, Math.round(Number(cardData.storyPoint)))
           : 3,
+        suggestedSprintNumber: cardData.suggestedSprintNumber ?? null,
       })
       .returning();
 
