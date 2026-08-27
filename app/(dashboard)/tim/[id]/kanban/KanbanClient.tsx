@@ -38,7 +38,6 @@ import {
 } from "@/app/actions/capacity";
 import { SprintPlanningSection } from "./SprintPlanningSection";
 import { MandatorySubtaskModal } from "@/components/kanban/MandatorySubtaskModal";
-import { MvCardWorkDocumentSection } from "@/components/kanban/MvCardWorkDocumentSection";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 import { detectMvBakuCardType, isMvMandatoryCard } from "@/lib/utils/mv-cards";
 import { toast } from "@/components/ui/ToastProvider";
@@ -3589,21 +3588,6 @@ export function KanbanClient({
                           className="text-xs font-medium bg-white border border-[#C9E4D0] focus:border-[#3E9463] focus:ring-1 focus:ring-[#3E9463]"
                         />
                       </div>
-
-                      {/* Custom Document: Dokumen Kerja Khusus (MV) */}
-                      {selectedCardForDetail && !selectedCardForDetail.isNewBacklog && (
-                        <MvCardWorkDocumentSection
-                          timId={timId}
-                          card={{
-                            id: selectedCardForDetail.id,
-                            judul: detailJudul,
-                            tahap: detailTahap,
-                            customDocumentData: detailCustomDocumentData,
-                          }}
-                          canEdit={canEdit}
-                          onCustomDocChange={(newData) => setDetailCustomDocumentData(newData)}
-                        />
-                      )}
 
                       {/* 5. Tanggal Mulai & Target Selesai */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
