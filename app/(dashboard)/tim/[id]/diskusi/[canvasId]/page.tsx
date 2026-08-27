@@ -1,5 +1,6 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getDiskusiCanvasData } from "@/app/actions/diskusi";
+import { getSprintsByTimId } from "@/app/actions/sprint";
 import { getCurrentUser } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { DiskusiCanvasClient } from "../DiskusiCanvasClient";
@@ -16,7 +17,10 @@ export default async function SingleCanvasPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const canvasDataRes = await getDiskusiCanvasData({ timId: tim.id, canvasId });
+  const [canvasDataRes, sprints] = await Promise.all([
+    getDiskusiCanvasData({ timId: tim.id, canvasId }),
+    getSprintsByTimId(tim.id),
+  ]);
 
   if (!canvasDataRes.success || !canvasDataRes.data) {
     return (
@@ -26,6 +30,8 @@ export default async function SingleCanvasPage({
       </div>
     );
   }
+
+  const totalSprints = sprints.length > 0 ? sprints.length : 6;
 
   const currentUser = {
     id: user?.id ?? 'anon-' + Math.random().toString(36).slice(2),
@@ -45,8 +51,8 @@ export default async function SingleCanvasPage({
         currentUser={currentUser}
         isCvUnlocked={true}
         isMvUnlocked={true}
+        totalSprints={totalSprints}
       />
     </div>
   );
 }
-

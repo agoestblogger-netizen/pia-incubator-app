@@ -213,6 +213,7 @@ export function DiskusiCanvasClient({
   initialData,
   isCvUnlocked = false,
   isMvUnlocked = false,
+  totalSprints = 6,
 }: {
   timId: string;
   canvasId?: string;
@@ -229,6 +230,7 @@ export function DiskusiCanvasClient({
   };
   isCvUnlocked?: boolean;
   isMvUnlocked?: boolean;
+  totalSprints?: number;
 }) {
   // Helper: check if a card's phase is locked
   const isPhaseLocked = (card: KanbanCardItem): boolean => {
@@ -317,6 +319,7 @@ export function DiskusiCanvasClient({
   const [compiledDraft, setCompiledDraft] = useState<CompiledBacklogDraft | null>(null);
   const [compiledSourceNoteIds, setCompiledSourceNoteIds] = useState<string[]>([]);
   const [savingCompiledCard, setSavingCompiledCard] = useState(false);
+  const [compiledSprintNum, setCompiledSprintNum] = useState<number>(1);
 
   // Supabase Realtime Setup
   const supabase = useRef(createClient());
@@ -703,6 +706,14 @@ export function DiskusiCanvasClient({
     );
     const calculatedSP = Math.max(1, Math.round(totalMinutes / 60));
 
+    // Determine if this is a direct sprint assign or a backlog save
+    const isAssignToSprint = targetSprintNumber !== null;
+    const sprintForCard = isAssignToSprint ? targetSprintNumber : null;
+    const suggestedSprint = isAssignToSprint ? targetSprintNumber : compiledSprintNum;
+    const labelForCard = compiledDraft.tahap === 'market_validation'
+      ? 'Rekomendasi MV'
+      : 'Rekomendasi CV';
+
     try {
       // 1. Create the new Kanban Card (timId first, cardData second)
       const res = await createKanbanCardAction(timId, {
@@ -712,12 +723,12 @@ export function DiskusiCanvasClient({
         acceptanceCriteria: compiledDraft.acceptanceCriteria,
         storyPoint: calculatedSP,
         estimasiJam: totalMinutes,
-        statusKolom: targetSprintNumber ? 'To Do' : 'To Do',
-        sprintNumber: targetSprintNumber,
-        reviewStatus: 'adopted',
+        statusKolom: 'To Do',
+        sprintNumber: sprintForCard,
+        reviewStatus: isAssignToSprint ? 'adopted' : 'ai_reference',
         tahap: compiledDraft.tahap,
-        label: 'Hasil Kompilasi Diskusi',
-        suggestedSprintNumber: targetSprintNumber || 1,
+        label: labelForCard,
+        suggestedSprintNumber: suggestedSprint,
         _initialSubtasks: compiledDraft.subtasks.map((st) => ({
           title: st.title,
           estimatedHours: st.estimatedMinutes || (st as any).estimatedHours || 60,
@@ -759,10 +770,11 @@ export function DiskusiCanvasClient({
         setCompiledModalOpen(false);
         setCompiledDraft(null);
         setCompiledSourceNoteIds([]);
+        setCompiledSprintNum(1);
         toast.success(
-          targetSprintNumber
+          isAssignToSprint
             ? `Kartu "${createdCard.judul.substring(0, 35)}..." berhasil dibuat & di-assign ke Sprint ${targetSprintNumber}!`
-            : `Kartu Backlog "${createdCard.judul.substring(0, 35)}..." berhasil disimpan ke Backlog Kerja!`,
+            : `Kartu Backlog "${createdCard.judul.substring(0, 35)}..." berhasil disimpan ke Backlog Referensi Sprint ${suggestedSprint}!`,
           'Kompilasi Sukses'
         );
       } else {
@@ -1698,7 +1710,7 @@ export function DiskusiCanvasClient({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="font-bold text-gray-800 block mb-1">Tahap Inkubasi</label>
                     <select
@@ -1708,6 +1720,18 @@ export function DiskusiCanvasClient({
                     >
                       <option value="customer_validation">Customer Validation (CV)</option>
                       <option value="market_validation">Market Validation (MV)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-800 block mb-1">Usulan Sprint</label>
+                    <select
+                      value={compiledSprintNum}
+                      onChange={(e) => setCompiledSprintNum(Number(e.target.value))}
+                      className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132] font-semibold text-gray-800"
+                    >
+                      {Array.from({ length: totalSprints }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>Sprint {n}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -1797,7 +1821,7 @@ export function DiskusiCanvasClient({
                         Pilih Target Sprint:
                       </span>
                       <div className="space-y-1">
-                        {[1, 2, 3, 4].map((sprintNum) => (
+                        {Array.from({ length: totalSprints }, (_, i) => i + 1).map((sprintNum) => (
                           <button
                             key={sprintNum}
                             type="button"
