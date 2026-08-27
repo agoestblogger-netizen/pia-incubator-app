@@ -554,14 +554,6 @@ export function CharterFormClient({
 
         {expandedSections.roles && (
           <CardContent className="p-0 animate-in fade-in duration-150">
-            {!isRolesEditable && (
-              <div className="p-3 mx-4 sm:mx-5 my-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs flex items-center gap-2.5 shadow-2xs">
-                <ShieldCheck className="h-4 w-4 text-amber-700 shrink-0" />
-                <span>
-                  <strong>Hak Akses Terbatas:</strong> Struktur Role &amp; Akuntabilitas Tim hanya dapat diubah oleh <strong>Innovation Coach</strong> dan <strong>Admin</strong>.
-                </span>
-              </div>
-            )}
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
