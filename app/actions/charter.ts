@@ -1324,15 +1324,12 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     }
   }
 
+  const maxBakuCvSpan = Math.max(1, Math.min(2, totalSprints - 1));
   for (let cvIdx = 0; cvIdx < bakuCVTasks.length; cvIdx++) {
     const t = bakuCVTasks[cvIdx];
-    const cvSprint = totalSprints <= 3
-      ? (cvIdx < 3 ? 1 : cvIdx < 5 ? 2 : 3)
-      : cvIdx < 2
+    const cvSprint = maxBakuCvSpan <= 1
       ? 1
-      : cvIdx < 4
-      ? 2
-      : Math.min(totalSprints, 3);
+      : (cvIdx < 4 ? 1 : 2);
 
     const predefined = getPredefinedSubtasks(t.judul, t.tahap) || [];
     const totalEstMinutes = predefined.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
