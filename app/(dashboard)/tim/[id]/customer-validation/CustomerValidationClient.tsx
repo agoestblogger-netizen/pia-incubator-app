@@ -728,18 +728,15 @@ export function CustomerValidationClient({
           <form onSubmit={handleSavePlan} className="space-y-5">
 
             {/* ── HEADER READ-ONLY INFO & DOWNLOAD PDF ───────────────────── */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-white to-purple-50/60 border border-emerald-200/90 shadow-2xs space-y-3">
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-white to-purple-50/60 border border-emerald-200/90 shadow-2xs">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-2.5 py-1 rounded-full border border-emerald-200">
                     Template Juklak 2.1 — Perencanaan Customer Validation
                   </span>
-                  <h3 className="text-sm sm:text-base font-extrabold text-gray-900">
-                    {timInfo?.namaProyekInovasi || "Proyek Inovasi"}
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                    <span className="font-semibold text-gray-500">Klasifikasi Inovasi:</span>
-                    <Badge variant="outline" className="font-bold text-[10px] bg-white border-emerald-300 text-emerald-800">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-white/80 px-2.5 py-0.5 rounded-full border border-gray-200/80">
+                    <span className="font-semibold text-gray-500 text-[11px]">Klasifikasi Inovasi:</span>
+                    <Badge variant="outline" className="font-bold text-[10px] bg-emerald-50/80 border-emerald-300 text-emerald-800 px-2 py-0">
                       {timInfo?.klasifikasiInovasi || "BREAKTHROUGH"}
                     </Badge>
                   </div>

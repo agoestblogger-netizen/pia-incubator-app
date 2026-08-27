@@ -806,25 +806,20 @@ export function MarketValidationClient({
     <div className="space-y-5">
       {/* ══ BAGIAN A: Header Read-Only (Template 3.1 & 3.2) ══ */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-0.5 uppercase tracking-wider">
-              FR-PIA-03.1 / 03.2
-            </Badge>
-            <h2 className="text-base font-extrabold text-gray-900">
-              {timInfo?.namaProyekInovasi || initialData?.tim?.namaProyekInovasi || "Market Validation Planning"}
-            </h2>
-          </div>
-          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 font-medium">
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-1 uppercase tracking-wider">
+            FR-PIA-03.1 / 03.2 — Perencanaan Market Validation
+          </Badge>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 font-medium">
             <span>
               Klasifikasi Inovasi:{" "}
-              <strong className="text-gray-800">
+              <strong className="text-gray-800 font-bold">
                 {timInfo?.klasifikasiInovasi || initialData?.tim?.klasifikasiInovasi || "Incremental Innovation"}
               </strong>
             </span>
             <span>&bull;</span>
             <span>
-              Tahap: <strong className="text-[#0B3D2E]">Market Validation (MVP Release &amp; PMF)</strong>
+              Tahap: <strong className="text-[#0B3D2E] font-bold">Market Validation (MVP Release &amp; PMF)</strong>
             </span>
           </div>
         </div>
