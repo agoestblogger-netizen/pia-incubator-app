@@ -696,7 +696,7 @@ export function KanbanClient({
   const [issueDeskripsi, setIssueDeskripsi] = useState("");
   const [issueDampak, setIssueDampak] = useState<"Rendah" | "Sedang" | "Tinggi" | "Kritis">("Sedang");
   const [issueOwnerAnggotaId, setIssueOwnerAnggotaId] = useState<string | null>(null);
-  const [issueStoryPoint, setIssueStoryPoint] = useState<number>(3);
+  const [issueMenit, setIssueMenit] = useState<number | "">(180);
   const [savingIssue, setSavingIssue] = useState(false);
 
   const [activeCard, setActiveCard] = useState<any | null>(null);
@@ -1983,6 +1983,10 @@ export function KanbanClient({
       const activeSprintObj = sprints.find((s) => s.status === "aktif");
       const targetSprintNum = activeSprintObj ? activeSprintObj.nomorSprint : selectedSprintNum;
 
+      const effectiveMenit = typeof issueMenit === "number" && issueMenit > 0 ? issueMenit : 180;
+      const effectiveStoryPoint = Number((effectiveMenit / 60).toFixed(2));
+      const effectiveEstimasiJam = Math.round(effectiveStoryPoint);
+
       const res = await createKanbanCardAction(timId, {
         judul: issueJudul.trim(),
         deskripsi: issueDampak ? `[Urgensi/Dampak: ${issueDampak}]\n\n${issueDeskripsi.trim()}` : issueDeskripsi.trim(),
@@ -1990,7 +1994,8 @@ export function KanbanClient({
         tahap: targetSprintNum <= 3 ? "customer_validation" : "market_validation",
         sprintNumber: targetSprintNum,
         ownerAnggotaId: issueOwnerAnggotaId || null,
-        storyPoint: issueStoryPoint || 3,
+        storyPoint: effectiveStoryPoint,
+        estimasiJam: effectiveEstimasiJam,
         tipeKartu: "issue",
         label: "Issue",
       });
@@ -2005,7 +2010,7 @@ export function KanbanClient({
         setIssueJudul("");
         setIssueDeskripsi("");
         setIssueOwnerAnggotaId(null);
-        setIssueStoryPoint(3);
+        setIssueMenit(180);
       } else {
         toast.error(res.error || "Gagal membuat kartu Issue.");
       }
@@ -3082,8 +3087,6 @@ export function KanbanClient({
                                                 className={`text-xs break-words leading-relaxed whitespace-normal ${
                                                   st.isDone
                                                     ? 'line-through text-gray-400 font-normal'
-                                                    : !hasProof && !isMandatory
-                                                    ? 'text-gray-500 font-normal'
                                                     : 'text-gray-900 font-semibold'
                                                 } ${canEdit && !isMandatory ? 'cursor-text hover:text-[#0B3D2E]' : ''} transition-colors`}
                                               >
@@ -4400,20 +4403,26 @@ export function KanbanClient({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-800 block mb-1">
-                  Story Point
-                </label>
-                <select
-                  value={issueStoryPoint}
-                  onChange={(e) => setIssueStoryPoint(parseInt(e.target.value))}
-                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
-                >
-                  <option value="1">1 SP</option>
-                  <option value="2">2 SP</option>
-                  <option value="3">3 SP (Standar)</option>
-                  <option value="5">5 SP</option>
-                  <option value="8">8 SP</option>
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-800">
+                    Estimasi Waktu (menit)
+                  </label>
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                    ≈ {typeof issueMenit === "number" && issueMenit > 0 ? (issueMenit / 60).toFixed(1) : "0"} SP
+                  </span>
+                </div>
+                <Input
+                  type="number"
+                  min={1}
+                  step={15}
+                  placeholder="Contoh: 180"
+                  value={issueMenit === "" ? "" : issueMenit}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0);
+                    setIssueMenit(val);
+                  }}
+                  className="text-xs font-semibold"
+                />
               </div>
             </div>
 
