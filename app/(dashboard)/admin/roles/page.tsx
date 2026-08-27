@@ -1,5 +1,6 @@
 import { getRbacMatrixData } from "@/app/actions/admin-roles";
 import { getSprintCapacityRoleConfigAction } from "@/app/actions/sprint-role-config";
+import { getPhaseGateBypassRoleConfigAction } from "@/app/actions/phase-gate-bypass";
 import { getCurrentUser } from "@/lib/auth/rbac";
 import { redirect } from "next/navigation";
 import { RolesClient } from "./RolesClient";
@@ -13,9 +14,10 @@ export default async function AdminRolesPage() {
     redirect("/dashboard");
   }
 
-  const [data, sprintRoleConfigs] = await Promise.all([
+  const [data, sprintRoleConfigs, phaseGateBypassConfigs] = await Promise.all([
     getRbacMatrixData(),
     getSprintCapacityRoleConfigAction(),
+    getPhaseGateBypassRoleConfigAction(),
   ]);
 
   return (
@@ -32,7 +34,7 @@ export default async function AdminRolesPage() {
         </p>
       </div>
 
-      <RolesClient initialData={{ ...data, sprintRoleConfigs }} />
+      <RolesClient initialData={{ ...data, sprintRoleConfigs, phaseGateBypassConfigs }} />
     </div>
   );
 }

@@ -775,5 +775,15 @@ export const sprintCapacityRoleConfig = pgTable('sprint_capacity_role_config', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const phaseGateBypassRoleConfig = pgTable('phase_gate_bypass_role_config', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  roleCode: text('role_code').notNull().unique(), // 'co_creator' | 'coach' | 'inisiator' | 'project_owner' | 'sponsor' | 'promotor' | 'sme' | 'divisi_ic' | 'admin_ic'
+  roleName: text('role_name').notNull(),
+  isBypass: boolean('is_bypass').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+
 
 

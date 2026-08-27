@@ -13,6 +13,10 @@ import {
   type SprintRoleConfigItem,
 } from "@/app/actions/sprint-role-config";
 import {
+  togglePhaseGateBypassRoleAction,
+  type PhaseGateBypassRoleItem,
+} from "@/app/actions/phase-gate-bypass";
+import {
   createUserAction,
   updateUserNameAction,
   resetUserPasswordAction,
@@ -58,7 +62,36 @@ import {
 } from "@/lib/theme/tokens";
 
 export function RolesClient({ initialData }: { initialData: any }) {
-  const [activeTab, setActiveTab] = useState<"matrix" | "users" | "sprint-capacity">("matrix");
+  const [activeTab, setActiveTab] = useState<"matrix" | "users" | "sprint-capacity" | "phase-gate-bypass">("matrix");
+
+  // State for Phase Gate Bypass Role Config
+  const [phaseGateBypassConfigs, setPhaseGateBypassConfigs] = useState<PhaseGateBypassRoleItem[]>(
+    initialData.phaseGateBypassConfigs || []
+  );
+  const [togglingBypassRoleCode, setTogglingBypassRoleCode] = useState<string | null>(null);
+
+  const handleTogglePhaseGateBypass = async (roleCode: string, currentBypass: boolean) => {
+    setTogglingBypassRoleCode(roleCode);
+    const newBypass = !currentBypass;
+    // Optimistic update
+    setPhaseGateBypassConfigs((prev) =>
+      prev.map((r) => (r.roleCode === roleCode ? { ...r, isBypass: newBypass } : r))
+    );
+
+    const res = await togglePhaseGateBypassRoleAction(roleCode, newBypass);
+    if (res.success) {
+      toast.success(
+        `Role ${roleCode} ${newBypass ? "sekarang diizinkan bypass" : "dikunci (harus Lanjut)"} gerbang Market Validation.`
+      );
+    } else {
+      // Rollback
+      setPhaseGateBypassConfigs((prev) =>
+        prev.map((r) => (r.roleCode === roleCode ? { ...r, isBypass: currentBypass } : r))
+      );
+      toast.error(res.error || "Gagal mengubah konfigurasi bypass role.");
+    }
+    setTogglingBypassRoleCode(null);
+  };
 
   // State for Sprint Capacity Role Config (Paket 24b)
   const [sprintRoleConfigs, setSprintRoleConfigs] = useState<SprintRoleConfigItem[]>(
@@ -571,6 +604,18 @@ export function RolesClient({ initialData }: { initialData: any }) {
           <Layers className="h-4 w-4" />
           <span>Kapasitas Sprint ({sprintRoleConfigs.filter((r) => r.isIncluded).length} Aktif)</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab("phase-gate-bypass")}
+          className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === "phase-gate-bypass"
+              ? "border-[#0F5132] text-[#0F5132]"
+              : "border-transparent text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          <ShieldCheck className="h-4 w-4" />
+          <span>Gerbang Fase CV→MV ({phaseGateBypassConfigs.filter((r) => r.isBypass).length} Bypass Aktif)</span>
+        </button>
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
@@ -1073,6 +1118,120 @@ export function RolesClient({ initialData }: { initialData: any }) {
                                 "Aktifkan"
                               )}
                             </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {/* TAB 4: PENGATURAN BYPASS GERBANG FASE CV -> MV */}
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {activeTab === "phase-gate-bypass" && (
+        <div className="space-y-6">
+          <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-emerald-50/70 via-white to-blue-50/40 border-b border-gray-100 p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-100 text-[#0F5132] border border-emerald-200">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-extrabold text-gray-900">
+                    Konfigurasi Gerbang Fase Customer Validation → Market Validation
+                  </CardTitle>
+                  <CardDescription className="text-xs text-gray-600 mt-1">
+                    Atur role mana saja yang diizinkan mengakses menu Market Validation, mengadopsi kartu MV, dan merencanakan rilis MVP meskipun Laporan Customer Validation belum berstatus &apos;Lanjut&apos;.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-gray-50/80 text-gray-600 font-bold border-b border-gray-100 uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3.5 px-4 w-12 text-center">No</th>
+                      <th className="py-3.5 px-4">Nama Role &amp; Kode</th>
+                      <th className="py-3.5 px-4">Deskripsi / Peruntukan</th>
+                      <th className="py-3.5 px-4 text-center">Status Gerbang MV</th>
+                      <th className="py-3.5 px-4 text-center">Aksi Toggle Bypass</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {phaseGateBypassConfigs.map((roleCfg, idx) => {
+                      const isToggling = togglingBypassRoleCode === roleCfg.roleCode;
+                      const isAdminRole = roleCfg.roleCode === "admin_ic";
+
+                      return (
+                        <tr key={roleCfg.roleCode} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3 px-4 text-center font-medium text-gray-400">
+                            {idx + 1}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-gray-900 text-xs">
+                              {roleCfg.roleName}
+                            </div>
+                            <code className="text-[10px] text-gray-400 font-mono">
+                              {roleCfg.roleCode}
+                            </code>
+                          </td>
+                          <td className="py-3 px-4 text-gray-500 text-xs">
+                            {roleCfg.roleCode === "co_creator" && "Anggota tim inovator / co-creator pelaksana teknis inovasi."}
+                            {roleCfg.roleCode === "coach" && "Innovation Coach pembimbing metodologi dan coaching tim."}
+                            {roleCfg.roleCode === "inisiator" && "Inisiator pengusul ide proyek inovasi awal."}
+                            {roleCfg.roleCode === "project_owner" && "Project Owner penanggung jawab bisnis dari unit kerja."}
+                            {roleCfg.roleCode === "sponsor" && "Pimpinan unit kerja / Divisi Sponsor proyek."}
+                            {roleCfg.roleCode === "promotor" && "Promotor eksekutif sponsor program inovasi."}
+                            {roleCfg.roleCode === "sme" && "Subject Matter Expert / Collaborator pendukung teknis."}
+                            {roleCfg.roleCode === "divisi_ic" && "Tim pengelola Divisi Innovation Center."}
+                            {roleCfg.roleCode === "admin_ic" && "Administrator sistem Innovation Center (Selalu Bypass Otomatis)."}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {roleCfg.isBypass || isAdminRole ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                <span>Bisa Akses (Bypass ON)</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full border border-gray-200">
+                                <Lock className="h-3 w-3 text-gray-400" />
+                                <span>Terkunci (Harus Lanjut)</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {isAdminRole ? (
+                              <span className="text-[11px] font-semibold text-gray-400 italic">
+                                Selalu Aktif (Admin)
+                              </span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant={roleCfg.isBypass ? "destructive" : "default"}
+                                disabled={isToggling}
+                                onClick={() => handleTogglePhaseGateBypass(roleCfg.roleCode, roleCfg.isBypass)}
+                                className={`h-8 px-3 text-xs font-bold rounded-lg cursor-pointer ${
+                                  roleCfg.isBypass
+                                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                    : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white"
+                                }`}
+                              >
+                                {isToggling ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : roleCfg.isBypass ? (
+                                  "Kunci Kembali"
+                                ) : (
+                                  "Izinkan Bypass"
+                                )}
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       );

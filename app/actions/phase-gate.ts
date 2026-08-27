@@ -13,6 +13,9 @@ import {
 import { eq, and } from "drizzle-orm";
 
 
+import { getCurrentUser } from "@/lib/auth/rbac";
+import { canUserBypassMarketValidationGate } from "@/app/actions/phase-gate-bypass";
+
 export type PhaseGateStatus = {
   timId: string;
   namaTim: string;
@@ -88,14 +91,18 @@ export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateSt
 
   // 4. Check Market Validation gate:
   // Condition: customer_validation_report.keputusan === 'Lanjut ke Market Validation' or 'lanjut'
+  // ATAU role user saat ini memiliki izin bypass gerbang fase di phase_gate_bypass_role_config
+  const currentUser = await getCurrentUser();
+  const canBypassMvGate = await canUserBypassMarketValidationGate(currentUser, timId);
+
   const [cvPlan] = await db
     .select()
     .from(customerValidationPlan)
     .where(eq(customerValidationPlan.timInovatorId, timId))
     .limit(1);
 
-  let isMarketValidationUnlocked = false;
-  if (cvPlan) {
+  let isMarketValidationUnlocked = canBypassMvGate;
+  if (!isMarketValidationUnlocked && cvPlan) {
     const [cvReport] = await db
       .select()
       .from(customerValidationReport)
