@@ -12,7 +12,6 @@ import {
   mvReleaseLog,
   hasilValidasiMetrik,
   dfvRekapitulasi,
-  hasilPengukuranDfvTraction,
   rencanaValidasiMetrik,
 } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -718,15 +717,18 @@ export async function getMandatorySubtaskDataAction(
           break;
 
         case "dfv_traction_measurement": {
-          const existingRows = await db
-            .select()
-            .from(hasilPengukuranDfvTraction)
-            .where(
-              and(
-                eq(hasilPengukuranDfvTraction.timInovatorId, timId),
-                eq(hasilPengukuranDfvTraction.kanbanCardId, cardId)
-              )
-            );
+          let existingRows: any[] = [];
+          if (mvReport) {
+            existingRows = await db
+              .select()
+              .from(hasilValidasiMetrik)
+              .where(
+                and(
+                  eq(hasilValidasiMetrik.reportId, mvReport.id),
+                  eq(hasilValidasiMetrik.fase, "market_validation")
+                )
+              );
+          }
 
           if (existingRows.length > 0) {
             data = {
@@ -734,9 +736,9 @@ export async function getMandatorySubtaskDataAction(
                 id: r.id,
                 validasi: r.validasi,
                 metrik: r.metrik,
-                baseline: r.baseline || "-",
+                baseline: "-",
                 target: r.target || "-",
-                threshold: r.threshold || "70%",
+                threshold: "70%",
                 hasilAktual: r.hasilAktual || "",
                 persenTercapai: r.persenTercapai,
                 status: r.status || "belum",
@@ -993,11 +995,11 @@ export async function saveMandatorySubtaskDataAction(
         case "dfv_traction_measurement": {
           const rows: any[] = Array.isArray(payload.dfvMeasurementRows) ? payload.dfvMeasurementRows : [];
           await db
-            .delete(hasilPengukuranDfvTraction)
+            .delete(hasilValidasiMetrik)
             .where(
               and(
-                eq(hasilPengukuranDfvTraction.timInovatorId, timId),
-                eq(hasilPengukuranDfvTraction.kanbanCardId, cardId)
+                eq(hasilValidasiMetrik.reportId, mvReport.id),
+                eq(hasilValidasiMetrik.fase, "market_validation")
               )
             );
 
@@ -1015,14 +1017,11 @@ export async function saveMandatorySubtaskDataAction(
               const status = pct !== null && pct >= threshNum ? "lolos" : "belum";
 
               return {
-                timInovatorId: timId,
-                kanbanCardId: cardId,
                 reportId: mvReport.id,
+                fase: "market_validation",
                 validasi: r.validasi || "desirability",
                 metrik: r.metrik || "",
-                baseline: r.baseline || null,
                 target: r.target || null,
-                threshold: r.threshold || null,
                 hasilAktual: r.hasilAktual || null,
                 persenTercapai: pct,
                 status: status,
@@ -1031,7 +1030,7 @@ export async function saveMandatorySubtaskDataAction(
               };
             });
 
-            await db.insert(hasilPengukuranDfvTraction).values(insertPayload);
+            await db.insert(hasilValidasiMetrik).values(insertPayload);
 
             // Update dfv_rekapitulasi (3 rows: desirability, feasibility, viability)
             const categories = ["desirability", "feasibility", "viability"];
