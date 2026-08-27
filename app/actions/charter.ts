@@ -915,12 +915,29 @@ export async function approveCharterAction(timId: string, signatureImage?: strin
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
     const allowed = await hasPermission(user, "charter.approve", timId);
-    if (!allowed) {
+    if (!allowed && !isAdmin) {
       return {
         success: false,
         error: "Forbidden: Anda tidak memiliki izin sebagai Promotor untuk menyetujui Innovation Charter tim ini.",
       };
+    }
+
+    const rolesData = await getCharterRolesData(timId);
+
+    // ── Role-gate enforcement ─────────────────────────────────────────────────
+    if (!isAdmin) {
+      const assignedPromotor = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor");
+      if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
+        return {
+          success: false,
+          error: "Forbidden: Hanya pemegang role Promotor yang terdaftar di Innovation Charter tim ini yang dapat menyetujui.",
+        };
+      }
     }
 
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
@@ -937,8 +954,6 @@ export async function approveCharterAction(timId: string, signatureImage?: strin
       .limit(1);
 
     const processedImageUrl = await processSignatureImage(timId, signatureImage);
-
-    const rolesData = await getCharterRolesData(timId);
     const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor")?.userName;
 
     const ttdData = {
@@ -1060,12 +1075,27 @@ export async function revokeCharterApprovalAction(timId: string) {
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
     const allowed = await hasPermission(user, "charter.approve", timId);
-    if (!allowed) {
+    if (!allowed && !isAdmin) {
       return {
         success: false,
         error: "Forbidden: Anda tidak memiliki izin untuk membatalkan persetujuan Innovation Charter tim ini.",
       };
+    }
+
+    if (!isAdmin) {
+      const rolesData = await getCharterRolesData(timId);
+      const assignedPromotor = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor");
+      if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
+        return {
+          success: false,
+          error: "Forbidden: Hanya pemegang role Promotor yang terdaftar di Innovation Charter tim ini yang dapat membatalkan persetujuan.",
+        };
+      }
     }
 
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);

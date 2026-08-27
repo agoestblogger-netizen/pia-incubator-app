@@ -1350,7 +1350,7 @@ export function CharterFormClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {canApprove && (
+                      {canApprove ? (
                         ttdDisetujui?.status === 'approved' ? (
                           <Button
                             type="button"
@@ -1374,6 +1374,18 @@ export function CharterFormClient({
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg Promotor</span>
                           </Button>
+                        )
+                      ) : (
+                        ttdDisetujui?.status === 'approved' ? (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah disetujui Promotor</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu persetujuan dari {promotorName || "Promotor Inovasi"}</span>
+                          </div>
                         )
                       )}
                     </div>

@@ -310,6 +310,10 @@ export async function signMvPlanAction(
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
     const [existingPlan] = await db
       .select()
       .from(marketValidationPlan)
@@ -331,8 +335,20 @@ export async function signMvPlanAction(
 
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
-    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+    const defaultRoleTitle = roleType === "po" ? "Project Owner" : roleType === "coach" ? "Innovation Coach" : "Promotor Inovasi";
 
+    // ── Role-gate enforcement ─────────────────────────────────────────────────
+    if (!isAdmin) {
+      const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
+      if (!assigned?.userId || assigned.userId !== user.id) {
+        return {
+          success: false,
+          error: `Forbidden: Hanya pemegang role ${defaultRoleTitle} yang terdaftar di Innovation Charter tim ini yang dapat menandatangani.`,
+        };
+      }
+    }
+
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
     const processedImageUrl = await processMvSignatureImage(timId, signatureDataUrl);
 
     const signatureData = {
@@ -340,7 +356,7 @@ export async function signMvPlanAction(
       signedByUserId: user.id,
       signedByUserName: user.nama,
       nama: assignedName || user.nama,
-      jabatan: anggota?.jabatan || (roleType === "po" ? "Project Owner" : roleType === "coach" ? "Innovation Coach" : "Promotor Inovasi"),
+      jabatan: anggota?.jabatan || defaultRoleTitle,
       unit: anggota?.unitKerja || "PT Pegadaian",
       tanggal: new Date().toISOString(),
       status: "signed",
@@ -386,6 +402,22 @@ export async function revokeMvPlanSignatureAction(
     const user = await getCurrentUser();
     if (!user) {
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
+    if (!isAdmin) {
+      const rolesData = await getCharterRolesData(timId);
+      const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
+      const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
+      if (!assigned?.userId || assigned.userId !== user.id) {
+        return {
+          success: false,
+          error: "Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.",
+        };
+      }
     }
 
     const [existingPlan] = await db
@@ -681,6 +713,10 @@ export async function signMvReportAction(
 
     const processedImageUrl = await processMvSignatureImage(timId, signatureDataUrl);
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
     const defaultJabatan =
       roleType === "po"
         ? "Project Owner"
@@ -690,6 +726,18 @@ export async function signMvReportAction(
 
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
+
+    // ── Role-gate enforcement ─────────────────────────────────────────────────
+    if (!isAdmin) {
+      const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
+      if (!assigned?.userId || assigned.userId !== user.id) {
+        return {
+          success: false,
+          error: `Forbidden: Hanya pemegang role ${defaultJabatan} yang terdaftar di Innovation Charter tim ini yang dapat menandatangani.`,
+        };
+      }
+    }
+
     const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
 
     const signatureData = {
@@ -743,6 +791,22 @@ export async function revokeMvReportSignatureAction(
   try {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized." };
+
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
+    if (!isAdmin) {
+      const rolesData = await getCharterRolesData(timId);
+      const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
+      const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
+      if (!assigned?.userId || assigned.userId !== user.id) {
+        return {
+          success: false,
+          error: "Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.",
+        };
+      }
+    }
 
     const [plan] = await db
       .select()

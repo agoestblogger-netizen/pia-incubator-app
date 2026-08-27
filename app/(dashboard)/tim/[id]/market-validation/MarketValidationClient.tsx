@@ -46,6 +46,7 @@ import {
   History,
   Wallet,
   ArrowUpRight,
+  Lock,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
@@ -211,7 +212,7 @@ function formatDateForInput(dateVal?: any) {
 export function MarketValidationClient({
   timId,
   timInfo,
-  roleAssignments,
+  roleAssignments = [],
   initialData,
   initialColumns = [],
   initialCards = [],
@@ -261,6 +262,7 @@ export function MarketValidationClient({
   );
   const isAdminOrCoach = isAdmin || isCoach;
   const hasMvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
+  
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
     initialData?.plan?.hasilCustomerValidationRingkasan ||
@@ -519,6 +521,24 @@ export function MarketValidationClient({
     roleAssignments?.find((a: any) => a.roleCode === "promotor")?.userName ||
     teamMembers.find((m: any) => m.role === "promotor" || m.jabatan?.toLowerCase().includes("promotor"))?.nama ||
     null;
+
+  // Role-gated signing permissions (admin can sign any role)
+  const currentUserId = currentUser?.id;
+  const poAssignment = roleAssignments?.find((a: any) => a.roleCode === "project_owner");
+  const canSignAsPo = Boolean(
+    isAdmin ||
+    (currentUserId && poAssignment?.userId === currentUserId)
+  );
+  const coachAssignment = roleAssignments?.find((a: any) => a.roleCode === "coach");
+  const canSignAsCoach = Boolean(
+    isAdmin ||
+    (currentUserId && coachAssignment?.userId === currentUserId)
+  );
+  const promotorAssignment = roleAssignments?.find((a: any) => a.roleCode === "promotor");
+  const canSignAsPromotor = Boolean(
+    isAdmin ||
+    (currentUserId && promotorAssignment?.userId === currentUserId)
+  );
 
   const openSignModal = (roleType: "po" | "coach" | "promotor") => {
     const roleName =
@@ -1687,28 +1707,42 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {ttdDisusun?.status === "signed" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={signingRole === "po"}
-                          onClick={() => handleRevokeSign("po")}
-                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
-                        >
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                          <span>Batalkan Tanda Tangan</span>
-                        </Button>
+                        canSignAsPo ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={signingRole === "po"}
+                            onClick={() => handleRevokeSign("po")}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <span>Batalkan Tanda Tangan</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah ditandatangani PO</span>
+                          </div>
+                        )
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={signingRole === "po"}
-                          onClick={() => openSignModal("po")}
-                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
-                        >
-                          <Stamp className="h-3.5 w-3.5 mr-1" />
-                          <span>Tandatangani sbg PO</span>
-                        </Button>
+                        canSignAsPo ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={signingRole === "po"}
+                            onClick={() => openSignModal("po")}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Tandatangani sbg PO</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu tanda tangan dari {poCharterName || "Project Owner"}</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -1780,28 +1814,42 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {ttdDiperiksa?.status === "signed" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={signingRole === "coach"}
-                          onClick={() => handleRevokeSign("coach")}
-                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
-                        >
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                          <span>Batalkan Tanda Tangan</span>
-                        </Button>
+                        canSignAsCoach ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={signingRole === "coach"}
+                            onClick={() => handleRevokeSign("coach")}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <span>Batalkan Tanda Tangan</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah ditandatangani Coach</span>
+                          </div>
+                        )
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={signingRole === "coach"}
-                          onClick={() => openSignModal("coach")}
-                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
-                        >
-                          <Stamp className="h-3.5 w-3.5 mr-1" />
-                          <span>Tandatangani sbg Coach</span>
-                        </Button>
+                        canSignAsCoach ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={signingRole === "coach"}
+                            onClick={() => openSignModal("coach")}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Tandatangani sbg Coach</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu tanda tangan dari {coachCharterName || "Innovation Coach"}</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -1873,28 +1921,42 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {ttdDisetujui?.status === "signed" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={signingRole === "promotor"}
-                          onClick={() => handleRevokeSign("promotor")}
-                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
-                        >
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                          <span>Batalkan Tanda Tangan</span>
-                        </Button>
+                        canSignAsPromotor ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={signingRole === "promotor"}
+                            onClick={() => handleRevokeSign("promotor")}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <span>Batalkan Tanda Tangan</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah ditandatangani Promotor</span>
+                          </div>
+                        )
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={signingRole === "promotor"}
-                          onClick={() => openSignModal("promotor")}
-                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
-                        >
-                          <Stamp className="h-3.5 w-3.5 mr-1" />
-                          <span>Tandatangani sbg Promotor</span>
-                        </Button>
+                        canSignAsPromotor ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={signingRole === "promotor"}
+                            onClick={() => openSignModal("promotor")}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Tandatangani sbg Promotor</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu tanda tangan dari {promotorCharterName || "Promotor Inovasi"}</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -2699,28 +2761,42 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDisusun?.status === "signed" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={reportSigningRole === "po"}
-                          onClick={() => handleRevokeReportSignature("po")}
-                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
-                        >
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                          <span>Batalkan Tanda Tangan</span>
-                        </Button>
+                        canSignAsPo ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={reportSigningRole === "po"}
+                            onClick={() => handleRevokeReportSignature("po")}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <span>Batalkan Tanda Tangan</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah ditandatangani PO</span>
+                          </div>
+                        )
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={reportSigningRole === "po"}
-                          onClick={() => openReportSignModal("po")}
-                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
-                        >
-                          <Stamp className="h-3.5 w-3.5 mr-1" />
-                          <span>Tandatangani sbg PO</span>
-                        </Button>
+                        canSignAsPo ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={reportSigningRole === "po"}
+                            onClick={() => openReportSignModal("po")}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Tandatangani sbg PO</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu tanda tangan dari {poCharterName || "Project Owner"}</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -2792,28 +2868,42 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDiperiksa?.status === "signed" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={reportSigningRole === "coach"}
-                          onClick={() => handleRevokeReportSignature("coach")}
-                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
-                        >
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                          <span>Batalkan Tanda Tangan</span>
-                        </Button>
+                        canSignAsCoach ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={reportSigningRole === "coach"}
+                            onClick={() => handleRevokeReportSignature("coach")}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <span>Batalkan Tanda Tangan</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah ditandatangani Coach</span>
+                          </div>
+                        )
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={reportSigningRole === "coach"}
-                          onClick={() => openReportSignModal("coach")}
-                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
-                        >
-                          <Stamp className="h-3.5 w-3.5 mr-1" />
-                          <span>Tandatangani sbg Coach</span>
-                        </Button>
+                        canSignAsCoach ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={reportSigningRole === "coach"}
+                            onClick={() => openReportSignModal("coach")}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Tandatangani sbg Coach</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu tanda tangan dari {coachCharterName || "Innovation Coach"}</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -2885,28 +2975,42 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDisetujui?.status === "approved" || reportTtdDisetujui?.status === "signed" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={reportSigningRole === "promotor"}
-                          onClick={() => handleRevokeReportSignature("promotor")}
-                          className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
-                        >
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                          <span>Batalkan Persetujuan</span>
-                        </Button>
+                        canSignAsPromotor ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={reportSigningRole === "promotor"}
+                            onClick={() => handleRevokeReportSignature("promotor")}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <span>Batalkan Persetujuan</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Telah disetujui Promotor</span>
+                          </div>
+                        )
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={reportSigningRole === "promotor"}
-                          onClick={() => openReportSignModal("promotor")}
-                          className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
-                        >
-                          <Stamp className="h-3.5 w-3.5 mr-1" />
-                          <span>Setujui sbg Promotor</span>
-                        </Button>
+                        canSignAsPromotor ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={reportSigningRole === "promotor"}
+                            onClick={() => openReportSignModal("promotor")}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Setujui sbg Promotor</span>
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                            <span>Menunggu tanda tangan dari {promotorCharterName || "Promotor Inovasi"}</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>

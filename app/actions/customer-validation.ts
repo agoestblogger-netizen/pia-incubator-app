@@ -696,6 +696,10 @@ export async function signCvPlanAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
     // Get user details in this team
     const [anggota] = await db
       .select()
@@ -717,7 +721,31 @@ export async function signCvPlanAction(
 
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
-    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+
+    // ── Role-gate enforcement ─────────────────────────────────────────────────
+    if (!isAdmin) {
+      const assignments = rolesData?.assignments || [];
+      let isAuthorized = false;
+      if (roleType === 'inisiator') {
+        // Inisiator is multi-user — any registered inisiator may sign
+        isAuthorized = assignments
+          .filter((a: any) => a.roleCode === 'inisiator')
+          .some((a: any) => a.userId && a.userId === user.id);
+      } else {
+        const assigned = assignments.find((a: any) => a.roleCode === targetRoleCode);
+        isAuthorized = Boolean(assigned?.userId && assigned.userId === user.id);
+      }
+      if (!isAuthorized) {
+        return {
+          success: false,
+          error: `Forbidden: Hanya pemegang role ${defaultRoleTitle} yang terdaftar di Innovation Charter tim ini yang dapat menandatangani. Hubungi Innovation Coach atau Admin untuk mengubah penugasan role.`,
+        };
+      }
+    }
+
+    const assignedName = roleType === 'inisiator'
+      ? rolesData?.assignments?.find((r: any) => r.roleCode === 'inisiator' && r.userId === user.id)?.userName
+      : rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
 
     const processedImageUrl = await processSignatureImage(timId, signatureImage);
 
@@ -779,9 +807,6 @@ export async function signCvPlanAction(
   }
 }
 
-/**
- * Batalkan tanda tangan Customer Validation Plan
- */
 export async function revokeCvPlanSignatureAction(
   timId: string,
   roleType: 'inisiator' | 'coach' | 'po'
@@ -789,6 +814,31 @@ export async function revokeCvPlanSignatureAction(
   try {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
+    if (!isAdmin) {
+      const rolesData = await getCharterRolesData(timId);
+      const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
+      const assignments = rolesData?.assignments || [];
+      let isAuthorized = false;
+      if (roleType === 'inisiator') {
+        isAuthorized = assignments
+          .filter((a: any) => a.roleCode === 'inisiator')
+          .some((a: any) => a.userId && a.userId === user.id);
+      } else {
+        const assigned = assignments.find((a: any) => a.roleCode === targetRoleCode);
+        isAuthorized = Boolean(assigned?.userId && assigned.userId === user.id);
+      }
+      if (!isAuthorized) {
+        return {
+          success: false,
+          error: 'Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.',
+        };
+      }
+    }
 
     const [existing] = await db
       .select()
@@ -988,6 +1038,39 @@ export async function signCvReportAction(
       return { success: false, error: 'Forbidden: Anda tidak memiliki izin menandatangani laporan CV ini.' };
     }
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
+    const rolesData = await getCharterRolesData(timId);
+    const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
+    const defaultRoleTitle =
+      roleType === 'inisiator' ? 'Inisiator Inovasi' : roleType === 'coach' ? 'Innovation Coach' : 'Project Owner';
+
+    // ── Role-gate enforcement ─────────────────────────────────────────────────
+    if (!isAdmin) {
+      const assignments = rolesData?.assignments || [];
+      let isAuthorized = false;
+      if (roleType === 'inisiator') {
+        isAuthorized = assignments
+          .filter((a: any) => a.roleCode === 'inisiator')
+          .some((a: any) => a.userId && a.userId === user.id);
+      } else {
+        const assigned = assignments.find((a: any) => a.roleCode === targetRoleCode);
+        isAuthorized = Boolean(assigned?.userId && assigned.userId === user.id);
+      }
+      if (!isAuthorized) {
+        return {
+          success: false,
+          error: `Forbidden: Hanya pemegang role ${defaultRoleTitle} yang terdaftar di Innovation Charter tim ini yang dapat menandatangani.`,
+        };
+      }
+    }
+
+    const assignedName = roleType === 'inisiator'
+      ? rolesData?.assignments?.find((r: any) => r.roleCode === 'inisiator' && r.userId === user.id)?.userName
+      : rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+
     let [plan] = await db
       .select()
       .from(customerValidationPlan)
@@ -1015,10 +1098,6 @@ export async function signCvReportAction(
         .returning();
       report = newReport;
     }
-
-    const rolesData = await getCharterRolesData(timId);
-    const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
-    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
 
     const signatureData = {
       userId: user.id,
@@ -1076,6 +1155,31 @@ export async function revokeCvReportSignatureAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
+    const isAdmin = user.globalRoles?.some((r: string) =>
+      ['super_admin', 'admin_ic', 'admin'].includes(r)
+    );
+
+    if (!isAdmin) {
+      const rolesData = await getCharterRolesData(timId);
+      const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
+      const assignments = rolesData?.assignments || [];
+      let isAuthorized = false;
+      if (roleType === 'inisiator') {
+        isAuthorized = assignments
+          .filter((a: any) => a.roleCode === 'inisiator')
+          .some((a: any) => a.userId && a.userId === user.id);
+      } else {
+        const assigned = assignments.find((a: any) => a.roleCode === targetRoleCode);
+        isAuthorized = Boolean(assigned?.userId && assigned.userId === user.id);
+      }
+      if (!isAuthorized) {
+        return {
+          success: false,
+          error: 'Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.',
+        };
+      }
+    }
+
     const [plan] = await db
       .select()
       .from(customerValidationPlan)
@@ -1123,5 +1227,3 @@ export async function revokeCvReportSignatureAction(
     return { success: false, error: error.message || 'Gagal membatalkan tanda tangan laporan.' };
   }
 }
-
-
