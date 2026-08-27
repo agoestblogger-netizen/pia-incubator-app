@@ -5,7 +5,7 @@ export interface CompiledBacklogDraft {
   judul: string;
   deskripsi: string;
   acceptanceCriteria: string;
-  tahap: 'innovation_setup' | 'customer_validation' | 'market_validation' | 'umum';
+  tahap: 'customer_validation' | 'market_validation';
   storyPoint: number;
   subtasks: Array<{
     title: string;
@@ -45,7 +45,7 @@ ATURAN OUTPUT:
 1. judul: Ringkas, jelas, diawali kata kerja aksi (contoh: "Rancang Desain Onboarding & Skema Validasi Pengguna", "Kembangkan Prototipe Sistem Rekonsiliasi Otomatis"). Maksimal 80 karakter.
 2. deskripsi: Sintesis komprehensif dari ide-ide yang didiskusikan. Jelaskan latar belakang ide, sasaran utama, dan cakupan implementasinya.
 3. acceptanceCriteria: Kriteria keberhasilan luaran yang terukur, konkret, dan dapat diverifikasi saat task dinyatakan selesai.
-4. tahap: Pilih salah satu yang paling sesuai dari: "innovation_setup" (riset/charter), "customer_validation" (uji problem-solution fit/prototype), "market_validation" (uji pilot/DFV/MVP), atau "umum".
+4. tahap: Pilih salah satu yang paling sesuai dari: "customer_validation" (uji problem-solution fit / riset / prototype) atau "market_validation" (uji pilot / DFV / MVP / implementasi bisnis). JANGAN gunakan kategori lain.
 5. storyPoint: Estimasikan durasi kerja dalam MENIT yang realistis, lalu konversikan ke story_point = menit ÷ 60 (1 SP = 60 menit).
 6. subtasks: Buat 3 sampai 5 subtask konkret dan actionable yang menggambarkan langkah eksekusi teknis dan operasional secara berurutan. Setiap subtask memiliki title yang deskriptif dan estimatedHours (integer 1-16).
 
@@ -104,9 +104,7 @@ Susun draf kartu backlog lengkap berdasarkan ide-ide di atas dalam format JSON.`
     judul: (parsed.judul || frameLabel || 'Inisiatif Baru').substring(0, 100),
     deskripsi: parsed.deskripsi || noteContents.join('\n- '),
     acceptanceCriteria: parsed.acceptanceCriteria || 'Hasil implementasi dan dokumentasi luaran terverifikasi oleh tim.',
-    tahap: ['innovation_setup', 'customer_validation', 'market_validation', 'umum'].includes(parsed.tahap)
-      ? parsed.tahap
-      : 'customer_validation',
+    tahap: parsed.tahap === 'market_validation' ? 'market_validation' : 'customer_validation',
     storyPoint: normalizeToFibonacci(parsed.storyPoint, 3),
     subtasks: Array.isArray(parsed.subtasks) && parsed.subtasks.length > 0
       ? parsed.subtasks.map((st: any) => ({

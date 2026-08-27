@@ -1569,8 +1569,9 @@ export function DiskusiCanvasClient({
       {/* MODAL 1: PRE-FILLED AI COMPILED BACKLOG CARD */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={compiledModalOpen} onOpenChange={setCompiledModalOpen}>
-        <DialogContent className="max-w-2xl bg-white p-6 rounded-2xl border-2 border-[#0F5132] shadow-2xl">
-          <DialogHeader className="pb-3 border-b border-gray-100">
+        <DialogContent className="max-w-2xl max-h-[88vh] bg-white p-0 rounded-2xl border-2 border-[#0F5132] shadow-2xl flex flex-col overflow-hidden">
+          {/* Sticky Header */}
+          <DialogHeader className="p-5 pb-3 border-b border-gray-100 shrink-0 bg-white">
             <DialogTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-purple-600" />
               <span>Draf Kartu Backlog dari Kompilasi AI</span>
@@ -1581,95 +1582,97 @@ export function DiskusiCanvasClient({
           </DialogHeader>
 
           {compiledDraft && (
-            <div className="space-y-4 py-2 text-xs">
-              <div>
-                <label className="font-bold text-gray-800 block mb-1">Judul Kartu / Task *</label>
-                <Input
-                  value={compiledDraft.judul}
-                  onChange={(e) => setCompiledDraft({ ...compiledDraft, judul: e.target.value })}
-                  className="text-xs font-bold border-[#C9E4D0] focus:border-[#0F5132]"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-gray-800 block mb-1">Deskripsi Lengkap</label>
-                <Textarea
-                  value={compiledDraft.deskripsi}
-                  rows={3}
-                  onChange={(e) => setCompiledDraft({ ...compiledDraft, deskripsi: e.target.value })}
-                  className="text-xs border-[#C9E4D0] focus:border-[#0F5132]"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-gray-800 block mb-1">Acceptance Criteria</label>
-                <Textarea
-                  value={compiledDraft.acceptanceCriteria}
-                  rows={2}
-                  onChange={(e) => setCompiledDraft({ ...compiledDraft, acceptanceCriteria: e.target.value })}
-                  className="text-xs border-[#C9E4D0] focus:border-[#0F5132]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            <>
+              {/* Scrollable Form Body */}
+              <div className="space-y-4 p-5 py-3 text-xs overflow-y-auto flex-1 min-h-0">
                 <div>
-                  <label className="font-bold text-gray-800 block mb-1">Tahap Inkubasi</label>
-                  <select
-                    value={compiledDraft.tahap}
-                    onChange={(e) => setCompiledDraft({ ...compiledDraft, tahap: e.target.value as any })}
-                    className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132]"
-                  >
-                    <option value="innovation_setup">Innovation Setup</option>
-                    <option value="customer_validation">Customer Validation</option>
-                    <option value="market_validation">Market Validation</option>
-                    <option value="umum">Umum</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-gray-800">Estimasi Waktu</label>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      ≈ {Number((compiledDraft.storyPoint || 3).toFixed(2))} SP
-                    </span>
-                  </div>
+                  <label className="font-bold text-gray-800 block mb-1">Judul Kartu / Task *</label>
                   <Input
-                    type="number"
-                    min={1}
-                    step={15}
-                    value={Math.round((compiledDraft.storyPoint || 3) * 60)}
-                    onChange={(e) => {
-                      const min = Math.max(1, parseInt(e.target.value, 10) || 60);
-                      setCompiledDraft({ ...compiledDraft, storyPoint: Number((min / 60).toFixed(2)) });
-                    }}
-                    className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132]"
-                    placeholder="Menit (contoh: 120)"
+                    value={compiledDraft.judul}
+                    onChange={(e) => setCompiledDraft({ ...compiledDraft, judul: e.target.value })}
+                    className="text-xs font-bold border-[#C9E4D0] focus:border-[#0F5132]"
                   />
                 </div>
-              </div>
 
-              {/* Subtasks List */}
-              <div className="space-y-1.5 p-3 rounded-xl bg-[#F0F7F1] border border-[#C9E4D0]">
-                <span className="font-bold text-[#0B3D2E] text-xs block">
-                  Draf Subtasks ({compiledDraft.subtasks.length}):
-                </span>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {compiledDraft.subtasks.map((st, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 p-1.5 rounded bg-white border border-gray-200 text-xs">
-                      <span className="text-gray-800 truncate flex-1">{st.title}</span>
-                      <span className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">
-                        {st.estimatedHours} menit
+                <div>
+                  <label className="font-bold text-gray-800 block mb-1">Deskripsi Lengkap</label>
+                  <Textarea
+                    value={compiledDraft.deskripsi}
+                    rows={3}
+                    onChange={(e) => setCompiledDraft({ ...compiledDraft, deskripsi: e.target.value })}
+                    className="text-xs border-[#C9E4D0] focus:border-[#0F5132]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-gray-800 block mb-1">Acceptance Criteria</label>
+                  <Textarea
+                    value={compiledDraft.acceptanceCriteria}
+                    rows={2}
+                    onChange={(e) => setCompiledDraft({ ...compiledDraft, acceptanceCriteria: e.target.value })}
+                    className="text-xs border-[#C9E4D0] focus:border-[#0F5132]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-gray-800 block mb-1">Tahap Inkubasi</label>
+                    <select
+                      value={['customer_validation', 'market_validation'].includes(compiledDraft.tahap) ? compiledDraft.tahap : 'customer_validation'}
+                      onChange={(e) => setCompiledDraft({ ...compiledDraft, tahap: e.target.value as any })}
+                      className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132] font-semibold text-gray-800"
+                    >
+                      <option value="customer_validation">Customer Validation (CV)</option>
+                      <option value="market_validation">Market Validation (MV)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-gray-800">Estimasi Waktu</label>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        ≈ {Number((compiledDraft.storyPoint || 3).toFixed(2))} SP
                       </span>
                     </div>
-                  ))}
+                    <Input
+                      type="number"
+                      min={1}
+                      step={15}
+                      value={Math.round((compiledDraft.storyPoint || 3) * 60)}
+                      onChange={(e) => {
+                        const min = Math.max(1, parseInt(e.target.value, 10) || 60);
+                        setCompiledDraft({ ...compiledDraft, storyPoint: Number((min / 60).toFixed(2)) });
+                      }}
+                      className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#0F5132]"
+                      placeholder="Menit (contoh: 120)"
+                    />
+                  </div>
+                </div>
+
+                {/* Subtasks List */}
+                <div className="space-y-1.5 p-3 rounded-xl bg-[#F0F7F1] border border-[#C9E4D0]">
+                  <span className="font-bold text-[#0B3D2E] text-xs block">
+                    Draf Subtasks ({compiledDraft.subtasks.length}):
+                  </span>
+                  <div className="space-y-1 max-h-40 overflow-y-auto pr-0.5">
+                    {compiledDraft.subtasks.map((st, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 p-1.5 rounded bg-white border border-gray-200 text-xs">
+                        <span className="text-gray-800 truncate flex-1">{st.title}</span>
+                        <span className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200">
+                          {st.estimatedHours} jam
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100">
+              {/* Sticky Footer Actions */}
+              <div className="flex items-center justify-between gap-2 p-4 bg-gray-50 border-t border-gray-200 shrink-0 rounded-b-2xl">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCompiledModalOpen(false)}
-                  className="text-xs cursor-pointer"
+                  className="text-xs cursor-pointer rounded-xl"
                 >
                   Batal
                 </Button>
@@ -1679,7 +1682,7 @@ export function DiskusiCanvasClient({
                     size="sm"
                     disabled={savingCompiledCard || !compiledDraft.judul.trim()}
                     onClick={() => handleSaveCompiledCard(null)}
-                    className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 cursor-pointer shadow-2xs"
+                    className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 cursor-pointer shadow-xs rounded-xl"
                   >
                     {savingCompiledCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                     <span>Simpan ke Backlog</span>
@@ -1691,14 +1694,14 @@ export function DiskusiCanvasClient({
                       <Button
                         size="sm"
                         disabled={savingCompiledCard || !compiledDraft.judul.trim()}
-                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 shadow-2xs cursor-pointer"
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 shadow-xs cursor-pointer rounded-xl"
                       >
                         <Zap className="h-3.5 w-3.5 fill-white" />
                         <span>Assign ke Sprint ⚡</span>
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2 bg-white rounded-xl shadow-xl border border-gray-200" align="end">
-                      <span className="text-[11px] font-bold text-gray-800 block mb-1.5">
+                    <PopoverContent className="w-56 p-2 bg-white rounded-xl shadow-xl border border-[#C9E4D0]" align="end">
+                      <span className="text-[11px] font-bold text-[#0B3D2E] block mb-1.5">
                         Pilih Target Sprint:
                       </span>
                       <div className="space-y-1">
@@ -1707,10 +1710,10 @@ export function DiskusiCanvasClient({
                             key={sprintNum}
                             type="button"
                             onClick={() => handleSaveCompiledCard(sprintNum)}
-                            className="w-full text-left p-1.5 rounded-lg hover:bg-amber-50 text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-amber-200"
+                            className="w-full text-left p-1.5 rounded-lg hover:bg-[#F0F7F1] text-xs font-semibold text-gray-800 flex items-center justify-between transition-colors cursor-pointer border border-transparent hover:border-[#C9E4D0]"
                           >
                             <span>Sprint {sprintNum}</span>
-                            <ArrowRight className="h-3 w-3 text-amber-600" />
+                            <ArrowRight className="h-3 w-3 text-[#3E9463]" />
                           </button>
                         ))}
                       </div>
@@ -1718,7 +1721,7 @@ export function DiskusiCanvasClient({
                   </Popover>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
