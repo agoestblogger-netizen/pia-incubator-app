@@ -938,9 +938,14 @@ export async function approveCharterAction(timId: string, signatureImage?: strin
 
     const processedImageUrl = await processSignatureImage(timId, signatureImage);
 
+    const rolesData = await getCharterRolesData(timId);
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor")?.userName;
+
     const ttdData = {
       userId: user.id,
-      nama: user.nama,
+      signedByUserId: user.id,
+      signedByUserName: user.nama,
+      nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || "Promotor Tim Inovasi",
       unit: anggota?.unitKerja || "PT Pegadaian",
       tanggal: new Date().toISOString(),

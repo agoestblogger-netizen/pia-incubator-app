@@ -555,7 +555,7 @@ export function CustomerValidationClient({
       isOpen: true,
       roleType,
       roleName,
-      userName: currentUser?.nama || assignedName || roleName,
+      userName: assignedName || `Belum ada akun ${roleName} terdaftar di Charter`,
       targetDoc,
     });
   };
@@ -1407,7 +1407,7 @@ export function CustomerValidationClient({
                     <div className="text-xs">
                       {ttdDisusun?.status === 'signed' ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDisusun.nama}</div>
+                          <div className="font-bold text-gray-900">{inisiatorCharterName || ttdDisusun.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDisusun.jabatan || "Inisiator Inovasi"}</span>
@@ -1434,7 +1434,7 @@ export function CustomerValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {inisiatorCharterName || "( Inisiator Inovasi )"}
+                            {inisiatorCharterName || "Belum ada akun Inisiator terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1445,7 +1445,7 @@ export function CustomerValidationClient({
                             <span>PT Pegadaian</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                            {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Inisiator terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -1506,7 +1506,7 @@ export function CustomerValidationClient({
                     <div className="text-xs">
                       {ttdDiperiksa?.status === 'signed' ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDiperiksa.nama}</div>
+                          <div className="font-bold text-gray-900">{coachCharterName || ttdDiperiksa.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDiperiksa.jabatan || "Innovation Coach"}</span>
@@ -1533,7 +1533,7 @@ export function CustomerValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {coachCharterName || "( Innovation Coach )"}
+                            {coachCharterName || "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1544,7 +1544,7 @@ export function CustomerValidationClient({
                             <span>PT Pegadaian</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -1605,7 +1605,7 @@ export function CustomerValidationClient({
                     <div className="text-xs">
                       {ttdDisetujui?.status === 'signed' ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDisetujui.nama}</div>
+                          <div className="font-bold text-gray-900">{poCharterName || ttdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDisetujui.jabatan || "Project Owner"}</span>
@@ -1632,7 +1632,7 @@ export function CustomerValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {poCharterName || "( Project Owner )"}
+                            {poCharterName || "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1643,7 +1643,7 @@ export function CustomerValidationClient({
                             <span>PT Pegadaian</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -2321,7 +2321,7 @@ export function CustomerValidationClient({
                     <div className="text-xs">
                       {reportTtdDisusun?.status === 'signed' ? (
                         <>
-                          <div className="font-bold text-gray-900">{reportTtdDisusun.nama}</div>
+                          <div className="font-bold text-gray-900">{inisiatorCharterName || reportTtdDisusun.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{reportTtdDisusun.jabatan || "Inisiator Inovasi"}</span>
@@ -2348,7 +2348,7 @@ export function CustomerValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {inisiatorCharterName || "( Inisiator Inovasi )"}
+                            {inisiatorCharterName || "Belum ada akun Inisiator terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -2359,7 +2359,7 @@ export function CustomerValidationClient({
                             <span>PT Pegadaian</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                            {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Inisiator terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -2414,7 +2414,7 @@ export function CustomerValidationClient({
                     <div className="text-xs">
                       {reportTtdDiperiksa?.status === 'signed' ? (
                         <>
-                          <div className="font-bold text-gray-900">{reportTtdDiperiksa.nama}</div>
+                          <div className="font-bold text-gray-900">{coachCharterName || reportTtdDiperiksa.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{reportTtdDiperiksa.jabatan || "Innovation Coach"}</span>
@@ -2441,7 +2441,7 @@ export function CustomerValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {coachCharterName || "( Innovation Coach )"}
+                            {coachCharterName || "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -2452,7 +2452,7 @@ export function CustomerValidationClient({
                             <span>PT Pegadaian</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -2507,7 +2507,7 @@ export function CustomerValidationClient({
                     <div className="text-xs">
                       {reportTtdDisetujui?.status === 'signed' ? (
                         <>
-                          <div className="font-bold text-gray-900">{reportTtdDisetujui.nama}</div>
+                          <div className="font-bold text-gray-900">{poCharterName || reportTtdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{reportTtdDisetujui.jabatan || "Project Owner"}</span>
@@ -2534,7 +2534,7 @@ export function CustomerValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {poCharterName || "( Project Owner )"}
+                            {poCharterName || "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -2545,7 +2545,7 @@ export function CustomerValidationClient({
                             <span>PT Pegadaian</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ditentukan di Charter"}
+                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                         </>
                       )}

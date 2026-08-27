@@ -23,6 +23,7 @@ import { eq, and, ne, inArray, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
+import { getCharterRolesData } from "./charter";
 import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
 import { generateFullCvPlanDraft } from "@/lib/ai/cv-plan-full-generator";
 
@@ -714,11 +715,17 @@ export async function signCvPlanAction(
         ? 'Innovation Coach'
         : 'Project Owner';
 
+    const rolesData = await getCharterRolesData(timId);
+    const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+
     const processedImageUrl = await processSignatureImage(timId, signatureImage);
 
     const signatureData = {
       userId: user.id,
-      nama: user.nama,
+      signedByUserId: user.id,
+      signedByUserName: user.nama,
+      nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || defaultRoleTitle,
       unit: anggota?.unitKerja || 'PT Pegadaian',
       tanggal: new Date().toISOString(),
@@ -1009,9 +1016,15 @@ export async function signCvReportAction(
       report = newReport;
     }
 
+    const rolesData = await getCharterRolesData(timId);
+    const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+
     const signatureData = {
       userId: user.id,
-      nama: user.nama,
+      signedByUserId: user.id,
+      signedByUserName: user.nama,
+      nama: assignedName || user.nama,
       role: roleType,
       jabatan: roleType === 'inisiator' ? 'Inisiator Inovasi' : roleType === 'coach' ? 'Innovation Coach' : 'Project Owner',
       unit: 'PT Pegadaian',

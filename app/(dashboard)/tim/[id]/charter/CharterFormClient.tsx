@@ -1305,7 +1305,7 @@ export function CharterFormClient({
                     <div className="text-xs">
                       {ttdDisetujui?.status === 'approved' ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDisetujui.nama}</div>
+                          <div className="font-bold text-gray-900">{promotorName || ttdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDisetujui.jabatan || "Promotor Tim Inovasi"}</span>
@@ -1332,7 +1332,7 @@ export function CharterFormClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {promotorName || "( Promotor Inovasi )"}
+                            {promotorName || "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1343,7 +1343,7 @@ export function CharterFormClient({
                             <span>{promotorAssignment?.unitKerja || "PT Pegadaian"}</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
-                            {promotorAssignment?.userName ? "Nama terdaftar di Penugasan Role Tim" : "Belum ditentukan di Role Tim"}
+                            {promotorName ? "Nama terdaftar di Penugasan Role Tim" : "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -1400,7 +1400,7 @@ export function CharterFormClient({
               onSave={handleSaveSignature}
               title="Persetujuan Formal Innovation Charter"
               roleName="Promotor Inovasi"
-              userName={currentUser?.nama || promotorName}
+              userName={promotorName || "Belum ada akun Promotor terdaftar di Charter"}
             />
           </>
         );

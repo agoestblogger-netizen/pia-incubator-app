@@ -23,6 +23,7 @@ import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
+import { getCharterRolesData } from "./charter";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAiBacklogFromMvPlan } from "@/lib/ai/mv-backlog-generator";
 
@@ -328,11 +329,17 @@ export async function signMvPlanAction(
       .where(and(eq(anggotaTim.timInovatorId, timId), eq(anggotaTim.userId, user.id)))
       .limit(1);
 
+    const rolesData = await getCharterRolesData(timId);
+    const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+
     const processedImageUrl = await processMvSignatureImage(timId, signatureDataUrl);
 
     const signatureData = {
       userId: user.id,
-      nama: user.nama,
+      signedByUserId: user.id,
+      signedByUserName: user.nama,
+      nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || (roleType === "po" ? "Project Owner" : roleType === "coach" ? "Innovation Coach" : "Promotor Inovasi"),
       unit: anggota?.unitKerja || "PT Pegadaian",
       tanggal: new Date().toISOString(),
@@ -681,13 +688,20 @@ export async function signMvReportAction(
         ? "Innovation Coach"
         : "Promotor Inovasi";
 
+    const rolesData = await getCharterRolesData(timId);
+    const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === targetRoleCode)?.userName;
+
     const signatureData = {
       userId: user.id,
-      nama: user.nama,
+      signedByUserId: user.id,
+      signedByUserName: user.nama,
+      nama: assignedName || user.nama,
+      role: roleType,
       jabatan: anggota?.jabatan || defaultJabatan,
       unit: anggota?.unitKerja || "PT Pegadaian",
-      tanggal: new Date().toISOString(),
       status: "signed",
+      tanggal: new Date().toISOString(),
       signatureImage: processedImageUrl,
     };
 

@@ -501,15 +501,24 @@ export function MarketValidationClient({
 
   const teamMembers = initialData?.teamMembers || anggotaTim || [];
   const poCharterName =
+    roleAssignments?.find((a: any) => a.roleCode === "project_owner")?.userName ||
     teamMembers.find(
       (m: any) =>
+        m.role === "project_owner" ||
         m.jabatan?.toLowerCase().includes("owner") ||
         m.jabatan?.toLowerCase().includes("po")
-    )?.nama || "";
+    )?.nama ||
+    null;
+
   const coachCharterName =
-    teamMembers.find((m: any) => m.jabatan?.toLowerCase().includes("coach"))?.nama || "";
+    roleAssignments?.find((a: any) => a.roleCode === "coach")?.userName ||
+    teamMembers.find((m: any) => m.role === "coach" || m.jabatan?.toLowerCase().includes("coach"))?.nama ||
+    null;
+
   const promotorCharterName =
-    teamMembers.find((m: any) => m.jabatan?.toLowerCase().includes("promotor"))?.nama || "";
+    roleAssignments?.find((a: any) => a.roleCode === "promotor")?.userName ||
+    teamMembers.find((m: any) => m.role === "promotor" || m.jabatan?.toLowerCase().includes("promotor"))?.nama ||
+    null;
 
   const openSignModal = (roleType: "po" | "coach" | "promotor") => {
     const roleName =
@@ -518,18 +527,18 @@ export function MarketValidationClient({
         : roleType === "coach"
         ? "Innovation Coach"
         : "Promotor Inovasi";
-    const userName =
+    const assignedName =
       roleType === "po"
-        ? poCharterName || currentUser?.nama
+        ? poCharterName
         : roleType === "coach"
-        ? coachCharterName || currentUser?.nama
-        : promotorCharterName || currentUser?.nama;
+        ? coachCharterName
+        : promotorCharterName;
 
     setSigModal({
       isOpen: true,
       roleType,
       roleName,
-      userName,
+      userName: assignedName || `Belum ada akun ${roleName} terdaftar di Charter`,
     });
   };
 
@@ -695,18 +704,18 @@ export function MarketValidationClient({
         : roleType === "coach"
         ? "Innovation Coach"
         : "Promotor Inovasi";
-    const userName =
+    const assignedName =
       roleType === "po"
-        ? poCharterName || currentUser?.nama
+        ? poCharterName
         : roleType === "coach"
-        ? coachCharterName || currentUser?.nama
-        : promotorCharterName || currentUser?.nama;
+        ? coachCharterName
+        : promotorCharterName;
 
     setReportSigModal({
       isOpen: true,
       roleType,
       roleName,
-      userName,
+      userName: assignedName || `Belum ada akun ${roleName} terdaftar di Charter`,
     });
   };
 
@@ -1632,7 +1641,7 @@ export function MarketValidationClient({
                     <div className="text-xs">
                       {ttdDisusun?.status === "signed" ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDisusun.nama}</div>
+                          <div className="font-bold text-gray-900">{poCharterName || ttdDisusun.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDisusun.jabatan || "Project Owner"}</span>
@@ -1659,7 +1668,7 @@ export function MarketValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {poCharterName || "( Project Owner )"}
+                            {poCharterName || "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1668,6 +1677,9 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -1722,7 +1734,7 @@ export function MarketValidationClient({
                     <div className="text-xs">
                       {ttdDiperiksa?.status === "signed" ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDiperiksa.nama}</div>
+                          <div className="font-bold text-gray-900">{coachCharterName || ttdDiperiksa.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDiperiksa.jabatan || "Innovation Coach"}</span>
@@ -1749,7 +1761,7 @@ export function MarketValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {coachCharterName || "( Innovation Coach )"}
+                            {coachCharterName || "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1758,6 +1770,9 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -1812,7 +1827,7 @@ export function MarketValidationClient({
                     <div className="text-xs">
                       {ttdDisetujui?.status === "signed" ? (
                         <>
-                          <div className="font-bold text-gray-900">{ttdDisetujui.nama}</div>
+                          <div className="font-bold text-gray-900">{promotorCharterName || ttdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{ttdDisetujui.jabatan || "Promotor Inovasi"}</span>
@@ -1839,7 +1854,7 @@ export function MarketValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {promotorCharterName || "( Promotor Inovasi )"}
+                            {promotorCharterName || "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -1848,6 +1863,9 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {promotorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -2635,7 +2653,7 @@ export function MarketValidationClient({
                     <div className="text-xs">
                       {reportTtdDisusun?.status === "signed" ? (
                         <>
-                          <div className="font-bold text-gray-900">{reportTtdDisusun.nama}</div>
+                          <div className="font-bold text-gray-900">{poCharterName || reportTtdDisusun.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{reportTtdDisusun.jabatan || "Project Owner"}</span>
@@ -2662,7 +2680,7 @@ export function MarketValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {poCharterName || "( Project Owner )"}
+                            {poCharterName || "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -2671,6 +2689,9 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -2725,7 +2746,7 @@ export function MarketValidationClient({
                     <div className="text-xs">
                       {reportTtdDiperiksa?.status === "signed" ? (
                         <>
-                          <div className="font-bold text-gray-900">{reportTtdDiperiksa.nama}</div>
+                          <div className="font-bold text-gray-900">{coachCharterName || reportTtdDiperiksa.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{reportTtdDiperiksa.jabatan || "Innovation Coach"}</span>
@@ -2752,7 +2773,7 @@ export function MarketValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {coachCharterName || "( Innovation Coach )"}
+                            {coachCharterName || "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -2761,6 +2782,9 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                         </>
                       )}
@@ -2815,7 +2839,7 @@ export function MarketValidationClient({
                     <div className="text-xs">
                       {reportTtdDisetujui?.status === "approved" || reportTtdDisetujui?.status === "signed" ? (
                         <>
-                          <div className="font-bold text-gray-900">{reportTtdDisetujui.nama}</div>
+                          <div className="font-bold text-gray-900">{promotorCharterName || reportTtdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
                             <span>{reportTtdDisetujui.jabatan || "Promotor Inovasi"}</span>
@@ -2842,7 +2866,7 @@ export function MarketValidationClient({
                       ) : (
                         <>
                           <div className="font-bold text-gray-700">
-                            {promotorCharterName || "( Promotor Inovasi )"}
+                            {promotorCharterName || "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Briefcase className="h-3 w-3 text-gray-400" />
@@ -2851,6 +2875,9 @@ export function MarketValidationClient({
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
                             <span>PT Pegadaian</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {promotorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                         </>
                       )}
