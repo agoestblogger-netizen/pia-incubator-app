@@ -1100,14 +1100,20 @@ export function DiskusiCanvasClient({
             {/* 1. Frames (Grouping Boxes) */}
             {frames.map((frame) => {
               const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
-              const frameNotes = notes.filter((n) => n.frameId === frame.id || (
-                n.posX >= frame.posX &&
-                n.posX <= frame.posX + frame.width &&
-                n.posY >= frame.posY &&
-                n.posY <= frame.posY + frame.height
-              ));
+              const frameNotes = notes.filter((n) => {
+                if (n.type !== 'sticky') return false;
+                if (n.frameId === frame.id) return true;
+                const noteCenterX = (n.posX || 0) + 96;
+                const noteCenterY = (n.posY || 0) + 60;
+                return (
+                  noteCenterX >= frame.posX &&
+                  noteCenterX <= frame.posX + frame.width &&
+                  noteCenterY >= frame.posY &&
+                  noteCenterY <= frame.posY + frame.height
+                );
+              });
               const validNotesCount = frameNotes.filter(
-                (n) => n.type === 'sticky' && n.content?.trim() && !PLACEHOLDERS.includes(n.content.trim())
+                (n) => n.content?.trim() && !PLACEHOLDERS.includes(n.content.trim())
               ).length;
 
               return (
@@ -1119,6 +1125,24 @@ export function DiskusiCanvasClient({
                   validNotesCount={validNotesCount}
                   isCompiling={compilingFrameId === frame.id}
                   onUpdate={async (fId, label, x, y, w, h) => {
+                    setFrames((prev) =>
+                      prev.map((f) => (f.id === fId ? { ...f, label, posX: x, posY: y, width: w, height: h } : f))
+                    );
+                    setNotes((prev) =>
+                      prev.map((n) => {
+                        if (n.type !== 'sticky') return n;
+                        const noteCenterX = (n.posX || 0) + 96;
+                        const noteCenterY = (n.posY || 0) + 60;
+                        const isInside =
+                          noteCenterX >= x &&
+                          noteCenterX <= x + w &&
+                          noteCenterY >= y &&
+                          noteCenterY <= y + h;
+                        if (isInside) return { ...n, frameId: fId };
+                        if (n.frameId === fId && !isInside) return { ...n, frameId: null };
+                        return n;
+                      })
+                    );
                     await updateDiskusiFrameAction({ frameId: fId, label, posX: x, posY: y, width: w, height: h });
                   }}
                   onDelete={async (fId) => {
@@ -1145,6 +1169,7 @@ export function DiskusiCanvasClient({
                     presenceUsers={onlineUsers}
                     currentClientId={clientId}
                     onUpdatePosition={async (id, x, y) => {
+                      setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, posX: x, posY: y } : n)));
                       await updateDiskusiNotePositionAction({ noteId: id, posX: x, posY: y });
                     }}
                     onDelete={async (id) => {
@@ -1171,18 +1196,32 @@ export function DiskusiCanvasClient({
                   presenceUsers={onlineUsers}
                   currentClientId={clientId}
                   onUpdateContent={async (id, content) => {
+                    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, content } : n)));
                     await updateDiskusiNoteContentAction(id, content, timId);
                   }}
                   onUpdatePosition={async (id, x, y) => {
-                    // Check frame overlap
+                    // Check frame overlap using center point
+                    const noteCenterX = x + 96;
+                    const noteCenterY = y + 60;
                     const matchedFrame = frames.find(
-                      (f) => x >= f.posX && x <= f.posX + f.width && y >= f.posY && y <= f.posY + f.height
+                      (f) =>
+                        noteCenterX >= f.posX &&
+                        noteCenterX <= f.posX + f.width &&
+                        noteCenterY >= f.posY &&
+                        noteCenterY <= f.posY + f.height
                     );
+                    const newFrameId = matchedFrame ? matchedFrame.id : null;
+
+                    // Optimistic update so noteCount and Kompilasi AI button activate instantly
+                    setNotes((prev) =>
+                      prev.map((n) => (n.id === id ? { ...n, posX: x, posY: y, frameId: newFrameId } : n))
+                    );
+
                     await updateDiskusiNotePositionAction({
                       noteId: id,
                       posX: x,
                       posY: y,
-                      frameId: matchedFrame ? matchedFrame.id : null,
+                      frameId: newFrameId,
                     });
                     // Check collision with Pin
                     await checkStickyToPinCollision(note, x, y);

@@ -860,11 +860,33 @@ export async function compileFrameNotesAction({
       return { success: false, error: 'Kelompok ide tidak ditemukan.' };
     }
 
-    // 2. Get all sticky notes inside this frame
-    const notes = await db
-      .select({ id: diskusiNote.id, content: diskusiNote.content })
+    // 2. Get all sticky notes inside this frame (matching frameId or spatial bounding box)
+    const allCanvasNotes = await db
+      .select({
+        id: diskusiNote.id,
+        content: diskusiNote.content,
+        frameId: diskusiNote.frameId,
+        posX: diskusiNote.posX,
+        posY: diskusiNote.posY,
+      })
       .from(diskusiNote)
-      .where(and(eq(diskusiNote.frameId, frameId), eq(diskusiNote.type, 'sticky')));
+      .where(
+        frame.canvasId
+          ? and(eq(diskusiNote.type, 'sticky'), eq(diskusiNote.canvasId, frame.canvasId))
+          : and(eq(diskusiNote.type, 'sticky'), eq(diskusiNote.boardId, frame.boardId))
+      );
+
+    const notes = allCanvasNotes.filter((n) => {
+      if (n.frameId === frameId) return true;
+      const noteCenterX = (n.posX || 0) + 96;
+      const noteCenterY = (n.posY || 0) + 60;
+      return (
+        noteCenterX >= frame.posX &&
+        noteCenterX <= frame.posX + frame.width &&
+        noteCenterY >= frame.posY &&
+        noteCenterY <= frame.posY + frame.height
+      );
+    });
 
     const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
     const validNotes = notes.filter((n) => {
