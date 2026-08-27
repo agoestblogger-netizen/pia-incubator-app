@@ -31,6 +31,7 @@ import {
   startSprintAction,
   completeSprintAction,
   updateSprintCountAction,
+  generateSprintReviewDraftAction,
 } from "@/app/actions/sprint";
 import {
   getTeamCapacityForSprint,
@@ -306,13 +307,20 @@ function SortableCard({
           onClick={() => onSelectCard(card)}
           className="flex flex-wrap items-center gap-1.5 cursor-pointer"
         >
+          {card.tipeKartu === "issue" && (
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-orange-100 text-orange-950 border border-orange-300 shadow-2xs">
+              <AlertCircle className="h-2.5 w-2.5 text-orange-700" />
+              <span>ISSUE</span>
+            </span>
+          )}
+
           {isMandatoryCard && (
             <span className="inline-flex items-center text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300 shadow-2xs">
               Wajib
             </span>
           )}
 
-          {card.label && (
+          {card.label && card.label !== "Issue" && (
             <span
               className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 pastel ? pastel.badge : "bg-[#0F5132]/10 text-[#0F5132]"
@@ -633,8 +641,13 @@ export function KanbanClient({
   const isAdmin = Boolean(
     currentUser?.globalRoles?.some((r: string) =>
       ["super_admin", "admin_ic", "admin"].includes(r)
-    )
+    ) || currentUser?.hasGlobalScope
   );
+
+  const isCoach = Boolean(
+    currentUser?.timRoles?.some((r: any) => r.timId === timId && r.roleCode === "coach")
+  );
+  const isCoachOrAdmin = isAdmin || isCoach;
 
   const [viewMode, setViewMode] = useState<"board" | "timeline">("board");
   const [cards, setCards] = useState<any[]>(initialCards);
@@ -677,12 +690,22 @@ export function KanbanClient({
       : null
   );
 
+  // Issue Card Modal State (Paket 24c - Coach & Admin only)
+  const [isNewIssueOpen, setIsNewIssueOpen] = useState(false);
+  const [issueJudul, setIssueJudul] = useState("");
+  const [issueDeskripsi, setIssueDeskripsi] = useState("");
+  const [issueDampak, setIssueDampak] = useState<"Rendah" | "Sedang" | "Tinggi" | "Kritis">("Sedang");
+  const [issueOwnerAnggotaId, setIssueOwnerAnggotaId] = useState<string | null>(null);
+  const [issueStoryPoint, setIssueStoryPoint] = useState<number>(3);
+  const [savingIssue, setSavingIssue] = useState(false);
+
   const [activeCard, setActiveCard] = useState<any | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Sprint Complete Dialog State
+  // Sprint Complete Dialog State & AI Review Generator
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isGeneratingAiReview, setIsGeneratingAiReview] = useState(false);
   const [incompleteCardsDestinations, setIncompleteCardsDestinations] = useState<
     Record<string, "backlog" | "next_sprint">
   >({});
@@ -1952,6 +1975,74 @@ export function KanbanClient({
     setActionLoading(false);
   };
 
+  const handleSaveIssue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!issueJudul.trim()) return;
+    setSavingIssue(true);
+    try {
+      const activeSprintObj = sprints.find((s) => s.status === "aktif");
+      const targetSprintNum = activeSprintObj ? activeSprintObj.nomorSprint : selectedSprintNum;
+
+      const res = await createKanbanCardAction(timId, {
+        judul: issueJudul.trim(),
+        deskripsi: issueDampak ? `[Urgensi/Dampak: ${issueDampak}]\n\n${issueDeskripsi.trim()}` : issueDeskripsi.trim(),
+        statusKolom: "To Do",
+        tahap: targetSprintNum <= 3 ? "customer_validation" : "market_validation",
+        sprintNumber: targetSprintNum,
+        ownerAnggotaId: issueOwnerAnggotaId || null,
+        storyPoint: issueStoryPoint || 3,
+        tipeKartu: "issue",
+        label: "Issue",
+      });
+
+      if (res.success && res.data) {
+        setCards((prev) => [...prev, res.data]);
+        toast.success(
+          `Kartu Issue "${issueJudul}" berhasil dibuat di Sprint ${targetSprintNum}!`,
+          "Issue Ditambahkan ✓"
+        );
+        setIsNewIssueOpen(false);
+        setIssueJudul("");
+        setIssueDeskripsi("");
+        setIssueOwnerAnggotaId(null);
+        setIssueStoryPoint(3);
+      } else {
+        toast.error(res.error || "Gagal membuat kartu Issue.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan.");
+    } finally {
+      setSavingIssue(false);
+    }
+  };
+
+  const handleGenerateAiReview = async (sprintId?: string) => {
+    const targetId = sprintId || currentSprintObj?.id;
+    if (!targetId) return;
+
+    setIsGeneratingAiReview(true);
+    try {
+      const res = await generateSprintReviewDraftAction(timId, targetId);
+      if (res.success && res.data) {
+        setReviewDemo(res.data.demo || "");
+        setReviewFeedback(res.data.feedback || "");
+        setReviewValue(res.data.value || "");
+        setReviewQuestions(res.data.questions || "");
+        setReviewContinue(res.data.continueItems || "");
+        setReviewStop(res.data.stopItems || "");
+        setReviewStart(res.data.startItems || "");
+        setReviewOwnerTarget(res.data.ownerTargetSprint || "");
+        toast.success("Draf AI Sprint Review & Retrospective berhasil disusun!", "Draf AI Siap ✓");
+      } else {
+        console.warn("[AI Sprint Review] Gagal generate:", res.error);
+      }
+    } catch (err: any) {
+      console.error("[AI Sprint Review] Error:", err);
+    } finally {
+      setIsGeneratingAiReview(false);
+    }
+  };
+
   const handleOpenCompleteDialog = () => {
     if (!currentSprintObj) return;
 
@@ -1962,6 +2053,11 @@ export function KanbanClient({
     }
     setIncompleteCardsDestinations(initialDestinations);
     setIsCompleteModalOpen(true);
+
+    // Auto-generate AI Sprint Review draft if form is empty
+    if (!reviewDemo && !reviewFeedback && !reviewValue) {
+      handleGenerateAiReview(currentSprintObj.id);
+    }
   };
 
   const handleConfirmCompleteSprint = async () => {
@@ -1979,7 +2075,18 @@ export function KanbanClient({
       };
     });
 
-    const res = await completeSprintAction(timId, currentSprintObj.id, cardMovements);
+    const reviewPayload = {
+      demo: reviewDemo || null,
+      feedback: reviewFeedback || null,
+      value: reviewValue || null,
+      questions: reviewQuestions || null,
+      continueItems: reviewContinue || null,
+      stopItems: reviewStop || null,
+      startItems: reviewStart || null,
+      ownerTargetSprint: reviewOwnerTarget || null,
+    };
+
+    const res = await completeSprintAction(timId, currentSprintObj.id, cardMovements, reviewPayload);
     if (res.success) {
       setSprints((prev) =>
         prev.map((s) =>
@@ -2574,19 +2681,34 @@ export function KanbanClient({
                         </div>
 
                         {canEdit && (
-                          <Button
-                            onClick={() => {
-                              setTargetColumn("To Do");
-                              setTargetSprintForNewCard(selectedSprintNum);
-                              setIsNewCardOpen(true);
-                            }}
-                            variant="default"
-                            size="sm"
-                            className="text-xs gap-1.5 font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-xs cursor-pointer"
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span>Tambah Kartu Task</span>
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {isCoachOrAdmin && (
+                              <Button
+                                onClick={() => {
+                                  setIsNewIssueOpen(true);
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs gap-1.5 font-bold border-orange-300 bg-orange-50/80 hover:bg-orange-100 text-orange-950 rounded-xl shadow-2xs cursor-pointer"
+                              >
+                                <AlertCircle className="h-4 w-4 text-orange-600" />
+                                <span>+ Tambah Issue</span>
+                              </Button>
+                            )}
+                            <Button
+                              onClick={() => {
+                                setTargetColumn("To Do");
+                                setTargetSprintForNewCard(selectedSprintNum);
+                                setIsNewCardOpen(true);
+                              }}
+                              variant="default"
+                              size="sm"
+                              className="text-xs gap-1.5 font-bold bg-[#0F5132] hover:bg-[#1B7A4D] text-white rounded-xl shadow-xs cursor-pointer"
+                            >
+                              <Plus className="h-4 w-4" />
+                              <span>Tambah Kartu Task</span>
+                            </Button>
+                          </div>
                         )}
                       </div>
 
@@ -4212,6 +4334,137 @@ export function KanbanClient({
       </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────────── */}
+      {/* Dialog Buat Kartu Issue (Paket 24c - Coach & Admin Only) */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      <Dialog open={isNewIssueOpen} onOpenChange={setIsNewIssueOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-orange-100 text-orange-950 border border-orange-300">
+                <AlertCircle className="h-3 w-3 text-orange-700" />
+                <span>ISSUE SPRINT</span>
+              </span>
+            </div>
+            <DialogTitle className="text-base font-bold text-gray-900 mt-1">
+              Buat Kartu Issue Sprint {currentPlanningSprintObj?.nomorSprint || selectedSprintNum}
+            </DialogTitle>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Catat kendala, blocker, atau isu mendadak yang muncul selama sprint berjalan. Kartu ini akan otomatis dialokasikan ke sprint aktif dan dianalisis oleh AI saat Sprint Review.
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveIssue} className="space-y-3.5 py-1 text-xs">
+            <div>
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                Judul Issue <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder="Contoh: Error timeout integrasi API payment gateway"
+                value={issueJudul}
+                onChange={(e) => setIssueJudul(e.target.value)}
+                className="text-xs"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                Deskripsi &amp; Kronologi Hambatan
+              </label>
+              <Textarea
+                placeholder="Jelaskan detail masalah, dampak ke target sprint, dan langkah penanganan awal..."
+                value={issueDeskripsi}
+                onChange={(e) => setIssueDeskripsi(e.target.value)}
+                className="text-xs min-h-[75px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-gray-800 block mb-1">
+                  Tingkat Urgensi / Dampak
+                </label>
+                <select
+                  value={issueDampak}
+                  onChange={(e) => setIssueDampak(e.target.value as any)}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                >
+                  <option value="Rendah">🟡 Rendah (Minor)</option>
+                  <option value="Sedang">🟠 Sedang (Moderat)</option>
+                  <option value="Tinggi">🔴 Tinggi (Major Blocker)</option>
+                  <option value="Kritis">🔥 Kritis (Stop Sprint)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-800 block mb-1">
+                  Story Point
+                </label>
+                <select
+                  value={issueStoryPoint}
+                  onChange={(e) => setIssueStoryPoint(parseInt(e.target.value))}
+                  className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700 font-semibold"
+                >
+                  <option value="1">1 SP</option>
+                  <option value="2">2 SP</option>
+                  <option value="3">3 SP (Standar)</option>
+                  <option value="5">5 SP</option>
+                  <option value="8">8 SP</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                PIC Penanggung Jawab Issue (Opsional)
+              </label>
+              <select
+                value={issueOwnerAnggotaId || ""}
+                onChange={(e) => setIssueOwnerAnggotaId(e.target.value || null)}
+                className="w-full text-xs bg-white border border-gray-200 rounded-md p-2 text-gray-700"
+              >
+                <option value="">-- Pilih Anggota Tim (Opsional) --</option>
+                {anggotaTim.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nama} ({a.jabatan || a.role || "Anggota"})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsNewIssueOpen(false)}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingIssue || !issueJudul.trim()}
+                className="text-xs bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-70"
+              >
+                {savingIssue ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>Simpan Kartu Issue</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────────────── */}
       {/* Dialog Selesaikan Sprint (Penyelesaian Task Belum Selesai) */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isCompleteModalOpen} onOpenChange={setIsCompleteModalOpen}>
@@ -4287,10 +4540,38 @@ export function KanbanClient({
                     <span>Sprint Review &amp; Retrospective (Template 3.2)</span>
                   </h4>
                   <p className="text-[10px] text-blue-700">
-                    Data ini otomatis mengalir ke Laporan Market Validation.
+                    Draf disusun otomatis oleh AI dari kartu Done &amp; Issue, tetap bisa Anda edit.
                   </p>
                 </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingAiReview}
+                  onClick={() => handleGenerateAiReview(currentSprintObj?.id)}
+                  className="h-7 text-[11px] font-bold border-blue-300 bg-white hover:bg-blue-50 text-blue-800 gap-1 shadow-2xs cursor-pointer"
+                >
+                  {isGeneratingAiReview ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                      <span>Menyusun...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3 text-blue-600" />
+                      <span>Saran Ulang AI</span>
+                    </>
+                  )}
+                </Button>
               </div>
+
+              {isGeneratingAiReview && (
+                <div className="p-2.5 rounded-lg bg-blue-100/60 border border-blue-200 text-blue-900 flex items-center gap-2 text-xs animate-pulse">
+                  <Sparkles className="h-4 w-4 text-blue-600 shrink-0 animate-spin" />
+                  <span>AI sedang menganalisis kartu Done &amp; Issue untuk menyusun draf...</span>
+                </div>
+              )}
 
               {/* Review Section */}
               <div className="space-y-2">

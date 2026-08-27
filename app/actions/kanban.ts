@@ -12,6 +12,7 @@ import {
   anggotaTim,
   teamMemberCapacity,
   users,
+  sprint,
 } from "@/lib/db/schema";
 import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -141,17 +142,55 @@ export async function createKanbanCardAction(
       };
     }
 
+    const tipeKartu = cardData.tipeKartu === 'issue' ? 'issue' : 'backlog';
+
+    // Role enforcement for Issue cards (Innovation Coach & Admin only)
+    let targetSprintNumber = cardData.sprintNumber !== undefined ? cardData.sprintNumber : null;
+
+    if (tipeKartu === 'issue') {
+      const isCoach = user.timRoles.some((r) => r.timId === timId && r.roleCode === 'coach');
+      const isAdmin =
+        user.globalRoles.includes('admin') ||
+        user.hasGlobalScope ||
+        user.timRoles.some((r) => r.roleCode === 'admin');
+
+      if (!isCoach && !isAdmin) {
+        return {
+          success: false,
+          error: "Forbidden: Hanya Innovation Coach dan Admin yang dapat membuat kartu Issue.",
+        };
+      }
+
+      // Auto-assign to current active sprint if not explicitly specified
+      if (targetSprintNumber === null || targetSprintNumber === undefined) {
+        const [activeSprintRow] = await db
+          .select()
+          .from(sprint)
+          .where(and(eq(sprint.timInovatorId, timId), eq(sprint.status, "aktif")))
+          .limit(1);
+
+        if (!activeSprintRow) {
+          return {
+            success: false,
+            error: "Belum ada sprint yang sedang aktif. Kartu Issue harus dimasukkan ke sprint yang aktif.",
+          };
+        }
+        targetSprintNumber = activeSprintRow.nomorSprint;
+      }
+    }
+
     const [card] = await db
       .insert(kanbanCard)
       .values({
         timInovatorId: timId,
-        judul: cardData.judul || "Kartu Baru",
+        judul: cardData.judul || (tipeKartu === 'issue' ? "Issue Baru" : "Kartu Baru"),
         deskripsi: cardData.deskripsi,
         statusKolom: cardData.statusKolom || "To Do",
         tahap: cardData.tahap || "umum",
-        sprintNumber: cardData.sprintNumber !== undefined ? cardData.sprintNumber : null,
+        sprintNumber: targetSprintNumber,
         ownerAnggotaId: cardData.ownerAnggotaId || null,
-        label: cardData.label,
+        label: cardData.label || (tipeKartu === 'issue' ? "Issue" : undefined),
+        tipeKartu: tipeKartu,
         tanggalMulai: cardData.tanggalMulai ? new Date(cardData.tanggalMulai) : null,
         tanggalSelesai: cardData.tanggalSelesai ? new Date(cardData.tanggalSelesai) : null,
         acceptanceCriteria: cardData.acceptanceCriteria,

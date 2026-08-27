@@ -12,6 +12,11 @@ import {
   generateAiSprintGoalFromCvPlan,
   isCvPlanFilled,
 } from "@/lib/ai/sprint-goal-generator";
+import {
+  generateSprintReviewAiDraft,
+  SprintReviewAiDraft,
+} from "@/lib/ai/sprint-review-generator";
+import { timInovator, kanbanComment, users } from "@/lib/db/schema";
 
 export async function getSprintsByTimId(timId: string) {
   let list = await db
@@ -656,4 +661,107 @@ export async function getSuggestedSprintGoalAction(timId: string, sprintNumber: 
     return { success: false, error: error.message || "Gagal membuat saran Sprint Goal." };
   }
 }
+
+export async function generateSprintReviewDraftAction(
+  timId: string,
+  sprintId: string
+): Promise<{ success: boolean; data?: SprintReviewAiDraft; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
+
+    const [targetSprint] = await db
+      .select()
+      .from(sprint)
+      .where(eq(sprint.id, sprintId))
+      .limit(1);
+
+    if (!targetSprint) {
+      return { success: false, error: "Sprint tidak ditemukan." };
+    }
+
+    const [tim] = await db
+      .select()
+      .from(timInovator)
+      .where(eq(timInovator.id, timId))
+      .limit(1);
+
+    const namaTim = tim?.namaProyekInovasi || "Tim Inovasi";
+    const nomorSprint = targetSprint.nomorSprint;
+    const sprintGoal = targetSprint.sprintGoal || targetSprint.tujuan || null;
+
+    // Fetch cards in this sprint
+    const cardsInSprint = await db
+      .select()
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.sprintNumber, nomorSprint)
+        )
+      );
+
+    const doneCards = cardsInSprint
+      .filter((c) => (c.statusKolom || "").toLowerCase() === "done")
+      .map((c) => ({
+        judul: c.judul,
+        deskripsi: c.deskripsi,
+        acceptanceCriteria: c.acceptanceCriteria,
+      }));
+
+    const issueCards = cardsInSprint
+      .filter((c) => c.tipeKartu === "issue")
+      .map((c) => ({
+        judul: c.judul,
+        deskripsi: c.deskripsi,
+        statusKolom: c.statusKolom,
+      }));
+
+    // Fetch comments on cards in this sprint (if any)
+    const cardIds = cardsInSprint.map((c) => c.id);
+    let comments: Array<{ cardJudul: string; author: string; content: string }> = [];
+
+    if (cardIds.length > 0) {
+      const commentsRaw = await db
+        .select({
+          cardId: kanbanComment.taskId,
+          content: kanbanComment.content,
+          userName: users.nama,
+        })
+        .from(kanbanComment)
+        .leftJoin(users, eq(users.id, kanbanComment.userId))
+        .where(inArray(kanbanComment.taskId, cardIds))
+        .limit(10);
+
+      comments = commentsRaw.map((cm) => {
+        const matchingCard = cardsInSprint.find((c) => c.id === cm.cardId);
+        return {
+          cardJudul: matchingCard?.judul || "Kartu",
+          author: cm.userName || "Anggota",
+          content: cm.content,
+        };
+      });
+    }
+
+    const aiRes = await generateSprintReviewAiDraft({
+      namaTim,
+      nomorSprint,
+      sprintGoal,
+      doneCards,
+      issueCards,
+      comments,
+    });
+
+    return aiRes;
+  } catch (error: any) {
+    console.error("[generateSprintReviewDraftAction] Error:", error);
+    return {
+      success: false,
+      error: error.message || "Gagal menghasilkan draf Sprint Review AI.",
+    };
+  }
+}
+
 

@@ -194,12 +194,14 @@ export const kanbanCard = pgTable('kanban_card', {
   estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (deprecated/historis)
   storyPoint: integer('story_point'), // story point kartu skala Fibonacci: 1, 2, 3, 5, 8, 13
   suggestedSprintNumber: integer('suggested_sprint_number'), // sprint yang disarankan dari analisa proposal / heuristik
+  tipeKartu: text('tipe_kartu').notNull().default('backlog'), // 'backlog' | 'issue' (Paket 24c)
   customDocumentData: jsonb('custom_document_data').notNull().default(sql`'{}'`), // isian khusus dokumen kerja per kartu baku CV (Paket 18)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('kanban_card_tim_idx').on(t.timInovatorId),
   index('kanban_card_tahap_idx').on(t.tahap),
+  index('kanban_card_tipe_kartu_idx').on(t.tipeKartu),
 ]);
 
 export const taskAttachment = pgTable('task_attachment', {
