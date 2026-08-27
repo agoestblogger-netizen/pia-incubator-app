@@ -156,19 +156,19 @@ export function DashboardClient({
       {/* ── 3. BLOK A: RINGKASAN 4-ANGKA (Grid 4 Kolom) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Sprint Aktif */}
-        <Card className="rounded-2xl border border-[#C9E4D0] bg-gradient-to-br from-white to-[#F0F7F1] shadow-2xs hover:shadow-xs transition-all">
+        <Card className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-white to-indigo-50/60 shadow-2xs hover:shadow-xs transition-all">
           <CardContent className="p-4.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-600">Sprint Aktif</span>
-              <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center text-[#0B3D2E]">
-                <Zap className="h-4 w-4 fill-[#3E9463] text-[#3E9463]" />
+              <span className="text-xs font-bold text-indigo-700">Sprint Aktif</span>
+              <div className="h-8 w-8 rounded-xl bg-indigo-100 flex items-center justify-center">
+                <Zap className="h-4 w-4 fill-indigo-500 text-indigo-600" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-2xl font-extrabold text-[#0B3D2E] tracking-tight">
+              <p className="text-2xl font-extrabold text-indigo-900 tracking-tight">
                 {activeSprintText}
               </p>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5 truncate">
+              <p className="text-[11px] text-indigo-600/70 font-medium mt-0.5 truncate">
                 {hasActiveSprint ? "Sedang dalam tahap eksekusi" : "Belum ada sprint aktif"}
               </p>
             </div>
@@ -176,22 +176,22 @@ export function DashboardClient({
         </Card>
 
         {/* Metric 2: Kartu Selesai */}
-        <Card className="rounded-2xl border border-[#C9E4D0] bg-gradient-to-br from-white to-[#F0F7F1] shadow-2xs hover:shadow-xs transition-all">
+        <Card className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-white to-emerald-50/60 shadow-2xs hover:shadow-xs transition-all">
           <CardContent className="p-4.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-600">Kartu Selesai</span>
-              <div className="h-8 w-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700">
-                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+              <span className="text-xs font-bold text-emerald-700">Kartu Selesai</span>
+              <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-2xl font-extrabold text-gray-900 tracking-tight">
+              <p className="text-2xl font-extrabold text-emerald-900 tracking-tight">
                 {cardsCompletedInActiveSprint}{" "}
-                <span className="text-base text-gray-400 font-semibold">
+                <span className="text-base text-emerald-500 font-semibold">
                   / {totalCardsInActiveSprint}
                 </span>
               </p>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+              <p className="text-[11px] text-emerald-600/70 font-medium mt-0.5">
                 {totalCardsInActiveSprint > 0
                   ? `${sprintProgressPct}% terselesaikan di sprint aktif`
                   : "Tidak ada kartu di sprint ini"}
@@ -201,22 +201,22 @@ export function DashboardClient({
         </Card>
 
         {/* Metric 3: Kartu Wajib Belum Isi */}
-        <Card className="rounded-2xl border border-[#C9E4D0] bg-gradient-to-br from-white to-[#FFFBF0] shadow-2xs hover:shadow-xs transition-all">
+        <Card className="rounded-2xl border border-rose-200 bg-gradient-to-br from-white to-rose-50/50 shadow-2xs hover:shadow-xs transition-all">
           <CardContent className="p-4.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-600">Kartu Wajib Belum Isi</span>
-              <div className="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800">
-                <AlertCircle className="h-4 w-4 text-amber-700" />
+              <span className="text-xs font-bold text-rose-700">Kartu Wajib Belum Isi</span>
+              <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 text-rose-600" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-2xl font-extrabold text-amber-900 tracking-tight">
+              <p className="text-2xl font-extrabold text-rose-900 tracking-tight">
                 {mandatoryCardsPendingCount}{" "}
-                <span className="text-xs font-bold text-amber-700 uppercase tracking-normal">
+                <span className="text-xs font-bold text-rose-600 uppercase tracking-normal">
                   Kartu
                 </span>
               </p>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+              <p className="text-[11px] text-rose-600/70 font-medium mt-0.5">
                 {mandatoryCardsPendingCount === 0
                   ? "Semua subtask wajib telah lengkap!"
                   : "Perlu diisi via subtask wajib (CV/MV)"}
@@ -226,22 +226,22 @@ export function DashboardClient({
         </Card>
 
         {/* Metric 4: Tenggat Mendekat */}
-        <Card className="rounded-2xl border border-[#C9E4D0] bg-gradient-to-br from-white to-[#FFF5F5] shadow-2xs hover:shadow-xs transition-all">
+        <Card className="rounded-2xl border border-amber-200 bg-gradient-to-br from-white to-amber-50/50 shadow-2xs hover:shadow-xs transition-all">
           <CardContent className="p-4.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-600">Tenggat Mendekat</span>
-              <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center text-rose-700">
-                <Clock className="h-4 w-4 text-rose-600" />
+              <span className="text-xs font-bold text-amber-700">Tenggat Mendekat</span>
+              <div className="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-amber-600" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-2xl font-extrabold text-rose-900 tracking-tight">
+              <p className="text-2xl font-extrabold text-amber-900 tracking-tight">
                 {approachingDeadlineCardsCount}{" "}
-                <span className="text-xs font-bold text-rose-700 uppercase tracking-normal">
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-normal">
                   Kartu
                 </span>
               </p>
-              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+              <p className="text-[11px] text-amber-600/70 font-medium mt-0.5">
                 {approachingDeadlineCardsCount === 0
                   ? "Tidak ada kartu berisiko telat"
                   : "Jatuh tempo dlm 3 hari / lewat batas"}
@@ -294,7 +294,7 @@ export function DashboardClient({
                 </div>
                 <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                   <div
-                    className="h-full bg-gradient-to-r from-[#3E9463] to-[#0B3D2E] transition-all duration-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-[#3E9463] via-[#D4AF37] to-[#B8860B] transition-all duration-500 rounded-full"
                     style={{ width: `${sprintProgressPct}%` }}
                   />
                 </div>
@@ -579,13 +579,53 @@ export function DashboardClient({
               const isWarning = badge.variant === "warning";
               const isInfo = badge.variant === "info";
 
+              // Phase-based colors: indigo=innovation_setup, amber=customer_validation, emerald=market_validation
+              const phaseKey = badge.phaseKey;
+              const isInnovationSetup = phaseKey === "innovation_setup";
+              const isCustomerValidation = phaseKey === "customer_validation";
+              const isMarketValidation = phaseKey === "market_validation";
+
+              const phaseRowBg = isInnovationSetup
+                ? "bg-indigo-50/60 border-indigo-200"
+                : isCustomerValidation
+                ? "bg-amber-50/60 border-amber-200"
+                : isMarketValidation
+                ? "bg-emerald-50/60 border-emerald-200"
+                : "bg-gray-50 border-gray-200";
+
+              const phaseTitleColor = isInnovationSetup
+                ? "text-indigo-900"
+                : isCustomerValidation
+                ? "text-amber-900"
+                : isMarketValidation
+                ? "text-[#0B3D2E]"
+                : "text-gray-900";
+
+              const badgeStyle = isInnovationSetup
+                ? isSuccess
+                  ? "bg-indigo-100 text-indigo-900 border-indigo-300"
+                  : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                : isCustomerValidation
+                ? isSuccess
+                  ? "bg-amber-100 text-amber-900 border-amber-300"
+                  : "bg-amber-50 text-amber-700 border-amber-200"
+                : isMarketValidation
+                ? isSuccess
+                  ? "bg-emerald-100 text-[#0B3D2E] border-emerald-300"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : isSuccess
+                ? "bg-emerald-100 text-[#0B3D2E] border-emerald-300"
+                : isWarning
+                ? "bg-amber-100 text-amber-900 border-amber-300"
+                : "bg-gray-100 text-gray-600 border-gray-300";
+
               return (
                 <div
                   key={badge.phaseKey}
-                  className="p-3 rounded-xl bg-white border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs"
+                  className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs ${phaseRowBg}`}
                 >
                   <div className="space-y-0.5 min-w-0 pr-2">
-                    <span className="text-xs font-bold text-gray-900 block">
+                    <span className={`text-xs font-bold block ${phaseTitleColor}`}>
                       {badge.phaseName}
                     </span>
                     <p className="text-[11px] text-gray-500 leading-snug">
@@ -594,15 +634,7 @@ export function DashboardClient({
                   </div>
                   <div className="shrink-0">
                     <Badge
-                      className={`text-xs font-extrabold px-2.5 py-1 ${
-                        isSuccess
-                          ? "bg-emerald-100 text-[#0B3D2E] border-emerald-300"
-                          : isWarning
-                          ? "bg-amber-100 text-amber-900 border-amber-300"
-                          : isInfo
-                          ? "bg-blue-100 text-blue-900 border-blue-300"
-                          : "bg-gray-100 text-gray-600 border-gray-300"
-                      }`}
+                      className={`text-xs font-extrabold px-2.5 py-1 ${badgeStyle}`}
                     >
                       {badge.statusText}
                     </Badge>
