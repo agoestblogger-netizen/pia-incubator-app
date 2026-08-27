@@ -43,7 +43,10 @@ export default async function SingleCanvasPage({
         timNama={tim.namaProyekInovasi}
         canvasJudul={canvasDataRes.data.canvas.judul}
         currentUser={currentUser}
+        isCvUnlocked={true}
+        isMvUnlocked={true}
       />
     </div>
   );
 }
+

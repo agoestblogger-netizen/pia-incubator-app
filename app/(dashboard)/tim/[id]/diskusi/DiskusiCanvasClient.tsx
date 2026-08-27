@@ -914,11 +914,32 @@ export function DiskusiCanvasClient({
   }, [cards]);
 
   const filteredReferenceCards = useMemo(() => {
-    return referenceCards.filter((c) => {
+    const filtered = referenceCards.filter((c) => {
       if (tahapFilter === 'all') return true;
       return c.tahap === tahapFilter;
     });
+    // Sort by suggestedSprintNumber ascending; nulls last
+    return filtered.sort((a, b) => {
+      const sa = a.suggestedSprintNumber ?? Infinity;
+      const sb = b.suggestedSprintNumber ?? Infinity;
+      return sa - sb;
+    });
   }, [referenceCards, tahapFilter]);
+
+  // Group filteredReferenceCards by suggestedSprintNumber for visual sprint headers
+  const groupedReferenceCards = useMemo(() => {
+    const groups: Array<{ sprintNum: number | null; cards: typeof filteredReferenceCards }> = [];
+    for (const card of filteredReferenceCards) {
+      const sn = card.suggestedSprintNumber;
+      const existing = groups.find((g) => g.sprintNum === sn);
+      if (existing) {
+        existing.cards.push(card);
+      } else {
+        groups.push({ sprintNum: sn, cards: [card] });
+      }
+    }
+    return groups;
+  }, [filteredReferenceCards]);
 
   // ─── File Upload Handler ───────────────────────────────────────────────────
   const handleUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1397,97 +1418,113 @@ export function DiskusiCanvasClient({
                 {filteredReferenceCards.length === 0 ? (
                   <p className="text-xs text-gray-400 text-center py-8">Tidak ada kartu pada filter ini.</p>
                 ) : (
-                  filteredReferenceCards.map((card) => {
-                    const isPinned = notes.some((n) => n.kanbanCardId === card.id);
-                    const phaseToken = getPhaseTokenBySlug(card.tahap);
-                    const cardIsLocked = isPhaseLocked(card);
-                    const isMandatory =
-                      detectCvBakuCardType(card.judul, card.tahap) !== null ||
-                      card.label === 'Template Baku CV' ||
-                      isMvMandatoryCard(card.judul, card.tahap);
-
-                    return (
-                      <div
-                        key={card.id}
-                        className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${
-                          isPinned
-                            ? 'bg-gray-50 border-gray-200 opacity-60'
-                            : cardIsLocked
-                            ? 'bg-amber-50/30 border-amber-200 hover:border-amber-400 hover:shadow-xs'
-                            : 'bg-white border-[#C9E4D0] hover:border-[#0F5132] hover:shadow-xs'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-1.5">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {isMandatory && (
-                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300">
-                                Wajib
-                              </span>
-                            )}
-                            <span
-                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${phaseToken.badgeClass}`}
-                            >
-                              {card.tahap === 'innovation_setup'
-                                ? 'Setup'
-                                : card.tahap === 'customer_validation'
-                                ? 'CV'
-                                : card.tahap === 'market_validation'
-                                ? 'MV'
-                                : 'Umum'}
-                            </span>
-                            {cardIsLocked && (
-                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                                <Lock className="h-2.5 w-2.5" />
-                                Terkunci
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                              {card.storyPoint || 3} SP
-                            </span>
-                            {isPinned ? (
-                              <span className="text-[9px] font-bold text-gray-400">Tersemat</span>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handlePinCardToCanvas(card.id)}
-                                title={cardIsLocked ? 'Sematkan ke kanvas untuk didiskusikan (bukan mengadopsi)' : '+ Pin ke kanvas'}
-                                className={`h-6 px-1.5 text-[10px] font-bold gap-1 cursor-pointer ${
-                                  cardIsLocked
-                                    ? 'text-amber-700 hover:bg-amber-100'
-                                    : 'text-[#0F5132] hover:bg-[#F0F7F1]'
-                                }`}
-                              >
-                                <Pin className="h-3 w-3" />
-                                <span>+ Pin</span>
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        <p className={`text-xs font-bold leading-snug line-clamp-2 ${isMandatory ? 'text-rose-700 font-extrabold' : 'text-gray-800'}`}>{card.judul}</p>
-
-                        {cardIsLocked && (
-                          <p className="text-[9px] text-amber-700 font-medium">
-                            💬 Bisa didiskusikan di kanvas, belum bisa diadopsi ke sprint.
-                          </p>
-                        )}
-
-                        <div className="flex items-center justify-between text-[10px] text-gray-400 pt-0.5">
-                          <span>{card.label || 'Referensi'}</span>
-                          <button
-                            onClick={() => openCardDetailModal(card)}
-                            className="text-[#0F5132] hover:underline font-semibold"
-                          >
-                            Lihat Detail →
-                          </button>
-                        </div>
+                  groupedReferenceCards.map((group) => (
+                    <div key={group.sprintNum ?? 'tanpa-sprint'}>
+                      {/* Sprint Group Header */}
+                      <div className="flex items-center gap-1.5 mt-2 mb-1.5 px-0.5">
+                        <div className="h-px flex-1 bg-gradient-to-r from-[#0F5132]/20 to-transparent" />
+                        <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#0F5132] shrink-0">
+                          {group.sprintNum !== null ? `Sprint ${group.sprintNum}` : 'Tanpa Sprint'}
+                        </span>
+                        <div className="h-px flex-1 bg-gradient-to-l from-[#0F5132]/20 to-transparent" />
                       </div>
-                    );
-                  })
+
+                      {/* Cards in this Sprint Group */}
+                      <div className="space-y-2">
+                        {group.cards.map((card) => {
+                          const isPinned = notes.some((n) => n.kanbanCardId === card.id);
+                          const phaseToken = getPhaseTokenBySlug(card.tahap);
+                          const cardIsLocked = isPhaseLocked(card);
+                          const isMandatory =
+                            detectCvBakuCardType(card.judul, card.tahap) !== null ||
+                            card.label === 'Template Baku CV' ||
+                            isMvMandatoryCard(card.judul, card.tahap);
+
+                          return (
+                            <div
+                              key={card.id}
+                              className={`p-2.5 rounded-xl border transition-all shadow-2xs space-y-1.5 ${
+                                isPinned
+                                  ? 'bg-gray-50 border-gray-200 opacity-60'
+                                  : cardIsLocked
+                                  ? 'bg-amber-50/30 border-amber-200 hover:border-amber-400 hover:shadow-xs'
+                                  : 'bg-white border-[#C9E4D0] hover:border-[#0F5132] hover:shadow-xs'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-1.5">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {isMandatory && (
+                                    <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300">
+                                      Wajib
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${phaseToken.badgeClass}`}
+                                  >
+                                    {card.tahap === 'innovation_setup'
+                                      ? 'Setup'
+                                      : card.tahap === 'customer_validation'
+                                      ? 'CV'
+                                      : card.tahap === 'market_validation'
+                                      ? 'MV'
+                                      : 'Umum'}
+                                  </span>
+                                  {cardIsLocked && (
+                                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                      <Lock className="h-2.5 w-2.5" />
+                                      Terkunci
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                    {card.storyPoint || 3} SP
+                                  </span>
+                                  {isPinned ? (
+                                    <span className="text-[9px] font-bold text-gray-400">Tersemat</span>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handlePinCardToCanvas(card.id)}
+                                      title={cardIsLocked ? 'Sematkan ke kanvas untuk didiskusikan (bukan mengadopsi)' : '+ Pin ke kanvas'}
+                                      className={`h-6 px-1.5 text-[10px] font-bold gap-1 cursor-pointer ${
+                                        cardIsLocked
+                                          ? 'text-amber-700 hover:bg-amber-100'
+                                          : 'text-[#0F5132] hover:bg-[#F0F7F1]'
+                                      }`}
+                                    >
+                                      <Pin className="h-3 w-3" />
+                                      <span>+ Pin</span>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <p className={`text-xs font-bold leading-snug line-clamp-2 ${isMandatory ? 'text-rose-700 font-extrabold' : 'text-gray-800'}`}>{card.judul}</p>
+
+                              {cardIsLocked && (
+                                <p className="text-[9px] text-amber-700 font-medium">
+                                  💬 Bisa didiskusikan di kanvas, belum bisa diadopsi ke sprint.
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between text-[10px] text-gray-400 pt-0.5">
+                                <span>{card.label || 'Referensi'}</span>
+                                <button
+                                  onClick={() => openCardDetailModal(card)}
+                                  className="text-[#0F5132] hover:underline font-semibold"
+                                >
+                                  Lihat Detail →
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
