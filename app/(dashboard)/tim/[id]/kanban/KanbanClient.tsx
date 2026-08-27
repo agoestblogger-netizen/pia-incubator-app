@@ -1401,12 +1401,12 @@ export function KanbanClient({
     );
   }, [filteredCards]);
 
-  // AI Reference Cards — kartu yang belum ditinjau tim (di-scope sesuai tahapScope pada konteks ini)
+  // AI Reference Cards — seluruh kartu referensi backlog tim yang belum diadopsi
   const aiReferenceCards = useMemo(() => {
     return cards.filter(
-      (c) => c.reviewStatus === 'ai_reference' && c.tahap === tahapScope
+      (c) => c.reviewStatus === 'ai_reference'
     );
-  }, [cards, tahapScope]);
+  }, [cards]);
 
   // Selected Planning Sprint Object
   const currentPlanningSprintObj = useMemo(() => {
@@ -1435,13 +1435,12 @@ export function KanbanClient({
   const availableRefCardsForDropdown = useMemo(() => {
     return cards.filter((c) => {
       if (c.reviewStatus !== "ai_reference") return false;
-      if (c.tahap !== tahapScope) return false;
       const cardSuggestedSprint = c.suggestedSprintNumber || 1;
       const isCurrentlySelected = selectedRefCardId === c.id || selectedCardForDetail?.id === c.id;
       if (cardSuggestedSprint !== currentModalSprintNum && !isCurrentlySelected) return false;
       return true;
     });
-  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail, tahapScope]);
+  }, [cards, currentModalSprintNum, selectedRefCardId, selectedCardForDetail]);
 
   const handleSelectReferenceCardInModal = (refCardId: string) => {
     setSelectedRefCardId(refCardId);
