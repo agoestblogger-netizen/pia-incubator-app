@@ -28,6 +28,7 @@ import {
 import { UserSelectCombobox, SelectedUser } from "@/components/user/UserSelectCombobox";
 import {
   Save,
+  CheckCircle,
   CheckCircle2,
   Users,
   UserPlus,
@@ -51,6 +52,8 @@ import {
   Target,
   KanbanSquare,
 } from "lucide-react";
+import { SignaturePadModal } from "@/components/ui/SignaturePad";
+import { formatDateIndo } from "@/lib/utils";
 import { RoleProposalHintTooltip } from "./RoleProposalHintTooltip";
 
 interface RoleConfig {
@@ -246,6 +249,7 @@ export function CharterFormClient({
     Array<{ nama: string; email: string; roleName: string }> | null
   >(null);
 
+  const [sigModalOpen, setSigModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -270,7 +274,7 @@ export function CharterFormClient({
       return;
     }
     setSavingSprintCount(true);
-    const res = await updateSprintCountAction(timId, targetSprintCount, sprintAlasan);
+    const res = await updateSprintCountAction(timId, targetSprintCount, sprintAlasan.trim());
     if (res.success) {
       setIsSprintModalOpen(false);
       setSprintAlasan("");
@@ -424,14 +428,15 @@ export function CharterFormClient({
     setSaving(false);
   };
 
-  const handleApproveCharter = async () => {
+  const handleSaveSignature = async (dataUrl: string) => {
     setApproving(true);
     setStatusMsg(null);
 
-    const res = await approveCharterAction(timId);
+    const res = await approveCharterAction(timId, dataUrl);
     if (res.success && res.ttdDisetujui) {
       setTtdDisetujui(res.ttdDisetujui);
-      toast.success("Innovation Charter berhasil disetujui & diotorisasi secara formal oleh Promotor!", "Persetujuan Berhasil");
+      setSigModalOpen(false);
+      toast.success("Innovation Charter berhasil disetujui & ditandatangani secara formal oleh Promotor!", "Persetujuan Berhasil");
       setStatusMsg({
         type: "success",
         text: "Innovation Charter berhasil disetujui secara formal oleh Promotor!",
@@ -1220,116 +1225,168 @@ export function CharterFormClient({
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* BAGIAN 4: PERSETUJUAN FORMAL PROMOTOR ("DISETUJUI OLEH") */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-emerald-950/5 via-white to-emerald-950/5 border-b border-gray-100">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Stamp className="h-5 w-5 text-[#0F5132]" />
-                Persetujuan Formal & Komitmen Promotor
-              </CardTitle>
-              <CardDescription className="text-xs text-gray-500 mt-1">
-                Tanda tangan formal Promotor Inovasi sebagai mandat resmi dimulainya eksekusi inkubasi tim.
-              </CardDescription>
-            </div>
+      {(() => {
+        const promotorAssignment = roleAssignments.find((r) => r.roleCode === "promotor" && (r.userId || r.userName));
+        const promotorName = promotorAssignment?.userName || "Promotor Inovasi";
 
-            {ttdDisetujui?.status === 'approved' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-bold border border-green-200">
-                <FileCheck2 className="h-4 w-4 text-green-700" />
-                Disetujui Formal
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200">
-                <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
-                Menunggu Persetujuan Promotor
-              </span>
-            )}
-          </div>
-        </CardHeader>
+        return (
+          <>
+            <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden mt-6">
+              <CardHeader className="bg-gradient-to-r from-emerald-50/50 via-white to-purple-50/30 border-b border-gray-100 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2">
+                      <Stamp className="h-4.5 w-4.5 text-[#0F5132]" />
+                      Persetujuan Formal &amp; Komitmen Promotor
+                    </CardTitle>
+                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                      Tanda tangan formal Promotor Inovasi sebagai mandat resmi dimulainya eksekusi inkubasi tim.
+                    </CardDescription>
+                  </div>
 
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            {/* Signature Stamp Box */}
-            <div
-              className={`p-5 rounded-2xl border-2 transition-all ${
-                ttdDisetujui?.status === 'approved'
-                  ? 'border-[#0F5132]/40 bg-emerald-50/50 shadow-xs'
-                  : 'border-dashed border-gray-200 bg-gray-50/60'
-              }`}
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                Disetujui Oleh (Promotor Inovasi):
-              </div>
-
-              {ttdDisetujui?.status === 'approved' ? (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-900">{ttdDisetujui.nama}</span>
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#0F5132] text-white">
-                      Verified
+                  {ttdDisetujui?.status === 'approved' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
+                      <FileCheck2 className="h-3.5 w-3.5 text-emerald-700" />
+                      Disetujui Formal
                     </span>
-                  </div>
-                  <div className="text-xs text-gray-600 flex items-center gap-1">
-                    <Briefcase className="h-3.5 w-3.5 text-gray-400" />
-                    <span>{ttdDisetujui.jabatan}</span>
-                  </div>
-                  <div className="text-xs text-gray-600 flex items-center gap-1">
-                    <Building2 className="h-3.5 w-3.5 text-gray-400" />
-                    <span>{ttdDisetujui.unit}</span>
-                  </div>
-                  <div className="text-[11px] text-gray-400 pt-1 font-mono">
-                    Waktu Persetujuan: {new Date(ttdDisetujui.tanggal).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
-                  </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200">
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
+                      Menunggu Persetujuan Promotor
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <div className="py-3 text-xs text-gray-400 italic flex items-center gap-2">
-                  <Stamp className="h-4 w-4 text-gray-300" />
-                  <span>Belum ada tanda tangan persetujuan formal dari Promotor.</span>
-                </div>
-              )}
-            </div>
+              </CardHeader>
 
-            {/* Approval Action Controls */}
-            <div className="space-y-3">
-              {canApprove && (
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-                  <div className="text-xs font-bold text-gray-800">
-                    Aksi Persetujuan Promotor
-                  </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">
-                    Sebagai Promotor tim, klik tombol di bawah untuk membubuhkan tanda tangan formal digital dan mengesahkan Innovation Charter ini.
-                  </p>
+              <CardContent className="p-4 sm:p-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  {/* Signature Card */}
+                  <div
+                    className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
+                      ttdDisetujui?.status === 'approved'
+                        ? 'border-emerald-300 bg-emerald-50/40'
+                        : 'border-dashed border-gray-200 bg-gray-50/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                        Disetujui Oleh (Promotor Inovasi)
+                      </span>
+                      {ttdDisetujui?.status === 'approved' ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Ditandatangani</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-gray-400 italic">
+                          Belum Ditandatangani
+                        </span>
+                      )}
+                    </div>
 
-                  <div className="flex items-center gap-3">
-                    {ttdDisetujui?.status === 'approved' ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={approving}
-                        onClick={handleRevokeApproval}
-                        className="text-xs font-bold text-red-600 border-red-200 hover:bg-red-50 gap-1.5 h-10 rounded-xl"
-                      >
-                        {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                        <span>Batalkan Persetujuan (Revisi)</span>
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        disabled={approving}
-                        onClick={handleApproveCharter}
-                        className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-2 h-10 px-6 rounded-xl shadow-sm"
-                      >
-                        {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Stamp className="h-4 w-4" />}
-                        <span>Setujui Innovation Charter</span>
-                      </Button>
-                    )}
+                    <div className="text-xs">
+                      {ttdDisetujui?.status === 'approved' ? (
+                        <>
+                          <div className="font-bold text-gray-900">{ttdDisetujui.nama}</div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDisetujui.jabatan || "Promotor Tim Inovasi"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{ttdDisetujui.unit || "PT Pegadaian"}</span>
+                          </div>
+                          {ttdDisetujui.signatureImage && (
+                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
+                              <img
+                                src={ttdDisetujui.signatureImage}
+                                alt="Tanda Tangan Promotor"
+                                className="h-10 w-auto object-contain block"
+                              />
+                            </div>
+                          )}
+                          {ttdDisetujui.tanggal && (
+                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                              {formatDateIndo(ttdDisetujui.tanggal)}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-gray-700">
+                            {promotorName || "( Promotor Inovasi )"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            <span>{promotorAssignment?.jabatan || "Promotor Tim Inovasi"}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3 text-gray-400" />
+                            <span>{promotorAssignment?.unitKerja || "PT Pegadaian"}</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 italic mt-1">
+                            {promotorAssignment?.userName ? "Nama terdaftar di Penugasan Role Tim" : "Belum ditentukan di Role Tim"}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60">
+                      {canApprove && (
+                        ttdDisetujui?.status === 'approved' ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={approving}
+                            onClick={handleRevokeApproval}
+                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg cursor-pointer"
+                          >
+                            {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RotateCcw className="h-3.5 w-3.5 mr-1" />}
+                            <span>Batalkan Persetujuan (Revisi)</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={approving}
+                            onClick={() => setSigModalOpen(true)}
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs cursor-pointer"
+                          >
+                            <Stamp className="h-3.5 w-3.5 mr-1" />
+                            <span>Tandatangani sbg Promotor</span>
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Approval Info Panel */}
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
+                    <div className="text-xs font-bold text-gray-800 flex items-center gap-2">
+                      <Stamp className="h-4 w-4 text-[#0F5132]" />
+                      <span>Mandat Eksekusi Tim Inovasi</span>
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                      Persetujuan formal oleh Promotor merupakan syarat sah dimulainya siklus inkubasi dan aktivasi tahapan validasi pelanggan. Tanda tangan digital akan dicantumkan secara resmi pada lembar otorisasi dokumen Innovation Charter.
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+
+            {/* SignaturePadModal for Charter */}
+            <SignaturePadModal
+              isOpen={sigModalOpen}
+              onClose={() => setSigModalOpen(false)}
+              onSave={handleSaveSignature}
+              title="Persetujuan Formal Innovation Charter"
+              roleName="Promotor Inovasi"
+              userName={currentUser?.nama || promotorName}
+            />
+          </>
+        );
+      })()}
 
       {/* Save Button for Editor */}
       {!isReadOnly && (

@@ -853,7 +853,43 @@ export async function saveCharterAction(
   }
 }
 
-export async function approveCharterAction(timId: string) {
+async function processSignatureImage(timId: string, imageStr?: string | null): Promise<string | null> {
+  if (!imageStr) return null;
+  if (!imageStr.startsWith("data:image/")) return imageStr;
+
+  try {
+    const supabaseAdmin = createAdminClient();
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const bucketExists = buckets?.some((b) => b.name === "task-attachments");
+    if (!bucketExists) {
+      await supabaseAdmin.storage.createBucket("task-attachments", { public: true });
+    }
+
+    const base64Data = imageStr.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const storagePath = `signatures/${timId}/${Date.now()}_charter_sig.png`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("task-attachments")
+      .upload(storagePath, buffer, { contentType: "image/png", upsert: true });
+
+    if (uploadError) {
+      console.warn("[processSignatureImage] Storage upload error, using data URI:", uploadError.message);
+      return imageStr;
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from("task-attachments")
+      .getPublicUrl(storagePath);
+
+    return publicUrlData?.publicUrl || imageStr;
+  } catch (err: any) {
+    console.warn("[processSignatureImage] Failed, fallback to data URI:", err.message);
+    return imageStr;
+  }
+}
+
+export async function approveCharterAction(timId: string, signatureImage?: string | null) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -870,12 +906,29 @@ export async function approveCharterAction(timId: string) {
 
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
 
+    const [anggota] = await db
+      .select()
+      .from(anggotaTim)
+      .where(
+        and(
+          eq(anggotaTim.timInovatorId, timId),
+          eq(anggotaTim.userId, user.id)
+        )
+      )
+      .limit(1);
+
+    const processedImageUrl = await processSignatureImage(timId, signatureImage);
+
     const ttdData = {
+      userId: user.id,
       nama: user.nama,
-      jabatan: "Promotor Tim Inovasi",
+      jabatan: anggota?.jabatan || "Promotor Tim Inovasi",
+      unit: anggota?.unitKerja || "PT Pegadaian",
       tanggal: new Date().toISOString(),
       email: user.email,
+      status: "approved",
       disetujui: true,
+      signatureImage: processedImageUrl,
     };
 
     const [existing] = await db.select().from(charter).where(eq(charter.timInovatorId, timId)).limit(1);
