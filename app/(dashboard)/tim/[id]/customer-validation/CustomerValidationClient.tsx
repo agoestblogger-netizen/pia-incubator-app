@@ -796,73 +796,98 @@ export function CustomerValidationClient({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Project Mission
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Rumusan aspiratif, kuantitatif, dan time-bound dari proyek inovasi ini..."
-                    value={planForm.projectMission}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, projectMission: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.projectMission || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Rumusan aspiratif, kuantitatif, dan time-bound dari proyek inovasi ini..."
+                      value={planForm.projectMission}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, projectMission: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Customer &amp; Context
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Customer prioritas dan area bantuan (job-to-be-done) yang diuji..."
-                    value={planForm.customerDanContext}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, customerDanContext: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.customerDanContext || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Customer prioritas dan area bantuan (job-to-be-done) yang diuji..."
+                      value={planForm.customerDanContext}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, customerDanContext: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Problem Hypothesis
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Asumsi masalah yang akan divalidasi, termasuk bukti awal yang mendukung hipotesis ini..."
-                    value={planForm.problemHypothesis}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, problemHypothesis: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.problemHypothesis || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Asumsi masalah yang akan divalidasi, termasuk bukti awal yang mendukung hipotesis ini..."
+                      value={planForm.problemHypothesis}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, problemHypothesis: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     How Might We (HMW)
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Pertanyaan peluang yang menghubungkan customer, problem, dan outcome yang diinginkan..."
-                    value={planForm.hmw}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, hmw: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.hmw || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Pertanyaan peluang yang menghubungkan customer, problem, dan outcome yang diinginkan..."
+                      value={planForm.hmw}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, hmw: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Solution Hypothesis
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Asumsi solusi/prototype yang akan diuji kepada customer, termasuk manfaat utamanya..."
-                    value={planForm.solutionHypothesis}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, solutionHypothesis: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.solutionHypothesis || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Asumsi solusi/prototype yang akan diuji kepada customer, termasuk manfaat utamanya..."
+                      value={planForm.solutionHypothesis}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, solutionHypothesis: e.target.value })}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -879,121 +904,146 @@ export function CustomerValidationClient({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Tipe Prototype yang Diuji
                   </label>
-                  <Input
-                    placeholder="Figma / Clickable Prototype, Wireframe, dll..."
-                    value={planForm.prototypeType}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, prototypeType: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 text-sm font-semibold text-slate-900">
+                      {planForm.prototypeType || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Input
+                      placeholder="Figma / Clickable Prototype, Wireframe, dll..."
+                      value={planForm.prototypeType}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, prototypeType: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Fitur / Alur yang Diuji
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Alur verifikasi identitas, kalkulasi otomatis, dll..."
-                    value={planForm.fiturAlurDiuji}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, fiturAlurDiuji: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.fiturAlurDiuji || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Alur verifikasi identitas, kalkulasi otomatis, dll..."
+                      value={planForm.fiturAlurDiuji}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, fiturAlurDiuji: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Skenario User Testing
                   </label>
-                  <Textarea
-                    rows={3}
-                    placeholder="Instruksi tugas yang diberikan kepada responden saat mencoba prototype..."
-                    value={planForm.skenarioUserTesting}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, skenarioUserTesting: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.skenarioUserTesting || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={3}
+                      placeholder="Instruksi tugas yang diberikan kepada responden saat mencoba prototype..."
+                      value={planForm.skenarioUserTesting}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, skenarioUserTesting: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Instrumen Validasi
                   </label>
-                  <Textarea
-                    rows={3}
-                    placeholder="Daftar pertanyaan, survey, form observasi, panduan wawancara yang digunakan..."
-                    value={planForm.instrumenValidasi}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, instrumenValidasi: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.instrumenValidasi || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={3}
+                      placeholder="Daftar pertanyaan, survey, form observasi, panduan wawancara yang digunakan..."
+                      value={planForm.instrumenValidasi}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, instrumenValidasi: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 {/* Data Dukung (File Upload) */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     Data Dukung &amp; Lampiran
                   </label>
 
-                  {planForm.dataDukung.length > 0 && (
+                  {planForm.dataDukung.length > 0 ? (
                     <div className="space-y-1.5">
                       {planForm.dataDukung.map((url) => (
                         <div
                           key={url}
-                          className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100 text-xs group"
+                          className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs group"
                         >
                           {fileIcon(url)}
                           <a
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 truncate text-blue-700 hover:underline font-medium"
+                            className="flex-1 truncate text-blue-700 hover:underline font-semibold"
                           >
                             {fileName(url)}
                           </a>
-                          <a href={url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3 w-3 text-gray-400 hover:text-blue-600" />
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-slate-200 rounded">
+                            <ExternalLink className="h-3.5 w-3.5 text-slate-500 hover:text-blue-600" />
                           </a>
                           {!isSectionAbcLocked && (
                             <button
                               type="button"
                               onClick={() => handleRemoveFile(url)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-50"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100"
                               title="Hapus lampiran"
                             >
-                              <X className="h-3.5 w-3.5 text-red-500" />
+                              <X className="h-3.5 w-3.5 text-red-600" />
                             </button>
                           )}
                         </div>
                       ))}
                     </div>
-                  )}
+                  ) : isSectionAbcLocked ? (
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 text-xs text-slate-400 italic">
+                      Tidak ada berkas data dukung / lampiran yang diunggah.
+                    </div>
+                  ) : null}
 
                   {!isSectionAbcLocked && (
-                    <label className="inline-flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-semibold text-gray-600 transition-colors">
-                      {uploading ? (
-                        <span className="animate-spin h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full inline-block" />
-                      ) : (
-                        <Upload className="h-3.5 w-3.5" />
-                      )}
-                      <span>{uploading ? "Mengunggah..." : "Unggah File (PDF, Word, Excel, Gambar, maks 10MB)"}</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                        disabled={uploading}
-                        onChange={handleUploadFile}
-                      />
-                    </label>
+                    <>
+                      <label className="inline-flex items-center gap-2 cursor-pointer px-3.5 py-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-semibold text-gray-600 transition-colors">
+                        {uploading ? (
+                          <span className="animate-spin h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full inline-block" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}
+                        <span>{uploading ? "Mengunggah..." : "Unggah File (PDF, Word, Excel, Gambar, maks 10MB)"}</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                          disabled={uploading}
+                          onChange={handleUploadFile}
+                        />
+                      </label>
+                      <p className="text-[10px] text-gray-400">
+                        File disimpan ke kolom <code>data_dukung</code> (jsonb[]) di database.
+                      </p>
+                    </>
                   )}
-                  <p className="text-[10px] text-gray-400">
-                    File disimpan ke kolom <code>data_dukung</code> (jsonb[]) di database.
-                    Hapus data lokal saja — file di storage tidak dihapus otomatis.
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -1010,88 +1060,118 @@ export function CustomerValidationClient({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     1. Target Early Adopters
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Profil early adopters awal berskala kecil yang relevan dengan customer prioritas..."
-                    value={planForm.targetEarlyAdopters}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.targetEarlyAdopters || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Profil early adopters awal berskala kecil yang relevan dengan customer prioritas..."
+                      value={planForm.targetEarlyAdopters}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     2. Kriteria Seleksi
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Kriteria inklusi/eksklusi responden; contoh: segmen, lokasi, perilaku..."
-                    value={planForm.kriteriaSeleksi}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, kriteriaSeleksi: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.kriteriaSeleksi || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Kriteria inklusi/eksklusi responden; contoh: segmen, lokasi, perilaku..."
+                      value={planForm.kriteriaSeleksi}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, kriteriaSeleksi: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-700">
+                    <label className="text-xs font-bold text-gray-700">
                       3. Target Jumlah Responden
                     </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={planForm.jumlahTargetResponden}
-                      disabled={!canEditCv || isSectionAbcLocked}
-                      className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                      onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: Number(e.target.value) })}
-                    />
+                    {isSectionAbcLocked ? (
+                      <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 text-sm font-bold text-slate-900">
+                        {planForm.jumlahTargetResponden} Responden / Orang
+                      </div>
+                    ) : (
+                      <Input
+                        type="number"
+                        min={1}
+                        value={planForm.jumlahTargetResponden}
+                        disabled={!canEditCv}
+                        onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: Number(e.target.value) })}
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-700">
+                    <label className="text-xs font-bold text-gray-700">
                       4. Lokasi / Channel Testing
                     </label>
-                    <Input
-                      placeholder="Cabang Kramat Jati & Rawamangun / Online Meet..."
-                      value={planForm.lokasiChannelTesting}
-                      disabled={!canEditCv || isSectionAbcLocked}
-                      className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                      onChange={(e) => setPlanForm({ ...planForm, lokasiChannelTesting: e.target.value })}
-                    />
+                    {isSectionAbcLocked ? (
+                      <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 text-sm font-semibold text-slate-900">
+                        {planForm.lokasiChannelTesting || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                      </div>
+                    ) : (
+                      <Input
+                        placeholder="Cabang Kramat Jati & Rawamangun / Online Meet..."
+                        value={planForm.lokasiChannelTesting}
+                        disabled={!canEditCv}
+                        onChange={(e) => setPlanForm({ ...planForm, lokasiChannelTesting: e.target.value })}
+                      />
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     5. Metode Rekrutmen
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Cara mendapatkan responden dan pihak yang bertanggung jawab merekrut..."
-                    value={planForm.metodeRekrutmen}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, metodeRekrutmen: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.metodeRekrutmen || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Cara mendapatkan responden dan pihak yang bertanggung jawab merekrut..."
+                      value={planForm.metodeRekrutmen}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, metodeRekrutmen: e.target.value })}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-xs font-bold text-gray-700">
                     6. Etika dan Persetujuan Data
                   </label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Persetujuan penggunaan data, kerahasiaan, dokumentasi, dan perlindungan responden..."
-                    value={planForm.etikaPersetujuanData}
-                    disabled={!canEditCv || isSectionAbcLocked}
-                    className={isSectionAbcLocked ? "bg-gray-50/80 cursor-not-allowed text-gray-700" : ""}
-                    onChange={(e) => setPlanForm({ ...planForm, etikaPersetujuanData: e.target.value })}
-                  />
+                  {isSectionAbcLocked ? (
+                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                      {planForm.etikaPersetujuanData || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                    </div>
+                  ) : (
+                    <Textarea
+                      rows={2}
+                      placeholder="Persetujuan penggunaan data, kerahasiaan, dokumentasi, dan perlindungan responden..."
+                      value={planForm.etikaPersetujuanData}
+                      disabled={!canEditCv}
+                      onChange={(e) => setPlanForm({ ...planForm, etikaPersetujuanData: e.target.value })}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>
