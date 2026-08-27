@@ -574,6 +574,23 @@ export async function saveCharterAction(
       };
     }
 
+    const isAdmin = Boolean(
+      user.globalRoles.some((r) => ['super_admin', 'admin_ic', 'admin'].includes(r))
+    );
+    const isCoach = Boolean(
+      user.timRoles.some((tr) => tr.timId === timId && tr.roleCode === 'coach') ||
+      user.globalRoles.includes('coach')
+    );
+    const canManageRoles = isAdmin || isCoach;
+
+    // Strict server-side validation: only Admin and Coach can modify team role structure
+    if (roleAssignments !== undefined && !canManageRoles) {
+      return {
+        success: false,
+        error: 'Forbidden: Struktur Role & Akuntabilitas Tim hanya dapat diubah oleh Innovation Coach atau Admin.',
+      };
+    }
+
     // 1. Save or update Charter
     const [existing] = await db.select().from(charter).where(eq(charter.timInovatorId, timId)).limit(1);
     let charterId = existing?.id;
@@ -700,102 +717,104 @@ export async function saveCharterAction(
       }
     }
 
-    // 3. Process Role & Accountability Assignments
-    const standardRoleCodes: RoleAssignmentItem['roleCode'][] = [
-      'sponsor',
-      'promotor',
-      'project_owner',
-      'inisiator',
-      'co_creator',
-      'coach',
-      'sme',
-    ];
+    // 3. Process Role & Accountability Assignments (Only if user has role management permission)
+    if (canManageRoles && Array.isArray(roleAssignments)) {
+      const standardRoleCodes: RoleAssignmentItem['roleCode'][] = [
+        'sponsor',
+        'promotor',
+        'project_owner',
+        'inisiator',
+        'co_creator',
+        'coach',
+        'sme',
+      ];
 
-    const allActiveUserIds = new Set<string>();
+      const allActiveUserIds = new Set<string>();
 
-    for (const roleCode of standardRoleCodes) {
-      const targetRole = roleMap.get(roleCode);
-      if (!targetRole) continue;
+      for (const roleCode of standardRoleCodes) {
+        const targetRole = roleMap.get(roleCode);
+        if (!targetRole) continue;
 
-      const submittedItems = currentRoleAssignments.filter(
-        (r) => r.roleCode === roleCode && r.userId
-      );
-
-      // Delete existing user_role_tim assignments for this role in this team
-      await db
-        .delete(userRoleTim)
-        .where(
-          and(
-            eq(userRoleTim.timInovatorId, timId),
-            eq(userRoleTim.roleId, targetRole.id)
-          )
+        const submittedItems = currentRoleAssignments.filter(
+          (r) => r.roleCode === roleCode && r.userId
         );
 
-      for (const item of submittedItems) {
-        if (!item.userId) continue;
-        allActiveUserIds.add(item.userId);
-
-        const [assignedUser] = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, item.userId))
-          .limit(1);
-
-        if (assignedUser) {
-          await db
-            .insert(userRoleTim)
-            .values({
-              userId: item.userId,
-              roleId: targetRole.id,
-              timInovatorId: timId,
-            })
-            .onConflictDoNothing();
-
-          const [existingAnggota] = await db
-            .select()
-            .from(anggotaTim)
-            .where(
-              and(
-                eq(anggotaTim.timInovatorId, timId),
-                eq(anggotaTim.userId, item.userId)
-              )
+        // Delete existing user_role_tim assignments for this role in this team
+        await db
+          .delete(userRoleTim)
+          .where(
+            and(
+              eq(userRoleTim.timInovatorId, timId),
+              eq(userRoleTim.roleId, targetRole.id)
             )
+          );
+
+        for (const item of submittedItems) {
+          if (!item.userId) continue;
+          allActiveUserIds.add(item.userId);
+
+          const [assignedUser] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, item.userId))
             .limit(1);
 
-          if (existingAnggota) {
+          if (assignedUser) {
             await db
-              .update(anggotaTim)
-              .set({
-                nama: assignedUser.nama,
-                jabatan: item.jabatan || existingAnggota.jabatan || targetRole.namaRole,
-                unitKerja: item.unitKerja || existingAnggota.unitKerja || 'PT Pegadaian',
-                komitmenDukungan: `Role: ${targetRole.namaRole}`,
-                updatedAt: new Date(),
+              .insert(userRoleTim)
+              .values({
+                userId: item.userId,
+                roleId: targetRole.id,
+                timInovatorId: timId,
               })
-              .where(eq(anggotaTim.id, existingAnggota.id));
-          } else {
-            await db.insert(anggotaTim).values({
-              timInovatorId: timId,
-              userId: item.userId,
-              nama: assignedUser.nama,
-              jabatan: item.jabatan || targetRole.namaRole,
-              unitKerja: item.unitKerja || 'PT Pegadaian',
-              komitmenDukungan: `Role: ${targetRole.namaRole}`,
-            });
+              .onConflictDoNothing();
+
+            const [existingAnggota] = await db
+              .select()
+              .from(anggotaTim)
+              .where(
+                and(
+                  eq(anggotaTim.timInovatorId, timId),
+                  eq(anggotaTim.userId, item.userId)
+                )
+              )
+              .limit(1);
+
+            if (existingAnggota) {
+              await db
+                .update(anggotaTim)
+                .set({
+                  nama: assignedUser.nama,
+                  jabatan: item.jabatan || existingAnggota.jabatan || targetRole.namaRole,
+                  unitKerja: item.unitKerja || existingAnggota.unitKerja || 'PT Pegadaian',
+                  komitmenDukungan: `Role: ${targetRole.namaRole}`,
+                  updatedAt: new Date(),
+                })
+                .where(eq(anggotaTim.id, existingAnggota.id));
+            } else {
+              await db.insert(anggotaTim).values({
+                timInovatorId: timId,
+                userId: item.userId,
+                nama: assignedUser.nama,
+                jabatan: item.jabatan || targetRole.namaRole,
+                unitKerja: item.unitKerja || 'PT Pegadaian',
+                komitmenDukungan: `Role: ${targetRole.namaRole}`,
+              });
+            }
           }
         }
       }
-    }
 
-    // Clean up anggota_tim rows for users no longer assigned to ANY role in this team
-    const existingTeamAnggota = await db
-      .select()
-      .from(anggotaTim)
-      .where(eq(anggotaTim.timInovatorId, timId));
+      // Clean up anggota_tim rows for users no longer assigned to ANY role in this team
+      const existingTeamAnggota = await db
+        .select()
+        .from(anggotaTim)
+        .where(eq(anggotaTim.timInovatorId, timId));
 
-    for (const ang of existingTeamAnggota) {
-      if (ang.userId && !allActiveUserIds.has(ang.userId)) {
-        await db.delete(anggotaTim).where(eq(anggotaTim.id, ang.id));
+      for (const ang of existingTeamAnggota) {
+        if (ang.userId && !allActiveUserIds.has(ang.userId)) {
+          await db.delete(anggotaTim).where(eq(anggotaTim.id, ang.id));
+        }
       }
     }
 

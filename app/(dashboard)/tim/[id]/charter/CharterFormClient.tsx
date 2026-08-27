@@ -38,6 +38,7 @@ import {
   Building2,
   Briefcase,
   ShieldCheck,
+  Lock,
   Stamp,
   RotateCcw,
   Loader2,
@@ -134,6 +135,7 @@ export function CharterFormClient({
   usulanPoHint = null,
   canEdit = true,
   canApprove = false,
+  canEditRoles = false,
   currentUser,
 }: {
   timId: string;
@@ -145,6 +147,7 @@ export function CharterFormClient({
   usulanPoHint?: string | null;
   canEdit?: boolean;
   canApprove?: boolean;
+  canEditRoles?: boolean;
   currentUser?: any;
 }) {
   const [formData, setFormData] = useState({
@@ -254,7 +257,17 @@ export function CharterFormClient({
   const [approving, setApproving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const isAdmin = Boolean(
+    currentUser?.globalRoles?.some((r: string) => ["super_admin", "admin_ic", "admin"].includes(r))
+  );
+  const isCoach = Boolean(
+    currentUser?.timRoles?.some((tr: any) => tr.timId === timId && tr.roleCode === "coach") ||
+    currentUser?.globalRoles?.includes("coach")
+  );
+  const isRolesEditable = Boolean(canEdit && (canEditRoles || isAdmin || isCoach));
+
   const isReadOnly = !canEdit;
+  const isRolesReadOnly = Boolean(isReadOnly || !isRolesEditable);
 
   const handleChange = (field: string, value: string) => {
     if (isReadOnly) return;
@@ -300,7 +313,7 @@ export function CharterFormClient({
   };
 
   const handleAddPerson = (roleCode: RoleAssignmentItem['roleCode']) => {
-    if (isReadOnly) return;
+    if (isRolesReadOnly) return;
     const newItem: RoleAssignmentItem = {
       id: `new-${roleCode}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       roleCode,
@@ -314,12 +327,12 @@ export function CharterFormClient({
   };
 
   const handleRemovePerson = (id?: string) => {
-    if (isReadOnly || !id) return;
+    if (isRolesReadOnly || !id) return;
     setRoleAssignments((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handlePersonUserChange = (id: string, user: SelectedUser | null) => {
-    if (isReadOnly) return;
+    if (isRolesReadOnly) return;
     setRoleAssignments((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -340,7 +353,7 @@ export function CharterFormClient({
     field: 'jabatan' | 'unitKerja',
     value: string
   ) => {
-    if (isReadOnly) return;
+    if (isRolesReadOnly) return;
     setRoleAssignments((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -358,7 +371,7 @@ export function CharterFormClient({
     setStatusMsg(null);
 
     const [resCharter, resSprints] = await Promise.all([
-      saveCharterAction(timId, formData, roleAssignments),
+      saveCharterAction(timId, formData, isRolesEditable ? roleAssignments : undefined),
       saveCharterSprintsAction(
         timId,
         sprints.map((s) => ({
@@ -412,10 +425,13 @@ export function CharterFormClient({
         setRoleAssignments(newItems);
       }
 
-      toast.success("Innovation Charter & Penugasan Tim berhasil disimpan!", "Penyimpanan Berhasil");
+      const successNotice = isRolesEditable
+        ? "Innovation Charter & Penugasan Tim berhasil disimpan!"
+        : "Innovation Charter berhasil disimpan!";
+      toast.success(successNotice, "Penyimpanan Berhasil");
       setStatusMsg({
         type: "success",
-        text: "Innovation Charter & Penugasan Tim Inovator berhasil disimpan!",
+        text: successNotice,
       });
     } else {
       const errMsg = resCharter.error || resSprints.error || "Gagal menyimpan Charter.";
@@ -521,6 +537,12 @@ export function CharterFormClient({
             </div>
 
             <div className="flex items-center gap-2.5">
+              {!isRolesEditable && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 shadow-2xs">
+                  <Lock className="h-3 w-3 text-slate-500" />
+                  <span>Read-Only</span>
+                </span>
+              )}
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5142D6]/10 text-[#5142D6] text-xs font-bold border border-[#5142D6]/20">
                 <UserCheck className="h-3.5 w-3.5" />
                 <span>{roleAssignments.filter((r) => r.userId || r.userName).length} Akun Terdaftar</span>
@@ -538,6 +560,14 @@ export function CharterFormClient({
 
         {expandedSections.roles && (
           <CardContent className="p-0 animate-in fade-in duration-150">
+            {!isRolesEditable && (
+              <div className="p-3 mx-4 sm:mx-5 my-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs flex items-center gap-2.5 shadow-2xs">
+                <ShieldCheck className="h-4 w-4 text-amber-700 shrink-0" />
+                <span>
+                  <strong>Hak Akses Terbatas:</strong> Struktur Role &amp; Akuntabilitas Tim hanya dapat diubah oleh <strong>Innovation Coach</strong> dan <strong>Admin</strong>.
+                </span>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
@@ -604,7 +634,7 @@ export function CharterFormClient({
                             {roleItems.length === 0 ? (
                               <div className="p-3.5 text-gray-400 italic text-xs flex items-center justify-between">
                                 <span>Belum ada orang ditugaskan.</span>
-                                {!isReadOnly && (
+                                {!isRolesReadOnly && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -637,7 +667,7 @@ export function CharterFormClient({
                                       <UserSelectCombobox
                                         value={item.userId || null}
                                         selectedUserData={selectedUser}
-                                        disabled={isReadOnly}
+                                        disabled={isRolesReadOnly}
                                         onChange={(user) =>
                                           handlePersonUserChange(item.id!, user)
                                         }
@@ -650,7 +680,7 @@ export function CharterFormClient({
                                     {/* Jabatan */}
                                     <div>
                                       <Input
-                                        disabled={isReadOnly}
+                                        disabled={isRolesReadOnly}
                                         placeholder="Contoh: Dept Head Digital"
                                         value={item.jabatan || ""}
                                         onChange={(e) =>
@@ -667,7 +697,7 @@ export function CharterFormClient({
                                     {/* Unit Kerja */}
                                     <div>
                                       <Input
-                                        disabled={isReadOnly}
+                                        disabled={isRolesReadOnly}
                                         placeholder="Contoh: Divisi Bisnis Digital"
                                         value={item.unitKerja || ""}
                                         onChange={(e) =>
@@ -683,7 +713,7 @@ export function CharterFormClient({
 
                                     {/* Action Delete */}
                                     <div className="text-center">
-                                      {config.isMulti && !isReadOnly && roleItems.length > 1 && (
+                                      {config.isMulti && !isRolesReadOnly && roleItems.length > 1 && (
                                         <button
                                           type="button"
                                           onClick={() => handleRemovePerson(item.id)}
@@ -700,7 +730,7 @@ export function CharterFormClient({
                             )}
 
                             {/* Multi-add Button for multi-person roles */}
-                            {config.isMulti && !isReadOnly && roleItems.length > 0 && (
+                            {config.isMulti && !isRolesReadOnly && roleItems.length > 0 && (
                               <div className="p-2.5 bg-gray-50/50 border-t border-gray-100 flex justify-end">
                                 <Button
                                   type="button"

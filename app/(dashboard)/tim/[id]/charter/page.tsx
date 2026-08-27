@@ -26,6 +26,15 @@ export default async function CharterPage({
     user ? hasPermission(user, 'charter.approve', tim.id) : Promise.resolve(false),
   ]);
 
+  const isAdmin = Boolean(
+    user?.globalRoles?.some((r: string) => ["super_admin", "admin_ic", "admin"].includes(r))
+  );
+  const isCoach = Boolean(
+    user?.timRoles?.some((tr: any) => tr.timId === tim.id && tr.roleCode === "coach") ||
+    user?.globalRoles?.includes("coach")
+  );
+  const canEditRoles = isAdmin || isCoach;
+
   return (
     <div className="space-y-6">
       <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
@@ -39,6 +48,7 @@ export default async function CharterPage({
         usulanPoHint={initialData.usulanPoHint}
         canEdit={canEdit}
         canApprove={canApprove}
+        canEditRoles={canEditRoles}
         currentUser={user}
       />
     </div>
