@@ -291,13 +291,18 @@ export function DashboardClient({
         <CardContent className="pt-4 space-y-3">
           {hasActiveSprint ? (
             <>
-              {/* Sprint Goal */}
-              <div className="p-3.5 bg-[#F0F7F1] rounded-xl border border-[#C9E4D0] space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#0B3D2E]">
-                  <Target className="h-3.5 w-3.5 text-[#3E9463]" />
-                  <span>Sprint Goal:</span>
+              {/* Sprint Goal — Highlight & Large Typography */}
+              <div className="p-4 bg-gradient-to-r from-[#EAF5EC] via-[#F0F7F1] to-white rounded-xl border border-[#C9E4D0] border-l-4 border-l-[#3E9463] shadow-xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-[#0B3D2E] text-white shadow-xs">
+                    <Target className="h-3.5 w-3.5 text-[#A8EDBB]" />
+                    <span>Sprint Goal</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-[#3E9463]">
+                    Fokus Utama Tim di Sprint Ini
+                  </span>
                 </div>
-                <p className="text-xs text-gray-800 font-medium leading-relaxed pl-5 italic">
+                <p className="text-sm sm:text-base font-extrabold text-[#0B3D2E] leading-snug tracking-tight pl-1">
                   {activeSprintGoal ? `"${activeSprintGoal}"` : "Sprint goal belum ditentukan pada perencanaan sprint ini."}
                 </p>
               </div>
