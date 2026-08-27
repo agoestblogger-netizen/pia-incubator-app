@@ -97,12 +97,19 @@ export function SprintPlanningSection({
   const [tempSubtaskCapacityVal, setTempSubtaskCapacityVal] = useState<number | "">("");
   const [savingCapacity, setSavingCapacity] = useState(false);
 
-  // Admin status check
+  // Admin & Coach status check
+  const userRole = (currentUser?.role || "").toLowerCase();
   const isAdmin = propIsAdmin ?? Boolean(
     currentUser?.globalRoles?.some((r: string) =>
       ["super_admin", "admin_ic", "admin"].includes(r)
-    )
+    ) || ["super_admin", "admin_ic", "admin"].includes(userRole)
   );
+  const isCoach = Boolean(
+    userRole === "coach" ||
+    userRole === "innovation_coach" ||
+    currentUser?.globalRoles?.some((r: string) => ["coach", "innovation_coach"].includes(r))
+  );
+  const isAdminOrCoach = isAdmin || isCoach;
 
   // Sprint Goal state & auto-suggestion
   const [savedGoal, setSavedGoal] = useState<string>(sprint.sprintGoal || "");
@@ -113,7 +120,7 @@ export function SprintPlanningSection({
 
   // Check if goal is already saved
   const isGoalSaved = Boolean(savedGoal && savedGoal.trim().length > 0);
-  const isGoalLocked = isGoalSaved && !isAdmin;
+  const isGoalLocked = isGoalSaved && !isAdminOrCoach;
 
   // Phase gating check
   const isCvUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
@@ -371,10 +378,10 @@ export function SprintPlanningSection({
                     <span>Saran Otomatis AI</span>
                   </span>
                 ) : null}
-                {isGoalSaved && isAdmin && (
+                {isGoalSaved && isAdminOrCoach && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-900 bg-purple-200 px-2 py-0.5 rounded-full border border-purple-300 shadow-2xs">
                     <ShieldCheck className="h-3 w-3 text-purple-700" />
-                    <span>Mode Admin — Kunci dilewati</span>
+                    <span>Mode {isAdmin ? "Admin" : "Coach"} — Kunci dilewati</span>
                   </span>
                 )}
               </h3>
@@ -384,7 +391,7 @@ export function SprintPlanningSection({
             </div>
           </div>
 
-          {canEdit && (!isGoalSaved || isAdmin) && (
+          {canEdit && (!isGoalSaved || isAdminOrCoach) && (
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -393,14 +400,14 @@ export function SprintPlanningSection({
                 onClick={handleFetchAiSuggestion}
                 disabled={loadingSuggestion || savingGoal}
                 className="h-7 text-[11px] font-semibold text-purple-700 hover:text-purple-800 hover:bg-purple-100/60 gap-1 px-2.5 rounded-lg cursor-pointer"
-                title="Generate ulang saran Sprint Goal dari backlog aktual"
+                title="Generate saran Sprint Goal dari backlog aktual"
               >
                 {loadingSuggestion ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <Sparkles className="h-3 w-3 text-amber-500" />
                 )}
-                <span>Saran Ulang AI</span>
+                <span>{isGoalSaved ? "Saran Ulang AI" : "Saran Otomatis AI"}</span>
               </Button>
               <Button
                 type="button"

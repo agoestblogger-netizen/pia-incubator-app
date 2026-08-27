@@ -493,19 +493,21 @@ export async function updateSprintGoalAction(timId: string, sprintId: string, sp
       return { success: false, error: "Sprint tidak ditemukan." };
     }
 
-    const isAdmin = user.globalRoles.some((r) =>
-      ["super_admin", "admin_ic", "admin"].includes(r)
-    );
+    const isAdmin = user.globalRoles.some((r) => ["super_admin", "admin_ic", "admin"].includes(r));
+    const isCoach =
+      user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
+      user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
 
-    // If goal is already saved and non-empty, only admin can update it
+    // If goal is already saved and non-empty, only admin or coach can update it
     if (
       currentSprint.sprintGoal &&
       currentSprint.sprintGoal.trim().length > 0 &&
-      !isAdmin
+      !isAdmin &&
+      !isCoach
     ) {
       return {
         success: false,
-        error: "Sprint Goal telah disimpan dan dikunci. Hanya Admin yang dapat mengubahnya.",
+        error: "Sprint Goal telah disimpan dan dikunci. Hanya Admin dan Innovation Coach yang dapat mengubahnya.",
       };
     }
 
@@ -544,6 +546,28 @@ export async function updateSprintGoalAction(timId: string, sprintId: string, sp
 
 export async function getSuggestedSprintGoalAction(timId: string, sprintNumber: number) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const [currentSprint] = await db
+      .select({ sprintGoal: sprint.sprintGoal })
+      .from(sprint)
+      .where(and(eq(sprint.timInovatorId, timId), eq(sprint.nomorSprint, sprintNumber)))
+      .limit(1);
+
+    const isGoalSaved = !!(currentSprint?.sprintGoal && currentSprint.sprintGoal.trim().length > 0);
+    const isAdmin = user.globalRoles.some((r) => ["super_admin", "admin_ic", "admin"].includes(r));
+    const isCoach =
+      user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
+      user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
+
+    if (isGoalSaved && !isAdmin && !isCoach) {
+      return {
+        success: false,
+        error: "Sprint Goal sudah tersimpan. Regenerasi saran AI hanya diizinkan untuk Admin dan Innovation Coach.",
+      };
+    }
+
     // ── 1. Get all sprints for this team (to determine position) ───────────
     const allSprints = await db
       .select({ id: sprint.id, nomorSprint: sprint.nomorSprint })

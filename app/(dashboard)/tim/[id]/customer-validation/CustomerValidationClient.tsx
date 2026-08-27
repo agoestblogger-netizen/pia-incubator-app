@@ -226,10 +226,30 @@ export function CustomerValidationClient({
 }) {
   const router = useRouter();
 
-  // ── Admin & Sign Lock States ───────────────────────────────────────────────
+  // ── Admin, Coach & Data State Flags ─────────────────────────────────────────
+  const userRole = (currentUser?.role || "").toLowerCase();
   const isAdmin = Boolean(
-    currentUser?.globalRoles?.some((r: string) => ['super_admin', 'admin_ic', 'admin'].includes(r))
+    currentUser?.globalRoles?.some((r: string) => ['super_admin', 'admin_ic', 'admin'].includes(r)) ||
+    ['super_admin', 'admin_ic', 'admin'].includes(userRole)
   );
+  const isCoach = Boolean(
+    userRole === 'coach' ||
+    userRole === 'innovation_coach' ||
+    currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r))
+  );
+  const isAdminOrCoach = isAdmin || isCoach;
+
+  const isCvPlanFilled = Boolean(
+    initialData?.plan?.id &&
+    [
+      initialData?.plan?.projectMission,
+      initialData?.plan?.customerDanContext,
+      initialData?.plan?.problemHypothesis,
+      initialData?.plan?.solutionHypothesis,
+    ].some((f) => f && f.trim().length > 0)
+  );
+
+  const hasCvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi CV");
 
   // ── Plan state ─────────────────────────────────────────────────────────────
   const [planForm, setPlanForm] = useState({
@@ -775,7 +795,7 @@ export function CustomerValidationClient({
                       Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
                     </CardDescription>
                   </div>
-                  {canEditCv && !isSectionAbcLocked && (
+                  {canEditCv && !isSectionAbcLocked && (!isCvPlanFilled || isAdminOrCoach) && (
                     <Button
                       type="button"
                       variant="outline"
@@ -789,7 +809,13 @@ export function CustomerValidationClient({
                       ) : (
                         <Wand2 className="h-3.5 w-3.5 text-amber-500" />
                       )}
-                      <span>{autoFillingFromCharter ? "Mengisi otomatis..." : "✨ Isi Ulang Otomatis (Charter + AI)"}</span>
+                      <span>
+                        {autoFillingFromCharter
+                          ? "Mengisi otomatis..."
+                          : isCvPlanFilled
+                          ? "✨ Isi Ulang Otomatis (Charter + AI)"
+                          : "✨ Isi Otomatis (Charter + AI)"}
+                      </span>
                     </Button>
                   )}
                 </div>
@@ -1305,7 +1331,7 @@ export function CustomerValidationClient({
             {/* ── ACTION BUTTONS: Simpan Plan & Admin Re-generate ────────────── */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <div>
-                {isAdmin && initialData?.plan?.id && (
+                {canEditCv && initialData?.plan?.id && (!hasCvRecCards || isAdminOrCoach) && (
                   <Button
                     type="button"
                     onClick={handleGenerateBacklog}
@@ -1317,7 +1343,13 @@ export function CustomerValidationClient({
                     ) : (
                       <Sparkles className="h-4 w-4 text-amber-300" />
                     )}
-                    <span>{generatingBacklog ? "Menghasilkan..." : "✨ Generate Ulang Backlog (Admin)"}</span>
+                    <span>
+                      {generatingBacklog
+                        ? "Menghasilkan..."
+                        : hasCvRecCards
+                        ? "✨ Generate Ulang Backlog (Admin / Coach)"
+                        : "✨ Generate Rekomendasi Backlog (AI)"}
+                    </span>
                   </Button>
                 )}
               </div>
@@ -1662,7 +1694,7 @@ export function CustomerValidationClient({
                 <strong>Workspace Backlog &amp; Sprint: Customer Validation</strong> &mdash; Kelola sprint planning, penugasan story point, dan eksekusi kartu validasi pelanggan.
               </div>
             </div>
-            {isAdmin && initialData?.plan?.id && (
+            {canEditCv && initialData?.plan?.id && (!hasCvRecCards || isAdminOrCoach) && (
               <Button
                 type="button"
                 size="sm"
@@ -1675,7 +1707,13 @@ export function CustomerValidationClient({
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5 text-amber-300" />
                 )}
-                <span>{generatingBacklog ? "Menghasilkan..." : "Generate Ulang Backlog (Admin)"}</span>
+                <span>
+                  {generatingBacklog
+                    ? "Menghasilkan..."
+                    : hasCvRecCards
+                    ? "Generate Ulang Backlog (Admin / Coach)"
+                    : "Generate Rekomendasi Backlog (AI)"}
+                </span>
               </Button>
             )}
           </div>

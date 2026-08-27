@@ -798,6 +798,29 @@ export async function generateMvBacklogAction(timId: string) {
       };
     }
 
+    // Check if Rekomendasi MV cards already exist
+    const existingMvRecCards = await db
+      .select({ id: kanbanCard.id })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.label, "Rekomendasi MV")
+        )
+      );
+
+    const isAdmin = user.globalRoles.some((r) => ["super_admin", "admin_ic", "admin"].includes(r));
+    const isCoach =
+      user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
+      user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
+
+    if (existingMvRecCards.length > 0 && !isAdmin && !isCoach) {
+      return {
+        success: false,
+        error: "Rekomendasi Backlog Market Validation sudah ada. Regenerasi backlog hanya diizinkan untuk Admin dan Innovation Coach.",
+      };
+    }
+
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
     const namaProyek = tim?.namaProyekInovasi || "Proyek Inovasi";
 

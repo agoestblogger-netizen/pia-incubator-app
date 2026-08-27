@@ -247,6 +247,20 @@ export function MarketValidationClient({
   phaseGateStatus?: any;
 }) {
   const [activeTab, setActiveTab] = useState("plan");
+
+  // ── Admin, Coach & Data State Flags ─────────────────────────────────────────
+  const userRole = (currentUser?.role || "").toLowerCase();
+  const isAdmin = Boolean(
+    currentUser?.globalRoles?.some((r: string) => ['super_admin', 'admin_ic', 'admin'].includes(r)) ||
+    ['super_admin', 'admin_ic', 'admin'].includes(userRole)
+  );
+  const isCoach = Boolean(
+    userRole === 'coach' ||
+    userRole === 'innovation_coach' ||
+    currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r))
+  );
+  const isAdminOrCoach = isAdmin || isCoach;
+  const hasMvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
     initialData?.plan?.hasilCustomerValidationRingkasan ||
@@ -827,7 +841,7 @@ export function MarketValidationClient({
             <span>📄 Unduh PDF Laporan MV</span>
           </a>
 
-          {canEdit && (
+          {canEdit && (!hasMvRecCards || isAdminOrCoach) && (
             <Button
               type="button"
               variant="outline"
@@ -841,7 +855,13 @@ export function MarketValidationClient({
               ) : (
                 <Sparkles className="h-3.5 w-3.5 text-[#F0C24B]" />
               )}
-              <span>{generatingBacklog ? "Menghasilkan..." : "✨ Generate Rekomendasi Backlog"}</span>
+              <span>
+                {generatingBacklog
+                  ? "Menghasilkan..."
+                  : hasMvRecCards
+                  ? "✨ Generate Ulang Backlog (Admin / Coach)"
+                  : "✨ Generate Rekomendasi Backlog"}
+              </span>
             </Button>
           )}
         </div>
@@ -1908,7 +1928,7 @@ export function MarketValidationClient({
               </div>
             </div>
 
-            {canEdit && (
+            {canEdit && (!hasMvRecCards || isAdminOrCoach) && (
               <Button
                 type="button"
                 size="sm"
@@ -1922,7 +1942,13 @@ export function MarketValidationClient({
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5 text-[#3E9463]" />
                 )}
-                <span>{generatingBacklog ? "Menghasilkan..." : "Generate Ulang Rekomendasi Backlog"}</span>
+                <span>
+                  {generatingBacklog
+                    ? "Menghasilkan..."
+                    : hasMvRecCards
+                    ? "Generate Ulang Rekomendasi Backlog (Admin / Coach)"
+                    : "Generate Rekomendasi Backlog"}
+                </span>
               </Button>
             )}
           </div>

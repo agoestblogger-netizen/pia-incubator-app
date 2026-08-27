@@ -303,6 +303,29 @@ export async function generateCvBacklogAction(timId: string) {
       };
     }
 
+    // Check if Rekomendasi CV cards already exist
+    const existingCvRecCards = await db
+      .select({ id: kanbanCard.id })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.label, "Rekomendasi CV")
+        )
+      );
+
+    const isAdmin = user.globalRoles.some((r) => ["super_admin", "admin_ic", "admin"].includes(r));
+    const isCoach =
+      user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
+      user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
+
+    if (existingCvRecCards.length > 0 && !isAdmin && !isCoach) {
+      return {
+        success: false,
+        error: "Rekomendasi Backlog CV sudah ada. Regenerasi backlog hanya diizinkan untuk Admin dan Innovation Coach.",
+      };
+    }
+
     const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
     const namaProyek = tim?.namaProyekInovasi || 'Proyek Inovasi';
 
@@ -554,6 +577,35 @@ export async function autoFillFullCvPlanAction(timId: string) {
 
     if (!charterRow) {
       return { success: false, error: 'Innovation Charter belum ditemukan untuk tim ini.' };
+    }
+
+    // Check if CV Plan already exists and has data (regenerate protection)
+    const [existingPlan] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+
+    const isPlanFilled = Boolean(
+      existingPlan &&
+      [
+        existingPlan.projectMission,
+        existingPlan.customerDanContext,
+        existingPlan.problemHypothesis,
+        existingPlan.solutionHypothesis,
+      ].some((f) => f && f.trim().length > 0)
+    );
+
+    const isAdmin = user.globalRoles.some((r) => ["super_admin", "admin_ic", "admin"].includes(r));
+    const isCoach =
+      user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
+      user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
+
+    if (isPlanFilled && !isAdmin && !isCoach) {
+      return {
+        success: false,
+        error: "Form Perencanaan CV sudah terisi. Pengisian ulang otomatis dengan AI hanya diizinkan untuk Admin dan Innovation Coach.",
+      };
     }
 
     const hasData = [
