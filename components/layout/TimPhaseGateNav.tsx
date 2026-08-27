@@ -54,6 +54,7 @@ export function TimPhaseGateNav({
   });
 
   const { timId, namaTim, activeSprint, gates } = phaseGateStatus;
+  const isDashboardActive = pathname.startsWith(`/tim/${timId}/dashboard`);
 
   // ── 3 Kotak Fase Resmi ─────────────────────────────────────────────────────
   const gateItems = [
@@ -139,32 +140,39 @@ export function TimPhaseGateNav({
           </h1>
         </div>
 
-        {/* Baris Tombol Menu: Dashboard (Segera Hadir) */}
+        {/* Baris Tombol Menu: Dashboard */}
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/15">
-          {/* Dashboard — disabled, Segera Hadir */}
-          <button
-            type="button"
-            disabled
+          {/* Tombol Dashboard Tim (Aktif) */}
+          <Link
+            href={`/tim/${timId}/dashboard`}
             style={{
-              backgroundColor: "#0B3D2E",
-              color: "#FFFFFF",
-              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2)",
+              boxShadow: isDashboardActive
+                ? "0 0 0 2px #FEE388, 0 4px 12px rgba(0, 0, 0, 0.4)"
+                : "0 2px 6px rgba(0, 0, 0, 0.25)",
             }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-white/30 cursor-not-allowed select-none transition-all opacity-100"
-            title="Fitur Dashboard Ringkasan & Statistik Tim Segera Hadir"
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold border transition-all cursor-pointer select-none ${
+              isDashboardActive
+                ? "bg-[#FEE388] text-[#0B3D2E] border-[#FEE388] shadow-md scale-102"
+                : "bg-[#0B3D2E]/90 hover:bg-[#0B3D2E] text-white border-white/30 hover:border-white/60 shadow-xs"
+            }`}
+            title="Buka Dashboard Ringkasan & Statistik Real-Time Tim"
           >
-            <BarChart3 className="h-3.5 w-3.5 text-white shrink-0" />
-            <span className="text-white">Dashboard</span>
-            <span
-              style={{
-                backgroundColor: "#FEE388",
-                color: "#0B3D2E",
-              }}
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs"
-            >
-              Segera Hadir
-            </span>
-          </button>
+            <BarChart3
+              className={`h-3.5 w-3.5 shrink-0 ${
+                isDashboardActive ? "text-[#0B3D2E]" : "text-[#FEE388]"
+              }`}
+            />
+            <span>Dashboard</span>
+            {isDashboardActive ? (
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#0B3D2E] text-[#FEE388]">
+                Aktif
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-700/80 text-white">
+                Baru
+              </span>
+            )}
+          </Link>
         </div>
       </div>
 
