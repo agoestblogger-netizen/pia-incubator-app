@@ -1483,7 +1483,7 @@ export function CustomerValidationClient({
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 w-40">Validasi</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[190px]">Validasi</th>
                         <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[160px]">Metrik</th>
                         <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[140px]">Unit Ukur</th>
                         <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[180px]">Kriteria Kesuksesan</th>
@@ -1502,7 +1502,7 @@ export function CustomerValidationClient({
                                 newRows[index].validasi = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className={`w-full text-[11px] font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
+                              className={`w-full text-[11px] font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border whitespace-normal ${
                                 r.validasi?.trim() === "Desirability"
                                   ? "bg-blue-50 text-blue-700 border-blue-200"
                                   : r.validasi?.trim() === "Feasibility On Paper"
