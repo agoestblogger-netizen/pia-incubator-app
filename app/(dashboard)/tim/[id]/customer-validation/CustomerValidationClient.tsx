@@ -601,37 +601,41 @@ export function CustomerValidationClient({
     try {
       const res = await autoFillFullCvPlanAction(timId);
       if (res.success && res.data) {
+        // ✅ Separate dimensiRows/metrikRows from planForm fields — they must NOT go into planForm state
+        const { dimensiRows: aiDimensiRows, metrikRows: aiMetrikRows, ...planFields } = res.data as any;
+
+        // Update only the planForm text fields
         setPlanForm((prev) => ({
           ...prev,
-          ...res.data,
+          ...planFields,
         }));
-        
-        if (res.data.dimensiRows && res.data.dimensiRows.length > 0) {
-          // ensure all rows have unique IDs
-          const newDimensiRows = res.data.dimensiRows.map((r: any) => ({
+
+        // Update Section D with stable IDs (no Math.random to avoid hydration issues)
+        if (aiDimensiRows && aiDimensiRows.length > 0) {
+          setDimensiRows(aiDimensiRows.map((r: any, i: number) => ({
             ...r,
-            id: Math.random().toString(36).substring(7)
-          }));
-          setDimensiRows(newDimensiRows);
+            id: `fill_d${i}`,
+          })));
         }
 
-        if (res.data.metrikRows && res.data.metrikRows.length > 0) {
-          const newMetrikRows = res.data.metrikRows.map((r: any) => ({
+        // Update Section E with stable IDs
+        if (aiMetrikRows && aiMetrikRows.length > 0) {
+          setMetrikRows(aiMetrikRows.map((r: any, i: number) => ({
             ...r,
-            id: Math.random().toString(36).substring(7)
-          }));
-          setMetrikRows(newMetrikRows);
+            id: `fill_m${i}`,
+          })));
         }
 
         toast.success(
           "Form Perencanaan CV berhasil diisi otomatis dari Innovation Charter & AI. Tinjau dan simpan jika sudah sesuai.",
-          "Auto-Fill Berhasil"
+          "Auto-Fill Berhasil",
+          6000
         );
       } else {
-        toast.error(res.error || "Gagal mengambil data draf otomatis.", "Auto-Fill Gagal");
+        toast.error(res.error || "Gagal mengambil data draf otomatis.", "Auto-Fill Gagal", 6000);
       }
     } catch (err: any) {
-      toast.error(err.message || "Terjadi kesalahan saat auto-fill.", "Gagal");
+      toast.error(err.message || "Terjadi kesalahan saat auto-fill.", "Gagal", 6000);
     } finally {
       setAutoFillingFromCharter(false);
     }
