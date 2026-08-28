@@ -1477,7 +1477,15 @@ export function CustomerValidationClient({
                                 newRows[index].validasi = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="w-full text-[11px] font-bold text-gray-700 bg-white border border-gray-300 rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
+                              className={`w-full text-[11px] font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
+                                r.validasi === "Desirability"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : r.validasi === "Feasibility On Paper"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : r.validasi === "Viability On Paper"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                                  : "bg-white text-gray-700 border-gray-300"
+                              }`}
                             >
                               <option value="Desirability">Desirability</option>
                               <option value="Feasibility On Paper">Feasibility On Paper</option>
