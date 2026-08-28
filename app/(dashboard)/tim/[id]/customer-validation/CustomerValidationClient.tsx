@@ -1502,15 +1502,16 @@ export function CustomerValidationClient({
                                 newRows[index].validasi = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className={`w-full text-[11px] font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border whitespace-normal ${
+                              className="w-full text-[11px] font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border"
+                              style={
                                 r.validasi?.trim() === "Desirability"
-                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  ? { backgroundColor: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }
                                   : r.validasi?.trim() === "Feasibility On Paper"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  ? { backgroundColor: "#fffbeb", color: "#b45309", borderColor: "#fde68a" }
                                   : r.validasi?.trim() === "Viability On Paper"
-                                  ? "bg-purple-50 text-purple-700 border-purple-200"
-                                  : "bg-white text-gray-700 border-gray-300"
-                              }`}
+                                  ? { backgroundColor: "#faf5ff", color: "#7e22ce", borderColor: "#e9d5ff" }
+                                  : { backgroundColor: "#ffffff", color: "#374151", borderColor: "#d1d5db" }
+                              }
                             >
                               <option value="Desirability">Desirability</option>
                               <option value="Feasibility On Paper">Feasibility On Paper</option>
