@@ -395,8 +395,8 @@ export function CustomerValidationClient({
   // ── Dimensi feedback state ─────────────────────────────────────────────────
   const initDimensi = () => {
     if (initialData?.dimensiFeedback && initialData.dimensiFeedback.length > 0) {
-      return initialData.dimensiFeedback.map((r: any) => ({
-        id: r.id || Math.random().toString(36).substring(7),
+      return initialData.dimensiFeedback.map((r: any, i: number) => ({
+        id: r.id || `db_d${i}`,
         dimensi: r.dimensi || "",
         fokusValidasi: r.fokusValidasi || "",
         contohPertanyaan: r.contohPertanyaan || "",
@@ -404,8 +404,8 @@ export function CustomerValidationClient({
       }));
     }
     // Default 4 rows (Usability, Functionality, Solvability, Payability)
-    return DIMENSI_ROWS.slice(0, 4).map((d) => ({
-      id: Math.random().toString(36).substring(7),
+    return DIMENSI_ROWS.slice(0, 4).map((d, i) => ({
+      id: `default_d${i}`,
       dimensi: d.label,
       fokusValidasi: d.fokus,
       contohPertanyaan: d.contoh,
@@ -417,8 +417,8 @@ export function CustomerValidationClient({
   // ── Metrik catatan state ───────────────────────────────────────────────────
   const initMetrik = () => {
     if (initialData?.metrikRencana && initialData.metrikRencana.length > 0) {
-      return initialData.metrikRencana.map((r: any) => ({
-        id: r.id || Math.random().toString(36).substring(7),
+      return initialData.metrikRencana.map((r: any, i: number) => ({
+        id: r.id || `db_m${i}`,
         validasi: r.validasi || "Desirability",
         metrik: r.metrik || "",
         unitUkuran: r.unitUkuran || "",
@@ -429,9 +429,9 @@ export function CustomerValidationClient({
     }
     // Default 3 rows
     return [
-      { id: Math.random().toString(36).substring(7), validasi: "Desirability", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
-      { id: Math.random().toString(36).substring(7), validasi: "Feasibility On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
-      { id: Math.random().toString(36).substring(7), validasi: "Viability On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" }
+      { id: "default_m0", validasi: "Desirability", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
+      { id: "default_m1", validasi: "Feasibility On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
+      { id: "default_m2", validasi: "Viability On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" }
     ];
   };
   const [metrikRows, setMetrikRows] = useState<any[]>(initMetrik);
