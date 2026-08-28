@@ -358,10 +358,20 @@ export function CustomerValidationClient({
   // ── Tab state ─────────────────────────────────────────────────────────────
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
+
+  // Land on 'backlog' by default if all 3 plan signatures are complete
+  const allPlanSignedOnLoad = Boolean(
+    initialData?.plan?.ttdDisusun?.status === "signed" &&
+    initialData?.plan?.ttdDiperiksa?.status === "signed" &&
+    initialData?.plan?.ttdDisetujui?.status === "signed"
+  );
+
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (tabParam === "report") return "report";
     if (tabParam === "backlog") return "backlog";
-    return "plan";
+    if (tabParam === "plan") return "plan";
+    // No explicit ?tab= param: auto-land on backlog tab if all signatures done
+    return allPlanSignedOnLoad ? "backlog" : "plan";
   });
 
   useEffect(() => {
@@ -595,7 +605,7 @@ export function CustomerValidationClient({
       } else {
         toast.success("Customer Validation Plan berhasil disimpan!", "Plan Tersimpan");
       }
-      setActiveTab("backlog");
+      // Do NOT auto-navigate — user stays on current tab after save
       router.refresh();
     } else {
       toast.error((res as any).error || "Gagal menyimpan.", "Gagal Menyimpan");

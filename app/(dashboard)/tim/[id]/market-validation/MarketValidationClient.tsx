@@ -252,7 +252,13 @@ export function MarketValidationClient({
     report?: { po?: boolean; coach?: boolean; promotor?: boolean };
   };
 }) {
-  const [activeTab, setActiveTab] = useState("plan");
+  // Land on 'backlog' by default if all 3 MVP Release Plan signatures are complete
+  const allMvPlanSignedOnLoad = Boolean(
+    initialData?.plan?.ttdDisusun?.status === "signed" &&
+    initialData?.plan?.ttdDiperiksa?.status === "signed" &&
+    initialData?.plan?.ttdDisetujui?.status === "signed"
+  );
+  const [activeTab, setActiveTab] = useState(allMvPlanSignedOnLoad ? "backlog" : "plan");
 
   // ── Admin, Coach & Data State Flags ─────────────────────────────────────────
   const userRole = (currentUser?.role || "").toLowerCase();
