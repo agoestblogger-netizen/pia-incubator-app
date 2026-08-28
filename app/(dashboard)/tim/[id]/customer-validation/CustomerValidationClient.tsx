@@ -904,6 +904,7 @@ export function CustomerValidationClient({
                     href={`/api/pdf/cv-planning/${timId}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    download={`Perencanaan-CustomerValidation-${timId}.pdf`}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer"
                   >
                     <Download className="h-4 w-4 text-emerald-600" />
@@ -2166,6 +2167,7 @@ export function CustomerValidationClient({
                 href={`/api/pdf/cv-report/${timId}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                download={`Laporan-CustomerValidation-${timId}.pdf`}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border-2 border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-extrabold shadow-2xs transition-all active:scale-98"
               >
                 <Download className="h-4 w-4 text-[#3E9463]" />

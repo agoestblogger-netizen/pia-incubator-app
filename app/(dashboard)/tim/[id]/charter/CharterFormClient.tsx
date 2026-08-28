@@ -575,6 +575,7 @@ export function CharterFormClient({
             href={`/api/pdf/charter/${timId}`}
             target="_blank"
             rel="noopener noreferrer"
+            download={`Innovation-Charter-${timId}.pdf`}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer hover:shadow-xs"
             title="Unduh dokumen resmi Template 1 Innovation Charter format PDF"
           >

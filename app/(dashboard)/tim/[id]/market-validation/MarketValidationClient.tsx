@@ -906,6 +906,7 @@ export function MarketValidationClient({
             href={`/api/pdf/mv-report/${timId}`}
             target="_blank"
             rel="noopener noreferrer"
+            download={`Laporan-MarketValidation-${timId}.pdf`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-2xs transition-colors"
           >
             <Download className="h-3.5 w-3.5 text-[#0B3D2E]" />
