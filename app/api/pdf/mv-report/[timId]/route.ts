@@ -110,15 +110,18 @@ export async function GET(
     const pdfBuffer = await renderToBuffer(documentElement as any);
 
     const safeTimName = (tim.namaProyekInovasi || 'Tim')
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .slice(0, 50);
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 50) || 'Tim';
     const filename = `Laporan_Market_Validation_${safeTimName}.pdf`;
+    const filenameEncoded = encodeURIComponent(filename);
 
     return new NextResponse(pdfBuffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${filenameEncoded}`,
         'Cache-Control': 'no-store, max-age=0',
       },
     });

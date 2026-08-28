@@ -198,14 +198,17 @@ export async function GET(
     const buffer = await renderToBuffer(documentElement as any);
 
     const safeName = (tim.namaProyekInovasi || 'Tim')
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .slice(0, 50);
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 50) || 'Tim';
     const filename = `Laporan-CustomerValidation-${safeName}.pdf`;
+    const filenameEncoded = encodeURIComponent(filename);
 
     return new NextResponse(buffer as any, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${filenameEncoded}`,
         'Cache-Control': 'no-store, max-age=0',
       },
     });
