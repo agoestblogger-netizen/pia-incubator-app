@@ -1466,18 +1466,6 @@ export async function deleteTaskSubtaskAction(subtaskId: string, timId: string) 
       return { success: false, error: "Subtask tidak ditemukan." };
     }
 
-    const isBakuCv =
-      detectCvBakuCardType(st.cardJudul, st.cardTahap || undefined) !== null ||
-      st.cardLabel === "Template Baku CV";
-    const isMandatoryMv = isMvMandatoryCard(st.cardJudul, st.cardTahap || undefined);
-
-    if (isBakuCv || isMandatoryMv) {
-      return {
-        success: false,
-        error: `Subtask pada kartu ${isBakuCv ? "Template Baku CV" : "WAJIB Market Validation"} tidak dapat dihapus karena merupakan bagian dari struktur baku resmi Juklak.`,
-      };
-    }
-
     if (st.subtaskType && st.subtaskType !== "regular") {
       return {
         success: false,

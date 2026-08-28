@@ -2997,12 +2997,6 @@ export function KanbanClient({
                                 const hasProof = attachments.length > 0;
                                 const isPopoverOpen = activeSubtaskPopoverId === st.id;
                                 const isMandatory = st.subtaskType === 'mandatory_simple' || st.subtaskType === 'mandatory_complex';
-                                const isCardProtected = selectedCardForDetail
-                                  ? detectCvBakuCardType(detailJudul || selectedCardForDetail.judul, detailTahap || selectedCardForDetail.tahap) !== null ||
-                                    detailLabel === "Template Baku CV" ||
-                                    selectedCardForDetail.label === "Template Baku CV" ||
-                                    isMvMandatoryCard(detailJudul || selectedCardForDetail.judul, detailTahap || selectedCardForDetail.tahap)
-                                  : false;
 
                                 return (
                                   <div
@@ -3195,7 +3189,7 @@ export function KanbanClient({
                                         )}
 
                                         {/* Tombol Hapus Subtask (hanya untuk subtask non-wajib pada kartu non-Baku / non-Wajib) */}
-                                        {canEdit && !isMandatory && !isCardProtected && (
+                                        {canEdit && !isMandatory && (
                                           <button
                                             type="button"
                                             disabled={deletingSubtaskId === st.id}
