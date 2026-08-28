@@ -36,25 +36,19 @@ export async function GET(
       .where(eq(customerValidationPlan.timInovatorId, timId))
       .limit(1);
 
-    let dimensiMap: Record<string, string> = {};
-    let metrikMap: Record<string, string> = {};
+    let dimensiRows: any[] = [];
+    let metrikRows: any[] = [];
 
     if (plan) {
-      const dimensiRows = await db
+      dimensiRows = await db
         .select()
         .from(customerValidationDimensiFeedback)
         .where(eq(customerValidationDimensiFeedback.planId, plan.id));
-      dimensiRows.forEach((r) => {
-        dimensiMap[r.dimensi] = r.evidenceYangDikumpulkan || '';
-      });
 
-      const metrikRows = await db
+      metrikRows = await db
         .select()
         .from(rencanaValidasiMetrik)
         .where(eq(rencanaValidasiMetrik.planId, plan.id));
-      metrikRows.forEach((r) => {
-        metrikMap[r.metrik] = r.catatan || '';
-      });
     }
 
     const pdfData: CvPlanningPdfData = {
@@ -80,8 +74,8 @@ export async function GET(
       metodeRekrutmen: plan?.metodeRekrutmen,
       etikaPersetujuanData: plan?.etikaPersetujuanData,
       // Section D & E
-      dimensiEvidence: dimensiMap,
-      metrikCatatan: metrikMap,
+      dimensiRows: dimensiRows,
+      metrikRows: metrikRows,
       // Signatures
       ttdDisusun: plan?.ttdDisusun as any,
       ttdDiperiksa: plan?.ttdDiperiksa as any,

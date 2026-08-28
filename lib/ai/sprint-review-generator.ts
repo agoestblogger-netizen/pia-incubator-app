@@ -46,7 +46,7 @@ export async function generateSprintReviewAiDraft(
 
     const openai = new OpenAI({ apiKey, timeout: 20000 });
 
-    const systemPrompt = `Anda adalah AI Innovation Reviewer & Scrum Master Expert untuk Program Inkubasi Inovasi PT Pegadaian (PIA).
+    const systemPrompt = `Anda adalah AI Innovation Reviewer & Scrum Master Expert untuk Program Inkubasi Inovasi PT Pegadaian (Persero) (PIA).
 Tugas Anda adalah menyusun Draf Sprint Review & Retrospective (Template 3.2) yang komprehensif, berbasis data aktivitas kerja riil tim dalam sprint yang baru diselesaikan.
 
 Konteks yang perlu Anda perhatikan:

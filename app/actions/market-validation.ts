@@ -310,9 +310,14 @@ export async function signMvPlanAction(
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
+    const permCode = `mv_plan.sign_${roleType}`;
+    const allowed = await hasPermission(user, permCode, timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: `Forbidden: Role Anda tidak memiliki izin menandatangani Perencanaan MV (${permCode}).`,
+      };
+    }
 
     const [existingPlan] = await db
       .select()
@@ -337,8 +342,9 @@ export async function signMvPlanAction(
     const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
     const defaultRoleTitle = roleType === "po" ? "Project Owner" : roleType === "coach" ? "Innovation Coach" : "Promotor Inovasi";
 
-    // ── Role-gate enforcement ─────────────────────────────────────────────────
-    if (!isAdmin) {
+    // ── Role-gate enforcement: Global scope bypasses identity check, per_tim requires assignment match ──
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
       if (!assigned?.userId || assigned.userId !== user.id) {
         return {
@@ -357,7 +363,7 @@ export async function signMvPlanAction(
       signedByUserName: user.nama,
       nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || defaultRoleTitle,
-      unit: anggota?.unitKerja || "PT Pegadaian",
+      unit: anggota?.unitKerja || "PT Pegadaian (Persero)",
       tanggal: new Date().toISOString(),
       status: "signed",
       signatureImage: processedImageUrl,
@@ -404,11 +410,17 @@ export async function revokeMvPlanSignatureAction(
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
+    const permCode = `mv_plan.sign_${roleType}`;
+    const allowed = (await hasPermission(user, permCode, timId)) || (await hasPermission(user, 'market_val.edit', timId));
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin membatalkan tanda tangan role ini.",
+      };
+    }
 
-    if (!isAdmin) {
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
@@ -555,11 +567,11 @@ export async function approveMarketValidationReportAction(
       return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
     }
 
-    const isPermitted = await hasPermission(user, 'market_val.approve', timId);
+    const isPermitted = (await hasPermission(user, 'market_val.approve', timId)) || (await hasPermission(user, 'mv_report.sign_promotor', timId));
     if (!isPermitted) {
       return {
         success: false,
-        error: 'Forbidden: Hanya Promotor inovasi yang memiliki izin menyetujui Market Validation Report tim ini.',
+        error: 'Forbidden: Anda tidak memiliki izin untuk menyetujui Market Validation Report tim ini.',
       };
     }
 
@@ -571,6 +583,19 @@ export async function approveMarketValidationReportAction(
 
     if (!existingReport) {
       return { success: false, error: 'Market Validation Report belum disimpan.' };
+    }
+
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    const rolesData = await getCharterRolesData(timId);
+
+    if (!isGlobalUser) {
+      const assignedPromotor = rolesData?.assignments?.find((a: any) => a.roleCode === 'promotor');
+      if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
+        return {
+          success: false,
+          error: 'Forbidden: Hanya pemegang role Promotor yang terdaftar di Innovation Charter tim ini yang dapat menyetujui.',
+        };
+      }
     }
 
     // Get user's jabatan and unitKerja from anggotaTim if available
@@ -585,13 +610,16 @@ export async function approveMarketValidationReportAction(
       )
       .limit(1);
 
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === 'promotor')?.userName;
     const processedImageUrl = await processMvSignatureImage(timId, signatureImage);
 
     const approvalData = {
       userId: user.id,
-      nama: user.nama,
+      signedByUserId: user.id,
+      signedByUserName: user.nama,
+      nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || 'Promotor Inovasi',
-      unit: anggota?.unitKerja || 'PT Pegadaian',
+      unit: anggota?.unitKerja || 'PT Pegadaian (Persero)',
       tanggal: new Date().toISOString(),
       status: 'approved',
       signatureImage: processedImageUrl,
@@ -633,12 +661,24 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
       return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
     }
 
-    const isPermitted = await hasPermission(user, 'market_val.approve', timId);
+    const isPermitted = (await hasPermission(user, 'market_val.approve', timId)) || (await hasPermission(user, 'mv_report.sign_promotor', timId)) || (await hasPermission(user, 'market_val.edit', timId));
     if (!isPermitted) {
       return {
         success: false,
         error: 'Forbidden: Anda tidak memiliki izin untuk membatalkan persetujuan Market Validation Report tim ini.',
       };
+    }
+
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
+      const rolesData = await getCharterRolesData(timId);
+      const assignedPromotor = rolesData?.assignments?.find((a: any) => a.roleCode === 'promotor');
+      if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
+        return {
+          success: false,
+          error: 'Forbidden: Anda tidak berwenang membatalkan persetujuan role Promotor tim ini.',
+        };
+      }
     }
 
     await db
@@ -655,10 +695,7 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
       action: 'MARKET_VALIDATION_REVOKE_APPROVAL',
       entity: 'market_validation_report',
       entityId: reportId,
-      details: {
-        timId,
-        revokedBy: user.nama,
-      },
+      details: { timId, revokedBy: user.nama },
     });
 
     revalidatePath(`/tim/${timId}/market-validation`);
@@ -668,6 +705,9 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
   }
 }
 
+/**
+ * Tandatangani Market Validation Report (Peran PO, Coach, atau Promotor)
+ */
 export async function signMvReportAction(
   timId: string,
   roleType: "po" | "coach" | "promotor",
@@ -675,20 +715,27 @@ export async function signMvReportAction(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    if (!user) {
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+    }
 
-    let [plan] = await db
+    const permCode = `mv_report.sign_${roleType}`;
+    const allowed = await hasPermission(user, permCode, timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: `Forbidden: Role Anda tidak memiliki izin menandatangani Laporan MV (${permCode}).`,
+      };
+    }
+
+    const [plan] = await db
       .select()
       .from(marketValidationPlan)
       .where(eq(marketValidationPlan.timInovatorId, timId))
       .limit(1);
 
     if (!plan) {
-      const [newPlan] = await db
-        .insert(marketValidationPlan)
-        .values({ timInovatorId: timId })
-        .returning();
-      plan = newPlan;
+      return { success: false, error: "Market Validation Plan belum dibuat." };
     }
 
     let [report] = await db
@@ -713,10 +760,6 @@ export async function signMvReportAction(
 
     const processedImageUrl = await processMvSignatureImage(timId, signatureDataUrl);
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
-
     const defaultJabatan =
       roleType === "po"
         ? "Project Owner"
@@ -727,8 +770,9 @@ export async function signMvReportAction(
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
 
-    // ── Role-gate enforcement ─────────────────────────────────────────────────
-    if (!isAdmin) {
+    // ── Role-gate enforcement: Global scope bypasses identity check, per_tim requires assignment match ──
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
       if (!assigned?.userId || assigned.userId !== user.id) {
         return {
@@ -747,7 +791,7 @@ export async function signMvReportAction(
       nama: assignedName || user.nama,
       role: roleType,
       jabatan: anggota?.jabatan || defaultJabatan,
-      unit: anggota?.unitKerja || "PT Pegadaian",
+      unit: anggota?.unitKerja || "PT Pegadaian (Persero)",
       status: "signed",
       tanggal: new Date().toISOString(),
       signatureImage: processedImageUrl,
@@ -792,11 +836,17 @@ export async function revokeMvReportSignatureAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized." };
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
+    const permCode = `mv_report.sign_${roleType}`;
+    const allowed = (await hasPermission(user, permCode, timId)) || (await hasPermission(user, 'market_val.edit', timId));
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin membatalkan tanda tangan role ini.",
+      };
+    }
 
-    if (!isAdmin) {
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);

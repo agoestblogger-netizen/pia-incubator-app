@@ -205,7 +205,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
   const rawEmail = submisi.pengusul?.email || submisi.email_pengusul || pengusul?.email;
   const pengusulEmail = (rawEmail && rawEmail.includes('@')) ? rawEmail.trim().toLowerCase() : (pengusulNama ? formatPegadaianEmail(pengusulNama) : null);
   const pengusulJabatan = cleanText(submisi.pengusul?.jabatan || pengusul?.jabatan || 'Inisiator');
-  const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || pengusul?.unit_kerja || 'PT Pegadaian');
+  const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || pengusul?.unit_kerja || 'PT Pegadaian (Persero)');
 
   let inisiatorUserId: string | null = null;
 
@@ -280,7 +280,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
       let mNama = '';
       let mEmail = '';
       let mJabatan = 'Anggota Tim';
-      let mUnit = 'PT Pegadaian';
+      let mUnit = 'PT Pegadaian (Persero)';
 
       if (typeof m === 'string') {
         mNama = cleanText(m);
@@ -289,7 +289,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
         mNama = cleanText(m.nama || m.name);
         mEmail = (m.email && m.email.includes('@')) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : '');
         mJabatan = cleanText(m.jabatan || 'Anggota Tim');
-        mUnit = cleanText(m.unit_kerja || m.unitKerja || 'PT Pegadaian');
+        mUnit = cleanText(m.unit_kerja || m.unitKerja || 'PT Pegadaian (Persero)');
       }
 
       // Hindari duplikasi jika pengusul sudah tercantum di rawMembers

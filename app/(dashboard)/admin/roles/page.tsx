@@ -1,7 +1,7 @@
 import { getRbacMatrixData } from "@/app/actions/admin-roles";
 import { getSprintCapacityRoleConfigAction } from "@/app/actions/sprint-role-config";
 import { getPhaseGateBypassRoleConfigAction } from "@/app/actions/phase-gate-bypass";
-import { getCurrentUser } from "@/lib/auth/rbac";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { redirect } from "next/navigation";
 import { RolesClient } from "./RolesClient";
 import { ShieldCheck } from "lucide-react";
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminRolesPage() {
   const user = await getCurrentUser();
-  if (!user || !user.globalRoles.includes("admin_ic")) {
+  if (!user || !(await hasPermission(user, "user.manage"))) {
     redirect("/dashboard");
   }
 

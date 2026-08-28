@@ -1289,6 +1289,14 @@ export function CharterFormClient({
       {(() => {
         const promotorAssignment = roleAssignments.find((r) => r.roleCode === "promotor" && (r.userId || r.userName));
         const promotorName = promotorAssignment?.userName || "Promotor Inovasi";
+        const isGlobalUser = Boolean(
+          currentUser?.hasGlobalScope ||
+          (currentUser?.globalRoles && currentUser.globalRoles.length > 0)
+        );
+        const canUserSignPromotor = Boolean(
+          canApprove &&
+          (isGlobalUser || (currentUser?.id && promotorAssignment?.userId === currentUser.id))
+        );
 
         return (
           <>
@@ -1355,7 +1363,7 @@ export function CharterFormClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisetujui.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisetujui.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1383,7 +1391,7 @@ export function CharterFormClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{promotorAssignment?.unitKerja || "PT Pegadaian"}</span>
+                            <span>{promotorAssignment?.unitKerja || "PT Pegadaian (Persero)"}</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {promotorName ? "Nama terdaftar di Penugasan Role Tim" : "Belum ada akun Promotor terdaftar di Charter"}
@@ -1393,7 +1401,7 @@ export function CharterFormClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {canApprove ? (
+                      {canUserSignPromotor ? (
                         ttdDisetujui?.status === 'approved' ? (
                           <Button
                             type="button"

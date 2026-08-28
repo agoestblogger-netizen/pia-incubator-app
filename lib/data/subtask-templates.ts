@@ -1,6 +1,6 @@
 /**
  * Kamus Subtask Baku untuk 14 Kartu Template Customer Validation (6) & Market Validation (8)
- * Berdasarkan tahapan resmi Petunjuk Pelaksanaan (Juklak) Inkubasi Inovasi PT Pegadaian
+ * Berdasarkan tahapan resmi Petunjuk Pelaksanaan (Juklak) Inkubasi Inovasi PT Pegadaian (Persero)
  */
 
 export type SubtaskType = "regular" | "mandatory_simple" | "mandatory_complex";

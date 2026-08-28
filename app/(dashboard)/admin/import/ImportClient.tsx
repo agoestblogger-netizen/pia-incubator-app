@@ -373,7 +373,7 @@ export function ImportClient() {
             nama: item.nama_pengusul,
             email: item.email_pengusul,
             jabatan: dossierData?.data_submisi?.pengusul?.jabatan || 'Inisiator',
-            unit_kerja: dossierData?.data_submisi?.pengusul?.unit_kerja || 'PT Pegadaian',
+            unit_kerja: dossierData?.data_submisi?.pengusul?.unit_kerja || 'PT Pegadaian (Persero)',
           },
           dossierData,
           lampiranUrls,

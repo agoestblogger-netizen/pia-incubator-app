@@ -38,7 +38,7 @@ export async function compileStickyNotesToBacklog({
     .map((c, i) => `Sticky Note #${i + 1}: "${c.trim()}"`)
     .join('\n');
 
-  const systemPrompt = `Anda adalah Agile Scrum Coach & Innovation Specialist senior di PT Pegadaian (Program PIA Incubator).
+  const systemPrompt = `Anda adalah Agile Scrum Coach & Innovation Specialist senior di PT Pegadaian (Persero) (Program PIA Incubator).
 Tugas Anda adalah mengompilasi sekumpulan catatan ide/sticky note dari Ruang Diskusi tim inovasi menjadi SATU draf kartu Backlog Scrum yang terstruktur, konkret, dan siap dieksekusi.
 
 ATURAN OUTPUT MUTLAK:

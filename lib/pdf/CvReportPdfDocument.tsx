@@ -544,7 +544,7 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
               <Text style={styles.signatureMeta}>
                 {data.ttdDisusun?.jabatan || 'Inisiator Inovasi'}
               </Text>
-              <Text style={styles.signatureMeta}>PT Pegadaian</Text>
+              <Text style={styles.signatureMeta}>PT Pegadaian (Persero)</Text>
               {data.ttdDisusun?.signatureImage ? (
                 <Image src={data.ttdDisusun.signatureImage} style={styles.signatureImage} />
               ) : null}
@@ -567,7 +567,7 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
               <Text style={styles.signatureMeta}>
                 {data.ttdDiperiksa?.jabatan || 'Innovation Coach'}
               </Text>
-              <Text style={styles.signatureMeta}>PT Pegadaian</Text>
+              <Text style={styles.signatureMeta}>PT Pegadaian (Persero)</Text>
               {data.ttdDiperiksa?.signatureImage ? (
                 <Image src={data.ttdDiperiksa.signatureImage} style={styles.signatureImage} />
               ) : null}
@@ -590,7 +590,7 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
               <Text style={styles.signatureMeta}>
                 {data.ttdDisetujui?.jabatan || 'Project Owner'}
               </Text>
-              <Text style={styles.signatureMeta}>PT Pegadaian</Text>
+              <Text style={styles.signatureMeta}>PT Pegadaian (Persero)</Text>
               {data.ttdDisetujui?.signatureImage ? (
                 <Image src={data.ttdDisetujui.signatureImage} style={styles.signatureImage} />
               ) : null}

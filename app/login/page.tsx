@@ -167,7 +167,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-green-100/60">
-          Innovation Center &copy; {new Date().getFullYear()} PT Pegadaian
+          Innovation Center &copy; {new Date().getFullYear()} PT Pegadaian (Persero)
         </p>
       </div>
     </div>

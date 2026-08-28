@@ -19,14 +19,17 @@ export default async function CharterPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const [initialData, rolesData, phaseGateStatus, sprintsData, canEdit, canApprove] = await Promise.all([
+  const [initialData, rolesData, phaseGateStatus, sprintsData, canEdit, canApproveCharter, canSignCharterPromotor] = await Promise.all([
     getCharterByTimId(tim.id),
     getCharterRolesData(tim.id),
     getTeamPhaseGateStatus(tim.id),
     getSprintsByTimId(tim.id),
     user ? hasPermission(user, 'charter.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'charter.approve', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'charter.sign_promotor', tim.id) : Promise.resolve(false),
   ]);
+
+  const canApprove = canApproveCharter || canSignCharterPromotor;
 
   const isAdmin = Boolean(
     user?.globalRoles?.some((r: string) => ["super_admin", "admin_ic", "admin"].includes(r))

@@ -48,6 +48,35 @@ export default async function MarketValidationPage({
     user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
   ]);
 
+  const [
+    canSignMvPlanPo,
+    canSignMvPlanCoach,
+    canSignMvPlanPromotor,
+    canSignMvReportPo,
+    canSignMvReportCoach,
+    canSignMvReportPromotor,
+  ] = await Promise.all([
+    user ? hasPermission(user, 'mv_plan.sign_po', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_plan.sign_coach', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_plan.sign_promotor', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_report.sign_po', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_report.sign_coach', tim.id) : Promise.resolve(false),
+    user ? (hasPermission(user, 'mv_report.sign_promotor', tim.id).then(p => p || canApprove)) : Promise.resolve(false),
+  ]);
+
+  const signPermissions = {
+    plan: {
+      po: canSignMvPlanPo,
+      coach: canSignMvPlanCoach,
+      promotor: canSignMvPlanPromotor,
+    },
+    report: {
+      po: canSignMvReportPo,
+      coach: canSignMvReportCoach,
+      promotor: canSignMvReportPromotor || canApprove,
+    },
+  };
+
   return (
     <div className="space-y-6">
       <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
@@ -66,12 +95,13 @@ export default async function MarketValidationPage({
         initialKeuanganList={keuanganList}
         anggotaTim={tim.anggota}
         canEdit={canEdit}
-        canApprove={canApprove}
+        canApprove={canApprove || canSignMvReportPromotor}
         canEditKanban={canEditKanban}
         canSubmitAnggaran={canSubmitAnggaran}
         canManageAnggaran={canManageAnggaran}
         currentUser={user}
         phaseGateStatus={phaseGateStatus}
+        signPermissions={signPermissions}
       />
     </div>
   );

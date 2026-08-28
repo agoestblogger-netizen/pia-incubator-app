@@ -630,7 +630,7 @@ export function MvReportPdfDocument({
                 <>
                   <Text style={styles.signatureName}>{report.ttdDisusun.nama}</Text>
                   <Text style={styles.signatureRole}>{report.ttdDisusun.jabatan || 'Project Owner'}</Text>
-                  <Text style={styles.signatureUnit}>{report.ttdDisusun.unit || 'PT Pegadaian'}</Text>
+                  <Text style={styles.signatureUnit}>{report.ttdDisusun.unit || 'PT Pegadaian (Persero)'}</Text>
                   {report.ttdDisusun.signatureImage && (
                     <Image src={report.ttdDisusun.signatureImage} style={styles.signatureImage} />
                   )}
@@ -654,7 +654,7 @@ export function MvReportPdfDocument({
                 <>
                   <Text style={styles.signatureName}>{report.ttdDiperiksa.nama}</Text>
                   <Text style={styles.signatureRole}>{report.ttdDiperiksa.jabatan || 'Innovation Coach'}</Text>
-                  <Text style={styles.signatureUnit}>{report.ttdDiperiksa.unit || 'PT Pegadaian'}</Text>
+                  <Text style={styles.signatureUnit}>{report.ttdDiperiksa.unit || 'PT Pegadaian (Persero)'}</Text>
                   {report.ttdDiperiksa.signatureImage && (
                     <Image src={report.ttdDiperiksa.signatureImage} style={styles.signatureImage} />
                   )}
@@ -678,7 +678,7 @@ export function MvReportPdfDocument({
                 <>
                   <Text style={styles.signatureName}>{report.ttdDisetujui.nama}</Text>
                   <Text style={styles.signatureRole}>{report.ttdDisetujui.jabatan || 'Promotor Inovasi'}</Text>
-                  <Text style={styles.signatureUnit}>{report.ttdDisetujui.unit || 'PT Pegadaian'}</Text>
+                  <Text style={styles.signatureUnit}>{report.ttdDisetujui.unit || 'PT Pegadaian (Persero)'}</Text>
                   {report.ttdDisetujui.signatureImage && (
                     <Image src={report.ttdDisetujui.signatureImage} style={styles.signatureImage} />
                   )}

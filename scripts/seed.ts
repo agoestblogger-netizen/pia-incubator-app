@@ -117,6 +117,21 @@ const DEFAULT_PERMISSIONS = [
 
   // Reset Data System
   { kodePermission: 'system.reset_data', modul: 'system', deskripsi: 'Mereset data tim dan modul inkubasi' },
+
+  // Tanda Tangan Dokumen
+  { kodePermission: 'cv_plan.sign_inisiator', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Perencanaan CV (Inisiator)' },
+  { kodePermission: 'cv_plan.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Perencanaan CV (Innovation Coach)' },
+  { kodePermission: 'cv_plan.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Perencanaan CV (Project Owner)' },
+  { kodePermission: 'cv_report.sign_inisiator', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan CV (Inisiator)' },
+  { kodePermission: 'cv_report.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan CV (Innovation Coach)' },
+  { kodePermission: 'cv_report.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan CV (Project Owner)' },
+  { kodePermission: 'mv_plan.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Perencanaan MV (Project Owner)' },
+  { kodePermission: 'mv_plan.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Perencanaan MV (Innovation Coach)' },
+  { kodePermission: 'mv_plan.sign_promotor', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Perencanaan MV (Promotor)' },
+  { kodePermission: 'mv_report.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan MV (Project Owner)' },
+  { kodePermission: 'mv_report.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan MV (Innovation Coach)' },
+  { kodePermission: 'mv_report.sign_promotor', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan MV (Promotor)' },
+  { kodePermission: 'charter.sign_promotor', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Persetujuan Formal Innovation Charter (Promotor)' },
 ];
 
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
@@ -131,7 +146,12 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.manage', 'anggaran.view',
     'fmi.manage', 'fmi.view',
-    'dossier.view'
+    'dossier.view',
+    'cv_plan.sign_inisiator', 'cv_plan.sign_coach', 'cv_plan.sign_po',
+    'cv_report.sign_inisiator', 'cv_report.sign_coach', 'cv_report.sign_po',
+    'mv_plan.sign_po', 'mv_plan.sign_coach', 'mv_plan.sign_promotor',
+    'mv_report.sign_po', 'mv_report.sign_coach', 'mv_report.sign_promotor',
+    'charter.sign_promotor'
   ],
   divisi_ic: [
     'tim.view',
@@ -151,7 +171,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   promotor: [
     'tim.view', 'charter.view', 'kanban.view',
     'cust_val.view', 'market_val.edit', 'market_val.view',
-    'anggaran.view', 'fmi.view', 'dossier.view'
+    'anggaran.view', 'fmi.view', 'dossier.view',
+    'charter.sign_promotor', 'mv_plan.sign_promotor', 'mv_report.sign_promotor'
   ],
   project_owner: [
     'tim.edit', 'tim.view',
@@ -160,7 +181,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'cust_val.edit', 'cust_val.view',
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.submit', 'anggaran.view',
-    'fmi.view', 'dossier.view'
+    'fmi.view', 'dossier.view',
+    'cv_plan.sign_po', 'cv_report.sign_po', 'mv_plan.sign_po', 'mv_report.sign_po'
   ],
   inisiator: [
     'tim.view',
@@ -168,7 +190,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'kanban.edit', 'kanban.view',
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
     'market_val.edit', 'market_val.view',
-    'fmi.view', 'dossier.view'
+    'fmi.view', 'dossier.view',
+    'cv_plan.sign_inisiator', 'cv_report.sign_inisiator'
   ],
   co_creator: [
     'tim.view',
@@ -184,7 +207,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'kanban.edit', 'kanban.view',
     'cust_val.edit', 'cust_val.view',
     'market_val.edit', 'market_val.view',
-    'anggaran.view', 'fmi.view', 'dossier.view'
+    'anggaran.view', 'fmi.view', 'dossier.view',
+    'cv_plan.sign_coach', 'cv_report.sign_coach', 'mv_plan.sign_coach', 'mv_report.sign_coach'
   ],
   sme: [
     'tim.view',

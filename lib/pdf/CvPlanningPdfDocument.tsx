@@ -188,9 +188,23 @@ export interface CvPlanningPdfData {
   metodeRekrutmen?: string | null;
   etikaPersetujuanData?: string | null;
   // Section D
-  dimensiEvidence?: Record<string, string>;
+  dimensiRows?: Array<{
+    id?: string;
+    dimensi: string;
+    fokusValidasi?: string | null;
+    contohPertanyaan?: string | null;
+    evidenceYangDikumpulkan?: string | null;
+  }>;
   // Section E
-  metrikCatatan?: Record<string, string>;
+  metrikRows?: Array<{
+    id?: string;
+    validasi: string;
+    metrik: string;
+    unitUkuran?: string | null;
+    kriteriaKesuksesan?: string | null;
+    caraPengukuran?: string | null;
+    catatan?: string | null;
+  }>;
   // Signatures
   ttdDisusun?: { nama: string; jabatan?: string; unit?: string; tanggal?: string; signatureImage?: string } | null;
   ttdDiperiksa?: { nama: string; jabatan?: string; unit?: string; tanggal?: string; signatureImage?: string } | null;
@@ -243,7 +257,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <Text style={styles.headerDocCode}>PT PEGADAIAN · INCUBATOR PROGRAM · TEMPLATE JUKLAK 2.1</Text>
+          <Text style={styles.headerDocCode}>PT PEGADAIAN (Persero) · INCUBATOR PROGRAM · TEMPLATE JUKLAK 2.1</Text>
           <Text style={styles.headerTitle}>Rencana Pengujian Customer Validation</Text>
           <Text style={styles.headerSubtitle}>
             Dokumen Perencanaan Pengujian Prototype, Kriteria Responden, dan Metodologi Validasi Pengguna
@@ -364,20 +378,20 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
               Evidence yang Dikumpulkan
             </Text>
           </View>
-          {DIMENSI_STATIC.map((d, idx) => (
+          {data.dimensiRows?.map((d, idx) => (
             <View
-              key={d.key}
+              key={d.id || idx}
               style={[
                 styles.tableRow,
-                idx === DIMENSI_STATIC.length - 1 ? { borderBottomWidth: 0 } : {},
+                idx === (data.dimensiRows?.length || 0) - 1 ? { borderBottomWidth: 0 } : {},
               ]}
             >
               <Text style={[styles.tableDataCell, { width: '22%', fontWeight: 'bold' }]}>
-                {d.label}
+                {fmtVal(d.dimensi)}
               </Text>
-              <Text style={[styles.tableDataCell, { width: '38%' }]}>{d.fokus}</Text>
+              <Text style={[styles.tableDataCell, { width: '38%' }]}>{fmtVal(d.fokusValidasi)}</Text>
               <Text style={[styles.tableDataCell, { width: '40%', borderRightWidth: 0 }]}>
-                {fmtVal(data.dimensiEvidence?.[d.key])}
+                {fmtVal(d.evidenceYangDikumpulkan)}
               </Text>
             </View>
           ))}
@@ -397,22 +411,22 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
               Catatan / Referensi
             </Text>
           </View>
-          {METRIK_STATIC.map((m, idx) => (
+          {data.metrikRows?.map((m, idx) => (
             <View
-              key={m.metrik}
+              key={m.id || idx}
               style={[
                 styles.tableRow,
-                idx === METRIK_STATIC.length - 1 ? { borderBottomWidth: 0 } : {},
+                idx === (data.metrikRows?.length || 0) - 1 ? { borderBottomWidth: 0 } : {},
               ]}
             >
-              <Text style={[styles.tableDataCell, { width: '18%' }]}>{m.validasi}</Text>
+              <Text style={[styles.tableDataCell, { width: '18%' }]}>{fmtVal(m.validasi)}</Text>
               <Text style={[styles.tableDataCell, { width: '27%', fontWeight: 'bold' }]}>
-                {m.metrik}
+                {fmtVal(m.metrik)}
               </Text>
-              <Text style={[styles.tableDataCell, { width: '15%' }]}>{m.unit}</Text>
-              <Text style={[styles.tableDataCell, { width: '20%' }]}>{m.kriteria}</Text>
+              <Text style={[styles.tableDataCell, { width: '15%' }]}>{fmtVal(m.unitUkuran)}</Text>
+              <Text style={[styles.tableDataCell, { width: '20%' }]}>{fmtVal(m.kriteriaKesuksesan)}</Text>
               <Text style={[styles.tableDataCell, { width: '20%', borderRightWidth: 0 }]}>
-                {fmtVal(data.metrikCatatan?.[m.metrik])}
+                {fmtVal(m.catatan)}
               </Text>
             </View>
           ))}
@@ -438,7 +452,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
                 )}
                 <Text style={styles.signatureName}>{data.ttdDisusun.nama}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDisusun.jabatan || 'Inisiator Inovasi'}</Text>
-                <Text style={styles.signatureSubtext}>{data.ttdDisusun.unit || 'PT Pegadaian'}</Text>
+                <Text style={styles.signatureSubtext}>{data.ttdDisusun.unit || 'PT Pegadaian (Persero)'}</Text>
                 <Text style={[styles.signatureSubtext, { fontSize: 6.5, marginTop: 2 }]}>
                   {formatDateIndo(data.ttdDisusun.tanggal)}
                 </Text>
@@ -447,7 +461,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
               <View style={{ alignItems: 'center' }}>
                 <View style={[styles.signatureLine, { width: '80%' }]} />
                 <Text style={styles.signatureName}>( Inisiator Inovasi )</Text>
-                <Text style={styles.signatureSubtext}>PT Pegadaian</Text>
+                <Text style={styles.signatureSubtext}>PT Pegadaian (Persero)</Text>
                 <Text style={[styles.signatureSubtext, { fontStyle: 'italic', marginTop: 2 }]}>
                   Belum Ditandatangani
                 </Text>
@@ -472,7 +486,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
                 )}
                 <Text style={styles.signatureName}>{data.ttdDiperiksa.nama}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDiperiksa.jabatan || 'Innovation Coach'}</Text>
-                <Text style={styles.signatureSubtext}>{data.ttdDiperiksa.unit || 'PT Pegadaian'}</Text>
+                <Text style={styles.signatureSubtext}>{data.ttdDiperiksa.unit || 'PT Pegadaian (Persero)'}</Text>
                 <Text style={[styles.signatureSubtext, { fontSize: 6.5, marginTop: 2 }]}>
                   {formatDateIndo(data.ttdDiperiksa.tanggal)}
                 </Text>
@@ -481,7 +495,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
               <View style={{ alignItems: 'center' }}>
                 <View style={[styles.signatureLine, { width: '80%' }]} />
                 <Text style={styles.signatureName}>( Innovation Coach )</Text>
-                <Text style={styles.signatureSubtext}>PT Pegadaian</Text>
+                <Text style={styles.signatureSubtext}>PT Pegadaian (Persero)</Text>
                 <Text style={[styles.signatureSubtext, { fontStyle: 'italic', marginTop: 2 }]}>
                   Belum Ditandatangani
                 </Text>
@@ -506,7 +520,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
                 )}
                 <Text style={styles.signatureName}>{data.ttdDisetujui.nama}</Text>
                 <Text style={styles.signatureSubtext}>{data.ttdDisetujui.jabatan || 'Project Owner'}</Text>
-                <Text style={styles.signatureSubtext}>{data.ttdDisetujui.unit || 'PT Pegadaian'}</Text>
+                <Text style={styles.signatureSubtext}>{data.ttdDisetujui.unit || 'PT Pegadaian (Persero)'}</Text>
                 <Text style={[styles.signatureSubtext, { fontSize: 6.5, marginTop: 2 }]}>
                   {formatDateIndo(data.ttdDisetujui.tanggal)}
                 </Text>
@@ -515,7 +529,7 @@ export function CvPlanningPdfDocument({ data }: { data: CvPlanningPdfData }) {
               <View style={{ alignItems: 'center' }}>
                 <View style={[styles.signatureLine, { width: '80%' }]} />
                 <Text style={styles.signatureName}>( Project Owner )</Text>
-                <Text style={styles.signatureSubtext}>PT Pegadaian</Text>
+                <Text style={styles.signatureSubtext}>PT Pegadaian (Persero)</Text>
                 <Text style={[styles.signatureSubtext, { fontStyle: 'italic', marginTop: 2 }]}>
                   Belum Ditandatangani
                 </Text>

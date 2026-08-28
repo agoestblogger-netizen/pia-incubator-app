@@ -226,6 +226,7 @@ export function MarketValidationClient({
   canManageAnggaran = false,
   currentUser,
   phaseGateStatus,
+  signPermissions,
 }: {
   timId: string;
   timInfo?: {
@@ -246,6 +247,10 @@ export function MarketValidationClient({
   canManageAnggaran?: boolean;
   currentUser?: any;
   phaseGateStatus?: any;
+  signPermissions?: {
+    plan?: { po?: boolean; coach?: boolean; promotor?: boolean };
+    report?: { po?: boolean; coach?: boolean; promotor?: boolean };
+  };
 }) {
   const [activeTab, setActiveTab] = useState("plan");
 
@@ -522,23 +527,59 @@ export function MarketValidationClient({
     teamMembers.find((m: any) => m.role === "promotor" || m.jabatan?.toLowerCase().includes("promotor"))?.nama ||
     null;
 
-  // Role-gated signing permissions (admin can sign any role)
+  // Role-gated signing permissions using RBAC matrix + Scope:
+  // - Global roles (Admin/Coach/Divisi IC) can sign if matrix permission is true
+  // - Per-tim roles require matrix permission = true AND user.id matching charter assignment
   const currentUserId = currentUser?.id;
+  const isGlobalUser = Boolean(
+    currentUser?.hasGlobalScope ||
+    (currentUser?.globalRoles && currentUser.globalRoles.length > 0)
+  );
+
   const poAssignment = roleAssignments?.find((a: any) => a.roleCode === "project_owner");
-  const canSignAsPo = Boolean(
-    isAdmin ||
-    (currentUserId && poAssignment?.userId === currentUserId)
-  );
   const coachAssignment = roleAssignments?.find((a: any) => a.roleCode === "coach");
-  const canSignAsCoach = Boolean(
-    isAdmin ||
-    (currentUserId && coachAssignment?.userId === currentUserId)
-  );
   const promotorAssignment = roleAssignments?.find((a: any) => a.roleCode === "promotor");
-  const canSignAsPromotor = Boolean(
-    isAdmin ||
-    (currentUserId && promotorAssignment?.userId === currentUserId)
+
+  // Plan signatures:
+  const canSignPlanPoPerm = signPermissions?.plan?.po ?? isAdmin;
+  const canSignPlanCoachPerm = signPermissions?.plan?.coach ?? isAdmin;
+  const canSignPlanPromotorPerm = signPermissions?.plan?.promotor ?? isAdmin;
+
+  const canSignPlanAsPo = Boolean(
+    canSignPlanPoPerm &&
+    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
   );
+  const canSignPlanAsCoach = Boolean(
+    canSignPlanCoachPerm &&
+    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+  );
+  const canSignPlanAsPromotor = Boolean(
+    canSignPlanPromotorPerm &&
+    (isGlobalUser || (currentUserId && promotorAssignment?.userId === currentUserId))
+  );
+
+  // Report signatures:
+  const canSignReportPoPerm = signPermissions?.report?.po ?? isAdmin;
+  const canSignReportCoachPerm = signPermissions?.report?.coach ?? isAdmin;
+  const canSignReportPromotorPerm = signPermissions?.report?.promotor ?? canApprove ?? isAdmin;
+
+  const canSignReportAsPo = Boolean(
+    canSignReportPoPerm &&
+    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+  );
+  const canSignReportAsCoach = Boolean(
+    canSignReportCoachPerm &&
+    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+  );
+  const canSignReportAsPromotor = Boolean(
+    canSignReportPromotorPerm &&
+    (isGlobalUser || (currentUserId && promotorAssignment?.userId === currentUserId))
+  );
+
+  // Backwards compatibility aliases
+  const canSignAsPo = canSignPlanAsPo;
+  const canSignAsCoach = canSignPlanAsCoach;
+  const canSignAsPromotor = canSignPlanAsPromotor;
 
   const openSignModal = (roleType: "po" | "coach" | "promotor") => {
     const roleName =
@@ -1668,7 +1709,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisusun.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDisusun.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisusun.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1696,7 +1737,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
@@ -1707,7 +1748,7 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {ttdDisusun?.status === "signed" ? (
-                        canSignAsPo ? (
+                        canSignPlanAsPo ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -1726,7 +1767,7 @@ export function MarketValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsPo ? (
+                        canSignPlanAsPo ? (
                           <Button
                             type="button"
                             size="sm"
@@ -1751,7 +1792,7 @@ export function MarketValidationClient({
                   <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
                     <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                       <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                        Diperiksa Oleh
+                        Diperiksa Oleh (Coach)
                       </span>
                       {ttdDiperiksa?.status === "signed" ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -1775,7 +1816,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDiperiksa.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDiperiksa.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDiperiksa.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1803,7 +1844,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
@@ -1814,7 +1855,7 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {ttdDiperiksa?.status === "signed" ? (
-                        canSignAsCoach ? (
+                        canSignPlanAsCoach ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -1833,7 +1874,7 @@ export function MarketValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsCoach ? (
+                        canSignPlanAsCoach ? (
                           <Button
                             type="button"
                             size="sm"
@@ -1858,7 +1899,7 @@ export function MarketValidationClient({
                   <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
                     <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                       <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                        Disetujui Oleh
+                        Disetujui Oleh (Promotor)
                       </span>
                       {ttdDisetujui?.status === "signed" ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -1882,7 +1923,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisetujui.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisetujui.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1910,7 +1951,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {promotorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Promotor terdaftar di Charter"}
@@ -1921,7 +1962,7 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {ttdDisetujui?.status === "signed" ? (
-                        canSignAsPromotor ? (
+                        canSignPlanAsPromotor ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -1940,7 +1981,7 @@ export function MarketValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsPromotor ? (
+                        canSignPlanAsPromotor ? (
                           <Button
                             type="button"
                             size="sm"
@@ -2722,7 +2763,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{reportTtdDisusun.unit || "PT Pegadaian"}</span>
+                            <span>{reportTtdDisusun.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {reportTtdDisusun.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -2750,7 +2791,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
@@ -2761,7 +2802,7 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDisusun?.status === "signed" ? (
-                        canSignAsPo ? (
+                        canSignReportAsPo ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -2780,7 +2821,7 @@ export function MarketValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsPo ? (
+                        canSignReportAsPo ? (
                           <Button
                             type="button"
                             size="sm"
@@ -2829,7 +2870,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{reportTtdDiperiksa.unit || "PT Pegadaian"}</span>
+                            <span>{reportTtdDiperiksa.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {reportTtdDiperiksa.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -2857,7 +2898,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
@@ -2868,7 +2909,7 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDiperiksa?.status === "signed" ? (
-                        canSignAsCoach ? (
+                        canSignReportAsCoach ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -2887,7 +2928,7 @@ export function MarketValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsCoach ? (
+                        canSignReportAsCoach ? (
                           <Button
                             type="button"
                             size="sm"
@@ -2936,7 +2977,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{reportTtdDisetujui.unit || "PT Pegadaian"}</span>
+                            <span>{reportTtdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {reportTtdDisetujui.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -2964,7 +3005,7 @@ export function MarketValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {promotorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Promotor terdaftar di Charter"}
@@ -2975,7 +3016,7 @@ export function MarketValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDisetujui?.status === "approved" || reportTtdDisetujui?.status === "signed" ? (
-                        canSignAsPromotor ? (
+                        canSignReportAsPromotor ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -2994,7 +3035,7 @@ export function MarketValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsPromotor ? (
+                        canSignReportAsPromotor ? (
                           <Button
                             type="button"
                             size="sm"

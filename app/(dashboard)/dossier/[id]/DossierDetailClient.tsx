@@ -173,7 +173,7 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
                 <div>
                   <span className="text-green-300 font-medium">Inisiator: </span>
                   <span className="font-bold text-white">{pengusul.nama || 'Anonim'}</span>
-                  <span className="text-green-200/80"> ({pengusul.unit_kerja || 'PT Pegadaian'})</span>
+                  <span className="text-green-200/80"> ({pengusul.unit_kerja || 'PT Pegadaian (Persero)'})</span>
                 </div>
 
                 {teamMembers.length > 0 && (
@@ -473,7 +473,7 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
                 </div>
                 <div>
                   <span className="text-gray-400 block text-[10px] uppercase font-bold">Unit Kerja / Divisi</span>
-                  <span className="text-gray-800">{pengusul.unit_kerja || 'PT Pegadaian'}</span>
+                  <span className="text-gray-800">{pengusul.unit_kerja || 'PT Pegadaian (Persero)'}</span>
                 </div>
                 <div>
                   <span className="text-gray-400 block text-[10px] uppercase font-bold">Tanggal Submisi</span>

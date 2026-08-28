@@ -318,7 +318,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
       <Page size="A4" style={styles.page}>
         {/* Header Title */}
         <View style={styles.headerContainer}>
-          <Text style={styles.headerDocCode}>PT PEGADAIAN · INCUBATOR PROGRAM · TEMPLATE JUKLAK 1</Text>
+          <Text style={styles.headerDocCode}>PT PEGADAIAN (Persero) · INCUBATOR PROGRAM · TEMPLATE JUKLAK 1</Text>
           <Text style={styles.headerTitle}>INNOVATION SETUP DAN STAKEHOLDER ALIGNMENT</Text>
           <Text style={styles.headerSubtitle}>
             Tujuan: memastikan tim inovator memiliki role, mandat, milestone, backlog, serta dukungan stakeholder yang jelas sebelum Customer Validation dan Market Validation.

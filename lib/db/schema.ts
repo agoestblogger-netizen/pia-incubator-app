@@ -319,7 +319,9 @@ export const customerValidationPlan = pgTable('customer_validation_plan', {
 export const customerValidationDimensiFeedback = pgTable('customer_validation_dimensi_feedback', {
   id: uuid('id').primaryKey().defaultRandom(),
   planId: uuid('plan_id').notNull().references(() => customerValidationPlan.id, { onDelete: 'cascade' }),
-  dimensi: text('dimensi').notNull(), // 'usability' | 'functionality' | 'solvability' | 'payability' | 'others'
+  dimensi: text('dimensi').notNull(), // e.g. 'Usability', 'Functionality', or custom
+  fokusValidasi: text('fokus_validasi'),
+  contohPertanyaan: text('contoh_pertanyaan'),
   evidenceYangDikumpulkan: text('evidence_yang_dikumpulkan'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

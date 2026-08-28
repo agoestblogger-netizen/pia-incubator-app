@@ -110,9 +110,8 @@ export async function createUserAction(data: {
   }
 
   const isUserAdmin = await hasPermission(currentUser, 'user.manage');
-  const isCharterEditor = await hasPermission(currentUser, 'charter.edit');
 
-  if (!isUserAdmin && !isCharterEditor) {
+  if (!isUserAdmin) {
     return { success: false, error: 'Forbidden: Anda tidak memiliki izin untuk membuat user baru.' };
   }
 

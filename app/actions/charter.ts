@@ -460,7 +460,7 @@ export async function getCharterRolesData(timId: string) {
         const rawEmail = submisi.pengusul?.email || submisi.email_pengusul || submisi.proposer_email;
         const pengusulEmail = (rawEmail && rawEmail.includes("@")) ? rawEmail.trim().toLowerCase() : (pengusulNama ? formatPegadaianEmail(pengusulNama) : null);
         const pengusulJabatan = cleanText(submisi.pengusul?.jabatan || "Inisiator");
-        const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || "PT Pegadaian");
+        const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || "PT Pegadaian (Persero)");
 
         if (pengusulNama && pengusulEmail) {
           const [foundUser] = await db.select().from(users).where(eq(users.email, pengusulEmail)).limit(1);
@@ -497,7 +497,7 @@ export async function getCharterRolesData(timId: string) {
             let mNama = "";
             let mEmail = "";
             let mJabatan = "Anggota Tim";
-            let mUnit = "PT Pegadaian";
+            let mUnit = "PT Pegadaian (Persero)";
 
             if (typeof m === "string") {
               mNama = cleanText(m);
@@ -506,7 +506,7 @@ export async function getCharterRolesData(timId: string) {
               mNama = cleanText(m.nama || m.name);
               mEmail = (m.email && m.email.includes("@")) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : "");
               mJabatan = cleanText(m.jabatan || "Anggota Tim");
-              mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian");
+              mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian (Persero)");
             }
 
             if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
@@ -640,7 +640,7 @@ export async function saveCharterAction(
         const rawEmail = submisi.pengusul?.email || submisi.email_pengusul || submisi.proposer_email;
         const pengusulEmail = (rawEmail && rawEmail.includes("@")) ? rawEmail.trim().toLowerCase() : (pengusulNama ? formatPegadaianEmail(pengusulNama) : null);
         const pengusulJabatan = cleanText(submisi.pengusul?.jabatan || "Inisiator");
-        const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || "PT Pegadaian");
+        const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || "PT Pegadaian (Persero)");
 
         if (pengusulNama && pengusulEmail) {
           const userResult = await ensureUserAccount(pengusulNama, pengusulEmail);
@@ -674,7 +674,7 @@ export async function saveCharterAction(
             let mNama = "";
             let mEmail = "";
             let mJabatan = "Anggota Tim";
-            let mUnit = "PT Pegadaian";
+            let mUnit = "PT Pegadaian (Persero)";
 
             if (typeof m === "string") {
               mNama = cleanText(m);
@@ -683,7 +683,7 @@ export async function saveCharterAction(
               mNama = cleanText(m.nama || m.name);
               mEmail = (m.email && m.email.includes("@")) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : "");
               mJabatan = cleanText(m.jabatan || "Anggota Tim");
-              mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian");
+              mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian (Persero)");
             }
 
             if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
@@ -786,7 +786,7 @@ export async function saveCharterAction(
                 .set({
                   nama: assignedUser.nama,
                   jabatan: item.jabatan || existingAnggota.jabatan || targetRole.namaRole,
-                  unitKerja: item.unitKerja || existingAnggota.unitKerja || 'PT Pegadaian',
+                  unitKerja: item.unitKerja || existingAnggota.unitKerja || 'PT Pegadaian (Persero)',
                   komitmenDukungan: `Role: ${targetRole.namaRole}`,
                   updatedAt: new Date(),
                 })
@@ -797,7 +797,7 @@ export async function saveCharterAction(
                 userId: item.userId,
                 nama: assignedUser.nama,
                 jabatan: item.jabatan || targetRole.namaRole,
-                unitKerja: item.unitKerja || 'PT Pegadaian',
+                unitKerja: item.unitKerja || 'PT Pegadaian (Persero)',
                 komitmenDukungan: `Role: ${targetRole.namaRole}`,
               });
             }
@@ -915,22 +915,19 @@ export async function approveCharterAction(timId: string, signatureImage?: strin
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
-
-    const allowed = await hasPermission(user, "charter.approve", timId);
-    if (!allowed && !isAdmin) {
+    const isPermitted = (await hasPermission(user, "charter.sign_promotor", timId)) || (await hasPermission(user, "charter.approve", timId));
+    if (!isPermitted) {
       return {
         success: false,
-        error: "Forbidden: Anda tidak memiliki izin sebagai Promotor untuk menyetujui Innovation Charter tim ini.",
+        error: "Forbidden: Anda tidak memiliki izin untuk menyetujui Innovation Charter tim ini.",
       };
     }
 
     const rolesData = await getCharterRolesData(timId);
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
 
-    // ── Role-gate enforcement ─────────────────────────────────────────────────
-    if (!isAdmin) {
+    // ── Role-gate enforcement: Global scope bypasses identity check, per_tim requires assignment match ──
+    if (!isGlobalUser) {
       const assignedPromotor = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor");
       if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
         return {
@@ -962,7 +959,7 @@ export async function approveCharterAction(timId: string, signatureImage?: strin
       signedByUserName: user.nama,
       nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || "Promotor Tim Inovasi",
-      unit: anggota?.unitKerja || "PT Pegadaian",
+      unit: anggota?.unitKerja || "PT Pegadaian (Persero)",
       tanggal: new Date().toISOString(),
       email: user.email,
       status: "approved",
@@ -1075,19 +1072,16 @@ export async function revokeCharterApprovalAction(timId: string) {
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
-
-    const allowed = await hasPermission(user, "charter.approve", timId);
-    if (!allowed && !isAdmin) {
+    const isPermitted = (await hasPermission(user, "charter.sign_promotor", timId)) || (await hasPermission(user, "charter.approve", timId)) || (await hasPermission(user, "charter.edit", timId));
+    if (!isPermitted) {
       return {
         success: false,
         error: "Forbidden: Anda tidak memiliki izin untuk membatalkan persetujuan Innovation Charter tim ini.",
       };
     }
 
-    if (!isAdmin) {
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const rolesData = await getCharterRolesData(timId);
       const assignedPromotor = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor");
       if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {

@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
           timInovatorId: teamId,
           nama: pengusul.nama || 'Inisiator Proyek',
           jabatan: pengusul.jabatan || 'Inisiator',
-          unitKerja: pengusul.unit_kerja || 'PT Pegadaian',
+          unitKerja: pengusul.unit_kerja || 'PT Pegadaian (Persero)',
           komitmenDukungan: 'Inisiator Inovasi',
         });
 

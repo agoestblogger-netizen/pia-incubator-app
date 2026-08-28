@@ -12,9 +12,16 @@ import { useState, useRef, useEffect } from "react";
 export function Navbar({
   user,
   taskCount = 0,
+  adminPermissions,
 }: {
   user?: UserProfile | null;
   taskCount?: number;
+  adminPermissions?: {
+    canManageUsers?: boolean;
+    canCreateTeam?: boolean;
+    canImport?: boolean;
+    canReset?: boolean;
+  };
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -45,7 +52,7 @@ export function Navbar({
         {/* Left Section: Hamburger Sidebar Trigger & Brand Logo */}
         <div className="flex items-center gap-3">
           {/* Hamburger Drawer Trigger */}
-          <SidebarDrawer user={user} taskCount={taskCount} />
+          <SidebarDrawer user={user} taskCount={taskCount} adminPermissions={adminPermissions} />
 
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white border border-white/20 shadow-inner group-hover:bg-white/20 transition-all">

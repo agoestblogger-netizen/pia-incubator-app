@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   saveCustomerValidationPlanFullAction,
@@ -23,7 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
-  Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck
+  Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck,
+  Plus, Trash2
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { KanbanClient } from "../kanban/KanbanClient";
@@ -203,6 +204,7 @@ export function CustomerValidationClient({
   canEditKanban = true,
   currentUser,
   phaseGateStatus,
+  signPermissions,
 }: {
   timId: string;
   timInfo?: {
@@ -224,6 +226,10 @@ export function CustomerValidationClient({
   canEditKanban?: boolean;
   currentUser?: any;
   phaseGateStatus?: any;
+  signPermissions?: {
+    plan?: { inisiator?: boolean; coach?: boolean; po?: boolean };
+    report?: { inisiator?: boolean; coach?: boolean; po?: boolean };
+  };
 }) {
   const router = useRouter();
 
@@ -239,6 +245,10 @@ export function CustomerValidationClient({
     currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r))
   );
   const isAdminOrCoach = isAdmin || isCoach;
+  const isGlobalUser = Boolean(
+    currentUser?.hasGlobalScope ||
+    (currentUser?.globalRoles && currentUser.globalRoles.length > 0)
+  );
 
   const isCvPlanFilled = Boolean(
     initialData?.plan?.id &&
@@ -288,23 +298,54 @@ export function CustomerValidationClient({
     anggotaTim?.find((a) => a.role === "project_owner" || a.jabatan?.toLowerCase().includes("owner") || a.jabatan?.toLowerCase().includes("po"))?.nama ||
     null;
 
-  // Role-gated signing permissions (admin can sign any role; inisiator supports multi-user)
+  // Role-gated signing permissions using RBAC matrix + Scope:
+  // - Global roles (Admin/Coach/Divisi IC) can sign if matrix permission is true
+  // - Per-tim roles require matrix permission = true AND user.id matching charter assignment
   const currentUserId = currentUser?.id;
   const inisiatorAssignments = roleAssignments?.filter((a) => a.roleCode === "inisiator") || [];
-  const canSignAsInisiator = Boolean(
-    isAdmin ||
-    (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId))
-  );
   const coachAssignment = roleAssignments?.find((a) => a.roleCode === "coach");
-  const canSignAsCoach = Boolean(
-    isAdmin ||
-    (currentUserId && coachAssignment?.userId === currentUserId)
-  );
   const poAssignment = roleAssignments?.find((a) => a.roleCode === "project_owner");
-  const canSignAsPo = Boolean(
-    isAdmin ||
-    (currentUserId && poAssignment?.userId === currentUserId)
+
+  // Plan signatures:
+  const canSignPlanInisiatorPerm = signPermissions?.plan?.inisiator ?? isAdmin;
+  const canSignPlanCoachPerm = signPermissions?.plan?.coach ?? isAdmin;
+  const canSignPlanPoPerm = signPermissions?.plan?.po ?? isAdmin;
+
+  const canSignPlanAsInisiator = Boolean(
+    canSignPlanInisiatorPerm &&
+    (isGlobalUser || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
   );
+  const canSignPlanAsCoach = Boolean(
+    canSignPlanCoachPerm &&
+    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+  );
+  const canSignPlanAsPo = Boolean(
+    canSignPlanPoPerm &&
+    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+  );
+
+  // Report signatures:
+  const canSignReportInisiatorPerm = signPermissions?.report?.inisiator ?? isAdmin;
+  const canSignReportCoachPerm = signPermissions?.report?.coach ?? isAdmin;
+  const canSignReportPoPerm = signPermissions?.report?.po ?? isAdmin;
+
+  const canSignReportAsInisiator = Boolean(
+    canSignReportInisiatorPerm &&
+    (isGlobalUser || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
+  );
+  const canSignReportAsCoach = Boolean(
+    canSignReportCoachPerm &&
+    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+  );
+  const canSignReportAsPo = Boolean(
+    canSignReportPoPerm &&
+    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+  );
+
+  // Backwards compatibility aliases
+  const canSignAsInisiator = canSignPlanAsInisiator;
+  const canSignAsCoach = canSignPlanAsCoach;
+  const canSignAsPo = canSignPlanAsPo;
 
   // ── Tab state ─────────────────────────────────────────────────────────────
   const searchParams = useSearchParams();
@@ -353,25 +394,47 @@ export function CustomerValidationClient({
 
   // ── Dimensi feedback state ─────────────────────────────────────────────────
   const initDimensi = () => {
-    const map: Record<string, string> = {};
-    DIMENSI_ROWS.forEach((d) => { map[d.key] = ""; });
-    (initialData?.dimensiFeedback || []).forEach((row: any) => {
-      map[row.dimensi] = row.evidenceYangDikumpulkan || "";
-    });
-    return map;
+    if (initialData?.dimensiFeedback && initialData.dimensiFeedback.length > 0) {
+      return initialData.dimensiFeedback.map((r: any) => ({
+        id: r.id || Math.random().toString(36).substring(7),
+        dimensi: r.dimensi || "",
+        fokusValidasi: r.fokusValidasi || "",
+        contohPertanyaan: r.contohPertanyaan || "",
+        evidenceYangDikumpulkan: r.evidenceYangDikumpulkan || "",
+      }));
+    }
+    // Default 4 rows (Usability, Functionality, Solvability, Payability)
+    return DIMENSI_ROWS.slice(0, 4).map((d) => ({
+      id: Math.random().toString(36).substring(7),
+      dimensi: d.label,
+      fokusValidasi: d.fokus,
+      contohPertanyaan: d.contoh,
+      evidenceYangDikumpulkan: "",
+    }));
   };
-  const [dimensiEvidence, setDimensiEvidence] = useState<Record<string, string>>(initDimensi);
+  const [dimensiRows, setDimensiRows] = useState<any[]>(initDimensi);
 
   // ── Metrik catatan state ───────────────────────────────────────────────────
   const initMetrik = () => {
-    const map: Record<string, string> = {};
-    METRIK_ROWS.forEach((r) => { map[r.metrik] = ""; });
-    (initialData?.metrikRencana || []).forEach((row: any) => {
-      map[row.metrik] = row.catatan || "";
-    });
-    return map;
+    if (initialData?.metrikRencana && initialData.metrikRencana.length > 0) {
+      return initialData.metrikRencana.map((r: any) => ({
+        id: r.id || Math.random().toString(36).substring(7),
+        validasi: r.validasi || "Desirability",
+        metrik: r.metrik || "",
+        unitUkuran: r.unitUkuran || "",
+        kriteriaKesuksesan: r.kriteriaKesuksesan || "",
+        caraPengukuran: r.caraPengukuran || "",
+        catatan: r.catatan || "",
+      }));
+    }
+    // Default 3 rows
+    return [
+      { id: Math.random().toString(36).substring(7), validasi: "Desirability", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
+      { id: Math.random().toString(36).substring(7), validasi: "Feasibility On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
+      { id: Math.random().toString(36).substring(7), validasi: "Viability On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" }
+    ];
   };
-  const [metrikCatatan, setMetrikCatatan] = useState<Record<string, string>>(initMetrik);
+  const [metrikRows, setMetrikRows] = useState<any[]>(initMetrik);
 
   // ── Report state ──────────────────────────────────────────────────────────
   const [reportForm, setReportForm] = useState({
@@ -494,8 +557,8 @@ export function CustomerValidationClient({
     const res = await saveCustomerValidationPlanFullAction(
       timId,
       { ...planValues, dataDukung: dataDukung as any },
-      dimensiEvidence,
-      metrikCatatan,
+      dimensiRows,
+      metrikRows,
     );
     if (res.success) {
       if ((res as any).backlogGenerated) {
@@ -542,6 +605,24 @@ export function CustomerValidationClient({
           ...prev,
           ...res.data,
         }));
+        
+        if (res.data.dimensiRows && res.data.dimensiRows.length > 0) {
+          // ensure all rows have unique IDs
+          const newDimensiRows = res.data.dimensiRows.map((r: any) => ({
+            ...r,
+            id: Math.random().toString(36).substring(7)
+          }));
+          setDimensiRows(newDimensiRows);
+        }
+
+        if (res.data.metrikRows && res.data.metrikRows.length > 0) {
+          const newMetrikRows = res.data.metrikRows.map((r: any) => ({
+            ...r,
+            id: Math.random().toString(36).substring(7)
+          }));
+          setMetrikRows(newMetrikRows);
+        }
+
         toast.success(
           "Form Perencanaan CV berhasil diisi otomatis dari Innovation Charter & AI. Tinjau dan simpan jika sudah sesuai.",
           "Auto-Fill Berhasil"
@@ -1245,31 +1326,112 @@ export function CustomerValidationClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {DIMENSI_ROWS.map((d) => (
-                        <tr key={d.key} className="hover:bg-gray-50/60 transition-colors">
-                          <td className="px-4 py-3 align-top">
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] font-bold uppercase tracking-wide"
-                            >
-                              {d.label}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 align-top text-gray-600 leading-relaxed">{d.fokus}</td>
-                          <td className="px-4 py-3 align-top text-gray-600 leading-relaxed italic">{d.contoh}</td>
-                          <td className="px-4 py-3 align-top">
-                            <Textarea
-                              rows={3}
-                              placeholder="Tulis temuan/catatan/kutipan responden..."
-                              className="text-xs resize-none min-h-[72px]"
-                              value={dimensiEvidence[d.key] || ""}
-                              onChange={(e) =>
-                                setDimensiEvidence((prev) => ({ ...prev, [d.key]: e.target.value }))
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {DIMENSI_ROWS.slice(0, 4).map((dimensiGroup) => {
+                        const rowsForDimensi = dimensiRows.filter(r => r.dimensi.toLowerCase() === dimensiGroup.label.toLowerCase());
+                        return (
+                          <Fragment key={dimensiGroup.key}>
+                            {rowsForDimensi.map((d, localIdx) => {
+                              const globalIndex = dimensiRows.findIndex(r => r.id === d.id);
+                              return (
+                                <tr key={d.id} className="hover:bg-gray-50/60 transition-colors">
+                                  <td className="px-4 py-3 align-top">
+                                    {localIdx === 0 ? (
+                                      <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wide">
+                                        {d.dimensi}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-xs font-semibold text-transparent select-none">{d.dimensi}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 align-top">
+                                    <Textarea
+                                      value={d.fokusValidasi}
+                                      onChange={(e) => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                        const newRows = [...dimensiRows];
+                                        newRows[globalIndex].fokusValidasi = e.target.value;
+                                        setDimensiRows(newRows);
+                                      }}
+                                      placeholder="Fokus Validasi"
+                                      className="text-xs resize-none min-h-[32px] overflow-hidden"
+                                      rows={1}
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 align-top">
+                                    <Textarea
+                                      value={d.contohPertanyaan}
+                                      onChange={(e) => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                        const newRows = [...dimensiRows];
+                                        newRows[globalIndex].contohPertanyaan = e.target.value;
+                                        setDimensiRows(newRows);
+                                      }}
+                                      placeholder="Contoh Pertanyaan"
+                                      className="text-xs resize-none min-h-[32px] overflow-hidden"
+                                      rows={1}
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 align-top">
+                                    <div className="flex gap-2">
+                                      <Textarea
+                                        value={d.evidenceYangDikumpulkan || ""}
+                                        onChange={(e) => {
+                                          e.target.style.height = 'auto';
+                                          e.target.style.height = `${e.target.scrollHeight}px`;
+                                          const newRows = [...dimensiRows];
+                                          newRows[globalIndex].evidenceYangDikumpulkan = e.target.value;
+                                          setDimensiRows(newRows);
+                                        }}
+                                        placeholder="Evidence/Catatan"
+                                        className="text-xs resize-none min-h-[32px] overflow-hidden flex-1"
+                                        rows={1}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 mt-0.5 disabled:opacity-50"
+                                        disabled={rowsForDimensi.length <= 1}
+                                        onClick={() => {
+                                          setDimensiRows(dimensiRows.filter((r) => r.id !== d.id));
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            <tr>
+                              <td colSpan={4} className="px-4 py-2 bg-gray-50/30 border-b border-gray-100">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-[10px] h-6 px-2 text-[#0F5132]"
+                                  onClick={() => {
+                                    setDimensiRows([
+                                      ...dimensiRows,
+                                      {
+                                        id: Math.random().toString(36).substring(7),
+                                        dimensi: dimensiGroup.label,
+                                        fokusValidasi: "",
+                                        contohPertanyaan: "",
+                                        evidenceYangDikumpulkan: ""
+                                      }
+                                    ]);
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" /> Tambah Baris {dimensiGroup.label}
+                                </Button>
+                              </td>
+                            </tr>
+                          </Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1296,7 +1458,7 @@ export function CustomerValidationClient({
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 w-28">Validasi</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 w-40">Validasi</th>
                         <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[160px]">Metrik</th>
                         <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[140px]">Unit Ukur</th>
                         <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[180px]">Kriteria Kesuksesan</th>
@@ -1305,41 +1467,122 @@ export function CustomerValidationClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {METRIK_ROWS.map((r) => (
-                        <tr key={r.metrik} className="hover:bg-gray-50/60 transition-colors">
+                      {metrikRows.map((r, index) => (
+                        <tr key={r.id} className="hover:bg-gray-50/60 transition-colors">
                           <td className="px-4 py-3 align-top">
-                            <Badge
-                              variant="outline"
-                              className={`text-[10px] font-bold uppercase tracking-wide ${
-                                r.validasi === "Desirability"
-                                  ? "border-violet-300 text-violet-700 bg-violet-50"
-                                  : r.validasi === "Feasibility On Paper"
-                                  ? "border-amber-300 text-amber-700 bg-amber-50"
-                                  : "border-emerald-300 text-emerald-700 bg-emerald-50"
-                              }`}
+                            <select
+                              value={r.validasi}
+                              onChange={(e) => {
+                                const newRows = [...metrikRows];
+                                newRows[index].validasi = e.target.value;
+                                setMetrikRows(newRows);
+                              }}
+                              className="w-full text-[11px] font-bold text-gray-700 bg-white border border-gray-300 rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132]"
                             >
-                              {r.validasi}
-                            </Badge>
+                              <option value="Desirability">Desirability</option>
+                              <option value="Feasibility On Paper">Feasibility On Paper</option>
+                              <option value="Viability On Paper">Viability On Paper</option>
+                            </select>
                           </td>
-                          <td className="px-4 py-3 align-top font-semibold text-gray-800">{r.metrik}</td>
-                          <td className="px-4 py-3 align-top text-gray-600">{r.unit}</td>
-                          <td className="px-4 py-3 align-top text-gray-600">{r.kriteria}</td>
-                          <td className="px-4 py-3 align-top text-gray-600">{r.cara}</td>
+                          <td className="px-4 py-3 align-top">
+                            <Input
+                              value={r.metrik}
+                              onChange={(e) => {
+                                const newRows = [...metrikRows];
+                                newRows[index].metrik = e.target.value;
+                                setMetrikRows(newRows);
+                              }}
+                              className="text-xs h-auto min-h-[36px]"
+                              placeholder="Metrik"
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <Input
+                              value={r.unitUkuran}
+                              onChange={(e) => {
+                                const newRows = [...metrikRows];
+                                newRows[index].unitUkuran = e.target.value;
+                                setMetrikRows(newRows);
+                              }}
+                              className="text-xs h-auto min-h-[36px]"
+                              placeholder="Unit Ukur"
+                            />
+                          </td>
                           <td className="px-4 py-3 align-top">
                             <Textarea
-                              rows={2}
-                              placeholder="Catatan & hasil aktual tim..."
+                              value={r.kriteriaKesuksesan}
+                              onChange={(e) => {
+                                const newRows = [...metrikRows];
+                                newRows[index].kriteriaKesuksesan = e.target.value;
+                                setMetrikRows(newRows);
+                              }}
                               className="text-xs resize-none min-h-[56px]"
-                              value={metrikCatatan[r.metrik] || ""}
-                              onChange={(e) =>
-                                setMetrikCatatan((prev) => ({ ...prev, [r.metrik]: e.target.value }))
-                              }
+                              placeholder="Kriteria Kesuksesan"
                             />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <Textarea
+                              value={r.caraPengukuran}
+                              onChange={(e) => {
+                                const newRows = [...metrikRows];
+                                newRows[index].caraPengukuran = e.target.value;
+                                setMetrikRows(newRows);
+                              }}
+                              className="text-xs resize-none min-h-[56px]"
+                              placeholder="Cara Pengukuran"
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <div className="flex gap-2">
+                              <Textarea
+                                rows={2}
+                                placeholder="Catatan & hasil aktual tim..."
+                                className="text-xs resize-none min-h-[56px] flex-1"
+                                value={r.catatan || ""}
+                                onChange={(e) => {
+                                  const newRows = [...metrikRows];
+                                  newRows[index].catatan = e.target.value;
+                                  setMetrikRows(newRows);
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 mt-1 shrink-0"
+                                onClick={() => {
+                                  setMetrikRows(metrikRows.filter((_, i) => i !== index));
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  <div className="p-3 bg-gray-50/50 border-t border-gray-200">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-dashed gap-1 h-8 text-[#0F5132] border-[#0F5132] hover:bg-emerald-50"
+                      onClick={() => {
+                        setMetrikRows([...metrikRows, {
+                          id: Math.random().toString(36).substring(7),
+                          validasi: "Desirability",
+                          metrik: "",
+                          unitUkuran: "",
+                          kriteriaKesuksesan: "",
+                          caraPengukuran: "",
+                          catatan: ""
+                        }]);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Tambah Baris Metrik
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1433,7 +1676,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisusun.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDisusun.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisusun.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1461,7 +1704,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Inisiator terdaftar di Charter"}
@@ -1546,7 +1789,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDiperiksa.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDiperiksa.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDiperiksa.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1574,7 +1817,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
@@ -1659,7 +1902,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisetujui.unit || "PT Pegadaian"}</span>
+                            <span>{ttdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisetujui.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -1687,7 +1930,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
@@ -2389,7 +2632,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{reportTtdDisusun.unit || "PT Pegadaian"}</span>
+                            <span>{reportTtdDisusun.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {reportTtdDisusun.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -2417,7 +2660,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Inisiator terdaftar di Charter"}
@@ -2428,7 +2671,7 @@ export function CustomerValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDisusun?.status === 'signed' ? (
-                        canSignAsInisiator ? (
+                        canSignReportAsInisiator ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -2447,7 +2690,7 @@ export function CustomerValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsInisiator ? (
+                        canSignReportAsInisiator ? (
                           <Button
                             type="button"
                             size="sm"
@@ -2496,7 +2739,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{reportTtdDiperiksa.unit || "PT Pegadaian"}</span>
+                            <span>{reportTtdDiperiksa.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {reportTtdDiperiksa.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -2524,7 +2767,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
@@ -2535,7 +2778,7 @@ export function CustomerValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDiperiksa?.status === 'signed' ? (
-                        canSignAsCoach ? (
+                        canSignReportAsCoach ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -2554,7 +2797,7 @@ export function CustomerValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsCoach ? (
+                        canSignReportAsCoach ? (
                           <Button
                             type="button"
                             size="sm"
@@ -2603,7 +2846,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{reportTtdDisetujui.unit || "PT Pegadaian"}</span>
+                            <span>{reportTtdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {reportTtdDisetujui.signatureImage && (
                             <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
@@ -2631,7 +2874,7 @@ export function CustomerValidationClient({
                           </div>
                           <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                             <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>PT Pegadaian</span>
+                            <span>PT Pegadaian (Persero)</span>
                           </div>
                           <div className="text-[10px] text-gray-400 italic mt-1">
                             {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
@@ -2642,7 +2885,7 @@ export function CustomerValidationClient({
 
                     <div className="pt-2 border-t border-gray-200/60">
                       {reportTtdDisetujui?.status === 'signed' ? (
-                        canSignAsPo ? (
+                        canSignReportAsPo ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -2661,7 +2904,7 @@ export function CustomerValidationClient({
                           </div>
                         )
                       ) : (
-                        canSignAsPo ? (
+                        canSignReportAsPo ? (
                           <Button
                             type="button"
                             size="sm"

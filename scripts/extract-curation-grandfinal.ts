@@ -332,7 +332,7 @@ async function runExtraction() {
         pengusul: {
           nama: p.proposer_name,
           email: p.proposer_email,
-          unit_kerja: p.proposer_unit_kerja || p.proposer_division || 'PT Pegadaian',
+          unit_kerja: p.proposer_unit_kerja || p.proposer_division || 'PT Pegadaian (Persero)',
           jabatan: p.division || 'Inovator',
         },
         tanggal_submit: p.submission_date ? new Date(p.submission_date).toISOString() : new Date(p.created_at).toISOString(),

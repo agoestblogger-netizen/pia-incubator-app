@@ -99,6 +99,15 @@ export async function hasPermission(
     user.timRoles
       .filter(tr => tr.timId === timId)
       .forEach(tr => activeRoleCodes.push(tr.roleCode));
+  } else {
+    // If no specific timId is provided, evaluate all active roles the user has across any team.
+    // This allows per_tim roles (e.g. Coach) to execute global actions (like user.manage)
+    // if that permission is granted to their role.
+    user.timRoles.forEach(tr => {
+      if (!activeRoleCodes.includes(tr.roleCode)) {
+        activeRoleCodes.push(tr.roleCode);
+      }
+    });
   }
 
   if (activeRoleCodes.length === 0) return false;

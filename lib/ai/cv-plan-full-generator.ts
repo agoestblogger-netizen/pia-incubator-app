@@ -19,6 +19,22 @@ export interface FullCvPlanDraft {
   lokasiChannelTesting: string;
   metodeRekrutmen: string;
   etikaPersetujuanData: string;
+  // Section D
+  dimensiRows?: Array<{
+    dimensi: string;
+    fokusValidasi: string;
+    contohPertanyaan: string;
+    evidenceYangDikumpulkan: string;
+  }>;
+  // Section E
+  metrikRows?: Array<{
+    validasi: string;
+    metrik: string;
+    unitUkuran: string;
+    kriteriaKesuksesan: string;
+    caraPengukuran: string;
+    catatan: string;
+  }>;
 }
 
 export function getHeuristicCvPlanDraft(charterData: {
@@ -39,7 +55,7 @@ export function getHeuristicCvPlanDraft(charterData: {
   if (customer && context) {
     customerDanContext = `${customer} dalam konteks ${context}`;
   } else {
-    customerDanContext = customer || context || "Nasabah dan unit kerja operasional PT Pegadaian";
+    customerDanContext = customer || context || "Nasabah dan unit kerja operasional PT Pegadaian (Persero)";
   }
 
   const dfvParts = [
@@ -71,6 +87,17 @@ export function getHeuristicCvPlanDraft(charterData: {
     lokasiChannelTesting: "Sesi wawancara tatap muka di unit kerja terkait dan online testing via Zoom / Google Meet.",
     metodeRekrutmen: "Undangan langsung kepada PIC unit kerja operasional dan pendekatan terarah kepada perwakilan early adopters.",
     etikaPersetujuanData: "Formulir persetujuan partisipasi (informed consent), penjaminan kerahasiaan identitas responden, dan kepatuhan terhadap regulasi perlindungan data internal.",
+    dimensiRows: [
+      { dimensi: "Usability", fokusValidasi: "Kemudahan dan kenyamanan penggunaan antarmuka solusi.", contohPertanyaan: "Apakah navigasi menu mudah dipahami tanpa panduan?", evidenceYangDikumpulkan: "" },
+      { dimensi: "Functionality", fokusValidasi: "Keandalan dan keberhasilan fitur-fitur utama.", contohPertanyaan: "Apakah fitur utama berfungsi dengan baik dan tanpa error?", evidenceYangDikumpulkan: "" },
+      { dimensi: "Solvability", fokusValidasi: "Efektivitas solusi dalam menyelesaikan masalah utama pengguna.", contohPertanyaan: "Sejauh mana solusi ini membantu menyelesaikan masalah Anda?", evidenceYangDikumpulkan: "" },
+      { dimensi: "Payability", fokusValidasi: "Kesediaan pengguna untuk membayar atas nilai tambah yang diberikan.", contohPertanyaan: "Jika solusi ini berbayar, apakah Anda bersedia berlangganan?", evidenceYangDikumpulkan: "" }
+    ],
+    metrikRows: [
+      { validasi: "Desirability", metrik: "Tingkat ketertarikan target pengguna awal untuk mencoba solusi", unitUkuran: "%", kriteriaKesuksesan: "> 70%", caraPengukuran: "Survei Minat", catatan: "" },
+      { validasi: "Feasibility On Paper", metrik: "Kesesuaian solusi dengan arsitektur teknis atau regulasi yang ada", unitUkuran: "Ya/Tidak", kriteriaKesuksesan: "Ya", caraPengukuran: "Expert Review / Assessment Internal", catatan: "" },
+      { validasi: "Viability On Paper", metrik: "Perkiraan rasio potensi keuntungan atau efisiensi biaya terhadap biaya operasional", unitUkuran: "ROI", kriteriaKesuksesan: "> 1", caraPengukuran: "Simulasi Finansial Sederhana", catatan: "" }
+    ]
   };
 }
 
@@ -116,14 +143,27 @@ Output HARUS berupa JSON murni dengan format:
   "jumlahTargetResponden": 10,
   "lokasiChannelTesting": "...",
   "metodeRekrutmen": "...",
-  "etikaPersetujuanData": "..."
+  "etikaPersetujuanData": "...",
+  "dimensiRows": [
+    { "dimensi": "Usability", "fokusValidasi": "...", "contohPertanyaan": "...", "evidenceYangDikumpulkan": "" },
+    { "dimensi": "Functionality", "fokusValidasi": "...", "contohPertanyaan": "...", "evidenceYangDikumpulkan": "" },
+    { "dimensi": "Solvability", "fokusValidasi": "...", "contohPertanyaan": "...", "evidenceYangDikumpulkan": "" },
+    { "dimensi": "Payability", "fokusValidasi": "...", "contohPertanyaan": "...", "evidenceYangDikumpulkan": "" }
+  ],
+  "metrikRows": [
+    { "validasi": "Desirability", "metrik": "...", "unitUkuran": "...", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "" },
+    { "validasi": "Feasibility On Paper", "metrik": "...", "unitUkuran": "...", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "" },
+    { "validasi": "Viability On Paper", "metrik": "...", "unitUkuran": "...", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "" }
+  ]
 }
 
 ATURAN PENTING:
 1. Section A (projectMission, customerDanContext, problemHypothesis, hmw, solutionHypothesis): Gunakan dan rapikan langsung dari data Charter yang diberikan.
 2. Section B (prototypeType, fiturAlurDiuji, skenarioUserTesting, instrumenValidasi): Susun metodologi testing yang konkret dan aplikatif sesuai tipe solusi.
 3. Section C (targetEarlyAdopters, kriteriaSeleksi, jumlahTargetResponden, lokasiChannelTesting, metodeRekrutmen, etikaPersetujuanData): Spesifikasikan profil responden, kriteria inklusi/eksklusi, default jumlah 10-12 orang, etika informed consent.
-4. Gunakan bahasa Indonesia profesional dan standar perbankan / pegadaian.`;
+4. Section D (dimensiRows): WAJIB berisi tepat 4 item array dengan dimensi persis: "Usability", "Functionality", "Solvability", "Payability". Sesuaikan fokus dan contoh pertanyaan dengan konteks inovasi ini.
+5. Section E (metrikRows): WAJIB berisi tepat 3 item array dengan validasi persis: "Desirability", "Feasibility On Paper", "Viability On Paper". Sesuaikan metrik, unit, kriteria, dan cara pengukuran berdasarkan inovasi charter.
+6. Gunakan bahasa Indonesia profesional dan standar perbankan / pegadaian.`;
 
     const userPrompt = `DATA INNOVATION CHARTER:
 - Nama Proyek: ${charterData.namaProyekInovasi || "-"}

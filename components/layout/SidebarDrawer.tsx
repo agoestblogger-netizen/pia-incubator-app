@@ -27,16 +27,28 @@ import type { UserProfile } from '@/lib/auth/rbac';
 export function SidebarDrawer({
   user,
   taskCount = 0,
+  adminPermissions,
 }: {
   user?: UserProfile | null;
   taskCount?: number;
+  adminPermissions?: {
+    canManageUsers?: boolean;
+    canCreateTeam?: boolean;
+    canImport?: boolean;
+    canReset?: boolean;
+  };
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
 
-  const isAdmin = user?.globalRoles.includes('admin_ic');
+  const canManageUsers = Boolean(adminPermissions?.canManageUsers || user?.globalRoles.includes('admin_ic'));
+  const canCreateTeam = Boolean(adminPermissions?.canCreateTeam || user?.globalRoles.includes('admin_ic'));
+  const canImport = Boolean(adminPermissions?.canImport || user?.globalRoles.includes('admin_ic'));
+  const canReset = Boolean(adminPermissions?.canReset || user?.globalRoles.includes('admin_ic'));
+  const canSeeAdminGroup = canManageUsers || canImport || canReset;
+
   const userTeams = user?.timRoles || [];
 
   // Close sidebar on ESC key
@@ -117,7 +129,7 @@ export function SidebarDrawer({
                   S12
                 </span>
               </div>
-              <p className="text-[10px] text-green-100/80 font-medium">PT Pegadaian</p>
+              <p className="text-[10px] text-green-100/80 font-medium">PT Pegadaian (Persero)</p>
             </div>
           </Link>
 
@@ -192,7 +204,7 @@ export function SidebarDrawer({
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                 Tim Saya ({userTeams.length})
               </span>
-              {isAdmin && (
+              {canCreateTeam && (
                 <Link
                   href="/dashboard/tim-baru"
                   className="text-[10px] text-[#0F5132] hover:underline font-semibold flex items-center gap-0.5"
@@ -243,7 +255,7 @@ export function SidebarDrawer({
           </div>
 
           {/* Separator */}
-          {isAdmin && (
+          {canSeeAdminGroup && (
             <>
               <div className="h-px bg-gray-100 mx-1" />
 
@@ -253,41 +265,47 @@ export function SidebarDrawer({
                   Administrasi IC
                 </div>
 
-                <Link
-                  href="/admin/import"
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
-                    isActive('/admin/import')
-                      ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
-                      : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
-                  }`}
-                >
-                  <UploadCloud className={`h-4 w-4 ${isActive('/admin/import') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
-                  <span>Import Calon Peserta</span>
-                </Link>
+                {canImport && (
+                  <Link
+                    href="/admin/import"
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                      isActive('/admin/import')
+                        ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
+                        : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
+                    }`}
+                  >
+                    <UploadCloud className={`h-4 w-4 ${isActive('/admin/import') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
+                    <span>Import Calon Peserta</span>
+                  </Link>
+                )}
 
-                <Link
-                  href="/admin/roles"
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
-                    isActive('/admin/roles')
-                      ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
-                      : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
-                  }`}
-                >
-                  <ShieldCheck className={`h-4 w-4 ${isActive('/admin/roles') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
-                  <span>Kelola User & Role (RBAC)</span>
-                </Link>
+                {canManageUsers && (
+                  <Link
+                    href="/admin/roles"
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                      isActive('/admin/roles')
+                        ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
+                        : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
+                    }`}
+                  >
+                    <ShieldCheck className={`h-4 w-4 ${isActive('/admin/roles') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
+                    <span>Kelola User & Role (RBAC)</span>
+                  </Link>
+                )}
 
-                <Link
-                  href="/admin/reset"
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
-                    isActive('/admin/reset')
-                      ? 'bg-red-50 text-red-700 font-bold border border-red-200 shadow-xs'
-                      : 'text-gray-700 hover:bg-red-50/50 hover:text-red-700'
-                  }`}
-                >
-                  <Trash2 className={`h-4 w-4 ${isActive('/admin/reset') ? 'text-red-600' : 'text-gray-400'}`} />
-                  <span>Reset Data</span>
-                </Link>
+                {canReset && (
+                  <Link
+                    href="/admin/reset"
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                      isActive('/admin/reset')
+                        ? 'bg-red-50 text-red-700 font-bold border border-red-200 shadow-xs'
+                        : 'text-gray-700 hover:bg-red-50/50 hover:text-red-700'
+                    }`}
+                  >
+                    <Trash2 className={`h-4 w-4 ${isActive('/admin/reset') ? 'text-red-600' : 'text-gray-400'}`} />
+                    <span>Reset Data</span>
+                  </Link>
+                )}
               </div>
             </>
           )}

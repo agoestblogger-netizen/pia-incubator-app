@@ -183,8 +183,20 @@ const METRIK_ROWS_STATIC = [
 export async function saveCustomerValidationPlanFullAction(
   timId: string,
   planValues: Partial<typeof customerValidationPlan.$inferInsert>,
-  dimensiEvidences: Record<string, string>,
-  metrikCatatan: Record<string, string>,
+  dimensiRows: Array<{
+    dimensi: string;
+    fokusValidasi: string;
+    contohPertanyaan: string;
+    evidenceYangDikumpulkan: string;
+  }>,
+  metrikRows: Array<{
+    validasi: string;
+    metrik: string;
+    unitUkuran: string;
+    kriteriaKesuksesan: string;
+    caraPengukuran: string;
+    catatan: string;
+  }>
 ) {
   try {
     const user = await getCurrentUser();
@@ -210,48 +222,42 @@ export async function saveCustomerValidationPlanFullAction(
 
     if (!planId) return { success: false, error: 'Gagal mendapatkan plan ID.' };
 
-    // Upsert dimensi feedback (5 baris tetap)
-    for (const [dimensi, evidence] of Object.entries(dimensiEvidences)) {
-      const [existingRow] = await db.select().from(customerValidationDimensiFeedback)
-        .where(and(
-          eq(customerValidationDimensiFeedback.planId, planId),
-          eq(customerValidationDimensiFeedback.dimensi, dimensi)
-        )).limit(1);
+    // Update dimensi feedback: delete existing and insert new
+    await db.delete(customerValidationDimensiFeedback)
+      .where(eq(customerValidationDimensiFeedback.planId, planId));
 
-      if (existingRow) {
-        await db.update(customerValidationDimensiFeedback)
-          .set({ evidenceYangDikumpulkan: evidence, updatedAt: new Date() })
-          .where(eq(customerValidationDimensiFeedback.id, existingRow.id));
-      } else {
-        await db.insert(customerValidationDimensiFeedback)
-          .values({ planId, dimensi, evidenceYangDikumpulkan: evidence });
-      }
+    if (dimensiRows && dimensiRows.length > 0) {
+      await db.insert(customerValidationDimensiFeedback).values(
+        dimensiRows.map((r) => ({
+          planId: planId as string,
+          dimensi: r.dimensi || 'Custom',
+          fokusValidasi: r.fokusValidasi || '',
+          contohPertanyaan: r.contohPertanyaan || '',
+          evidenceYangDikumpulkan: r.evidenceYangDikumpulkan || '',
+        }))
+      );
     }
 
-    // Seed & update metrik rencana (7 baris tetap)
-    const existingMetrik = await db.select().from(rencanaValidasiMetrik)
-      .where(eq(rencanaValidasiMetrik.planId, planId));
-    const existingMetrikByKey = new Map(existingMetrik.map((m) => [m.metrik, m]));
+    // Update metrik rencana: delete existing CV metrik and insert new
+    await db.delete(rencanaValidasiMetrik)
+      .where(and(
+        eq(rencanaValidasiMetrik.planId, planId),
+        eq(rencanaValidasiMetrik.fase, 'customer_validation')
+      ));
 
-    for (const row of METRIK_ROWS_STATIC) {
-      const catatan = metrikCatatan[row.metrik] ?? null;
-      const existingRow = existingMetrikByKey.get(row.metrik);
-      if (existingRow) {
-        await db.update(rencanaValidasiMetrik)
-          .set({ catatan, updatedAt: new Date() })
-          .where(eq(rencanaValidasiMetrik.id, existingRow.id));
-      } else {
-        await db.insert(rencanaValidasiMetrik).values({
-          planId,
+    if (metrikRows && metrikRows.length > 0) {
+      await db.insert(rencanaValidasiMetrik).values(
+        metrikRows.map((r) => ({
+          planId: planId as string,
           fase: 'customer_validation',
-          validasi: row.validasi,
-          metrik: row.metrik,
-          unitUkuran: row.unitUkuran,
-          kriteriaKesuksesan: row.kriteriaKesuksesan,
-          caraPengukuran: row.caraPengukuran,
-          catatan,
-        });
-      }
+          validasi: r.validasi || 'Desirability',
+          metrik: r.metrik || 'Metrik Custom',
+          unitUkuran: r.unitUkuran || '',
+          kriteriaKesuksesan: r.kriteriaKesuksesan || '',
+          caraPengukuran: r.caraPengukuran || '',
+          catatan: r.catatan || '',
+        }))
+      );
     }
 
     // Auto-generate AI backlog only if this is the first time (no Rekomendasi CV cards exist yet)
@@ -696,9 +702,14 @@ export async function signCvPlanAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
+    const permCode = `cv_plan.sign_${roleType}`;
+    const allowed = await hasPermission(user, permCode, timId);
+    if (!allowed) {
+      return {
+        success: false,
+        error: `Forbidden: Role Anda tidak memiliki izin menandatangani (${permCode}). Hubungi Admin untuk mengatur hak akses role.`,
+      };
+    }
 
     // Get user details in this team
     const [anggota] = await db
@@ -722,8 +733,9 @@ export async function signCvPlanAction(
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
 
-    // ── Role-gate enforcement ─────────────────────────────────────────────────
-    if (!isAdmin) {
+    // ── Role-gate enforcement: Global scope roles (Admin/Coach/Divisi IC) bypass identity check, per_tim roles require assignment match ──
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const assignments = rolesData?.assignments || [];
       let isAuthorized = false;
       if (roleType === 'inisiator') {
@@ -755,7 +767,7 @@ export async function signCvPlanAction(
       signedByUserName: user.nama,
       nama: assignedName || user.nama,
       jabatan: anggota?.jabatan || defaultRoleTitle,
-      unit: anggota?.unitKerja || 'PT Pegadaian',
+      unit: anggota?.unitKerja || 'PT Pegadaian (Persero)',
       tanggal: new Date().toISOString(),
       status: 'signed',
       signatureImage: processedImageUrl,
@@ -815,11 +827,9 @@ export async function revokeCvPlanSignatureAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
 
-    if (!isAdmin) {
+    if (!isGlobalUser) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
       const assignments = rolesData?.assignments || [];
@@ -1033,22 +1043,20 @@ export async function signCvReportAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
-    const allowed = await hasPermission(user, 'cust_val.sign', timId);
+    const permCode = `cv_report.sign_${roleType}`;
+    const allowed = await hasPermission(user, permCode, timId);
     if (!allowed) {
-      return { success: false, error: 'Forbidden: Anda tidak memiliki izin menandatangani laporan CV ini.' };
+      return { success: false, error: `Forbidden: Role Anda tidak memiliki izin menandatangani laporan CV (${permCode}).` };
     }
-
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
 
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
     const defaultRoleTitle =
       roleType === 'inisiator' ? 'Inisiator Inovasi' : roleType === 'coach' ? 'Innovation Coach' : 'Project Owner';
 
-    // ── Role-gate enforcement ─────────────────────────────────────────────────
-    if (!isAdmin) {
+    // ── Role-gate enforcement: Global scope roles bypass identity check, per_tim roles require assignment match ──
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const assignments = rolesData?.assignments || [];
       let isAuthorized = false;
       if (roleType === 'inisiator') {
@@ -1106,7 +1114,7 @@ export async function signCvReportAction(
       nama: assignedName || user.nama,
       role: roleType,
       jabatan: roleType === 'inisiator' ? 'Inisiator Inovasi' : roleType === 'coach' ? 'Innovation Coach' : 'Project Owner',
-      unit: 'PT Pegadaian',
+      unit: 'PT Pegadaian (Persero)',
       status: 'signed' as const,
       tanggal: new Date().toISOString(),
       signatureImage: signatureDataUrl || null,
@@ -1155,11 +1163,14 @@ export async function revokeCvReportSignatureAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
-    const isAdmin = user.globalRoles?.some((r: string) =>
-      ['super_admin', 'admin_ic', 'admin'].includes(r)
-    );
+    const permCode = `cv_report.sign_${roleType}`;
+    const allowed = (await hasPermission(user, permCode, timId)) || (await hasPermission(user, 'cust_val.edit', timId));
+    if (!allowed) {
+      return { success: false, error: 'Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.' };
+    }
 
-    if (!isAdmin) {
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
       const assignments = rolesData?.assignments || [];

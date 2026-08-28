@@ -153,7 +153,7 @@ export async function GET(
       ttdDisetujui = {
         nama: rolesMap.promotor[0].nama,
         jabatan: rolesMap.promotor[0].jabatan || 'Promotor Inovasi',
-        unit: rolesMap.promotor[0].unitKerja || 'PT Pegadaian',
+        unit: rolesMap.promotor[0].unitKerja || 'PT Pegadaian (Persero)',
         status: 'pending',
       };
     }
@@ -164,7 +164,7 @@ export async function GET(
       ttdDisusun = {
         nama: rolesMap.projectOwner[0].nama,
         jabatan: rolesMap.projectOwner[0].jabatan || 'Project Owner',
-        unit: rolesMap.projectOwner[0].unitKerja || 'PT Pegadaian',
+        unit: rolesMap.projectOwner[0].unitKerja || 'PT Pegadaian (Persero)',
         status: 'pending',
       };
     }
@@ -175,7 +175,7 @@ export async function GET(
       ttdDiperiksa = {
         nama: rolesMap.coach[0].nama,
         jabatan: rolesMap.coach[0].jabatan || 'Innovation Coach',
-        unit: rolesMap.coach[0].unitKerja || 'PT Pegadaian',
+        unit: rolesMap.coach[0].unitKerja || 'PT Pegadaian (Persero)',
         status: 'pending',
       };
     }
