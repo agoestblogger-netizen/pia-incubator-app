@@ -225,7 +225,8 @@ export async function GET(
       .slice(0, 50);
     const filename = `Innovation-Charter-${safeName}.pdf`;
 
-    return new NextResponse(buffer as any, {
+    return new NextResponse(Buffer.from(buffer), {
+      status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
@@ -234,6 +235,12 @@ export async function GET(
     });
   } catch (error: any) {
     console.error('[PDF Export Innovation Charter] Error:', error);
-    return new NextResponse(`Gagal membuat PDF Innovation Charter: ${error.message}`, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({ error: `Gagal membuat PDF Innovation Charter: ${error.message}` }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
