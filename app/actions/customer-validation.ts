@@ -608,12 +608,12 @@ export async function autoFillFullCvPlanAction(timId: string) {
       user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
       user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
 
-    if (isPlanFilled && !isAdmin && !isCoach) {
-      return {
-        success: false,
-        error: "Form Perencanaan CV sudah terisi. Pengisian ulang otomatis dengan AI hanya diizinkan untuk Admin dan Innovation Coach.",
-      };
-    }
+    // if (isPlanFilled && !isAdmin && !isCoach) {
+    //   return {
+    //     success: false,
+    //     error: "Form Perencanaan CV sudah terisi. Pengisian ulang otomatis dengan AI hanya diizinkan untuk Admin dan Innovation Coach.",
+    //   };
+    // }
 
     const hasData = [
       charterRow.projectMission,
