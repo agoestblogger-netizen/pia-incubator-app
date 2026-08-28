@@ -527,6 +527,18 @@ export function CustomerValidationClient({
   // Custom confirmation modal state (replaces window.confirm which gets dismissed by Next.js router)
   const [showAutoFillConfirm, setShowAutoFillConfirm] = useState(false);
 
+  // ── Auto-resize all Textareas in Section D & E on initial render / data change ──
+  useEffect(() => {
+    // Re-calculate height for all auto-resize textareas after data loads
+    const textareas = document.querySelectorAll<HTMLTextAreaElement>(
+      "textarea.resize-none.overflow-hidden"
+    );
+    textareas.forEach((ta) => {
+      ta.style.height = "auto";
+      ta.style.height = `${ta.scrollHeight}px`;
+    });
+  }, [dimensiRows, metrikRows]);
+
   // ── Auto-fill Trigger on First Mount ───────────────────────────────────────
   const hasTriggeredMountAutoFill = useRef(false);
 
@@ -1539,61 +1551,75 @@ export function CustomerValidationClient({
                             </select>
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <Input
+                            <Textarea
                               value={r.metrik}
                               onChange={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${e.target.scrollHeight}px`;
                                 const newRows = [...metrikRows];
                                 newRows[index].metrik = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs h-auto min-h-[36px]"
+                              className="text-xs resize-none min-h-[36px] overflow-hidden"
                               placeholder="Metrik"
+                              rows={1}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <Input
+                            <Textarea
                               value={r.unitUkuran}
                               onChange={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${e.target.scrollHeight}px`;
                                 const newRows = [...metrikRows];
                                 newRows[index].unitUkuran = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs h-auto min-h-[36px]"
+                              className="text-xs resize-none min-h-[36px] overflow-hidden"
                               placeholder="Unit Ukur"
+                              rows={1}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
                             <Textarea
                               value={r.kriteriaKesuksesan}
                               onChange={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${e.target.scrollHeight}px`;
                                 const newRows = [...metrikRows];
                                 newRows[index].kriteriaKesuksesan = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[56px]"
+                              className="text-xs resize-none min-h-[36px] overflow-hidden"
                               placeholder="Kriteria Kesuksesan"
+                              rows={1}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
                             <Textarea
                               value={r.caraPengukuran}
                               onChange={(e) => {
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${e.target.scrollHeight}px`;
                                 const newRows = [...metrikRows];
                                 newRows[index].caraPengukuran = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[56px]"
+                              className="text-xs resize-none min-h-[36px] overflow-hidden"
                               placeholder="Cara Pengukuran"
+                              rows={1}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
                             <div className="flex gap-2">
                               <Textarea
-                                rows={2}
+                                rows={1}
                                 placeholder="Catatan & hasil aktual tim..."
-                                className="text-xs resize-none min-h-[56px] flex-1"
+                                className="text-xs resize-none min-h-[36px] overflow-hidden flex-1"
                                 value={r.catatan || ""}
                                 onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${e.target.scrollHeight}px`;
                                   const newRows = [...metrikRows];
                                   newRows[index].catatan = e.target.value;
                                   setMetrikRows(newRows);
