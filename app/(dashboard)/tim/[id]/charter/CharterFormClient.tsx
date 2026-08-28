@@ -52,6 +52,8 @@ import {
   ChevronRight,
   Target,
   KanbanSquare,
+  Download,
+  FileText,
 } from "lucide-react";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
 import { formatDateIndo } from "@/lib/utils";
@@ -490,6 +492,47 @@ export function CharterFormClient({
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
+      {/* Top Action Header: Title, Status, and Export PDF Button */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 bg-gradient-to-r from-emerald-50 via-white to-purple-50/20 rounded-2xl border border-emerald-200/80 shadow-2xs">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-[#0F5132] bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">
+              Template 1 Juklak
+            </span>
+            <h1 className="text-base sm:text-lg font-black text-gray-900">
+              Innovation Setup &amp; Stakeholder Alignment
+            </h1>
+          </div>
+          <p className="text-xs text-gray-500">
+            Penetapan mandat inisiatif, struktur peran tim, milestone sprint 12 minggu, dan otorisasi formal Promotor.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <a
+            href={`/api/pdf/charter/${timId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer hover:shadow-xs"
+            title="Unduh dokumen resmi Template 1 Innovation Charter format PDF"
+          >
+            <Download className="h-4 w-4 text-emerald-600" />
+            <span>📄 Unduh PDF Innovation Charter</span>
+          </a>
+
+          {!isReadOnly && (
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold px-4 h-9 rounded-xl shadow-2xs gap-1.5 cursor-pointer"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <span>Simpan Perubahan</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* Read-Only Notice Banner for Promotor / Viewer */}
       {isReadOnly && (
         <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
