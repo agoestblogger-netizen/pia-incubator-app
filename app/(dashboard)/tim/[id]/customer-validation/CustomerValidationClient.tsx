@@ -423,11 +423,21 @@ export function CustomerValidationClient({
   const [dimensiRows, setDimensiRows] = useState<any[]>(initDimensi);
 
   // ── Metrik catatan state ───────────────────────────────────────────────────
+  // Normalize DB-stored lowercase values to display values used by dropdown & color logic
+  const normalizeValidasi = (v: string | null | undefined): string => {
+    if (!v) return "Desirability";
+    const lower = v.toLowerCase().trim();
+    if (lower === "desirability") return "Desirability";
+    if (lower.startsWith("feasibility")) return "Feasibility On Paper";
+    if (lower.startsWith("viability")) return "Viability On Paper";
+    return v; // already in correct format
+  };
+
   const initMetrik = () => {
     if (initialData?.metrikRencana && initialData.metrikRencana.length > 0) {
       return initialData.metrikRencana.map((r: any, i: number) => ({
         id: r.id || `db_m${i}`,
-        validasi: r.validasi || "Desirability",
+        validasi: normalizeValidasi(r.validasi),
         metrik: r.metrik || "",
         unitUkuran: r.unitUkuran || "",
         kriteriaKesuksesan: r.kriteriaKesuksesan || "",
