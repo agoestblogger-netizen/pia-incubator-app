@@ -1119,6 +1119,130 @@ export async function revokeCharterApprovalAction(timId: string) {
   }
 }
 
+// ── Charter PO Signature (Disusun Oleh — dokumentasi, tidak mempengaruhi gerbang fase) ──────────
+export async function signCharterAsPoAction(timId: string, signatureImage?: string | null) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const rolesData = await getCharterRolesData(timId);
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
+      const assignedPo = rolesData?.assignments?.find((r: any) => r.roleCode === "project_owner");
+      if (!assignedPo?.userId || assignedPo.userId !== user.id) {
+        return { success: false, error: "Forbidden: Hanya pemegang role Project Owner yang terdaftar di tim ini yang dapat menandatangani bagian ini." };
+      }
+    }
+
+    const [anggota] = await db.select().from(anggotaTim).where(and(eq(anggotaTim.timInovatorId, timId), eq(anggotaTim.userId, user.id))).limit(1);
+    const processedImageUrl = await processSignatureImage(timId, signatureImage);
+    const assignedName = rolesData?.assignments?.find((r: any) => r.roleCode === "project_owner")?.userName;
+
+    const ttdData = {
+      userId: user.id, signedByUserId: user.id, signedByUserName: user.nama,
+      nama: assignedName || user.nama,
+      jabatan: anggota?.jabatan || "Project Owner",
+      unit: anggota?.unitKerja || "PT Pegadaian (Persero)",
+      tanggal: new Date().toISOString(), email: user.email,
+      status: "approved", disetujui: true, signatureImage: processedImageUrl,
+    };
+
+    const [existing] = await db.select().from(charter).where(eq(charter.timInovatorId, timId)).limit(1);
+    if (existing) {
+      await db.update(charter).set({ ttdDisusun: ttdData, updatedAt: new Date() }).where(eq(charter.id, existing.id));
+    } else {
+      await db.insert(charter).values({ timInovatorId: timId, ttdDisusun: ttdData });
+    }
+    revalidatePath(`/tim/${timId}/charter`);
+    return { success: true, ttdDisusun: ttdData };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menandatangani Charter sebagai Project Owner." };
+  }
+}
+
+export async function revokeCharterPoSignAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
+      const rolesData = await getCharterRolesData(timId);
+      const assignedPo = rolesData?.assignments?.find((r: any) => r.roleCode === "project_owner");
+      if (!assignedPo?.userId || assignedPo.userId !== user.id) {
+        return { success: false, error: "Forbidden: Hanya pemegang role Project Owner yang dapat membatalkan tanda tangan ini." };
+      }
+    }
+    await db.update(charter).set({ ttdDisusun: null, updatedAt: new Date() }).where(eq(charter.timInovatorId, timId));
+    revalidatePath(`/tim/${timId}/charter`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal membatalkan tanda tangan PO." };
+  }
+}
+
+// ── Charter Coach Signature (Diperiksa Oleh — dokumentasi, tidak mempengaruhi gerbang fase) ─────
+export async function signCharterAsCoachAction(timId: string, signatureImage?: string | null) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const rolesData = await getCharterRolesData(timId);
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
+      const assignedCoach = rolesData?.assignments?.find((r: any) => ["coach", "innovation_coach"].includes(r.roleCode));
+      if (!assignedCoach?.userId || assignedCoach.userId !== user.id) {
+        return { success: false, error: "Forbidden: Hanya pemegang role Innovation Coach yang terdaftar di tim ini yang dapat menandatangani bagian ini." };
+      }
+    }
+
+    const [anggota] = await db.select().from(anggotaTim).where(and(eq(anggotaTim.timInovatorId, timId), eq(anggotaTim.userId, user.id))).limit(1);
+    const processedImageUrl = await processSignatureImage(timId, signatureImage);
+    const assignedName = rolesData?.assignments?.find((r: any) => ["coach", "innovation_coach"].includes(r.roleCode))?.userName;
+
+    const ttdData = {
+      userId: user.id, signedByUserId: user.id, signedByUserName: user.nama,
+      nama: assignedName || user.nama,
+      jabatan: anggota?.jabatan || "Innovation Coach",
+      unit: anggota?.unitKerja || "PT Pegadaian (Persero)",
+      tanggal: new Date().toISOString(), email: user.email,
+      status: "approved", disetujui: true, signatureImage: processedImageUrl,
+    };
+
+    const [existing] = await db.select().from(charter).where(eq(charter.timInovatorId, timId)).limit(1);
+    if (existing) {
+      await db.update(charter).set({ ttdDiperiksa: ttdData, updatedAt: new Date() }).where(eq(charter.id, existing.id));
+    } else {
+      await db.insert(charter).values({ timInovatorId: timId, ttdDiperiksa: ttdData });
+    }
+    revalidatePath(`/tim/${timId}/charter`);
+    return { success: true, ttdDiperiksa: ttdData };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal menandatangani Charter sebagai Innovation Coach." };
+  }
+}
+
+export async function revokeCharterCoachSignAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    if (!isGlobalUser) {
+      const rolesData = await getCharterRolesData(timId);
+      const assignedCoach = rolesData?.assignments?.find((r: any) => ["coach", "innovation_coach"].includes(r.roleCode));
+      if (!assignedCoach?.userId || assignedCoach.userId !== user.id) {
+        return { success: false, error: "Forbidden: Hanya pemegang role Innovation Coach yang dapat membatalkan tanda tangan ini." };
+      }
+    }
+    await db.update(charter).set({ ttdDiperiksa: null, updatedAt: new Date() }).where(eq(charter.timInovatorId, timId));
+    revalidatePath(`/tim/${timId}/charter`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Gagal membatalkan tanda tangan Coach." };
+  }
+}
+
 const bakuCVTasks = [
   {
     judul: "Siapkan prototype untuk testing",

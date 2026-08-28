@@ -6,6 +6,10 @@ import {
   saveCharterAction,
   approveCharterAction,
   revokeCharterApprovalAction,
+  signCharterAsPoAction,
+  revokeCharterPoSignAction,
+  signCharterAsCoachAction,
+  revokeCharterCoachSignAction,
   RoleAssignmentItem,
 } from "@/app/actions/charter";
 import {
@@ -171,6 +175,8 @@ export function CharterFormClient({
     risikoAwal: initialData?.risikoAwal || "",
   });
 
+  const [ttdDisusun, setTtdDisusun] = useState<any | null>(initialData?.ttdDisusun || null);
+  const [ttdDiperiksa, setTtdDiperiksa] = useState<any | null>(initialData?.ttdDiperiksa || null);
   const [ttdDisetujui, setTtdDisetujui] = useState<any | null>(initialData?.ttdDisetujui || null);
 
   // Initialize role assignments from database
@@ -257,6 +263,8 @@ export function CharterFormClient({
   >(null);
 
   const [sigModalOpen, setSigModalOpen] = useState(false);
+  const [sigPoModalOpen, setSigPoModalOpen] = useState(false);
+  const [sigCoachModalOpen, setSigCoachModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -486,6 +494,60 @@ export function CharterFormClient({
       const errMsg = res.error || "Gagal membatalkan persetujuan.";
       toast.error(errMsg, "Gagal Membatalkan");
       setStatusMsg({ type: "error", text: errMsg });
+    }
+    setApproving(false);
+  };
+
+  // ── PO Sign / Revoke ──────────────────────────────────────────────────────
+  const handleSavePoSignature = async (dataUrl: string) => {
+    setApproving(true);
+    const res = await signCharterAsPoAction(timId, dataUrl);
+    if (res.success && res.ttdDisusun) {
+      setTtdDisusun(res.ttdDisusun);
+      setSigPoModalOpen(false);
+      toast.success("Innovation Charter berhasil ditandatangani oleh Project Owner!", "Tanda Tangan PO Tersimpan");
+    } else {
+      toast.error(res.error || "Gagal menandatangani Charter sebagai PO.", "Gagal");
+    }
+    setApproving(false);
+  };
+
+  const handleRevokePoSign = async () => {
+    if (!confirm("Batalkan tanda tangan Project Owner dari Innovation Charter ini?")) return;
+    setApproving(true);
+    const res = await revokeCharterPoSignAction(timId);
+    if (res.success) {
+      setTtdDisusun(null);
+      toast.info("Tanda tangan Project Owner telah dibatalkan.", "Tanda Tangan Dibatalkan");
+    } else {
+      toast.error(res.error || "Gagal membatalkan tanda tangan PO.", "Gagal");
+    }
+    setApproving(false);
+  };
+
+  // ── Coach Sign / Revoke ───────────────────────────────────────────────────
+  const handleSaveCoachSignature = async (dataUrl: string) => {
+    setApproving(true);
+    const res = await signCharterAsCoachAction(timId, dataUrl);
+    if (res.success && res.ttdDiperiksa) {
+      setTtdDiperiksa(res.ttdDiperiksa);
+      setSigCoachModalOpen(false);
+      toast.success("Innovation Charter berhasil ditandatangani oleh Innovation Coach!", "Tanda Tangan Coach Tersimpan");
+    } else {
+      toast.error(res.error || "Gagal menandatangani Charter sebagai Coach.", "Gagal");
+    }
+    setApproving(false);
+  };
+
+  const handleRevokeCoachSign = async () => {
+    if (!confirm("Batalkan tanda tangan Innovation Coach dari Innovation Charter ini?")) return;
+    setApproving(true);
+    const res = await revokeCharterCoachSignAction(timId);
+    if (res.success) {
+      setTtdDiperiksa(null);
+      toast.info("Tanda tangan Innovation Coach telah dibatalkan.", "Tanda Tangan Dibatalkan");
+    } else {
+      toast.error(res.error || "Gagal membatalkan tanda tangan Coach.", "Gagal");
     }
     setApproving(false);
   };
@@ -1284,19 +1346,130 @@ export function CharterFormClient({
       </Card>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {/* BAGIAN 4: PERSETUJUAN FORMAL PROMOTOR ("DISETUJUI OLEH") */}
+      {/* BAGIAN 4: PERSETUJUAN FORMAL (3 Tanda Tangan: PO | Coach | Promotor) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {(() => {
+        const poAssignment = roleAssignments.find((r) => r.roleCode === "project_owner" && (r.userId || r.userName));
+        const coachAssignment = roleAssignments.find((r) => ["coach", "innovation_coach"].includes(r.roleCode) && (r.userId || r.userName));
         const promotorAssignment = roleAssignments.find((r) => r.roleCode === "promotor" && (r.userId || r.userName));
+        const poName = poAssignment?.userName || "Project Owner";
+        const coachName = coachAssignment?.userName || "Innovation Coach";
         const promotorName = promotorAssignment?.userName || "Promotor Inovasi";
-        const isGlobalUser = Boolean(
-          currentUser?.hasGlobalScope ||
-          (currentUser?.globalRoles && currentUser.globalRoles.length > 0)
-        );
+
+        const isGlobalUser = Boolean(currentUser?.hasGlobalScope || (currentUser?.globalRoles && currentUser.globalRoles.length > 0));
+        const canUserSignPo = Boolean(isGlobalUser || (currentUser?.id && poAssignment?.userId === currentUser.id));
+        const canUserSignCoach = Boolean(isGlobalUser || (currentUser?.id && coachAssignment?.userId === currentUser.id));
         const canUserSignPromotor = Boolean(
-          canApprove &&
-          (isGlobalUser || (currentUser?.id && promotorAssignment?.userId === currentUser.id))
+          canApprove && (isGlobalUser || (currentUser?.id && promotorAssignment?.userId === currentUser.id))
         );
+
+        // Helper: renders one signature card
+        const renderSigCard = (
+          label: string,
+          sublabel: string,
+          ttd: any,
+          assignedName: string,
+          assignment: any,
+          canSign: boolean,
+          onSign: () => void,
+          onRevoke: () => void,
+          accentColor: "blue" | "purple" | "emerald",
+        ) => {
+          const colorMap = {
+            blue: { border: "border-blue-300", bg: "bg-blue-50/40", badge: "bg-blue-100 text-blue-800 border-blue-200", icon: "text-blue-600", btn: "bg-blue-700 hover:bg-blue-800" },
+            purple: { border: "border-purple-300", bg: "bg-purple-50/40", badge: "bg-purple-100 text-purple-800 border-purple-200", icon: "text-purple-600", btn: "bg-purple-700 hover:bg-purple-800" },
+            emerald: { border: "border-emerald-300", bg: "bg-emerald-50/40", badge: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: "text-emerald-600", btn: "bg-[#0F5132] hover:bg-[#1B7A4D]" },
+          };
+          const c = colorMap[accentColor];
+          const isSigned = ttd?.status === "approved";
+          return (
+            <div className={`p-4 rounded-xl border-2 transition-all space-y-3 ${isSigned ? `${c.border} ${c.bg}` : "border-dashed border-gray-200 bg-gray-50/70"}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-gray-500">{label}</div>
+                  <div className="text-[10px] text-gray-400">{sublabel}</div>
+                </div>
+                {isSigned ? (
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.badge}`}>
+                    <CheckCircle className={`h-3 w-3 ${c.icon}`} />
+                    <span>Ditandatangani</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-gray-400 italic">Belum Ditandatangani</span>
+                )}
+              </div>
+
+              <div className="text-xs">
+                {isSigned ? (
+                  <>
+                    <div className="font-bold text-gray-900">{assignedName || ttd.nama}</div>
+                    <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                      <Briefcase className="h-3 w-3 text-gray-400" />
+                      <span>{ttd.jabatan}</span>
+                    </div>
+                    <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                      <Building2 className="h-3 w-3 text-gray-400" />
+                      <span>{ttd.unit || "PT Pegadaian (Persero)"}</span>
+                    </div>
+                    {ttd.signatureImage && (
+                      <div className={`bg-white p-1 rounded-lg border shadow-2xs max-w-[130px] my-2 ${c.border}`}>
+                        <img src={ttd.signatureImage} alt={`Tanda Tangan ${sublabel}`} className="h-10 w-auto object-contain block" />
+                      </div>
+                    )}
+                    {ttd.tanggal && (
+                      <div className="text-[10px] text-gray-400 mt-1 font-mono">{formatDateIndo(ttd.tanggal)}</div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="font-bold text-gray-700">{assignedName || `Belum ada akun ${sublabel} terdaftar`}</div>
+                    <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Briefcase className="h-3 w-3 text-gray-400" />
+                      <span>{assignment?.jabatan || sublabel}</span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Building2 className="h-3 w-3 text-gray-400" />
+                      <span>{assignment?.unitKerja || "PT Pegadaian (Persero)"}</span>
+                    </div>
+                    <div className="text-[10px] text-gray-400 italic mt-1">
+                      {assignedName ? "Nama terdaftar di Penugasan Role Tim" : `Belum ada akun ${sublabel} terdaftar di Charter`}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-gray-200/60">
+                {canSign ? (
+                  isSigned ? (
+                    <Button type="button" variant="ghost" size="sm" disabled={approving} onClick={onRevoke}
+                      className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg cursor-pointer">
+                      {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RotateCcw className="h-3.5 w-3.5 mr-1" />}
+                      <span>Batalkan Tanda Tangan</span>
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" disabled={approving} onClick={onSign}
+                      className={`w-full text-white text-xs font-bold h-8 rounded-lg shadow-2xs cursor-pointer ${c.btn}`}>
+                      <Stamp className="h-3.5 w-3.5 mr-1" />
+                      <span>Tandatangani sbg {sublabel}</span>
+                    </Button>
+                  )
+                ) : (
+                  isSigned ? (
+                    <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center`}>
+                      <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                      <span>Telah ditandatangani</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
+                      <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                      <span>Menunggu {assignedName || sublabel}</span>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          );
+        };
 
         return (
           <>
@@ -1306,14 +1479,13 @@ export function CharterFormClient({
                   <div>
                     <CardTitle className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2">
                       <Stamp className="h-4.5 w-4.5 text-[#0F5132]" />
-                      Persetujuan Formal &amp; Komitmen Promotor
+                      Persetujuan Formal &amp; Otorisasi Innovation Charter
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
-                      Tanda tangan formal Promotor Inovasi sebagai mandat resmi dimulainya eksekusi inkubasi tim.
+                      Tanda tangan formal sesuai Template 1 Juklak. Gerbang fase hanya membutuhkan tanda tangan Promotor.
                     </CardDescription>
                   </div>
-
-                  {ttdDisetujui?.status === 'approved' ? (
+                  {ttdDisetujui?.status === "approved" ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
                       <FileCheck2 className="h-3.5 w-3.5 text-emerald-700" />
                       Disetujui Formal
@@ -1328,135 +1500,57 @@ export function CharterFormClient({
               </CardHeader>
 
               <CardContent className="p-4 sm:p-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  {/* Signature Card */}
-                  <div
-                    className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
-                      ttdDisetujui?.status === 'approved'
-                        ? 'border-emerald-300 bg-emerald-50/40'
-                        : 'border-dashed border-gray-200 bg-gray-50/70'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                        Disetujui Oleh (Promotor Inovasi)
-                      </span>
-                      {ttdDisetujui?.status === 'approved' ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
-                          <span>Ditandatangani</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
-                          Belum Ditandatangani
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="text-xs">
-                      {ttdDisetujui?.status === 'approved' ? (
-                        <>
-                          <div className="font-bold text-gray-900">{promotorName || ttdDisetujui.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisetujui.jabatan || "Promotor Tim Inovasi"}</span>
-                          </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{ttdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
-                          </div>
-                          {ttdDisetujui.signatureImage && (
-                            <div className="bg-white p-1 rounded-lg border border-emerald-200/80 shadow-2xs max-w-[130px] my-2">
-                              <img
-                                src={ttdDisetujui.signatureImage}
-                                alt="Tanda Tangan Promotor"
-                                className="h-10 w-auto object-contain block"
-                              />
-                            </div>
-                          )}
-                          {ttdDisetujui.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
-                              {formatDateIndo(ttdDisetujui.tanggal)}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <div className="font-bold text-gray-700">
-                            {promotorName || "Belum ada akun Promotor terdaftar di Charter"}
-                          </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
-                            <span>{promotorAssignment?.jabatan || "Promotor Tim Inovasi"}</span>
-                          </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
-                            <span>{promotorAssignment?.unitKerja || "PT Pegadaian (Persero)"}</span>
-                          </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
-                            {promotorName ? "Nama terdaftar di Penugasan Role Tim" : "Belum ada akun Promotor terdaftar di Charter"}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-gray-200/60">
-                      {canUserSignPromotor ? (
-                        ttdDisetujui?.status === 'approved' ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={approving}
-                            onClick={handleRevokeApproval}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg cursor-pointer"
-                          >
-                            {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RotateCcw className="h-3.5 w-3.5 mr-1" />}
-                            <span>Batalkan Persetujuan (Revisi)</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={approving}
-                            onClick={() => setSigModalOpen(true)}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs cursor-pointer"
-                          >
-                            <Stamp className="h-3.5 w-3.5 mr-1" />
-                            <span>Tandatangani sbg Promotor</span>
-                          </Button>
-                        )
-                      ) : (
-                        ttdDisetujui?.status === 'approved' ? (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
-                            <span>Telah disetujui Promotor</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
-                            <span>Menunggu persetujuan dari {promotorName || "Promotor Inovasi"}</span>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Approval Info Panel */}
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
-                    <div className="text-xs font-bold text-gray-800 flex items-center gap-2">
-                      <Stamp className="h-4 w-4 text-[#0F5132]" />
-                      <span>Mandat Eksekusi Tim Inovasi</span>
-                    </div>
-                    <p className="text-[11px] text-gray-600 leading-relaxed">
-                      Persetujuan formal oleh Promotor merupakan syarat sah dimulainya siklus inkubasi dan aktivasi tahapan validasi pelanggan. Tanda tangan digital akan dicantumkan secara resmi pada lembar otorisasi dokumen Innovation Charter.
-                    </p>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {renderSigCard(
+                    "Disusun Oleh", "Project Owner",
+                    ttdDisusun, poName, poAssignment,
+                    canUserSignPo,
+                    () => setSigPoModalOpen(true),
+                    handleRevokePoSign,
+                    "blue"
+                  )}
+                  {renderSigCard(
+                    "Diperiksa Oleh", "Innovation Coach",
+                    ttdDiperiksa, coachName, coachAssignment,
+                    canUserSignCoach,
+                    () => setSigCoachModalOpen(true),
+                    handleRevokeCoachSign,
+                    "purple"
+                  )}
+                  {renderSigCard(
+                    "Disetujui Oleh", "Promotor",
+                    ttdDisetujui, promotorName, promotorAssignment,
+                    canUserSignPromotor,
+                    () => setSigModalOpen(true),
+                    handleRevokeApproval,
+                    "emerald"
+                  )}
                 </div>
+                <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
+                  <strong>Catatan:</strong> Tanda tangan PO dan Coach bersifat dokumentasi tambahan. Pembukaan gerbang Customer Validation tetap hanya membutuhkan tanda tangan Promotor.
+                </p>
               </CardContent>
             </Card>
 
-            {/* SignaturePadModal for Charter */}
+            {/* SignaturePadModal for PO */}
+            <SignaturePadModal
+              isOpen={sigPoModalOpen}
+              onClose={() => setSigPoModalOpen(false)}
+              onSave={handleSavePoSignature}
+              title="Tanda Tangan Innovation Charter — Disusun Oleh"
+              roleName="Project Owner"
+              userName={poName || "Belum ada akun Project Owner terdaftar"}
+            />
+            {/* SignaturePadModal for Coach */}
+            <SignaturePadModal
+              isOpen={sigCoachModalOpen}
+              onClose={() => setSigCoachModalOpen(false)}
+              onSave={handleSaveCoachSignature}
+              title="Tanda Tangan Innovation Charter — Diperiksa Oleh"
+              roleName="Innovation Coach"
+              userName={coachName || "Belum ada akun Coach terdaftar"}
+            />
+            {/* SignaturePadModal for Promotor (gate-relevant) */}
             <SignaturePadModal
               isOpen={sigModalOpen}
               onClose={() => setSigModalOpen(false)}
