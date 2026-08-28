@@ -210,6 +210,8 @@ Hasilkan draf Perencanaan Customer Validation lengkap dalam JSON:`;
       lokasiChannelTesting: parsed.lokasiChannelTesting || fallback.lokasiChannelTesting,
       metodeRekrutmen: parsed.metodeRekrutmen || fallback.metodeRekrutmen,
       etikaPersetujuanData: parsed.etikaPersetujuanData || fallback.etikaPersetujuanData,
+      dimensiRows: parsed.dimensiRows || fallback.dimensiRows,
+      metrikRows: parsed.metrikRows || fallback.metrikRows,
     };
   } catch (err: any) {
     console.warn("[generateFullCvPlanDraft] AI generation error, using fallback:", err.message);
