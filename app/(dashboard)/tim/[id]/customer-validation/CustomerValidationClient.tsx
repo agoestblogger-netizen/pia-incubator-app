@@ -27,6 +27,14 @@ import {
   Plus, Trash2
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { KanbanClient } from "../kanban/KanbanClient";
 
 // ── Konstanta tetap ─────────────────────────────────────────────────────────
@@ -496,6 +504,8 @@ export function CustomerValidationClient({
   const [uploading, setUploading] = useState(false);
   const [generatingBacklog, setGeneratingBacklog] = useState(false);
   const [autoFillingFromCharter, setAutoFillingFromCharter] = useState(false);
+  // Custom confirmation modal state (replaces window.confirm which gets dismissed by Next.js router)
+  const [showAutoFillConfirm, setShowAutoFillConfirm] = useState(false);
 
   // ── Auto-fill Trigger on First Mount ───────────────────────────────────────
   const hasTriggeredMountAutoFill = useRef(false);
@@ -531,13 +541,19 @@ export function CustomerValidationClient({
       autoFillFullCvPlanAction(timId)
         .then((res) => {
           if (res.success && res.data) {
-            setPlanForm((prev) => ({
-              ...prev,
-              ...res.data,
-            }));
+            // ✅ Properly separate dimensiRows/metrikRows from planForm fields
+            const { dimensiRows: aiDimensiRows, metrikRows: aiMetrikRows, ...planFields } = res.data as any;
+            setPlanForm((prev) => ({ ...prev, ...planFields }));
+            if (aiDimensiRows?.length > 0) {
+              setDimensiRows(aiDimensiRows.map((r: any, i: number) => ({ ...r, id: `mount_d${i}` })));
+            }
+            if (aiMetrikRows?.length > 0) {
+              setMetrikRows(aiMetrikRows.map((r: any, i: number) => ({ ...r, id: `mount_m${i}` })));
+            }
             toast.info(
               "Form Perencanaan CV otomatis diisi dari Innovation Charter & AI. Silakan tinjau dan simpan.",
-              "Auto-Fill Awal Berhasil"
+              "Auto-Fill Awal Berhasil",
+              5000
             );
           }
         })
@@ -577,26 +593,8 @@ export function CustomerValidationClient({
     setSaving(false);
   };
 
-  const handleAutoFillFull = async () => {
-    const sectionFields = [
-      planForm.projectMission,
-      planForm.customerDanContext,
-      planForm.problemHypothesis,
-      planForm.hmw,
-      planForm.solutionHypothesis,
-      planForm.fiturAlurDiuji,
-      planForm.skenarioUserTesting,
-      planForm.targetEarlyAdopters,
-    ];
-    const hasExistingData = sectionFields.some((v) => v && v.trim().length > 0);
-
-    if (hasExistingData) {
-      const confirmed = window.confirm(
-        "Beberapa field Perencanaan CV sudah terisi.\n\nLanjutkan auto-fill dari Innovation Charter & AI akan MENIMPA isian yang ada.\n\nLanjutkan?"
-      );
-      if (!confirmed) return;
-    }
-
+  // ── Core auto-fill executor (called after confirmation) ────────────────────
+  const executeAutoFill = async () => {
     setAutoFillingFromCharter(true);
     try {
       const res = await autoFillFullCvPlanAction(timId);
@@ -610,7 +608,7 @@ export function CustomerValidationClient({
           ...planFields,
         }));
 
-        // Update Section D with stable IDs (no Math.random to avoid hydration issues)
+        // Update Section D with stable IDs
         if (aiDimensiRows && aiDimensiRows.length > 0) {
           setDimensiRows(aiDimensiRows.map((r: any, i: number) => ({
             ...r,
@@ -638,6 +636,29 @@ export function CustomerValidationClient({
       toast.error(err.message || "Terjadi kesalahan saat auto-fill.", "Gagal", 6000);
     } finally {
       setAutoFillingFromCharter(false);
+    }
+  };
+
+  // ── Button click handler — shows confirm modal if data exists, else runs directly ──
+  const handleAutoFillFull = () => {
+    const sectionFields = [
+      planForm.projectMission,
+      planForm.customerDanContext,
+      planForm.problemHypothesis,
+      planForm.hmw,
+      planForm.solutionHypothesis,
+      planForm.fiturAlurDiuji,
+      planForm.skenarioUserTesting,
+      planForm.targetEarlyAdopters,
+    ];
+    const hasExistingData = sectionFields.some((v) => v && v.trim().length > 0);
+
+    if (hasExistingData) {
+      // Show custom React modal — window.confirm() gets dismissed by Next.js router state updates
+      setShowAutoFillConfirm(true);
+    } else {
+      // No existing data — run directly without confirmation
+      executeAutoFill();
     }
   };
 
@@ -2964,6 +2985,45 @@ export function CustomerValidationClient({
         roleName={sigModal.roleName}
         userName={sigModal.userName}
       />
+
+      {/* ── Auto-Fill Confirmation Dialog (replaces window.confirm which Next.js router can dismiss) ── */}
+      <Dialog open={showAutoFillConfirm} onOpenChange={setShowAutoFillConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-5 w-5 text-[#0F5132]" />
+              Konfirmasi Isi Ulang Otomatis
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 mt-2 leading-relaxed">
+              Beberapa field Perencanaan CV sudah terisi.<br /><br />
+              Melanjutkan proses <strong>Auto-Fill dari Innovation Charter &amp; AI</strong> akan <strong className="text-red-600">menimpa semua isian</strong> yang sudah ada di Section A, B, C, D, dan E.<br /><br />
+              Apakah Anda yakin ingin melanjutkan?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAutoFillConfirm(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setShowAutoFillConfirm(false);
+                executeAutoFill();
+              }}
+              className="flex-1 bg-[#0F5132] hover:bg-[#0F5132]/90 text-white"
+            >
+              <Sparkles className="h-4 w-4 mr-1.5" />
+              Ya, Isi Ulang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
