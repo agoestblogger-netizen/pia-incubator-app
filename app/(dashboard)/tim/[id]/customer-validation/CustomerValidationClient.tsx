@@ -893,7 +893,7 @@ export function CustomerValidationClient({
                     <span>Template Juklak 2.1 — Perencanaan Customer Validation</span>
                     <SectionInfo
                       title="Template 2.1: Perencanaan Customer Validation"
-                      text="Menyusun rencana pengujian hipotesis problem-solution fit secara terstruktur kepada calon pengguna awal (early adopters) sebelum membangun MVP."
+                      text="Dokumen panduan pengujian hipotesis Problem-Solution Fit (PSF) kepada pengguna sasaran awal (early adopters) berskala kecil sebelum pengembangan MVP."
                     />
                   </span>
                   <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-white/80 px-2.5 py-0.5 rounded-full border border-gray-200/80">
@@ -951,8 +951,8 @@ export function CustomerValidationClient({
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                       <span>A. Konteks Inovasi &amp; Hipotesis</span>
                       <SectionInfo
-                        title="Bagian A: Konteks Inovasi & Hipotesis"
-                        text="Merumuskan kembali misi proyek, profil customer sasaran & area bantuan (job-to-be-done), hipotesis masalah, pertanyaan peluang (HMW), dan hipotesis solusi yang akan diuji pembuktiannya di lapangan."
+                        title="Template 2.1 — Bagian A: Konteks Inovasi & Hipotesis"
+                        text="Perumusan 5 elemen fondasi validasi: Project Mission (rumusan aspiratif, kuantitatif, dan time-bound), Customer & Context (customer prioritas dan area bantuan/job-to-be-done), Problem Hypothesis (asumsi masalah beserta bukti awal), How Might We (pertanyaan peluang customer, problem, outcome), dan Solution Hypothesis (asumsi solusi/prototype beserta manfaat utamanya)."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
@@ -1088,8 +1088,8 @@ export function CustomerValidationClient({
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <span>B. Instrumen &amp; Skenario Pengujian</span>
                   <SectionInfo
-                    title="Bagian B: Instrumen & Skenario Pengujian"
-                    text="Menetapkan bentuk instrumen testing berupa tipe prototype (mockup/clickable prototype/wireframe), alur fitur yang diuji, skenario tugas bagi responden, panduan wawancara/observasi, dan berkas data dukung."
+                    title="Template 2.1 — Bagian B: Instrumen & Skenario Pengujian"
+                    text="Spesifikasi instrumen uji: Tipe Prototype (Figma/Clickable Prototype, Wireframe, dll.), Fitur/Alur yang Diuji (alur verifikasi, kalkulasi otomatis, dll.), Skenario User Testing (instruksi tugas yang diberikan kepada responden), Instrumen Validasi (daftar pertanyaan, survey, form observasi, panduan wawancara), dan Data Dukung/Lampiran."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -1248,8 +1248,8 @@ export function CustomerValidationClient({
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <span>C. Early Adopters &amp; Rekrutmen</span>
                   <SectionInfo
-                    title="Bagian C: Early Adopters & Rekrutmen"
-                    text="Menentukan target responden awal berskala kecil yang relevan, kriteria seleksi (inklusi/eksklusi), kuota target responden (minimal 10), lokasi/kanal testing, metode rekrutmen, dan etika persetujuan data responden."
+                    title="Template 2.1 — Bagian C: Early Adopters & Rekrutmen"
+                    text="Perencanaan rekrutmen responden: Target Early Adopters (profil pengguna awal berskala kecil), Kriteria Seleksi (inklusi dan eksklusi: segmen, lokasi, perilaku), Jumlah Target Responden (kuota minimal 10 responden), Lokasi/Channel Testing (cabang/outlet percontohan atau daring), Metode Rekrutmen, dan Etika & Persetujuan Data (kerahasiaan dan perlindungan responden)."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -1383,8 +1383,8 @@ export function CustomerValidationClient({
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                       <span>D. Dimensi Customer Testing Feedback</span>
                       <SectionInfo
-                        title="Bagian D: Dimensi Testing Feedback"
-                        text="5 dimensi baku pengujian feedback pelanggan sesuai Juklak: Usability (kemudahan penggunaan), Functionality (keberfungsian fitur), Solvability (kemampuan menyelesaikan masalah), Payability/Value (kesediaan mengadopsi/membayar), dan Dimensi Tambahan."
+                        title="Template 2.1 — Bagian D: Dimensi Customer Testing Feedback"
+                        text="Tabel pengujian feedback 5 dimensi baku: Usability (Kemudahan, kejelasan, dan interaksi prototype), Functionality (Kesesuaian fungsi/fitur dengan kebutuhan), Solvability (Kemampuan menyelesaikan problem worth solving), Payability (Kesediaan membayar, menggunakan, atau menanggung effort/perubahan perilaku), dan Others (Masukan tambahan, risiko, dan ide baru). Kolom tabel: Dimensi, Fokus Validasi, Contoh Pertanyaan/Observasi, Evidence yang Dikumpulkan."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
@@ -1526,8 +1526,8 @@ export function CustomerValidationClient({
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                       <span>E. Metrik dan Kriteria Kesuksesan Customer Validation</span>
                       <SectionInfo
-                        title="Bagian E: Metrik & Kriteria Kesuksesan CV"
-                        text="7 metrik baku Juklak untuk mengukur Problem-Solution Fit (PSF): Desirability (Problem Resonance, Solution Interest, Willingness to Recommend/NPS, Task Completion Rate), Feasibility On Paper (Tech & Operational Readiness), dan Viability On Paper (Value vs Cost / Business Impact)."
+                        title="Template 2.1 — Bagian E: Metrik & Kriteria Kesuksesan CV"
+                        text="7 metrik baku pengukuran Problem-Solution Fit (PSF): Desirability (1. Kepuasan Pengguna [target: rata-rata ≥4], 2. Ketertarikan Penggunaan Berulang [target: mayoritas minimal Sering], 3. Rekomendasi kepada Orang Lain [target: mayoritas minimal Mungkin], 4. Kejelasan dan Kemudahan Penggunaan [target: rata-rata ≥4], 5. Kesediaan Membayar/Menggunakan [target: mayoritas bersedia]), Feasibility On Paper (6. Kelayakan teknis/operasional awal [target: tidak ada blocker kritis]), dan Viability On Paper (7. Potensi dampak bisnis/ekonomi awal [target: ada potensi manfaat teruji saat MVP]). Kolom tabel: Validasi, Metrik, Unit Ukur, Kriteria Kesuksesan, Cara Pengukuran, Catatan Tim."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
@@ -1740,8 +1740,8 @@ export function CustomerValidationClient({
                       <Stamp className="h-4.5 w-4.5 text-[#0F5132]" />
                       <span>Persetujuan &amp; Tanda Tangan Formal Perencanaan CV</span>
                       <SectionInfo
-                        title="Persetujuan Formal Plan (Template 2.1)"
-                        text="Otorisasi formal rencana validasi pelanggan oleh Inisiator Inovasi (disusun), Innovation Coach (diperiksa), dan Project Owner (disetujui) sebelum eksekusi pengujian lapangan dimulai."
+                        title="Template 2.1 — Lembar Pengesahan Perencanaan CV"
+                        text="Persetujuan formal perencanaan pengujian pelanggan: Disusun Oleh Inisiator Inovasi, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Project Owner."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2186,7 +2186,7 @@ export function CustomerValidationClient({
                   <span>Laporan Hasil Validasi Pelanggan (Customer Validation Report)</span>
                   <SectionInfo
                     title="Template 2.2: Laporan Customer Validation"
-                    text="Mendokumentasikan hasil pengujian prototype kepada customer, bukti capaian metrik PSF, pembelajaran kualitatif, dan rekomendasi kelanjutan ke tahap MVP (Market Validation)."
+                    text="Dokumen pembuktian Problem-Solution Fit (PSF) hasil pengujian lapangan kepada responden untuk menentukan kelayakan melangkah ke tahap Market Validation (MVP)."
                   />
                 </h3>
               </div>
@@ -2218,8 +2218,8 @@ export function CustomerValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <span>A. Ringkasan Problem dan Solusi Tervalidasi</span>
                       <SectionInfo
-                        title="Bagian A: Problem & Solusi Tervalidasi"
-                        text="Rangkuman problem-solution fit yang terkonfirmasi dari pengujian, proposisi nilai (Value Proposition) yang diterima customer, fitur-fitur kunci terverifikasi, dan alur solusi yang telah disesuaikan."
+                        title="Template 2.2 — Bagian A: Problem & Solusi Tervalidasi"
+                        text="Dokumentasi hasil validasi: Validated Solution (bentuk solusi yang terbukti menyelesaikan masalah utama pelanggan) dan Value Proposition (nilai unik atau manfaat utama yang dirasakan pelanggan dibanding solusi eksisting)."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2308,8 +2308,8 @@ export function CustomerValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <span>B. Pelaksanaan &amp; Instrumen Pengujian Pengguna</span>
                   <SectionInfo
-                    title="Bagian B: Pelaksanaan & Instrumen Pengujian"
-                    text="Data pelaksanaan riil pengujian mencakup tautan prototype yang diuji, mekanisme testing (wawancara mendalam, observasi usability), waktu dan lokasi pengujian, serta profil dan jumlah responden aktual yang berpartisipasi."
+                    title="Template 2.2 — Bagian B: Pelaksanaan & Instrumen Pengujian"
+                    text="Rekapitulasi pelaksanaan uji: Link Prototype Solusi (URL Figma/demo sistem), Mekanisme User Testing (wawancara mendalam, observasi usability, daring/tatap muka), Tanggal & Lokasi Testing, Jumlah Responden Aktual, dan Profil Responden Aktual."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2400,8 +2400,8 @@ export function CustomerValidationClient({
                       <Table2 className="h-4 w-4 text-[#3E9463]" />
                       <span>C. Daftar Pertanyaan Kunci dan Temuan Kualitatif</span>
                       <SectionInfo
-                        title="Bagian C: Pertanyaan Kunci & Temuan Kualitatif"
-                        text="6 pertanyaan baku resmi dari Template 2.2 untuk menggali feedback esensial responden: masalah utama yang dirasakan, tanggapan terhadap alur solusi, fitur yang paling bernilai, kendala/kebingungan penggunaan, kesediaan menggunakan/membayar, serta saran perbaikan kritis."
+                        title="Template 2.2 — Bagian C: Pertanyaan Kunci & Temuan Kualitatif"
+                        text="Tabel 6 baris pertanyaan kunci baku: 1. Kepuasan Pengguna (kecocokan prototype dengan kebutuhan & fitur paling/kurang sesuai), 2. Ketertarikan Penggunaan Berulang (frekuensi penggunaan jika tersedia), 3. Rekomendasi kepada Orang Lain (rekomendasi kepada rekan kerja/atasan), 4. Kejelasan dan Kemudahan Penggunaan (bagian mudah, membingungkan, atau perlu disederhanakan), 5. Kesediaan Membayar/Menggunakan (kesepadanan value terhadap biaya/waktu/effort), 6. Feedback Umum (hal yang perlu ditambah, dikurangi, diubah, diprioritaskan). Kolom: Kategori, Pertanyaan Kunci (Baku), Temuan Utama (Isian Tim)."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2463,8 +2463,8 @@ export function CustomerValidationClient({
                       <BarChart3 className="h-4 w-4 text-[#3E9463]" />
                       <span>D. Hasil Pengukuran Customer Validation (7 Parameter)</span>
                       <SectionInfo
-                        title="Bagian D: Hasil Pengukuran Metrik PSF"
-                        text="Evaluasi pencapaian 7 metrik baku PSF terhadap target kriteria kesuksesan, gap analysis, interpretasi data, pembelajaran tim, dan enhancement yang diperlukan."
+                        title="Template 2.2 — Bagian D: Hasil Pengukuran Metrik PSF"
+                        text="Evaluasi pencapaian aktual 7 parameter baku PSF terhadap target: Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan & Kemudahan Penggunaan, Kesediaan Membayar/Menggunakan), Feasibility On Paper (Kelayakan teknis/operasional awal), dan Viability On Paper (Potensi dampak bisnis/ekonomi awal). Kolom: Validasi, Metrik, Target, Hasil Aktual, Interpretasi, Learning, Enhancement."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2576,8 +2576,8 @@ export function CustomerValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <span>E. Analisis Akhir, Ketercapaian PSF &amp; Keputusan Gerbang</span>
                   <SectionInfo
-                    title="Bagian E: Analisis Akhir & Keputusan PSF"
-                    text="Kesimpulan menyeluruh status Problem-Solution Fit, evaluasi kelayakan melangkah ke tahap Market Validation (MVP), rekomendasi arah iterasi/pivot, dan catatan persiapan MVP Planning."
+                    title="Template 2.2 — Bagian E: Analisis Akhir & Keputusan Gerbang"
+                    text="Penetapan status gerbang fase: Ketercapaian PSF (Tercapai / Tercapai dengan Catatan / Belum Tercapai), Keputusan Lanjut (Lanjut ke Market Validation / Iterasi Solusi / Hold / Stop), Catatan untuk MVP Planning (fitur minimum masuk MVP, fitur ditunda, risiko teknis/bisnis, dependensi pihak ketiga), dan Kesimpulan & Pembelajaran Utama."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2733,8 +2733,8 @@ export function CustomerValidationClient({
                   <Stamp className="h-4 w-4 text-[#3E9463]" />
                   <span>F. Lembar Pengesahan Laporan Customer Validation</span>
                   <SectionInfo
-                    title="Pengesahan Laporan CV (Template 2.2)"
-                    text="Pengesahan formal dokumen laporan hasil validasi pelanggan oleh Inisiator Inovasi (disusun), Innovation Coach (diperiksa), dan Project Owner (disetujui)."
+                    title="Template 2.2 — Lembar Pengesahan Laporan CV"
+                    text="Pengesahan formal dokumen laporan hasil validasi pelanggan oleh 3 pihak: Disusun Oleh Inisiator Inovasi, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Project Owner."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
