@@ -1249,7 +1249,7 @@ export function CustomerValidationClient({
                   <span>C. Early Adopters &amp; Rekrutmen</span>
                   <SectionInfo
                     title="Template 2.1 — Bagian C: Early Adopters & Rekrutmen"
-                    text="Perencanaan rekrutmen responden: Target Early Adopters (profil pengguna awal berskala kecil), Kriteria Seleksi (inklusi dan eksklusi: segmen, lokasi, perilaku), Jumlah Target Responden (kuota minimal 10 responden), Lokasi/Channel Testing (cabang/outlet percontohan atau daring), Metode Rekrutmen, dan Etika & Persetujuan Data (kerahasiaan dan perlindungan responden)."
+                    text="Perencanaan rekrutmen responden: Target Early Adopters (profil pengguna sasaran awal berskala kecil), Kriteria Seleksi (inklusi dan eksklusi: segmen, lokasi, perilaku), Jumlah Target Responden (ditentukan sendiri oleh tim), Lokasi/Channel Testing (cabang/outlet percontohan atau daring), Metode Rekrutmen, dan Etika & Persetujuan Data (kerahasiaan dan perlindungan responden)."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -1527,7 +1527,7 @@ export function CustomerValidationClient({
                       <span>E. Metrik dan Kriteria Kesuksesan Customer Validation</span>
                       <SectionInfo
                         title="Template 2.1 — Bagian E: Metrik & Kriteria Kesuksesan CV"
-                        text="7 metrik baku pengukuran Problem-Solution Fit (PSF): Desirability (1. Kepuasan Pengguna [target: rata-rata ≥4], 2. Ketertarikan Penggunaan Berulang [target: mayoritas minimal Sering], 3. Rekomendasi kepada Orang Lain [target: mayoritas minimal Mungkin], 4. Kejelasan dan Kemudahan Penggunaan [target: rata-rata ≥4], 5. Kesediaan Membayar/Menggunakan [target: mayoritas bersedia]), Feasibility On Paper (6. Kelayakan teknis/operasional awal [target: tidak ada blocker kritis]), dan Viability On Paper (7. Potensi dampak bisnis/ekonomi awal [target: ada potensi manfaat teruji saat MVP]). Kolom tabel: Validasi, Metrik, Unit Ukur, Kriteria Kesuksesan, Cara Pengukuran, Catatan Tim."
+                        text="Tabel 7 metrik baku pengukuran Problem-Solution Fit (PSF): Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan dan Kemudahan Penggunaan, Kesediaan Membayar / Menggunakan), Feasibility On Paper (Kelayakan teknis/operasional awal), dan Viability On Paper (Potensi dampak bisnis/ekonomi awal). Kolom tabel: Validasi, Metrik, Unit Ukur, Kriteria Kesuksesan, Cara Pengukuran, Catatan Tim. Catatan: Unit ukur, kriteria kesuksesan, dan cara pengukuran ditentukan sendiri oleh tim sesuai konteks inovasi."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
@@ -2464,7 +2464,7 @@ export function CustomerValidationClient({
                       <span>D. Hasil Pengukuran Customer Validation (7 Parameter)</span>
                       <SectionInfo
                         title="Template 2.2 — Bagian D: Hasil Pengukuran Metrik PSF"
-                        text="Evaluasi pencapaian aktual 7 parameter baku PSF terhadap target: Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan & Kemudahan Penggunaan, Kesediaan Membayar/Menggunakan), Feasibility On Paper (Kelayakan teknis/operasional awal), dan Viability On Paper (Potensi dampak bisnis/ekonomi awal). Kolom: Validasi, Metrik, Target, Hasil Aktual, Interpretasi, Learning, Enhancement."
+                        text="Evaluasi pencapaian aktual 7 parameter baku PSF terhadap target yang ditetapkan tim: Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan & Kemudahan Penggunaan, Kesediaan Membayar / Menggunakan), Feasibility On Paper (Kelayakan teknis / operasional awal), dan Viability On Paper (Potensi dampak bisnis / ekonomi awal). Kolom tabel: Validasi, Metrik, Target, Hasil Aktual, Interpretasi, Learning, Enhancement."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">

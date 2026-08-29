@@ -1465,7 +1465,7 @@ export function MarketValidationClient({
                       <span>D. Resources Needed (5 Kebutuhan Sumber Daya)</span>
                       <SectionInfo
                         title="Template 3.1 — Bagian D: Resources Needed"
-                        text="Tabel 5 kategori sumber daya baku: 1. People/SME (kompetensi teknis, subject matter expert, tim operasional lini depan), 2. System/Technology (infrastruktur IT, API, server, tooling pendukung sistem), 3. Data/Access (akses database, izin sistem, credentials, data dummy/live), 4. Budget/Procurement (anggaran pilot, lisensi software, biaya operasional/promosi), dan 5. Operational Support (dukungan outlet/cabang percontohan, SOP sementara, sosialisasi staf). Kolom tabel: Kategori Sumber Daya, Kebutuhan Spesifik, Owner / Sumber, Status Ketersediaan, Gap & Tindak Lanjut."
+                        text="Tabel 5 kategori sumber daya: 1. People/SME (Keahlian dan jumlah personel), 2. System/Technology (Aplikasi, environment, device, integration), 3. Data/Access (Dataset, akses, consent, security), 4. Budget/Procurement (RAB, vendor, lisensi, material), dan 5. Operational Support (Lokasi pilot, SOP, channel, early adopter). Kolom tabel: Kategori Sumber Daya, Kebutuhan Spesifik, Owner / Sumber, Status Ketersediaan, Gap dan Tindak Lanjut."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -1571,7 +1571,7 @@ export function MarketValidationClient({
                       <span>E. Metrik, Threshold, dan Cara Pengukuran DFV (9 Parameter)</span>
                       <SectionInfo
                         title="Template 3.1 — Bagian E: Metrik, Threshold & Pengukuran DFV"
-                        text="Tabel 9 parameter baku DFV dalam Bahasa Indonesia: Desirability (1. Kepuasan Pengguna MVP [target ≥4.0], 2. Adopsi / Penggunaan Berulang [target ≥60%], 3. Rekomendasi / Referral / Komitmen Lanjut [NPS ≥+30 atau ≥70% Ya]), Feasibility (4. Ketersediaan Sistem / Proses [uptime ≥99%], 5. Waktu Proses / Response Time [≤2 menit], 6. Error / Issue Rate [≤2%]), dan Viability (7. Revenue / Potensi Pendapatan, 8. Efisiensi Biaya / Produktivitas [≥30% efisiensi], 9. ROI / Cost-Benefit Awal [positif >100%]). Kolom: Kategori Validasi, Metrik Pengukuran, Satuan / Unit, Baseline, Target Pilot, Threshold (70%), Cara Pengukuran, PIC Pengukur, Evidence."
+                        text="Tabel 9 parameter baku DFV: Desirability (Kepuasan Pengguna MVP, Adopsi / Penggunaan Berulang, Rekomendasi / Referral / Komitmen Lanjut), Feasibility (Ketersediaan Sistem / Proses, Waktu Proses / Response Time, Error / Issue Rate), dan Viability (Revenue / Potensi Pendapatan, Efisiensi Biaya / Produktivitas, ROI / Cost-Benefit Awal). Kolom tabel: Kategori Validasi, Metrik Pengukuran, Satuan / Unit, Baseline, Target Pilot, Threshold (70%), Cara Pengukuran, PIC Pengukur, Evidence. Catatan: Baseline, Target, dan Threshold ditentukan sendiri oleh tim; gunakan 70% sebagai threshold default bila belum ada kesepakatan khusus."
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -2484,7 +2484,7 @@ export function MarketValidationClient({
                   <span>6. Hasil Pengukuran DFV dan Traction (9 Parameter Baku)</span>
                   <SectionInfo
                     title="Template 3.2 — Bagian 6: Hasil Pengukuran DFV & Traction"
-                    text="Tabel capaian 9 parameter baku DFV: Desirability (Kepuasan Pengguna MVP, Adopsi/Penggunaan Berulang, Rekomendasi/Referral), Feasibility (Ketersediaan Sistem & Kelancaran Proses, Waktu Proses/Response Time, Error/Issue Rate), dan Viability (Realisasi Potensi Revenue, Efisiensi Biaya Operasional, Proyeksi ROI/Cost-Benefit). Kolom: Validasi, Metrik, Target, Hasil Aktual, % Capai, Status (Lolos/Belum), Learning/Enhancement."
+                    text="Tabel capaian 9 parameter baku DFV: Desirability (Kepuasan Pengguna MVP, Adopsi / Penggunaan Berulang, Rekomendasi / Referral / Komitmen Lanjut), Feasibility (Ketersediaan Sistem / Proses, Waktu Proses / Response Time, Error / Issue Rate), dan Viability (Revenue / Potensi Pendapatan, Efisiensi Biaya / Produktivitas, ROI / Cost-Benefit Awal). Kolom tabel: Validasi, Metrik, Target, Hasil Aktual, % Capai, Status (Lolos / Belum Lolos), Learning / Enhancement."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
