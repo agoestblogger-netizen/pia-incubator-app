@@ -36,6 +36,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { KanbanClient } from "../kanban/KanbanClient";
+import { SectionInfo } from "@/components/ui/SectionInfo";
 
 // ── Konstanta tetap ─────────────────────────────────────────────────────────
 
@@ -888,8 +889,12 @@ export function CustomerValidationClient({
             <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-white to-purple-50/60 border border-emerald-200/90 shadow-2xs">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-2.5 py-1 rounded-full border border-emerald-200">
-                    Template Juklak 2.1 — Perencanaan Customer Validation
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
+                    <span>Template Juklak 2.1 — Perencanaan Customer Validation</span>
+                    <SectionInfo
+                      title="Template 2.1: Perencanaan Customer Validation"
+                      text="Menyusun rencana pengujian hipotesis problem-solution fit secara terstruktur kepada calon pengguna awal (early adopters) sebelum membangun MVP."
+                    />
                   </span>
                   <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-white/80 px-2.5 py-0.5 rounded-full border border-gray-200/80">
                     <span className="font-semibold text-gray-500 text-[11px]">Klasifikasi Inovasi:</span>
@@ -943,8 +948,12 @@ export function CustomerValidationClient({
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base font-bold">
-                      A. Konteks Inovasi &amp; Hipotesis
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <span>A. Konteks Inovasi &amp; Hipotesis</span>
+                      <SectionInfo
+                        title="Bagian A: Konteks Inovasi & Hipotesis"
+                        text="Merumuskan kembali misi proyek, profil customer sasaran & area bantuan (job-to-be-done), hipotesis masalah, pertanyaan peluang (HMW), dan hipotesis solusi yang akan diuji pembuktiannya di lapangan."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
                       Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
@@ -1076,8 +1085,12 @@ export function CustomerValidationClient({
             {/* ── BAGIAN 2: Instrumen Testing ───────────────────────────────── */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-bold">
-                  B. Instrumen &amp; Skenario Pengujian
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <span>B. Instrumen &amp; Skenario Pengujian</span>
+                  <SectionInfo
+                    title="Bagian B: Instrumen & Skenario Pengujian"
+                    text="Menetapkan bentuk instrumen testing berupa tipe prototype (mockup/clickable prototype/wireframe), alur fitur yang diuji, skenario tugas bagi responden, panduan wawancara/observasi, dan berkas data dukung."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Prototype, skenario tugas, dan alat ukur yang digunakan saat user testing
@@ -1232,8 +1245,12 @@ export function CustomerValidationClient({
             {/* ── BAGIAN 3: Early Adopters & Rekrutmen ─────────────────────── */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-bold">
-                  C. Early Adopters &amp; Rekrutmen
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <span>C. Early Adopters &amp; Rekrutmen</span>
+                  <SectionInfo
+                    title="Bagian C: Early Adopters & Rekrutmen"
+                    text="Menentukan target responden awal berskala kecil yang relevan, kriteria seleksi (inklusi/eksklusi), kuota target responden (minimal 10), lokasi/kanal testing, metode rekrutmen, dan etika persetujuan data responden."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Siapa yang diuji, di mana, dan bagaimana cara mendapatkan mereka
@@ -1363,8 +1380,12 @@ export function CustomerValidationClient({
                 <div className="flex items-center gap-2">
                   <Table2 className="h-5 w-5 text-[#0F5132]" />
                   <div>
-                    <CardTitle className="text-base font-bold">
-                      D. Dimensi Customer Testing Feedback
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <span>D. Dimensi Customer Testing Feedback</span>
+                      <SectionInfo
+                        title="Bagian D: Dimensi Testing Feedback"
+                        text="5 dimensi baku pengujian feedback pelanggan sesuai Juklak: Usability (kemudahan penggunaan), Functionality (keberfungsian fitur), Solvability (kemampuan menyelesaikan masalah), Payability/Value (kesediaan mengadopsi/membayar), dan Dimensi Tambahan."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
                       5 dimensi baku Juklak — isi kolom &quot;Evidence yang Dikumpulkan&quot; setelah testing
@@ -1502,8 +1523,12 @@ export function CustomerValidationClient({
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-[#0F5132]" />
                   <div>
-                    <CardTitle className="text-base font-bold">
-                      E. Metrik dan Kriteria Kesuksesan Customer Validation
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <span>E. Metrik dan Kriteria Kesuksesan Customer Validation</span>
+                      <SectionInfo
+                        title="Bagian E: Metrik & Kriteria Kesuksesan CV"
+                        text="7 metrik baku Juklak untuk mengukur Problem-Solution Fit (PSF): Desirability (Problem Resonance, Solution Interest, Willingness to Recommend/NPS, Task Completion Rate), Feasibility On Paper (Tech & Operational Readiness), dan Viability On Paper (Value vs Cost / Business Impact)."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
                       7 metrik baku Juklak — isi kolom &quot;Catatan&quot; sesuai kondisi tim
@@ -1713,7 +1738,11 @@ export function CustomerValidationClient({
                   <div>
                     <CardTitle className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2">
                       <Stamp className="h-4.5 w-4.5 text-[#0F5132]" />
-                      Persetujuan &amp; Tanda Tangan Formal Perencanaan CV
+                      <span>Persetujuan &amp; Tanda Tangan Formal Perencanaan CV</span>
+                      <SectionInfo
+                        title="Persetujuan Formal Plan (Template 2.1)"
+                        text="Otorisasi formal rencana validasi pelanggan oleh Inisiator Inovasi (disusun), Innovation Coach (diperiksa), dan Project Owner (disetujui) sebelum eksekusi pengujian lapangan dimulai."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Dokumentasi persetujuan dari Inisiator Inovasi, Innovation Coach, dan Project Owner (independen).
@@ -2153,8 +2182,12 @@ export function CustomerValidationClient({
                 <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-0.5 uppercase tracking-wider">
                   FR-PIA-02.2
                 </Badge>
-                <h3 className="text-sm font-extrabold text-gray-900">
-                  Laporan Hasil Validasi Pelanggan (Customer Validation Report)
+                <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
+                  <span>Laporan Hasil Validasi Pelanggan (Customer Validation Report)</span>
+                  <SectionInfo
+                    title="Template 2.2: Laporan Customer Validation"
+                    text="Mendokumentasikan hasil pengujian prototype kepada customer, bukti capaian metrik PSF, pembelajaran kualitatif, dan rekomendasi kelanjutan ke tahap MVP (Market Validation)."
+                  />
                 </h3>
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
@@ -2184,6 +2217,10 @@ export function CustomerValidationClient({
                   <div>
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <span>A. Ringkasan Problem dan Solusi Tervalidasi</span>
+                      <SectionInfo
+                        title="Bagian A: Problem & Solusi Tervalidasi"
+                        text="Rangkuman problem-solution fit yang terkonfirmasi dari pengujian, proposisi nilai (Value Proposition) yang diterima customer, fitur-fitur kunci terverifikasi, dan alur solusi yang telah disesuaikan."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Definisi solusi yang terbukti menjawab problem worth solving dan value proposition bagi pelanggan.
@@ -2268,8 +2305,12 @@ export function CustomerValidationClient({
             {/* ══ SECTION B: Detail Eksekusi & Instrumen Pengujian ══ */}
             <Card className="border-gray-200/80 shadow-2xs">
               <CardHeader className="pb-3 border-b border-gray-100">
-                <CardTitle className="text-sm font-extrabold text-[#0B3D2E]">
-                  B. Pelaksanaan &amp; Instrumen Pengujian Pengguna
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <span>B. Pelaksanaan &amp; Instrumen Pengujian Pengguna</span>
+                  <SectionInfo
+                    title="Bagian B: Pelaksanaan & Instrumen Pengujian"
+                    text="Data pelaksanaan riil pengujian mencakup tautan prototype yang diuji, mekanisme testing (wawancara mendalam, observasi usability), waktu dan lokasi pengujian, serta profil dan jumlah responden aktual yang berpartisipasi."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Rekapitulasi prototype, mekanisme testing, lokasi, dan responden aktual yang diuji.
@@ -2358,6 +2399,10 @@ export function CustomerValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Table2 className="h-4 w-4 text-[#3E9463]" />
                       <span>C. Daftar Pertanyaan Kunci dan Temuan Kualitatif</span>
+                      <SectionInfo
+                        title="Bagian C: Pertanyaan Kunci & Temuan Kualitatif"
+                        text="6 pertanyaan baku resmi dari Template 2.2 untuk menggali feedback esensial responden: masalah utama yang dirasakan, tanggapan terhadap alur solusi, fitur yang paling bernilai, kendala/kebingungan penggunaan, kesediaan menggunakan/membayar, serta saran perbaikan kritis."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       6 pertanyaan baku resmi dari Template 2.2 untuk menggali feedback esensial responden.
@@ -2417,6 +2462,10 @@ export function CustomerValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-[#3E9463]" />
                       <span>D. Hasil Pengukuran Customer Validation (7 Parameter)</span>
+                      <SectionInfo
+                        title="Bagian D: Hasil Pengukuran Metrik PSF"
+                        text="Evaluasi pencapaian 7 metrik baku PSF terhadap target kriteria kesuksesan, gap analysis, interpretasi data, pembelajaran tim, dan enhancement yang diperlukan."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Evaluasi pencapaian target Desirability, Feasibility, dan Viability berdasarkan pengujian nyata.
@@ -2524,8 +2573,12 @@ export function CustomerValidationClient({
             {/* ══ SECTION E: Analisis Akhir, PSF, Keputusan & Catatan MVP Planning ══ */}
             <Card className="border-gray-200/80 shadow-2xs">
               <CardHeader className="pb-3 border-b border-gray-100">
-                <CardTitle className="text-sm font-extrabold text-[#0B3D2E]">
-                  E. Analisis Akhir, Ketercapaian PSF &amp; Keputusan Gerbang
+                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                  <span>E. Analisis Akhir, Ketercapaian PSF &amp; Keputusan Gerbang</span>
+                  <SectionInfo
+                    title="Bagian E: Analisis Akhir & Keputusan PSF"
+                    text="Kesimpulan menyeluruh status Problem-Solution Fit, evaluasi kelayakan melangkah ke tahap Market Validation (MVP), rekomendasi arah iterasi/pivot, dan catatan persiapan MVP Planning."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Kesimpulan status Problem-Solution Fit dan penetapan kelanjutan fase ke Market Validation.
@@ -2679,6 +2732,10 @@ export function CustomerValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Stamp className="h-4 w-4 text-[#3E9463]" />
                   <span>F. Lembar Pengesahan Laporan Customer Validation</span>
+                  <SectionInfo
+                    title="Pengesahan Laporan CV (Template 2.2)"
+                    text="Pengesahan formal dokumen laporan hasil validasi pelanggan oleh Inisiator Inovasi (disusun), Innovation Coach (diperiksa), dan Project Owner (disetujui)."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Tanda tangan digital 3 pihak untuk memvalidasi laporan akhir Customer Validation.

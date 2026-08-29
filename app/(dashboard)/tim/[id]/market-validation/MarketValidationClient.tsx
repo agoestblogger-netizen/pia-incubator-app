@@ -52,6 +52,7 @@ import { toast } from "@/components/ui/ToastProvider";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
 import { KanbanClient } from "../kanban/KanbanClient";
 import { KeuanganClient } from "../keuangan/KeuanganClient";
+import { SectionInfo } from "@/components/ui/SectionInfo";
 
 // ── 5 Baris Tetap Resources Needed (Bagian D) ─────────────────────────────────
 const RESOURCES_NEEDED_ROWS = [
@@ -883,8 +884,12 @@ export function MarketValidationClient({
       {/* ══ BAGIAN A: Header Read-Only (Template 3.1 & 3.2) ══ */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-1 uppercase tracking-wider">
-            FR-PIA-03.1 / 03.2 — Perencanaan Market Validation
+          <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-1 uppercase tracking-wider flex items-center gap-1.5">
+            <span>FR-PIA-03.1 / 03.2 — Perencanaan Market Validation</span>
+            <SectionInfo
+              title="Template 3.1: Perencanaan Market Validation"
+              text="Menyusun rencana MVP yang cukup minimum untuk dirilis, cukup aman untuk diuji, dan cukup bermakna untuk mengukur Desirability, Feasibility, dan Viability."
+            />
           </Badge>
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 font-medium">
             <span>
@@ -984,6 +989,10 @@ export function MarketValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Layers className="h-4 w-4 text-[#3E9463]" />
                       <span>B. Ringkasan Rencana Rilis MVP Pilot</span>
+                      <SectionInfo
+                        title="Bagian B: Rencana Rilis MVP"
+                        text="Menetapkan versi MVP, tipe peluncuran (Internal Pilot, Limited Public, Controlled Cohort), target periode rilis, target adopsi pengguna, lokasi pilot, dan cakupan pengujian (In Scope vs Out of Scope)."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Definisi lingkup MVP, channel, periode release, dan profil target early adopters.
@@ -1317,6 +1326,10 @@ export function MarketValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Table2 className="h-4 w-4 text-[#3E9463]" />
                       <span>C. Mapping Solusi, Fitur, Benefit, dan Fitur MVP</span>
+                      <SectionInfo
+                        title="Bagian C: Mapping Solusi & Fitur MVP"
+                        text="Pemetaan turunan dari solusi yang tervalidasi di CV menjadi modul/fitur fungsional MVP yang siap dibangun, beserta benefit spesifik bagi pengguna/bisnis dan acceptance criteria."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Pemetaan detail antara solusi yang tervalidasi di CV dengan fitur MVP yang dirilis atau ditunda.
@@ -1450,6 +1463,10 @@ export function MarketValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Users className="h-4 w-4 text-[#3E9463]" />
                       <span>D. Resources Needed (5 Kebutuhan Sumber Daya)</span>
+                      <SectionInfo
+                        title="Bagian D: Resources Needed (Sumber Daya)"
+                        text="Identifikasi 5 kategori sumber daya mutlak untuk rilis MVP: Personel & Keahlian (People & SME), Infrastruktur & Perangkat (Infrastructure & Tools), Anggaran & Biaya Pilot (Budget & Cost), Data & Akses Sistem (Data & Access), serta Kebijakan, Legal & Kepatuhan (Policy & Compliance)."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       5 kategori sumber daya baku sesuai Template 3.1 untuk mendukung kesiapan eksekusi MVP.
@@ -1552,6 +1569,10 @@ export function MarketValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-[#3E9463]" />
                       <span>E. Metrik, Threshold, dan Cara Pengukuran DFV (9 Parameter)</span>
+                      <SectionInfo
+                        title="Bagian E: Metrik & Threshold DFV"
+                        text="9 metrik baku Market Validation untuk membuktikan Product-Market Fit (PMF) mencakup 3 pilar DFV: Desirability (Active User, Adoption/Retention Rate, CSAT/NPS), Feasibility (System Uptime, SLA/Lead Time, Defect/Error Rate), dan Viability (Cost Efficiency, Revenue/Volume Impact, Unit Economics)."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Target terukur Desirability, Feasibility, dan Viability untuk validasi Product-Market Fit.
@@ -1681,6 +1702,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Stamp className="h-4 w-4 text-[#3E9463]" />
                   <span>F. Lembar Pengesahan MVP Release Plan</span>
+                  <SectionInfo
+                    title="Pengesahan Rencana MVP (Template 3.1)"
+                    text="Otorisasi formal dokumen rencana rilis dan pengujian MVP oleh Project Owner (disusun), Innovation Coach (diperiksa), dan Promotor (disetujui)."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Tanda tangan digital 3 pihak: Disusun oleh Project Owner, diperiksa oleh Coach, dan disetujui oleh Promotor Inovasi.
@@ -2102,6 +2127,10 @@ export function MarketValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Rocket className="h-4 w-4 text-[#3E9463]" />
                       <span>1. Ringkasan Rilis &amp; Operasional MVP Pilot</span>
+                      <SectionInfo
+                        title="Bagian 1: Ringkasan Rilis & Operasional MVP"
+                        text="Laporan pelaksanaan riil operasional MVP mencakup versi rilis, periode uji coba, lokasi implementasi, total pengguna aktif, serta kendala operasional yang dihadapi beserta penanganannya."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Data hasil peluncuran MVP di lapangan (tersinkronisasi dari kartu Kanban "MVP Release").
@@ -2236,6 +2265,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <History className="h-4 w-4 text-[#3E9463]" />
                   <span>2. Log Aktivitas Rilis &amp; Evidence (Release Log)</span>
+                  <SectionInfo
+                    title="Bagian 2: Log Aktivitas Rilis & Evidence"
+                    text="Catatan kronologis aktivitas lapangan peluncuran MVP, verifikasi output dan bukti fisik/digital (data/evidence) yang terkumpul selama masa uji coba pasar."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Riwayat tanggal, output, dan evidence kegiatan peluncuran MVP.
@@ -2283,6 +2316,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Activity className="h-4 w-4 text-[#3E9463]" />
                   <span>3. Sprint Review — Outcome</span>
+                  <SectionInfo
+                    title="Bagian 3: Sprint Review — Outcome"
+                    text="Dokumentasi luaran yang didemonstrasikan pada sprint review, feedback reviewer (Promotor/Coach/SME), serta nilai tambah nyata yang dihasilkan pada iterasi sprint."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Demonstrasi luaran, feedback reviewer, dan value yang dihasilkan pada sprint Market Validation.
@@ -2335,6 +2372,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <KanbanSquare className="h-4 w-4 text-[#3E9463]" />
                   <span>4. Sprint Review — Backlog</span>
+                  <SectionInfo
+                    title="Bagian 4: Sprint Review — Backlog"
+                    text="Verifikasi status penyelesaian kartu kerja dan backlog sprint yang dialokasikan selama fase Market Validation."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Daftar backlog kartu kerja yang diverifikasi dan diselesaikan pada iterasi Market Validation.
@@ -2392,6 +2433,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <RefreshCw className="h-4 w-4 text-[#3E9463]" />
                   <span>5. Sprint Retrospective</span>
+                  <SectionInfo
+                    title="Bagian 5: Sprint Retrospective"
+                    text="Evaluasi kualitatif cara kerja tim inovator: hal yang efektif dan dipertahankan (Continue), hambatan yang dihentikan (Stop), dan inisiatif baru yang dimulai (Start)."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Pembelajaran tim secara kualitatif: Hal yang dilanjutkan (Continue), dihentikan (Stop), dan dimulai (Start).
@@ -2437,6 +2482,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-[#3E9463]" />
                   <span>6. Hasil Pengukuran DFV dan Traction (9 Parameter Baku)</span>
+                  <SectionInfo
+                    title="Bagian 6: Pengukuran DFV & Traction"
+                    text="Capaian kuantitatif aktual 9 metrik baku Desirability, Feasibility, dan Viability dibandingkan dengan target awal, beserta analisis gap dan pembelajaran teknis/bisnis."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Capaian aktual metrik Desirability, Feasibility, dan Viability hasil uji coba pasar.
@@ -2501,6 +2550,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Table2 className="h-4 w-4 text-[#3E9463]" />
                   <span>7. Rekapitulasi Ketercapaian DFV</span>
+                  <SectionInfo
+                    title="Bagian 7: Rekapitulasi Ketercapaian DFV"
+                    text="Rata-rata persentase pencapaian per dimensi DFV terhadap ambang batas kelulusan standar Juklak (threshold 70%) untuk menilai kelayakan Product-Market Fit."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Rata-rata persentase capaian per dimensi validasi terhadap threshold standar (70%).
@@ -2561,6 +2614,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <FileText className="h-4 w-4 text-[#3E9463]" />
                   <span>8. Evaluasi Product-Market Fit &amp; Rekomendasi Sidang FMI</span>
+                  <SectionInfo
+                    title="Bagian 8: Evaluasi PMF & Rekomendasi FMI"
+                    text="Evaluasi kualitatif kesesuaian produk-pasar (PMF), masukan dukungan dari Promotor/Sponsor, serta rumusan rekomendasi strategis kelayakan inisiatif menuju sidang FMI."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Kesimpulan kualitatif kesesuaian produk terhadap kebutuhan pasar dan masukan promotor inovasi.
@@ -2646,6 +2703,10 @@ export function MarketValidationClient({
                     <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Paperclip className="h-4 w-4 text-[#3E9463]" />
                       <span>9. Dokumen &amp; Catatan Preliminary Review SME</span>
+                      <SectionInfo
+                        title="Bagian 9: Preliminary Review SME"
+                        text="Daftar catatan review teknis dan kepatuhan dari Innovation Coach dan Subject Matter Expert (SME) sebagai prasyarat kesiapan sidang."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Daftar dokumen review dan masukan dari Innovation Coach / SME sebelum sidang FMI.
@@ -2735,6 +2796,10 @@ export function MarketValidationClient({
                 <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Stamp className="h-4 w-4 text-[#3E9463]" />
                   <span>10. Lembar Pengesahan Laporan Market Validation</span>
+                  <SectionInfo
+                    title="Pengesahan Laporan MV (Template 3.2)"
+                    text="Pengesahan formal laporan akhir Market Validation oleh Project Owner (disusun), Innovation Coach (diperiksa), dan Promotor (disetujui) sebagai dokumen resmi sidang Forum Manajemen Inovasi (FMI)."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Pengesahan formal hasil pasar untuk prasyarat maju ke sidang Forum Manajemen Inovasi (FMI).

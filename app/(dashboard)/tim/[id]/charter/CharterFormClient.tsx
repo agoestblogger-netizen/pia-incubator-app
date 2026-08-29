@@ -62,6 +62,7 @@ import {
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
 import { formatDateIndo } from "@/lib/utils";
 import { RoleProposalHintTooltip } from "./RoleProposalHintTooltip";
+import { SectionInfo } from "@/components/ui/SectionInfo";
 
 interface RoleConfig {
   roleCode: RoleAssignmentItem['roleCode'];
@@ -561,8 +562,12 @@ export function CharterFormClient({
             <span className="text-xs font-black uppercase tracking-wider text-[#0F5132] bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">
               Template 1 Juklak
             </span>
-            <h1 className="text-base sm:text-lg font-black text-gray-900">
-              Innovation Setup &amp; Stakeholder Alignment
+            <h1 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-1.5">
+              <span>Innovation Setup &amp; Stakeholder Alignment</span>
+              <SectionInfo
+                title="Template 1: Innovation Charter"
+                text="Memastikan tim inovator memiliki role, mandat, milestone, backlog, serta dukungan stakeholder yang jelas sebelum Customer Validation dan Market Validation."
+              />
             </h1>
           </div>
           <p className="text-xs text-gray-500">
@@ -636,7 +641,11 @@ export function CharterFormClient({
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  Struktur Role & Akuntabilitas Tim
+                  <span>Struktur Role &amp; Akuntabilitas Tim</span>
+                  <SectionInfo
+                    title="Bagian 0: Role & Akuntabilitas"
+                    text="Menetapkan penugasan peran tim secara jelas: Sponsor (menetapkan arah, legitimasi, dan dukungan sumber daya), Promotor (calon rumah inovasi, memberi perspektif bisnis, akses, dan dukungan operasional), Project Owner (memimpin eksekusi harian dan kanban), Inisiator (penggagas ide awal dan penjaga visi), Co-creator (pengembang solusi dan pengujian), Innovation Coach (pembimbing metodologi lean startup), dan SME (ahli domain spesifik)."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Pilih atau buat akun pengguna untuk setiap peran tim (Inisiator, Co-creators, SME, Promotor, PO, Coach, Sponsor).
@@ -864,8 +873,12 @@ export function CharterFormClient({
                 <Target className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold text-gray-900">
-                  1. Problem & Customer Focus
+                <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <span>1. Problem &amp; Customer Focus</span>
+                  <SectionInfo
+                    title="Bagian 1: Problem & Customer Focus"
+                    text="Merumuskan fokus masalah bernilai tinggi untuk dipecahkan (Problem Worth Solving), customer prioritas dan area bantuan (job-to-be-done), serta How Might We (HMW) sebagai landasan pengujian hipotesis."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Definisi misi proyek, target pengguna awal, dan masalah yang layak diselesaikan
@@ -1008,8 +1021,12 @@ export function CharterFormClient({
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold text-gray-900">
-                  2. Solusi Awal & Hipotesis DFV (Desirability, Feasibility, Viability)
+                <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <span>2. Solusi Awal &amp; Hipotesis DFV (Desirability, Feasibility, Viability)</span>
+                  <SectionInfo
+                    title="Bagian 2: Solusi & Hipotesis DFV"
+                    text="Menetapkan hipotesis awal solusi serta 3 dimensi kelayakan inovasi: Desirability (apakah diinginkan pelanggan), Feasibility (apakah mampu dibangun secara teknis & operasional), dan Viability (apakah layak secara bisnis dan finansial)."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Asumsi kritis yang harus diuji dan dibuktikan selama masa inkubasi
@@ -1144,7 +1161,11 @@ export function CharterFormClient({
               </div>
               <div>
                 <CardTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  3. Tata Kelola, Ritme Kerja & Rencana Milestone Sprint
+                  <span>3. Tata Kelola, Ritme Kerja &amp; Rencana Milestone Sprint</span>
+                  <SectionInfo
+                    title="Bagian 3: Tata Kelola & Milestone"
+                    text="Menyepakati Team Agreement mencakup ritme kerja (standup, sprint review, retro), pacing monitoring berkala bersama Coach, jadwal milestone sprint 12 minggu, kebutuhan dukungan lintas divisi, serta mitigasi risiko awal."
+                  />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
                   Pacing monitoring, jadwal rencana sprint, dan kebutuhan dukungan selama masa inkubasi
@@ -1480,7 +1501,11 @@ export function CharterFormClient({
                   <div>
                     <CardTitle className="text-sm sm:text-base font-bold text-gray-900 flex items-center gap-2">
                       <Stamp className="h-4.5 w-4.5 text-[#0F5132]" />
-                      Persetujuan Formal &amp; Otorisasi Innovation Charter
+                      <span>Persetujuan Formal &amp; Otorisasi Innovation Charter</span>
+                      <SectionInfo
+                        title="Bagian 4: Lembar Otorisasi Formal"
+                        text="Otorisasi formal mandat eksekusi inovasi sesuai Template 1 Juklak (Disusun oleh PO, Diperiksa oleh Coach, Disetujui oleh Promotor). Tanda tangan Promotor menjadi syarat sah pembukaan gerbang Customer Validation."
+                      />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
                       Tanda tangan formal sesuai Template 1 Juklak. Gerbang fase hanya membutuhkan tanda tangan Promotor.
