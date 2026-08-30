@@ -1,6 +1,7 @@
+import { cache } from 'react';
 import { db } from '../db';
 import { users, roles, permissions, rolePermissions, userRoleTim, timInovator } from '../db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { createClient } from '../supabase/server';
 
 export type UserProfile = {
@@ -15,7 +16,7 @@ export type UserProfile = {
   hasGlobalScope?: boolean;
 };
 
-export async function getCurrentUser(): Promise<UserProfile | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<UserProfile | null> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -83,6 +84,88 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     console.error('getCurrentUser error:', error);
     return null;
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In-Memory RBAC Matrix Cache (High-Performance Permission Resolution)
+// Menghilangkan puluhan query redundan per-request untuk akun non-admin
+// ─────────────────────────────────────────────────────────────────────────────
+type RbacMatrixCache = {
+  allowedSet: Set<string>; // "roleCode:permissionCode"
+  globalRolesWithPerm: Map<string, Set<string>>; // permissionCode -> Set<roleCode>
+  perTimRolesWithPerm: Map<string, Set<string>>; // permissionCode -> Set<roleCode>
+  timestamp: number;
+};
+
+let cachedMatrix: RbacMatrixCache | null = null;
+let matrixFetchPromise: Promise<RbacMatrixCache> | null = null;
+
+const MATRIX_CACHE_TTL_MS = 60 * 1000; // 60 detik
+
+export function invalidateRbacMatrixCache() {
+  cachedMatrix = null;
+  matrixFetchPromise = null;
+}
+
+async function getRbacMatrix(): Promise<RbacMatrixCache> {
+  const now = Date.now();
+  if (cachedMatrix && now - cachedMatrix.timestamp < MATRIX_CACHE_TTL_MS) {
+    return cachedMatrix;
+  }
+
+  if (matrixFetchPromise) {
+    return matrixFetchPromise;
+  }
+
+  matrixFetchPromise = (async () => {
+    try {
+      const matrixRows = await db
+        .select({
+          roleCode: roles.kodeRole,
+          roleScope: roles.scope,
+          permissionCode: permissions.kodePermission,
+          diizinkan: rolePermissions.diizinkan,
+        })
+        .from(rolePermissions)
+        .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
+        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id));
+
+      const allowedSet = new Set<string>();
+      const globalRolesWithPerm = new Map<string, Set<string>>();
+      const perTimRolesWithPerm = new Map<string, Set<string>>();
+
+      for (const row of matrixRows) {
+        if (row.diizinkan) {
+          allowedSet.add(`${row.roleCode}:${row.permissionCode}`);
+
+          if (row.roleScope === 'global') {
+            if (!globalRolesWithPerm.has(row.permissionCode)) {
+              globalRolesWithPerm.set(row.permissionCode, new Set());
+            }
+            globalRolesWithPerm.get(row.permissionCode)!.add(row.roleCode);
+          } else {
+            if (!perTimRolesWithPerm.has(row.permissionCode)) {
+              perTimRolesWithPerm.set(row.permissionCode, new Set());
+            }
+            perTimRolesWithPerm.get(row.permissionCode)!.add(row.roleCode);
+          }
+        }
+      }
+
+      const result: RbacMatrixCache = {
+        allowedSet,
+        globalRolesWithPerm,
+        perTimRolesWithPerm,
+        timestamp: Date.now(),
+      };
+      cachedMatrix = result;
+      return result;
+    } finally {
+      matrixFetchPromise = null;
+    }
+  })();
+
+  return matrixFetchPromise;
 }
 
 export async function hasPermission(
@@ -112,34 +195,8 @@ export async function hasPermission(
 
   if (activeRoleCodes.length === 0) return false;
 
-  const roleRows = await db
-    .select({ id: roles.id })
-    .from(roles)
-    .where(inArray(roles.kodeRole, activeRoleCodes));
-
-  if (roleRows.length === 0) return false;
-  const roleIds = roleRows.map(r => r.id);
-
-  const [perm] = await db
-    .select({ id: permissions.id })
-    .from(permissions)
-    .where(eq(permissions.kodePermission, permissionCode))
-    .limit(1);
-
-  if (!perm) return false;
-
-  const allowed = await db
-    .select()
-    .from(rolePermissions)
-    .where(
-      and(
-        inArray(rolePermissions.roleId, roleIds),
-        eq(rolePermissions.permissionId, perm.id),
-        eq(rolePermissions.diizinkan, true)
-      )
-    );
-
-  return allowed.length > 0;
+  const matrix = await getRbacMatrix();
+  return activeRoleCodes.some(rc => matrix.allowedSet.has(`${rc}:${permissionCode}`));
 }
 
 /**
@@ -154,76 +211,22 @@ export async function getEffectivePermissionScope(
 ): Promise<'global' | string[] | null> {
   if (user.globalRoles.includes('admin_ic')) return 'global';
 
-  const [perm] = await db
-    .select({ id: permissions.id })
-    .from(permissions)
-    .where(eq(permissions.kodePermission, permissionCode))
-    .limit(1);
-
-  if (!perm) return null;
+  const matrix = await getRbacMatrix();
 
   // 1. Cek apakah ada role di globalRoles yang memiliki izin ini
-  if (user.globalRoles.length > 0) {
-    const globalRoleRows = await db
-      .select({ id: roles.id })
-      .from(roles)
-      .where(
-        and(
-          inArray(roles.kodeRole, user.globalRoles),
-          eq(roles.scope, 'global')
-        )
-      );
-
-    if (globalRoleRows.length > 0) {
-      const allowedGlobal = await db
-        .select()
-        .from(rolePermissions)
-        .where(
-          and(
-            inArray(rolePermissions.roleId, globalRoleRows.map(r => r.id)),
-            eq(rolePermissions.permissionId, perm.id),
-            eq(rolePermissions.diizinkan, true)
-          )
-        )
-        .limit(1);
-
-      if (allowedGlobal.length > 0) {
-        return 'global';
-      }
-    }
+  const globalRolesForPerm = matrix.globalRolesWithPerm.get(permissionCode);
+  if (globalRolesForPerm && user.globalRoles.some(r => globalRolesForPerm.has(r))) {
+    return 'global';
   }
 
   // 2. Cek apakah ada timRoles yang memiliki izin ini
   if (user.timRoles.length === 0) return null;
 
-  const timRoleCodes = Array.from(new Set(user.timRoles.map(tr => tr.roleCode)));
-  const perTimRoleRows = await db
-    .select({ id: roles.id, kodeRole: roles.kodeRole })
-    .from(roles)
-    .where(inArray(roles.kodeRole, timRoleCodes));
-
-  if (perTimRoleRows.length === 0) return null;
-
-  const allowedRp = await db
-    .select({ roleId: rolePermissions.roleId })
-    .from(rolePermissions)
-    .where(
-      and(
-        inArray(rolePermissions.roleId, perTimRoleRows.map(r => r.id)),
-        eq(rolePermissions.permissionId, perm.id),
-        eq(rolePermissions.diizinkan, true)
-      )
-    );
-
-  if (allowedRp.length === 0) return null;
-
-  const allowedRoleIds = new Set(allowedRp.map(rp => rp.roleId));
-  const allowedRoleCodes = new Set(
-    perTimRoleRows.filter(r => allowedRoleIds.has(r.id)).map(r => r.kodeRole)
-  );
+  const perTimRolesForPerm = matrix.perTimRolesWithPerm.get(permissionCode);
+  if (!perTimRolesForPerm) return null;
 
   const matchedTimIds = user.timRoles
-    .filter(tr => allowedRoleCodes.has(tr.roleCode))
+    .filter(tr => perTimRolesForPerm.has(tr.roleCode))
     .map(tr => tr.timId);
 
   return matchedTimIds.length > 0 ? Array.from(new Set(matchedTimIds)) : null;

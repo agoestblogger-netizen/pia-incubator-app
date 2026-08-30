@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { roles, permissions, rolePermissions, users, userRoleTim, timInovator } from "@/lib/db/schema";
 import { eq, and, ne, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
+import { getCurrentUser, hasPermission, invalidateRbacMatrixCache } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 
 const SYSTEM_DEFAULT_ROLE_CODES = [
@@ -94,6 +94,7 @@ export async function toggleRolePermissionAction(roleId: string, permissionId: s
       details: { roleId, permissionId, allowed },
     });
 
+    invalidateRbacMatrixCache();
     revalidatePath('/admin/roles');
     return { success: true };
   } catch (error: any) {
@@ -400,6 +401,7 @@ export async function createCustomRoleAction(data: {
       },
     });
 
+    invalidateRbacMatrixCache();
     revalidatePath('/admin/roles');
     return { success: true, role: newRole };
   } catch (error: any) {
@@ -464,6 +466,7 @@ export async function deleteCustomRoleAction(roleId: string) {
       },
     });
 
+    invalidateRbacMatrixCache();
     revalidatePath('/admin/roles');
     return { success: true, message: `Role "${targetRole.namaRole}" berhasil dihapus permanen.` };
   } catch (error: any) {
