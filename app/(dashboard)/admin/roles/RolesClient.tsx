@@ -26,6 +26,7 @@ import {
   checkUserReferencesAction,
 } from "@/app/actions/user";
 import { toast } from "@/components/ui/ToastProvider";
+import { UserSelectCombobox } from "@/components/user/UserSelectCombobox";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1917,20 +1918,17 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
           <form onSubmit={handleAssignRole} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Pengguna</label>
-              <select
-                className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white"
+              <label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
+                <span>Pengguna <span className="text-red-500">*</span></span>
+                <span className="text-[10px] text-gray-400 font-normal">Cari nama / email</span>
+              </label>
+              <UserSelectCombobox
                 value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                required
-              >
-                <option value="">-- Pilih Pengguna --</option>
-                {usersList.map((u: any) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nama} ({u.email})
-                  </option>
-                ))}
-              </select>
+                users={usersList}
+                onChange={(user) => setSelectedUserId(user?.id || "")}
+                placeholder="-- Cari & Pilih Pengguna --"
+                allowCreateNew={false}
+              />
             </div>
 
             <div className="space-y-1.5">

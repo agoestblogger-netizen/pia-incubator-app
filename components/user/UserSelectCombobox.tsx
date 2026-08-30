@@ -20,6 +20,8 @@ interface UserSelectComboboxProps {
   placeholder?: string;
   disabled?: boolean;
   timId?: string;
+  users?: SelectedUser[];
+  allowCreateNew?: boolean;
 }
 
 export function UserSelectCombobox({
@@ -29,10 +31,12 @@ export function UserSelectCombobox({
   placeholder = 'Pilih Akun User...',
   disabled = false,
   timId,
+  users,
+  allowCreateNew = true,
 }: UserSelectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userList, setUserList] = useState<SelectedUser[]>([]);
+  const [userList, setUserList] = useState<SelectedUser[]>(users || []);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +53,23 @@ export function UserSelectCombobox({
 
   // Load user list on open or query change
   useEffect(() => {
+    if (users) {
+      if (!searchQuery.trim()) {
+        setUserList(users);
+      } else {
+        const q = searchQuery.toLowerCase().trim();
+        setUserList(
+          users.filter(
+            (u) =>
+              (u.nama && u.nama.toLowerCase().includes(q)) ||
+              (u.email && u.email.toLowerCase().includes(q))
+          )
+        );
+      }
+      setLoading(false);
+      return;
+    }
+
     if (!open) return;
     let isMounted = true;
     setLoading(true);
@@ -67,26 +88,34 @@ export function UserSelectCombobox({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [open, searchQuery]);
+  }, [open, searchQuery, users]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click or Escape key
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && open) {
+        setOpen(false);
+      }
+    }
     if (open) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
 
   const handleSelectUser = (user: SelectedUser) => {
     onChange(user);
     setOpen(false);
+    setSearchQuery('');
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -138,7 +167,7 @@ export function UserSelectCombobox({
   };
 
   // Find currently display label
-  const currentUser = userList.find((u) => u.id === value) || selectedUserData;
+  const currentUser = (users || userList).find((u) => u.id === value) || selectedUserData;
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
@@ -147,7 +176,7 @@ export function UserSelectCombobox({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0F5132]/20 focus:border-[#0F5132] transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed shadow-2xs text-left"
+        className="w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-lg border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0F5132]/20 focus:border-[#0F5132] transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed shadow-2xs text-left h-9"
       >
         <div className="flex items-center gap-2 truncate">
           <User className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -186,6 +215,14 @@ export function UserSelectCombobox({
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (userList.length > 0) {
+                      handleSelectUser(userList[0]);
+                    }
+                  }
+                }}
                 placeholder="Cari nama atau email user..."
                 className="pl-8 h-8 text-xs border-gray-200 bg-white"
               />
@@ -229,24 +266,27 @@ export function UserSelectCombobox({
           </div>
 
           {/* Create User Button Footer */}
-          <div className="p-1.5 border-t border-gray-100 bg-gray-50">
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setCreateDialogOpen(true);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-[#0F5132] hover:bg-[#0F5132]/10 transition-colors border border-dashed border-[#0F5132]/30 bg-white"
-            >
-              <UserPlus className="h-3.5 w-3.5 text-[#0F5132]" />
-              <span>+ Buat User Baru</span>
-            </button>
-          </div>
+          {allowCreateNew && (
+            <div className="p-1.5 border-t border-gray-100 bg-gray-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setCreateDialogOpen(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-[#0F5132] hover:bg-[#0F5132]/10 transition-colors border border-dashed border-[#0F5132]/30 bg-white"
+              >
+                <UserPlus className="h-3.5 w-3.5 text-[#0F5132]" />
+                <span>+ Buat User Baru</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* Mini-Form Dialog: Tambah User Baru */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      {allowCreateNew && (
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -382,6 +422,7 @@ export function UserSelectCombobox({
           </form>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }
