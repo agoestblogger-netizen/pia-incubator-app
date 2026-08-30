@@ -97,8 +97,8 @@ export async function getTeamCapacityForSprint(
 
     // Tentukan roleCode untuk anggota tim ini
     const userRole = a.userId ? userRolesList.find((ur) => ur.userId === a.userId) : null;
-    let determinedRoleCode = userRole?.roleCode || "co_creator";
-    let determinedRoleName = userRole?.roleName || "Inovator";
+    let determinedRoleCode = userRole?.roleCode || "unassigned";
+    let determinedRoleName = userRole?.roleName || "Belum Ditugaskan";
 
     // Fallback heuristik dari teks jabatan / komitmenDukungan jika belum ada di userRoleTim
     const textToCheck = `${a.jabatan} ${a.komitmenDukungan || ""}`.toLowerCase();
@@ -108,6 +108,9 @@ export async function getTeamCapacityForSprint(
     } else if (textToCheck.includes("inisiator") || textToCheck.includes("pengusul")) {
       determinedRoleCode = "inisiator";
       determinedRoleName = "Inisiator";
+    } else if (textToCheck.includes("co-creator") || textToCheck.includes("cocreator")) {
+      determinedRoleCode = "co_creator";
+      determinedRoleName = "Co-creator";
     } else if (textToCheck.includes("project owner") || textToCheck.includes("po")) {
       determinedRoleCode = "project_owner";
       determinedRoleName = "Project Owner";

@@ -15,7 +15,7 @@ export interface SprintRoleConfigItem {
 }
 
 const DEFAULT_SPRINT_ROLES = [
-  { roleCode: "co_creator", roleName: "Inovator / Co-creator", isIncluded: true },
+  { roleCode: "co_creator", roleName: "Co-creator", isIncluded: true },
   { roleCode: "coach", roleName: "Innovation Coach", isIncluded: true },
   { roleCode: "inisiator", roleName: "Inisiator", isIncluded: false },
   { roleCode: "project_owner", roleName: "Project Owner", isIncluded: false },

@@ -1356,7 +1356,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                             </code>
                           </td>
                           <td className="py-3 px-4 text-gray-500 text-xs">
-                            {roleCfg.roleCode === "co_creator" && "Anggota tim inovator / co-creator pelaksana teknis inovasi."}
+                            {roleCfg.roleCode === "co_creator" && "Anggota tim inti pelaksana teknis inovasi (Co-creator)."}
                             {roleCfg.roleCode === "coach" && "Innovation Coach pembimbing metodologi dan coaching tim."}
                             {roleCfg.roleCode === "inisiator" && "Inisiator pengusul ide proyek inovasi awal."}
                             {roleCfg.roleCode === "project_owner" && "Project Owner penanggung jawab bisnis dari unit kerja."}

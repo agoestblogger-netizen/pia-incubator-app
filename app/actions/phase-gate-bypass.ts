@@ -15,7 +15,7 @@ export interface PhaseGateBypassRoleItem {
 }
 
 const DEFAULT_BYPASS_ROLES = [
-  { roleCode: "co_creator", roleName: "Inovator / Co-creator", isBypass: false },
+  { roleCode: "co_creator", roleName: "Co-creator", isBypass: false },
   { roleCode: "coach", roleName: "Innovation Coach", isBypass: false },
   { roleCode: "inisiator", roleName: "Inisiator", isBypass: false },
   { roleCode: "project_owner", roleName: "Project Owner", isBypass: false },

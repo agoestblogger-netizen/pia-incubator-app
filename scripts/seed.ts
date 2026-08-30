@@ -40,7 +40,7 @@ const DEFAULT_ROLES = [
   },
   {
     kodeRole: 'inisiator',
-    namaRole: 'Inovator',
+    namaRole: 'Inisiator',
     deskripsi: 'Pencetus ide dan penggerak utama validasi solusi pelanggan.',
     scope: 'per_tim',
     isDefault: true,

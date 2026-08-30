@@ -217,7 +217,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
         createdAccounts.push({
           nama: pengusulNama,
           email: pengusulEmail,
-          roleName: inisiatorRole?.namaRole || 'Inovator',
+          roleName: inisiatorRole?.namaRole || 'Inisiator',
           timNama: namaProyek,
         });
       }
@@ -306,7 +306,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
             createdAccounts.push({
               nama: mNama,
               email: mEmail,
-              roleName: inisiatorRole.namaRole || 'Inovator',
+              roleName: inisiatorRole.namaRole || 'Inisiator',
               timNama: namaProyek,
             });
           }
