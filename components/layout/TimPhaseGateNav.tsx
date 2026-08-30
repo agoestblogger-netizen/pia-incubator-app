@@ -89,9 +89,10 @@ export function TimPhaseGateNav({
       description: "Uji Product-Market Fit, evaluasi bisnis, dan FMI Decision",
       href: gates.marketValidation.href,
       icon: TrendingUp,
-      unlocked: gates.marketValidation.unlocked,
+      unlocked: true, // Selalu bisa diklik/dibuka oleh semua role
+      gateDecisionUnlocked: gates.marketValidation.unlocked,
       reason: gates.marketValidation.reason,
-      badge: null,
+      badge: !gates.marketValidation.unlocked ? "Belum Aktif" : null,
       token: PHASE_TOKENS.phase3, // hijau
     },
   ];
@@ -251,8 +252,14 @@ export function TimPhaseGateNav({
                   </div>
 
                   {item.badge ? (
-                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-xs mt-0.5">
-                      <CheckCircle2 className="h-2.5 w-2.5" />
+                    <span
+                      className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs mt-0.5 ${
+                        item.badge === "Belum Aktif"
+                          ? "bg-black/35 text-white/90 border border-white/25 backdrop-blur-xs"
+                          : "bg-white text-emerald-800"
+                      }`}
+                    >
+                      {item.badge === "Terisi" && <CheckCircle2 className="h-2.5 w-2.5" />}
                       {item.badge}
                     </span>
                   ) : isActive ? (

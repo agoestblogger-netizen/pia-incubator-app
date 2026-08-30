@@ -26,6 +26,7 @@ import { logAudit } from "@/lib/db/audit";
 import { getCharterRolesData } from "./charter";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAiBacklogFromMvPlan } from "@/lib/ai/mv-backlog-generator";
+import { isMarketValidationUnlockedForUser } from "./phase-gate";
 
 export async function getMarketValidationData(timId: string) {
   const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
@@ -178,6 +179,14 @@ export async function saveMarketValidationPlanFullAction(
       };
     }
 
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka (menunggu keputusan 'Lanjut ke Market Validation' pada Laporan Customer Validation atau izin bypass Admin).",
+      };
+    }
+
     // 1. Upsert marketValidationPlan
     const [existing] = await db
       .select()
@@ -319,6 +328,14 @@ export async function signMvPlanAction(
       };
     }
 
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk penandatanganan rencana.",
+      };
+    }
+
     const [existingPlan] = await db
       .select()
       .from(marketValidationPlan)
@@ -418,6 +435,14 @@ export async function revokeMvPlanSignatureAction(
       };
     }
 
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka.",
+      };
+    }
+
     const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
     if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
@@ -484,6 +509,14 @@ export async function saveMarketValidationReportAction(planId: string, timId: st
       return {
         success: false,
         error: 'Forbidden: Anda tidak memiliki izin untuk mengedit Market Validation Report tim ini.',
+      };
+    }
+
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk pengisian laporan.",
       };
     }
 
@@ -571,6 +604,14 @@ export async function approveMarketValidationReportAction(
       return {
         success: false,
         error: 'Forbidden: Anda tidak memiliki izin untuk menyetujui Market Validation Report tim ini.',
+      };
+    }
+
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk persetujuan laporan.",
       };
     }
 
@@ -667,6 +708,14 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
       };
     }
 
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka.",
+      };
+    }
+
     const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
     if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
@@ -723,6 +772,14 @@ export async function signMvReportAction(
       return {
         success: false,
         error: `Forbidden: Role Anda tidak memiliki izin menandatangani Laporan MV (${permCode}).`,
+      };
+    }
+
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk penandatanganan laporan.",
       };
     }
 
@@ -843,6 +900,14 @@ export async function revokeMvReportSignatureAction(
       };
     }
 
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka.",
+      };
+    }
+
     const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
     if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
@@ -910,6 +975,14 @@ export async function generateMvBacklogAction(timId: string) {
 
     const allowed = await hasPermission(user, "market_val.edit", timId);
     if (!allowed) return { success: false, error: "Forbidden: Anda tidak memiliki izin mengedit tim ini." };
+
+    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+    if (!isMvUnlocked) {
+      return {
+        success: false,
+        error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk generate rekomendasi backlog.",
+      };
+    }
 
     const [plan] = await db
       .select()

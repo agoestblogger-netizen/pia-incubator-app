@@ -23,6 +23,7 @@ import { getPredefinedSubtasks } from "@/lib/data/subtask-templates";
 import { generateDynamicSubtasksForCard } from "@/lib/ai/subtask-generator";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 import { detectMvBakuCardType, isMvMandatoryCard } from "@/lib/utils/mv-cards";
+import { isMarketValidationUnlockedForUser } from "./phase-gate";
 
 export async function logKanbanActivity(params: {
   taskId: string;
@@ -597,6 +598,22 @@ export async function adoptAiCardAction(
         success: false,
         error: "Forbidden: Anda tidak memiliki izin untuk mengadopsi kartu backlog.",
       };
+    }
+
+    const [cardToAdopt] = await db
+      .select({ id: kanbanCard.id, tahap: kanbanCard.tahap })
+      .from(kanbanCard)
+      .where(eq(kanbanCard.id, cardId))
+      .limit(1);
+
+    if (cardToAdopt && cardToAdopt.tahap === 'market_validation') {
+      const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
+      if (!isMvUnlocked) {
+        return {
+          success: false,
+          error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk mengadopsi kartu backlog ke sprint.",
+        };
+      }
     }
 
     const updatePayload: any = {

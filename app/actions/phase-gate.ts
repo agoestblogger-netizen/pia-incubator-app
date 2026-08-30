@@ -60,6 +60,46 @@ export type PhaseGateStatus = {
   };
 };
 
+/**
+ * Memeriksa apakah gerbang fase Market Validation terbuka untuk user dan tim tertentu,
+ * baik karena keputusan Customer Validation sudah "lanjut", atau user memiliki izin bypass / Admin.
+ */
+export async function isMarketValidationUnlockedForUser(
+  user: any | null,
+  timId: string
+): Promise<boolean> {
+  if (!user) return false;
+
+  // 1. Cek izin bypass (Admin selalu bypass, atau role terdaftar di phase_gate_bypass_role_config)
+  const canBypass = await canUserBypassMarketValidationGate(user, timId);
+  if (canBypass) return true;
+
+  // 2. Cek apakah CV Report tim ini memiliki keputusan 'lanjut'
+  const [cvPlan] = await db
+    .select()
+    .from(customerValidationPlan)
+    .where(eq(customerValidationPlan.timInovatorId, timId))
+    .limit(1);
+
+  if (cvPlan) {
+    const [cvReport] = await db
+      .select()
+      .from(customerValidationReport)
+      .where(eq(customerValidationReport.planId, cvPlan.id))
+      .limit(1);
+
+    if (
+      cvReport &&
+      cvReport.keputusan &&
+      (cvReport.keputusan.toLowerCase().includes("lanjut") || cvReport.keputusan === "lanjut")
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateStatus> {
   const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
 
@@ -93,30 +133,7 @@ export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateSt
   // Condition: customer_validation_report.keputusan === 'Lanjut ke Market Validation' or 'lanjut'
   // ATAU role user saat ini memiliki izin bypass gerbang fase di phase_gate_bypass_role_config
   const currentUser = await getCurrentUser();
-  const canBypassMvGate = await canUserBypassMarketValidationGate(currentUser, timId);
-
-  const [cvPlan] = await db
-    .select()
-    .from(customerValidationPlan)
-    .where(eq(customerValidationPlan.timInovatorId, timId))
-    .limit(1);
-
-  let isMarketValidationUnlocked = canBypassMvGate;
-  if (!isMarketValidationUnlocked && cvPlan) {
-    const [cvReport] = await db
-      .select()
-      .from(customerValidationReport)
-      .where(eq(customerValidationReport.planId, cvPlan.id))
-      .limit(1);
-
-    if (
-      cvReport &&
-      cvReport.keputusan &&
-      (cvReport.keputusan.toLowerCase().includes("lanjut") || cvReport.keputusan === "lanjut")
-    ) {
-      isMarketValidationUnlocked = true;
-    }
-  }
+  const isMarketValidationUnlocked = await isMarketValidationUnlockedForUser(currentUser, timId);
 
   // 5. Check FMI & Governance gate:
   // Condition: market_validation_report.keputusan_go_nogo === 'Go ke FMI' or 'go_ke_fmi'

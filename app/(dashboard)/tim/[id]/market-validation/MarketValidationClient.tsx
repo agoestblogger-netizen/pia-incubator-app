@@ -47,6 +47,7 @@ import {
   Wallet,
   ArrowUpRight,
   Lock,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
@@ -547,20 +548,25 @@ export function MarketValidationClient({
   const coachAssignment = roleAssignments?.find((a: any) => a.roleCode === "coach");
   const promotorAssignment = roleAssignments?.find((a: any) => a.roleCode === "promotor");
 
+  const isMvGateUnlocked = Boolean(phaseGateStatus?.gates?.marketValidation?.unlocked);
+
   // Plan signatures:
   const canSignPlanPoPerm = signPermissions?.plan?.po ?? isAdmin;
   const canSignPlanCoachPerm = signPermissions?.plan?.coach ?? isAdmin;
   const canSignPlanPromotorPerm = signPermissions?.plan?.promotor ?? isAdmin;
 
   const canSignPlanAsPo = Boolean(
+    isMvGateUnlocked &&
     canSignPlanPoPerm &&
     (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
   const canSignPlanAsCoach = Boolean(
+    isMvGateUnlocked &&
     canSignPlanCoachPerm &&
     (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignPlanAsPromotor = Boolean(
+    isMvGateUnlocked &&
     canSignPlanPromotorPerm &&
     (isAdmin || (currentUserId && promotorAssignment?.userId === currentUserId))
   );
@@ -571,14 +577,17 @@ export function MarketValidationClient({
   const canSignReportPromotorPerm = signPermissions?.report?.promotor ?? canApprove ?? isAdmin;
 
   const canSignReportAsPo = Boolean(
+    isMvGateUnlocked &&
     canSignReportPoPerm &&
     (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
   const canSignReportAsCoach = Boolean(
+    isMvGateUnlocked &&
     canSignReportCoachPerm &&
     (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignReportAsPromotor = Boolean(
+    isMvGateUnlocked &&
     canSignReportPromotorPerm &&
     (isAdmin || (currentUserId && promotorAssignment?.userId === currentUserId))
   );
@@ -668,6 +677,13 @@ export function MarketValidationClient({
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+    if (!isMvGateUnlocked) {
+      toast.error(
+        "Akses ditolak: Gerbang fase Market Validation belum terbuka (menunggu keputusan 'Lanjut ke Market Validation' pada Laporan Customer Validation atau izin bypass Admin).",
+        "Gerbang Fase Terkunci"
+      );
+      return;
+    }
     setSaving(true);
 
     const payloadPlan = {
@@ -711,6 +727,13 @@ export function MarketValidationClient({
   const [generatingBacklog, setGeneratingBacklog] = useState(false);
 
   const handleGenerateBacklog = async () => {
+    if (!isMvGateUnlocked) {
+      toast.error(
+        "Akses ditolak: Tidak dapat membuat rekomendasi backlog karena gerbang fase Market Validation belum terbuka.",
+        "Gerbang Fase Terkunci"
+      );
+      return;
+    }
     setGeneratingBacklog(true);
     try {
       const res = await generateMvBacklogAction(timId);
@@ -842,6 +865,13 @@ export function MarketValidationClient({
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+    if (!isMvGateUnlocked) {
+      toast.error(
+        "Akses ditolak: Gerbang fase Market Validation belum terbuka (menunggu keputusan 'Lanjut ke Market Validation' pada Laporan Customer Validation atau izin bypass Admin).",
+        "Gerbang Fase Terkunci"
+      );
+      return;
+    }
     if (!initialData?.plan?.id) {
       toast.error(
         "Harap simpan Market Validation Plan terlebih dahulu sebelum mengisi laporan.",
@@ -923,9 +953,10 @@ export function MarketValidationClient({
               type="button"
               variant="outline"
               size="sm"
-              disabled={generatingBacklog}
+              disabled={generatingBacklog || !isMvGateUnlocked}
+              title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
               onClick={handleGenerateBacklog}
-              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-xs font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs"
+              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-xs font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generatingBacklog ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
@@ -943,6 +974,21 @@ export function MarketValidationClient({
           )}
         </div>
       </div>
+
+      {/* Banner Notifikasi Mode Pratinjau bila Gerbang Fase CV -> MV belum terbuka */}
+      {!isMvGateUnlocked && (
+        <div className="p-4 rounded-2xl bg-amber-50/85 border border-amber-200/90 text-amber-900 flex items-start gap-3 shadow-2xs">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1 text-xs">
+            <p className="font-bold text-amber-950 text-sm">
+              Mode Pratinjau Market Validation (Gerbang Fase Belum Dibuka)
+            </p>
+            <p className="text-amber-800 leading-relaxed">
+              Seluruh konten, tab, dan instrumen Market Validation (MVP Release Plan, Backlog &amp; Sprint, PMF Report, RAB &amp; LPJ) dapat dilihat secara lengkap. Namun, aksi perubahan seperti penyimpanan form, tanda tangan dokumen, pembuatan rekomendasi backlog, dan adopsi kartu ke sprint masih dibatasi hingga Laporan Customer Validation disetujui dengan keputusan <strong>&ldquo;Lanjut ke Market Validation&rdquo;</strong> atau akun Anda memiliki izin bypass Admin di <em>Matrix RBAC &rarr; Gerbang Fase CV&rarr;MV</em>.
+            </p>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 max-w-2xl bg-emerald-50/70 p-1 rounded-xl border border-[#C9E4D0]">
@@ -2042,13 +2088,18 @@ export function MarketValidationClient({
               <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="submit"
-                  disabled={saving}
-                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs cursor-pointer active:scale-98 transition-all"
+                  disabled={saving || !isMvGateUnlocked}
+                  title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
+                  className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs transition-all ${
+                    !isMvGateUnlocked
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
+                      : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
+                  }`}
                 >
                   {saving ? (
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                   ) : (
-                    <Save className="h-4 w-4 text-[#F0C24B]" />
+                    <Save className={`h-4 w-4 ${!isMvGateUnlocked ? "text-gray-400" : "text-[#F0C24B]"}`} />
                   )}
                   <span>{saving ? "Menyimpan Plan..." : "Simpan MVP Release Plan"}</span>
                 </Button>
@@ -2081,9 +2132,10 @@ export function MarketValidationClient({
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={generatingBacklog}
+                disabled={generatingBacklog || !isMvGateUnlocked}
+                title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
                 onClick={handleGenerateBacklog}
-                className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-bold rounded-xl gap-2 h-8"
+                className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-bold rounded-xl gap-2 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingBacklog ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
@@ -2107,7 +2159,7 @@ export function MarketValidationClient({
             initialCards={initialCards}
             initialSprints={initialSprints}
             anggotaTim={teamMembers}
-            canEdit={canEditKanban}
+            canEdit={canEditKanban && isMvGateUnlocked}
             currentUser={currentUser}
             phaseGateStatus={phaseGateStatus}
             tahapScope="market_validation"
@@ -3136,13 +3188,18 @@ export function MarketValidationClient({
               <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="submit"
-                  disabled={saving}
-                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs cursor-pointer active:scale-98 transition-all"
+                  disabled={saving || !isMvGateUnlocked}
+                  title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
+                  className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs transition-all ${
+                    !isMvGateUnlocked
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
+                      : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
+                  }`}
                 >
                   {saving ? (
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                   ) : (
-                    <Save className="h-4 w-4 text-[#F0C24B]" />
+                    <Save className={`h-4 w-4 ${!isMvGateUnlocked ? "text-gray-400" : "text-[#F0C24B]"}`} />
                   )}
                   <span>{saving ? "Menyimpan..." : "Simpan Laporan Market Validation"}</span>
                 </Button>
