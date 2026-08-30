@@ -87,6 +87,7 @@ const DEFAULT_PERMISSIONS = [
 
   // Kanban Board
   { kodePermission: 'kanban.manage', modul: 'kanban', deskripsi: 'Akses penuh kanban board dan timeline' },
+  { kodePermission: 'sprint.manage_count', modul: 'kanban', deskripsi: 'Mengubah jumlah sprint tim (Kelola Jumlah Sprint)' },
   { kodePermission: 'kanban.edit', modul: 'kanban', deskripsi: 'Menambah dan menggeser kartu kanban' },
   { kodePermission: 'kanban.comment', modul: 'kanban', deskripsi: 'Memberikan komentar pada kartu kanban' },
   { kodePermission: 'kanban.view', modul: 'kanban', deskripsi: 'Melihat board kanban dan timeline' },
@@ -142,7 +143,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'import.execute',
     'system.reset_data',
     'charter.manage', 'charter.edit', 'charter.view',
-    'kanban.manage', 'kanban.edit', 'kanban.comment', 'kanban.view',
+    'kanban.manage', 'sprint.manage_count', 'kanban.edit', 'kanban.comment', 'kanban.view',
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.manage', 'anggaran.view',
@@ -178,7 +179,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   project_owner: [
     'tim.edit', 'tim.view',
     'charter.edit', 'charter.view',
-    'kanban.manage', 'kanban.edit', 'kanban.view',
+    'kanban.manage', 'sprint.manage_count', 'kanban.edit', 'kanban.view',
     'cust_val.edit', 'cust_val.view',
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.submit', 'anggaran.view',
@@ -205,7 +206,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   coach: [
     'tim.view',
     'charter.edit', 'charter.view',
-    'kanban.edit', 'kanban.view',
+    'kanban.manage', 'sprint.manage_count', 'kanban.edit', 'kanban.view',
     'cust_val.edit', 'cust_val.view',
     'market_val.edit', 'market_val.view',
     'anggaran.view', 'fmi.view', 'dossier.view',

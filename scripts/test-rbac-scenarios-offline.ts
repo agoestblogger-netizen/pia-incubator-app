@@ -7,7 +7,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'user.manage', 'user.create', 'user.view',
     'tim.manage', 'tim.edit', 'tim.view',
     'charter.manage', 'charter.edit', 'charter.view',
-    'kanban.manage', 'kanban.edit', 'kanban.comment', 'kanban.view',
+    'kanban.manage', 'sprint.manage_count', 'kanban.edit', 'kanban.comment', 'kanban.view',
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.manage', 'anggaran.view',

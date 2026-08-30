@@ -20,11 +20,12 @@ export default async function KanbanPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const [{ columns, cards }, sprints, phaseGateStatus, canEdit] = await Promise.all([
+  const [{ columns, cards }, sprints, phaseGateStatus, canEdit, canManageSprintCount] = await Promise.all([
     getKanbanData(tim.id),
     getSprintsByTimId(tim.id),
     getTeamPhaseGateStatus(tim.id),
     user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'sprint.manage_count', tim.id) : Promise.resolve(false),
   ]);
 
   return (
@@ -43,6 +44,7 @@ export default async function KanbanPage({
         initialSprints={sprints}
         anggotaTim={tim.anggota}
         canEdit={canEdit}
+        canManageSprintCount={canManageSprintCount}
         currentUser={user}
         phaseGateStatus={phaseGateStatus}
       />

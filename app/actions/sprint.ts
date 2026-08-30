@@ -129,6 +129,14 @@ export async function updateSprintCountAction(
       return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
+    const isAllowed = await hasPermission(user, "sprint.manage_count", timId);
+    if (!isAllowed) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk mengubah jumlah sprint tim ini.",
+      };
+    }
+
     if (!alasan || !alasan.trim()) {
       return { success: false, error: "Alasan perubahan jumlah sprint wajib diisi." };
     }

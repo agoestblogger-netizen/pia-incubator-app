@@ -143,6 +143,7 @@ export function CharterFormClient({
   canEdit = true,
   canApprove = false,
   canEditRoles = false,
+  canManageSprintCount = false,
   currentUser,
 }: {
   timId: string;
@@ -155,6 +156,7 @@ export function CharterFormClient({
   canEdit?: boolean;
   canApprove?: boolean;
   canEditRoles?: boolean;
+  canManageSprintCount?: boolean;
   currentUser?: any;
 }) {
   const [formData, setFormData] = useState({
@@ -1179,7 +1181,7 @@ export function CharterFormClient({
                 <span>{sprints.length} Milestone Sprint</span>
               </span>
 
-              {!isReadOnly && (
+              {canManageSprintCount && !isReadOnly && (
                 <Button
                   type="button"
                   variant="outline"

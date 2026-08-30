@@ -19,7 +19,7 @@ export default async function CharterPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const [initialData, rolesData, phaseGateStatus, sprintsData, canEdit, canApproveCharter, canSignCharterPromotor] = await Promise.all([
+  const [initialData, rolesData, phaseGateStatus, sprintsData, canEdit, canApproveCharter, canSignCharterPromotor, canManageSprintCount] = await Promise.all([
     getCharterByTimId(tim.id),
     getCharterRolesData(tim.id),
     getTeamPhaseGateStatus(tim.id),
@@ -27,6 +27,7 @@ export default async function CharterPage({
     user ? hasPermission(user, 'charter.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'charter.approve', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'charter.sign_promotor', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'sprint.manage_count', tim.id) : Promise.resolve(false),
   ]);
 
   const canApprove = canApproveCharter || canSignCharterPromotor;
@@ -55,6 +56,7 @@ export default async function CharterPage({
         canEdit={canEdit}
         canApprove={canApprove}
         canEditRoles={canEditRoles}
+        canManageSprintCount={canManageSprintCount}
         currentUser={user}
       />
     </div>

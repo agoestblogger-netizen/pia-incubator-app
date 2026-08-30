@@ -624,6 +624,7 @@ export function KanbanClient({
   initialSprints = [],
   anggotaTim,
   canEdit = true,
+  canManageSprintCount = false,
   currentUser,
   phaseGateStatus,
   tahapScope = "innovation_setup",
@@ -634,6 +635,7 @@ export function KanbanClient({
   initialSprints?: any[];
   anggotaTim: any[];
   canEdit?: boolean;
+  canManageSprintCount?: boolean;
   currentUser?: any;
   phaseGateStatus?: any;
   tahapScope?: string;
@@ -2326,7 +2328,7 @@ export function KanbanClient({
                 })}
               </div>
 
-              {canEdit && (
+              {canManageSprintCount && (
                 <Button
                   variant="outline"
                   size="sm"
