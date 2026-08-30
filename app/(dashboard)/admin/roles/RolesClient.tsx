@@ -1702,39 +1702,46 @@ export function RolesClient({ initialData }: { initialData: any }) {
                 <Loader2 className="h-4 w-4 animate-spin text-[#0F5132]" />
                 <span>Memeriksa keterkaitan data riwayat pengguna...</span>
               </div>
-            ) : userRefInfo ? (
-              <div className="space-y-3">
-                {userRefInfo.mode === "can_hard_delete" ? (
-                  <div className="p-3.5 bg-green-50 rounded-xl border border-green-200 text-xs text-green-900 space-y-1">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 text-green-700" />
-                      Aman untuk Dihapus Permanen
+            ) : userRefInfo ? (() => {
+              const canHardDelete =
+                userRefInfo.mode === "can_hard_delete" ||
+                (!userRefInfo.hasReferences && (userRefInfo.counts?.total === 0 || userRefInfo.references?.total === 0));
+              const counts = userRefInfo.counts || userRefInfo.references || { auditLogs: 0, anggotaTim: 0, userRoleTim: 0 };
+
+              return (
+                <div className="space-y-3">
+                  {canHardDelete ? (
+                    <div className="p-3.5 bg-green-50 rounded-xl border border-green-200 text-xs text-green-900 space-y-1">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-green-700" />
+                        Aman untuk Dihapus Permanen
+                      </div>
+                      <p className="text-[11px] text-green-800 leading-relaxed">
+                        Pengguna ini belum memiliki riwayat aktivitas audit log atau penugasan tim. Akun dapat dihapus secara total dari database dan Supabase Auth.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-green-800 leading-relaxed">
-                      Pengguna ini belum memiliki riwayat aktivitas audit log atau penugasan tim. Akun dapat dihapus secara total dari database dan Supabase Auth.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <AlertTriangle className="h-4 w-4 text-amber-700" />
-                      Memiliki Riwayat Aktivitas & Penugasan
+                  ) : (
+                    <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-700" />
+                        Memiliki Riwayat Aktivitas & Penugasan
+                      </div>
+                      <p className="text-[11px] text-amber-800 leading-relaxed">
+                        Pengguna ini tercatat memiliki referensi data:
+                      </p>
+                      <ul className="list-disc list-inside text-[11px] space-y-0.5 text-amber-950 font-medium">
+                        <li>{counts.auditLogs || 0} aktivitas di Log Audit</li>
+                        <li>{counts.anggotaTim || 0} catatan di Anggota Tim</li>
+                        <li>{counts.userRoleTim || 0} penugasan Role Tim</li>
+                      </ul>
+                      <p className="text-[11px] text-amber-800 italic pt-1">
+                        Untuk menjaga integritas data historis, akun akan <strong>dinonaktifkan secara aman</strong> dan hak akses timnya dicabut, bukan dihapus keras.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Pengguna ini tercatat memiliki referensi data:
-                    </p>
-                    <ul className="list-disc list-inside text-[11px] space-y-0.5 text-amber-950 font-medium">
-                      <li>{userRefInfo.counts.auditLogs} aktivitas di Log Audit</li>
-                      <li>{userRefInfo.counts.anggotaTim} catatan di Anggota Tim</li>
-                      <li>{userRefInfo.counts.userRoleTim} penugasan Role Tim</li>
-                    </ul>
-                    <p className="text-[11px] text-amber-800 italic pt-1">
-                      Untuk menjaga integritas data historis, akun akan <strong>dinonaktifkan secara aman</strong> dan hak akses timnya dicabut, bukan dihapus keras.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : null}
+                  )}
+                </div>
+              );
+            })() : null}
           </div>
 
           <DialogFooter className="pt-2 gap-2">
@@ -1759,7 +1766,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Memproses...
                 </>
-              ) : userRefInfo?.mode === "can_hard_delete" ? (
+              ) : (userRefInfo?.mode === "can_hard_delete" || (!userRefInfo?.hasReferences && (userRefInfo?.counts?.total === 0 || userRefInfo?.references?.total === 0))) ? (
                 "Hapus Permanen"
               ) : (
                 "Nonaktifkan & Cabut Akses"

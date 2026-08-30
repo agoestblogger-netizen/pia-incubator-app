@@ -427,18 +427,30 @@ export async function checkUserReferencesAction(userId: string) {
     const roleCount = Number(roleCountRes?.count || 0);
     const totalRefs = auditCount + anggotaCount + roleCount;
 
+    const mode = totalRefs === 0 ? ('can_hard_delete' as const) : ('has_references' as const);
+    const counts = {
+      auditLogs: auditCount,
+      anggotaTim: anggotaCount,
+      userRoleTim: roleCount,
+      total: totalRefs,
+    };
+
     return {
       success: true,
       hasReferences: totalRefs > 0,
-      references: {
-        auditLogs: auditCount,
-        anggotaTim: anggotaCount,
-        userRoleTim: roleCount,
-        total: totalRefs,
-      },
+      mode,
+      counts,
+      references: counts,
     };
   } catch (error: any) {
-    return { success: false, error: error.message, hasReferences: true };
+    return {
+      success: false,
+      error: error.message,
+      hasReferences: true,
+      mode: 'has_references' as const,
+      counts: { auditLogs: 0, anggotaTim: 0, userRoleTim: 0, total: 0 },
+      references: { auditLogs: 0, anggotaTim: 0, userRoleTim: 0, total: 0 },
+    };
   }
 }
 
@@ -452,6 +464,10 @@ export async function deleteUserSmartAction(userId: string) {
     const [targetUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!targetUser) {
       return { success: false, error: 'User tidak ditemukan.' };
+    }
+
+    if (userId === currentUser.id) {
+      return { success: false, error: 'Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan.' };
     }
 
     // Check references in audit_logs, anggota_tim, user_role_tim
