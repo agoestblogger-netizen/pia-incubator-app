@@ -4,7 +4,7 @@
 
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   admin_ic: [
-    'user.manage', 'user.view',
+    'user.manage', 'user.create', 'user.view',
     'tim.manage', 'tim.edit', 'tim.view',
     'charter.manage', 'charter.edit', 'charter.view',
     'kanban.manage', 'kanban.edit', 'kanban.comment', 'kanban.view',

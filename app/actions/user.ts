@@ -109,9 +109,11 @@ export async function createUserAction(data: {
     return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
   }
 
-  const isUserAdmin = await hasPermission(currentUser, 'user.manage');
+  const canCreateUser =
+    (await hasPermission(currentUser, 'user.manage')) ||
+    (await hasPermission(currentUser, 'user.create'));
 
-  if (!isUserAdmin) {
+  if (!canCreateUser) {
     return { success: false, error: 'Forbidden: Anda tidak memiliki izin untuk membuat user baru.' };
   }
 
