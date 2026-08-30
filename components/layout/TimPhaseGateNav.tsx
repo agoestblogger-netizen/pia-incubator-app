@@ -77,9 +77,10 @@ export function TimPhaseGateNav({
       description: "Uji Problem-Solution Fit dengan early adopter di unit kerja",
       href: gates.customerValidation.href,
       icon: Users,
-      unlocked: gates.customerValidation.unlocked,
+      unlocked: true, // Selalu bisa diklik/dibuka oleh semua role
+      gateDecisionUnlocked: gates.customerValidation.unlocked,
       reason: gates.customerValidation.reason,
-      badge: null,
+      badge: !gates.customerValidation.unlocked ? "Belum Aktif" : null,
       token: PHASE_TOKENS.phase2, // kuning/amber
     },
     {

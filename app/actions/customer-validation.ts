@@ -24,6 +24,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { getCharterRolesData } from "./charter";
+import { isCustomerValidationUnlockedForUser } from "./phase-gate";
 import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
 import { generateFullCvPlanDraft } from "@/lib/ai/cv-plan-full-generator";
 
@@ -91,6 +92,14 @@ export async function saveCustomerValidationPlanAction(timId: string, values: Pa
       };
     }
 
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
+
     const [existing] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
     let planId = existing?.id;
 
@@ -135,6 +144,14 @@ export async function saveCustomerValidationReportAction(planId: string, timId: 
       return {
         success: false,
         error: 'Forbidden: Anda tidak memiliki izin untuk mengedit Customer Validation Report tim ini.',
+      };
+    }
+
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
       };
     }
 
@@ -204,6 +221,14 @@ export async function saveCustomerValidationPlanFullAction(
 
     const allowed = await hasPermission(user, 'cust_val.edit', timId);
     if (!allowed) return { success: false, error: 'Forbidden: Anda tidak memiliki izin.' };
+
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
 
     // Upsert main plan
     const [existing] = await db.select().from(customerValidationPlan)
@@ -299,6 +324,14 @@ export async function generateCvBacklogAction(timId: string) {
 
     const allowed = await hasPermission(user, 'cust_val.edit', timId);
     if (!allowed) return { success: false, error: 'Forbidden: Anda tidak memiliki izin mengedit tim ini.' };
+
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
 
     const [plan] = await db.select().from(customerValidationPlan)
       .where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
@@ -570,6 +603,14 @@ export async function autoFillFullCvPlanAction(timId: string) {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Tidak terautentikasi.' };
 
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
+
     const [timRow] = await db
       .select()
       .from(timInovator)
@@ -711,6 +752,14 @@ export async function signCvPlanAction(
       };
     }
 
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
+
     // Get user details in this team
     const [anggota] = await db
       .select()
@@ -830,6 +879,14 @@ export async function revokeCvPlanSignatureAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
+
     const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
 
     if (!isAdmin) {
@@ -923,6 +980,14 @@ export async function saveCustomerValidationReportFullAction(
       return {
         success: false,
         error: 'Forbidden: Anda tidak memiliki izin untuk mengedit Laporan Customer Validation tim ini.',
+      };
+    }
+
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
       };
     }
 
@@ -1052,6 +1117,14 @@ export async function signCvReportAction(
       return { success: false, error: `Forbidden: Role Anda tidak memiliki izin menandatangani laporan CV (${permCode}).` };
     }
 
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
+    }
+
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
     const defaultRoleTitle =
@@ -1170,6 +1243,14 @@ export async function revokeCvReportSignatureAction(
     const allowed = (await hasPermission(user, permCode, timId)) || (await hasPermission(user, 'cust_val.edit', timId));
     if (!allowed) {
       return { success: false, error: 'Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.' };
+    }
+
+    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+    if (!isCvUnlocked) {
+      return {
+        success: false,
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+      };
     }
 
     const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));

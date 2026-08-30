@@ -23,7 +23,7 @@ import { getPredefinedSubtasks } from "@/lib/data/subtask-templates";
 import { generateDynamicSubtasksForCard } from "@/lib/ai/subtask-generator";
 import { detectCvBakuCardType } from "@/lib/utils/cv-cards";
 import { detectMvBakuCardType, isMvMandatoryCard } from "@/lib/utils/mv-cards";
-import { isMarketValidationUnlockedForUser } from "./phase-gate";
+import { isMarketValidationUnlockedForUser, isCustomerValidationUnlockedForUser } from "./phase-gate";
 
 export async function logKanbanActivity(params: {
   taskId: string;
@@ -612,6 +612,16 @@ export async function adoptAiCardAction(
         return {
           success: false,
           error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk mengadopsi kartu backlog ke sprint.",
+        };
+      }
+    }
+
+    if (cardToAdopt && cardToAdopt.tahap === 'customer_validation') {
+      const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
+      if (!isCvUnlocked) {
+        return {
+          success: false,
+          error: "Forbidden: Gerbang fase Customer Validation belum terbuka untuk mengadopsi kartu backlog ke sprint.",
         };
       }
     }

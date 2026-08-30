@@ -61,6 +61,35 @@ export type PhaseGateStatus = {
 };
 
 /**
+ * Memeriksa apakah gerbang fase Customer Validation terbuka untuk user dan tim tertentu,
+ * baik karena Innovation Charter sudah disetujui Promotor, atau user adalah Admin IC.
+ */
+export async function isCustomerValidationUnlockedForUser(
+  user: any | null,
+  timId: string
+): Promise<boolean> {
+  if (!user) return false;
+
+  // 1. Admin selalu bypass
+  const isAdmin = Boolean(
+    user.globalRoles?.some((r: string) => ["super_admin", "admin_ic", "admin"].includes(r))
+  );
+  if (isAdmin) return true;
+
+  // 2. Cek apakah Innovation Charter tim ini sudah disetujui Promotor
+  const [charterRow] = await db
+    .select({ ttdDisetujui: charter.ttdDisetujui })
+    .from(charter)
+    .where(eq(charter.timInovatorId, timId))
+    .limit(1);
+
+  const charterApproval = charterRow?.ttdDisetujui as any;
+  return Boolean(
+    charterApproval && (charterApproval.disetujui === true || charterApproval.status === 'approved')
+  );
+}
+
+/**
  * Memeriksa apakah gerbang fase Market Validation terbuka untuk user dan tim tertentu,
  * baik karena keputusan Customer Validation sudah "lanjut", atau user memiliki izin bypass / Admin.
  */
@@ -121,18 +150,15 @@ export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateSt
     charterRow && (charterRow.projectMission || charterRow.problemWorthSolving || charterRow.ttdDisetujui)
   );
 
-  // 3. Check Customer Validation gate:
-  // Condition: Innovation Charter sudah disetujui Promotor (ttdDisetujui tidak null/falsy).
-  const charterApproval = charterRow?.ttdDisetujui as any;
-  const isCustomerValidationUnlocked = Boolean(
-    charterApproval && (charterApproval.disetujui === true || charterApproval.status === 'approved')
-  );
+  const currentUser = await getCurrentUser();
 
+  // 3. Check Customer Validation gate:
+  // Condition: Innovation Charter sudah disetujui Promotor (ttdDisetujui tidak null/falsy) ATAU Admin
+  const isCustomerValidationUnlocked = await isCustomerValidationUnlockedForUser(currentUser, timId);
 
   // 4. Check Market Validation gate:
   // Condition: customer_validation_report.keputusan === 'Lanjut ke Market Validation' or 'lanjut'
   // ATAU role user saat ini memiliki izin bypass gerbang fase di phase_gate_bypass_role_config
-  const currentUser = await getCurrentUser();
   const isMarketValidationUnlocked = await isMarketValidationUnlockedForUser(currentUser, timId);
 
   // 5. Check FMI & Governance gate:

@@ -24,7 +24,7 @@ import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
   Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck,
-  Plus, Trash2
+  Plus, Trash2, AlertTriangle
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import {
@@ -315,20 +315,25 @@ export function CustomerValidationClient({
   const coachAssignment = roleAssignments?.find((a) => a.roleCode === "coach");
   const poAssignment = roleAssignments?.find((a) => a.roleCode === "project_owner");
 
+  const isCvGateUnlocked = Boolean(phaseGateStatus?.gates?.customerValidation?.unlocked);
+
   // Plan signatures:
   const canSignPlanInisiatorPerm = signPermissions?.plan?.inisiator ?? isAdmin;
   const canSignPlanCoachPerm = signPermissions?.plan?.coach ?? isAdmin;
   const canSignPlanPoPerm = signPermissions?.plan?.po ?? isAdmin;
 
   const canSignPlanAsInisiator = Boolean(
+    isCvGateUnlocked &&
     canSignPlanInisiatorPerm &&
     (isAdmin || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
   );
   const canSignPlanAsCoach = Boolean(
+    isCvGateUnlocked &&
     canSignPlanCoachPerm &&
     (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignPlanAsPo = Boolean(
+    isCvGateUnlocked &&
     canSignPlanPoPerm &&
     (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
@@ -339,14 +344,17 @@ export function CustomerValidationClient({
   const canSignReportPoPerm = signPermissions?.report?.po ?? isAdmin;
 
   const canSignReportAsInisiator = Boolean(
+    isCvGateUnlocked &&
     canSignReportInisiatorPerm &&
     (isAdmin || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
   );
   const canSignReportAsCoach = Boolean(
+    isCvGateUnlocked &&
     canSignReportCoachPerm &&
     (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignReportAsPo = Boolean(
+    isCvGateUnlocked &&
     canSignReportPoPerm &&
     (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
@@ -601,6 +609,13 @@ export function CustomerValidationClient({
 
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCvGateUnlocked) {
+      toast.error(
+        "Akses ditolak: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).",
+        "Gerbang Fase Terkunci"
+      );
+      return;
+    }
     setSaving(true);
     const { dataDukung, ...planValues } = planForm;
     const res = await saveCustomerValidationPlanFullAction(
@@ -793,6 +808,13 @@ export function CustomerValidationClient({
   };
 
   const handleGenerateBacklog = async () => {
+    if (!isCvGateUnlocked) {
+      toast.error(
+        "Akses ditolak: Gerbang fase Customer Validation belum terbuka untuk generate rekomendasi backlog.",
+        "Gerbang Fase Terkunci"
+      );
+      return;
+    }
     if (!initialData?.plan?.id) {
       toast.error("Harap simpan Form Perencanaan CV terlebih dahulu sebelum generate rekomendasi backlog.", "Rencana Belum Disimpan");
       return;
@@ -814,6 +836,13 @@ export function CustomerValidationClient({
 
   const handleSaveReport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCvGateUnlocked) {
+      toast.error(
+        "Akses ditolak: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).",
+        "Gerbang Fase Terkunci"
+      );
+      return;
+    }
     setSaving(true);
     const res = await saveCustomerValidationReportFullAction(
       timId,
@@ -865,6 +894,21 @@ export function CustomerValidationClient({
 
   return (
     <div className="space-y-4">
+      {/* Banner Notifikasi Mode Pratinjau bila Gerbang Fase Setup -> CV belum terbuka */}
+      {!isCvGateUnlocked && (
+        <div className="p-4 rounded-2xl bg-amber-50/85 border border-amber-200/90 text-amber-900 flex items-start gap-3 shadow-2xs">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-1 text-xs">
+            <p className="font-bold text-amber-950 text-sm">
+              Mode Pratinjau Customer Validation (Gerbang Fase Belum Dibuka)
+            </p>
+            <p className="text-amber-800 leading-relaxed">
+              Seluruh konten, tab, dan instrumen Customer Validation (Validation Plan, Backlog &amp; Sprint, dan Validation Report) dapat dilihat secara lengkap. Namun, aksi perubahan seperti penyimpanan form, tanda tangan dokumen, pembuatan rekomendasi backlog, dan adopsi kartu ke sprint masih dibatasi hingga dokumen Innovation Charter disetujui secara formal oleh Promotor Inovasi di halaman <strong>Innovation Charter</strong> (atau Anda memiliki peran Administrator Utama).
+            </p>
+          </div>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200 shadow-2xs">
           <TabsTrigger value="plan" className="flex items-center justify-center gap-2 text-xs font-bold py-2 rounded-xl">
@@ -1700,8 +1744,9 @@ export function CustomerValidationClient({
                   <Button
                     type="button"
                     onClick={handleGenerateBacklog}
-                    disabled={generatingBacklog || saving}
-                    className="bg-purple-700 hover:bg-purple-800 text-white gap-2 h-10 px-5 rounded-xl shadow-xs cursor-pointer text-xs font-bold"
+                    disabled={generatingBacklog || saving || !isCvGateUnlocked}
+                    title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                    className="bg-purple-700 hover:bg-purple-800 text-white gap-2 h-10 px-5 rounded-xl shadow-xs cursor-pointer text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {generatingBacklog ? (
                       <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
@@ -1720,11 +1765,20 @@ export function CustomerValidationClient({
               </div>
 
               {canEditCv && (
-                <Button type="submit" disabled={saving} className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white gap-2 h-10 px-6 rounded-xl shadow-xs cursor-pointer">
+                <Button
+                  type="submit"
+                  disabled={saving || !isCvGateUnlocked}
+                  title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                  className={`gap-2 h-10 px-6 rounded-xl shadow-xs transition-all ${
+                    !isCvGateUnlocked
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
+                      : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
+                  }`}
+                >
                   {saving ? (
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                   ) : (
-                    <Save className="h-4 w-4" />
+                    <Save className={`h-4 w-4 ${!isCvGateUnlocked ? "text-gray-400" : "text-white"}`} />
                   )}
                   <span>{saving ? "Menyimpan..." : "Simpan Validation Plan"}</span>
                 </Button>
@@ -2110,8 +2164,9 @@ export function CustomerValidationClient({
                 type="button"
                 size="sm"
                 onClick={handleGenerateBacklog}
-                disabled={generatingBacklog}
-                className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs font-bold cursor-pointer"
+                disabled={generatingBacklog || !isCvGateUnlocked}
+                title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingBacklog ? (
                   <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full inline-block" />
@@ -2135,7 +2190,7 @@ export function CustomerValidationClient({
             initialCards={initialCards}
             initialSprints={initialSprints}
             anggotaTim={anggotaTim}
-            canEdit={canEditKanban}
+            canEdit={canEditKanban && isCvGateUnlocked}
             currentUser={currentUser}
             phaseGateStatus={phaseGateStatus}
             tahapScope="customer_validation"
@@ -3069,11 +3124,20 @@ export function CustomerValidationClient({
 
             {/* Tombol Simpan Laporan */}
             <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={saving} className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs cursor-pointer active:scale-98 transition-all">
+              <Button
+                type="submit"
+                disabled={saving || !isCvGateUnlocked}
+                title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs transition-all ${
+                  !isCvGateUnlocked
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
+                    : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
+                }`}
+              >
                 {saving ? (
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                 ) : (
-                  <Save className="h-4 w-4 text-[#F0C24B]" />
+                  <Save className={`h-4 w-4 ${!isCvGateUnlocked ? "text-gray-400" : "text-[#F0C24B]"}`} />
                 )}
                 <span>{saving ? "Menyimpan Laporan..." : "Simpan Validation Report"}</span>
               </Button>
