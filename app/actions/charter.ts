@@ -924,10 +924,10 @@ export async function approveCharterAction(timId: string, signatureImage?: strin
     }
 
     const rolesData = await getCharterRolesData(timId);
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
 
-    // ── Role-gate enforcement: Global scope bypasses identity check, per_tim requires assignment match ──
-    if (!isGlobalUser) {
+    // ── Role-gate enforcement: Admin IC bypasses identity check, per_tim requires assignment match ──
+    if (!isAdmin) {
       const assignedPromotor = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor");
       if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
         return {
@@ -1080,8 +1080,8 @@ export async function revokeCharterApprovalAction(timId: string) {
       };
     }
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const assignedPromotor = rolesData?.assignments?.find((r: any) => r.roleCode === "promotor");
       if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
@@ -1125,9 +1125,17 @@ export async function signCharterAsPoAction(timId: string, signatureImage?: stri
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
 
+    const isPermitted = await hasPermission(user, "charter.sign_po", timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin menandatangani Innovation Charter sebagai Project Owner.",
+      };
+    }
+
     const rolesData = await getCharterRolesData(timId);
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const assignedPo = rolesData?.assignments?.find((r: any) => r.roleCode === "project_owner");
       if (!assignedPo?.userId || assignedPo.userId !== user.id) {
         return { success: false, error: "Forbidden: Hanya pemegang role Project Owner yang terdaftar di tim ini yang dapat menandatangani bagian ini." };
@@ -1165,8 +1173,16 @@ export async function revokeCharterPoSignAction(timId: string) {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isPermitted = await hasPermission(user, "charter.sign_po", timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk membatalkan tanda tangan Project Owner.",
+      };
+    }
+
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const assignedPo = rolesData?.assignments?.find((r: any) => r.roleCode === "project_owner");
       if (!assignedPo?.userId || assignedPo.userId !== user.id) {
@@ -1187,9 +1203,17 @@ export async function signCharterAsCoachAction(timId: string, signatureImage?: s
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
 
+    const isPermitted = await hasPermission(user, "charter.sign_coach", timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin menandatangani Innovation Charter sebagai Innovation Coach.",
+      };
+    }
+
     const rolesData = await getCharterRolesData(timId);
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const assignedCoach = rolesData?.assignments?.find((r: any) => ["coach", "innovation_coach"].includes(r.roleCode));
       if (!assignedCoach?.userId || assignedCoach.userId !== user.id) {
         return { success: false, error: "Forbidden: Hanya pemegang role Innovation Coach yang terdaftar di tim ini yang dapat menandatangani bagian ini." };
@@ -1227,8 +1251,16 @@ export async function revokeCharterCoachSignAction(timId: string) {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isPermitted = await hasPermission(user, "charter.sign_coach", timId);
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: "Forbidden: Anda tidak memiliki izin untuk membatalkan tanda tangan Innovation Coach.",
+      };
+    }
+
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const assignedCoach = rolesData?.assignments?.find((r: any) => ["coach", "innovation_coach"].includes(r.roleCode));
       if (!assignedCoach?.userId || assignedCoach.userId !== user.id) {

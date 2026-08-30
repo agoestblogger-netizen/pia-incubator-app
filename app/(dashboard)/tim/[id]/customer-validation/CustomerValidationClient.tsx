@@ -322,15 +322,15 @@ export function CustomerValidationClient({
 
   const canSignPlanAsInisiator = Boolean(
     canSignPlanInisiatorPerm &&
-    (isGlobalUser || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
+    (isAdmin || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
   );
   const canSignPlanAsCoach = Boolean(
     canSignPlanCoachPerm &&
-    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignPlanAsPo = Boolean(
     canSignPlanPoPerm &&
-    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
 
   // Report signatures:
@@ -340,15 +340,15 @@ export function CustomerValidationClient({
 
   const canSignReportAsInisiator = Boolean(
     canSignReportInisiatorPerm &&
-    (isGlobalUser || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
+    (isAdmin || (currentUserId && inisiatorAssignments.some((a) => a.userId === currentUserId)))
   );
   const canSignReportAsCoach = Boolean(
     canSignReportCoachPerm &&
-    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignReportAsPo = Boolean(
     canSignReportPoPerm &&
-    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
 
   // Backwards compatibility aliases

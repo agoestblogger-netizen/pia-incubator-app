@@ -342,9 +342,9 @@ export async function signMvPlanAction(
     const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
     const defaultRoleTitle = roleType === "po" ? "Project Owner" : roleType === "coach" ? "Innovation Coach" : "Promotor Inovasi";
 
-    // ── Role-gate enforcement: Global scope bypasses identity check, per_tim requires assignment match ──
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    // ── Role-gate enforcement: Admin IC bypasses identity check, per_tim requires assignment match ──
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
       if (!assigned?.userId || assigned.userId !== user.id) {
         return {
@@ -362,10 +362,11 @@ export async function signMvPlanAction(
       signedByUserId: user.id,
       signedByUserName: user.nama,
       nama: assignedName || user.nama,
+      role: roleType,
       jabatan: anggota?.jabatan || defaultRoleTitle,
       unit: anggota?.unitKerja || "PT Pegadaian (Persero)",
-      tanggal: new Date().toISOString(),
       status: "signed",
+      tanggal: new Date().toISOString(),
       signatureImage: processedImageUrl,
     };
 
@@ -396,7 +397,7 @@ export async function signMvPlanAction(
     revalidatePath(`/tim/${timId}/market-validation`);
     return { success: true, signatureData };
   } catch (error: any) {
-    return { success: false, error: error.message || "Gagal menandatangani MVP Plan." };
+    return { success: false, error: error.message || "Gagal menandatangani Rencana Market Validation." };
   }
 }
 
@@ -406,9 +407,7 @@ export async function revokeMvPlanSignatureAction(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
-    }
+    if (!user) return { success: false, error: "Unauthorized." };
 
     const permCode = `mv_plan.sign_${roleType}`;
     const allowed = (await hasPermission(user, permCode, timId)) || (await hasPermission(user, 'market_val.edit', timId));
@@ -419,8 +418,8 @@ export async function revokeMvPlanSignatureAction(
       };
     }
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
@@ -584,11 +583,10 @@ export async function approveMarketValidationReportAction(
     if (!existingReport) {
       return { success: false, error: 'Market Validation Report belum disimpan.' };
     }
-
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
     const rolesData = await getCharterRolesData(timId);
 
-    if (!isGlobalUser) {
+    if (!isAdmin) {
       const assignedPromotor = rolesData?.assignments?.find((a: any) => a.roleCode === 'promotor');
       if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
         return {
@@ -669,8 +667,8 @@ export async function revokeMarketValidationReportApprovalAction(reportId: strin
       };
     }
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const assignedPromotor = rolesData?.assignments?.find((a: any) => a.roleCode === 'promotor');
       if (!assignedPromotor?.userId || assignedPromotor.userId !== user.id) {
@@ -770,9 +768,9 @@ export async function signMvReportAction(
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
 
-    // ── Role-gate enforcement: Global scope bypasses identity check, per_tim requires assignment match ──
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    // ── Role-gate enforcement: Admin IC bypasses identity check, per_tim requires assignment match ──
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);
       if (!assigned?.userId || assigned.userId !== user.id) {
         return {
@@ -845,8 +843,8 @@ export async function revokeMvReportSignatureAction(
       };
     }
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === "po" ? "project_owner" : roleType === "coach" ? "coach" : "promotor";
       const assigned = rolesData?.assignments?.find((a: any) => a.roleCode === targetRoleCode);

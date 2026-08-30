@@ -142,6 +142,8 @@ export function CharterFormClient({
   usulanPoHint = null,
   canEdit = true,
   canApprove = false,
+  canSignPo = false,
+  canSignCoach = false,
   canEditRoles = false,
   canManageSprintCount = false,
   currentUser,
@@ -155,6 +157,8 @@ export function CharterFormClient({
   usulanPoHint?: string | null;
   canEdit?: boolean;
   canApprove?: boolean;
+  canSignPo?: boolean;
+  canSignCoach?: boolean;
   canEditRoles?: boolean;
   canManageSprintCount?: boolean;
   currentUser?: any;
@@ -1381,11 +1385,15 @@ export function CharterFormClient({
         const coachName = coachAssignment?.userName || "Innovation Coach";
         const promotorName = promotorAssignment?.userName || "Promotor Inovasi";
 
-        const isGlobalUser = Boolean(currentUser?.hasGlobalScope || (currentUser?.globalRoles && currentUser.globalRoles.length > 0));
-        const canUserSignPo = Boolean(isGlobalUser || (currentUser?.id && poAssignment?.userId === currentUser.id));
-        const canUserSignCoach = Boolean(isGlobalUser || (currentUser?.id && coachAssignment?.userId === currentUser.id));
+        const isAdmin = Boolean(currentUser?.globalRoles?.includes("admin_ic"));
+        const canUserSignPo = Boolean(
+          canSignPo && (isAdmin || (currentUser?.id && poAssignment?.userId === currentUser.id))
+        );
+        const canUserSignCoach = Boolean(
+          canSignCoach && (isAdmin || (currentUser?.id && coachAssignment?.userId === currentUser.id))
+        );
         const canUserSignPromotor = Boolean(
-          canApprove && (isGlobalUser || (currentUser?.id && promotorAssignment?.userId === currentUser.id))
+          canApprove && (isAdmin || (currentUser?.id && promotorAssignment?.userId === currentUser.id))
         );
 
         // Helper: renders one signature card

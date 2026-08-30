@@ -134,6 +134,8 @@ const DEFAULT_PERMISSIONS = [
   { kodePermission: 'mv_report.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan MV (Project Owner)' },
   { kodePermission: 'mv_report.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan MV (Innovation Coach)' },
   { kodePermission: 'mv_report.sign_promotor', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Laporan MV (Promotor)' },
+  { kodePermission: 'charter.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Dokumen Innovation Charter (Project Owner - Disusun Oleh)' },
+  { kodePermission: 'charter.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Dokumen Innovation Charter (Innovation Coach - Diperiksa Oleh)' },
   { kodePermission: 'charter.sign_promotor', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Persetujuan Formal Innovation Charter (Promotor)' },
 ];
 
@@ -154,7 +156,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'cv_report.sign_inisiator', 'cv_report.sign_coach', 'cv_report.sign_po',
     'mv_plan.sign_po', 'mv_plan.sign_coach', 'mv_plan.sign_promotor',
     'mv_report.sign_po', 'mv_report.sign_coach', 'mv_report.sign_promotor',
-    'charter.sign_promotor'
+    'charter.sign_po', 'charter.sign_coach', 'charter.sign_promotor'
   ],
   divisi_ic: [
     'tim.view',
@@ -185,7 +187,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.submit', 'anggaran.view',
     'fmi.view', 'dossier.view',
-    'cv_plan.sign_po', 'cv_report.sign_po', 'mv_plan.sign_po', 'mv_report.sign_po'
+    'cv_plan.sign_po', 'cv_report.sign_po', 'mv_plan.sign_po', 'mv_report.sign_po',
+    'charter.sign_po'
   ],
   inisiator: [
     'tim.view',
@@ -212,7 +215,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'cust_val.edit', 'cust_val.view',
     'market_val.edit', 'market_val.view',
     'anggaran.view', 'fmi.view', 'dossier.view',
-    'cv_plan.sign_coach', 'cv_report.sign_coach', 'mv_plan.sign_coach', 'mv_report.sign_coach'
+    'cv_plan.sign_coach', 'cv_report.sign_coach', 'mv_plan.sign_coach', 'mv_report.sign_coach',
+    'charter.sign_coach'
   ],
   sme: [
     'tim.view',

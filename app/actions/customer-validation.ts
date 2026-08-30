@@ -729,13 +729,12 @@ export async function signCvPlanAction(
         : roleType === 'coach'
         ? 'Innovation Coach'
         : 'Project Owner';
-
     const rolesData = await getCharterRolesData(timId);
     const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
 
-    // ── Role-gate enforcement: Global scope roles (Admin/Coach/Divisi IC) bypass identity check, per_tim roles require assignment match ──
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    // ── Role-gate enforcement: Admin IC bypasses identity check, per_tim roles require assignment match ──
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const assignments = rolesData?.assignments || [];
       let isAuthorized = false;
       if (roleType === 'inisiator') {
@@ -761,7 +760,7 @@ export async function signCvPlanAction(
 
     const processedImageUrl = await processSignatureImage(timId, signatureImage);
 
-    const signatureData = {
+    const ttdData = {
       userId: user.id,
       signedByUserId: user.id,
       signedByUserName: user.nama,
@@ -769,7 +768,9 @@ export async function signCvPlanAction(
       jabatan: anggota?.jabatan || defaultRoleTitle,
       unit: anggota?.unitKerja || 'PT Pegadaian (Persero)',
       tanggal: new Date().toISOString(),
-      status: 'signed',
+      email: user.email,
+      status: 'approved',
+      disetujui: true,
       signatureImage: processedImageUrl,
     };
 
@@ -780,25 +781,27 @@ export async function signCvPlanAction(
       .where(eq(customerValidationPlan.timInovatorId, timId))
       .limit(1);
 
-    const fieldToUpdate =
-      roleType === 'inisiator'
-        ? { ttdDisusun: signatureData }
-        : roleType === 'coach'
-        ? { ttdDiperiksa: signatureData }
-        : { ttdDisetujui: signatureData };
+    const updatePayload: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    if (roleType === 'inisiator') {
+      updatePayload.ttdInisiator = ttdData;
+    } else if (roleType === 'coach') {
+      updatePayload.ttdCoach = ttdData;
+    } else {
+      updatePayload.ttdPo = ttdData;
+    }
 
     if (existing) {
       await db
         .update(customerValidationPlan)
-        .set({
-          ...fieldToUpdate,
-          updatedAt: new Date(),
-        })
+        .set(updatePayload)
         .where(eq(customerValidationPlan.id, existing.id));
     } else {
       await db.insert(customerValidationPlan).values({
         timInovatorId: timId,
-        ...fieldToUpdate,
+        ...updatePayload,
       });
     }
 
@@ -808,11 +811,11 @@ export async function signCvPlanAction(
       action: `CV_PLAN_SIGN_${roleType.toUpperCase()}`,
       entity: 'customer_validation_plan',
       entityId: existing?.id || timId,
-      details: { timId, roleType, signatureData },
+      details: { timId, roleType, ttdData },
     });
 
     revalidatePath(`/tim/${timId}/customer-validation`);
-    return { success: true, signatureData };
+    return { success: true, signatureData: ttdData, ttd: ttdData };
   } catch (error: any) {
     console.error('[signCvPlanAction] Error:', error);
     return { success: false, error: error.message || 'Gagal membubuhkan tanda tangan.' };
@@ -827,9 +830,9 @@ export async function revokeCvPlanSignatureAction(
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
 
-    if (!isGlobalUser) {
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
       const assignments = rolesData?.assignments || [];
@@ -1054,9 +1057,9 @@ export async function signCvReportAction(
     const defaultRoleTitle =
       roleType === 'inisiator' ? 'Inisiator Inovasi' : roleType === 'coach' ? 'Innovation Coach' : 'Project Owner';
 
-    // ── Role-gate enforcement: Global scope roles bypass identity check, per_tim roles require assignment match ──
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    // ── Role-gate enforcement: Admin IC bypasses identity check, per_tim roles require assignment match ──
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const assignments = rolesData?.assignments || [];
       let isAuthorized = false;
       if (roleType === 'inisiator') {
@@ -1169,8 +1172,8 @@ export async function revokeCvReportSignatureAction(
       return { success: false, error: 'Forbidden: Anda tidak berwenang membatalkan tanda tangan role ini.' };
     }
 
-    const isGlobalUser = Boolean(user.hasGlobalScope || (user.globalRoles && user.globalRoles.length > 0));
-    if (!isGlobalUser) {
+    const isAdmin = Boolean(user.globalRoles?.includes('admin_ic'));
+    if (!isAdmin) {
       const rolesData = await getCharterRolesData(timId);
       const targetRoleCode = roleType === 'inisiator' ? 'inisiator' : roleType === 'coach' ? 'coach' : 'project_owner';
       const assignments = rolesData?.assignments || [];

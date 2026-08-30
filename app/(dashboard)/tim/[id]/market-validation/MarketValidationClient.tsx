@@ -554,15 +554,15 @@ export function MarketValidationClient({
 
   const canSignPlanAsPo = Boolean(
     canSignPlanPoPerm &&
-    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
   const canSignPlanAsCoach = Boolean(
     canSignPlanCoachPerm &&
-    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignPlanAsPromotor = Boolean(
     canSignPlanPromotorPerm &&
-    (isGlobalUser || (currentUserId && promotorAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && promotorAssignment?.userId === currentUserId))
   );
 
   // Report signatures:
@@ -572,15 +572,15 @@ export function MarketValidationClient({
 
   const canSignReportAsPo = Boolean(
     canSignReportPoPerm &&
-    (isGlobalUser || (currentUserId && poAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && poAssignment?.userId === currentUserId))
   );
   const canSignReportAsCoach = Boolean(
     canSignReportCoachPerm &&
-    (isGlobalUser || (currentUserId && coachAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && coachAssignment?.userId === currentUserId))
   );
   const canSignReportAsPromotor = Boolean(
     canSignReportPromotorPerm &&
-    (isGlobalUser || (currentUserId && promotorAssignment?.userId === currentUserId))
+    (isAdmin || (currentUserId && promotorAssignment?.userId === currentUserId))
   );
 
   // Backwards compatibility aliases
