@@ -14,11 +14,15 @@ export default async function AdminRolesPage() {
     redirect("/dashboard");
   }
 
-  const [data, sprintRoleConfigs, phaseGateBypassConfigs] = await Promise.all([
+  const [data, sprintRoleConfigs, phaseGateBypassConfigs, canCreateUser, canEditName] = await Promise.all([
     getRbacMatrixData(),
     getSprintCapacityRoleConfigAction(),
     getPhaseGateBypassRoleConfigAction(),
+    hasPermission(user, "user.create"),
+    hasPermission(user, "user.edit_name"),
   ]);
+
+  const canManageUsers = await hasPermission(user, "user.manage");
 
   return (
     <div className="space-y-6">
@@ -34,7 +38,16 @@ export default async function AdminRolesPage() {
         </p>
       </div>
 
-      <RolesClient initialData={{ ...data, sprintRoleConfigs, phaseGateBypassConfigs }} />
+      <RolesClient
+        initialData={{
+          ...data,
+          sprintRoleConfigs,
+          phaseGateBypassConfigs,
+          canManageUsers,
+          canCreateUser: canManageUsers || canCreateUser,
+          canEditName: canManageUsers || canEditName,
+        }}
+      />
     </div>
   );
 }

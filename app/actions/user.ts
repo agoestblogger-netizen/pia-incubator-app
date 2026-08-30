@@ -217,7 +217,15 @@ export async function createUserAction(data: {
 
 export async function updateUserNameAction(userId: string, nama: string) {
   const currentUser = await getCurrentUser();
-  if (!currentUser || !(await hasPermission(currentUser, 'user.manage'))) {
+  if (!currentUser) {
+    return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+  }
+
+  const canEditName =
+    (await hasPermission(currentUser, 'user.manage')) ||
+    (await hasPermission(currentUser, 'user.edit_name'));
+
+  if (!canEditName) {
     return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin mengedit data user.' };
   }
 

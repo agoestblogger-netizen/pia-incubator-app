@@ -171,6 +171,11 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [savingResetPassword, setSavingResetPassword] = useState(false);
   const [resetPasswordMsg, setResetPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // User Management Permissions
+  const canManageUsers = initialData?.canManageUsers ?? true;
+  const canCreateUser = initialData?.canCreateUser ?? true;
+  const canEditName = initialData?.canEditName ?? true;
+
   // Delete User State
   const [deletingUser, setDeletingUser] = useState<any | null>(null);
   const [deletingLoading, setDeletingLoading] = useState(false);
@@ -866,17 +871,19 @@ export function RolesClient({ initialData }: { initialData: any }) {
                   </CardDescription>
                 </div>
 
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setCreateUserError(null);
-                    setIsCreateUserOpen(true);
-                  }}
-                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  + Tambah User Baru
-                </Button>
+                {canCreateUser && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCreateUserError(null);
+                      setIsCreateUserOpen(true);
+                    }}
+                    className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    + Tambah User Baru
+                  </Button>
+                )}
               </div>
 
               {/* Search Bar */}
@@ -972,45 +979,51 @@ export function RolesClient({ initialData }: { initialData: any }) {
                           <td className="p-3.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {/* Edit Button */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleOpenEdit(u)}
-                                className="h-8 px-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg gap-1"
-                                title="Edit nama & reset password"
-                              >
-                                <Edit className="h-3.5 w-3.5 text-blue-600" />
-                                <span>Edit</span>
-                              </Button>
+                              {canEditName && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenEdit(u)}
+                                  className="h-8 px-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg gap-1"
+                                  title={canManageUsers ? "Edit nama & reset password" : "Edit nama pengguna"}
+                                >
+                                  <Edit className="h-3.5 w-3.5 text-blue-600" />
+                                  <span>Edit</span>
+                                </Button>
+                              )}
 
                               {/* Toggle Status Button */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={togglingUserId === u.id}
-                                onClick={() => handleToggleUserStatus(u)}
-                                className={`h-8 px-2 text-xs font-semibold rounded-lg gap-1 ${
-                                  u.statusAktif
-                                    ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                    : "text-green-600 hover:text-green-700 hover:bg-green-50"
-                                }`}
-                                title={u.statusAktif ? "Nonaktifkan akun" : "Aktifkan akun"}
-                              >
-                                <Power className="h-3.5 w-3.5" />
-                                <span>{u.statusAktif ? "Nonaktifkan" : "Aktifkan"}</span>
-                              </Button>
+                              {canManageUsers && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={togglingUserId === u.id}
+                                  onClick={() => handleToggleUserStatus(u)}
+                                  className={`h-8 px-2 text-xs font-semibold rounded-lg gap-1 ${
+                                    u.statusAktif
+                                      ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      : "text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  }`}
+                                  title={u.statusAktif ? "Nonaktifkan akun" : "Aktifkan akun"}
+                                >
+                                  <Power className="h-3.5 w-3.5" />
+                                  <span>{u.statusAktif ? "Nonaktifkan" : "Aktifkan"}</span>
+                                </Button>
+                              )}
 
                               {/* Delete Button */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleOpenDelete(u)}
-                                className="h-8 px-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg gap-1"
-                                title="Hapus pengguna"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span>Hapus</span>
-                              </Button>
+                              {canManageUsers && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenDelete(u)}
+                                  className="h-8 px-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg gap-1"
+                                  title="Hapus pengguna"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>Hapus</span>
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1341,10 +1354,18 @@ export function RolesClient({ initialData }: { initialData: any }) {
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
               <Edit className="h-5 w-5 text-blue-600" />
-              Edit Data Pengguna & Reset Password
+              {canManageUsers ? "Edit Data Pengguna & Reset Password" : "Edit Nama Pengguna"}
             </DialogTitle>
             <DialogDescription className="text-xs text-gray-500">
-              Ubah nama tampilan atau setel ulang password untuk akun <strong>{editingUser?.email}</strong>.
+              {canManageUsers ? (
+                <>
+                  Ubah nama tampilan atau setel ulang password untuk akun <strong>{editingUser?.email}</strong>.
+                </>
+              ) : (
+                <>
+                  Ubah nama tampilan untuk akun <strong>{editingUser?.email}</strong>.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -1392,11 +1413,12 @@ export function RolesClient({ initialData }: { initialData: any }) {
             </div>
 
             {/* Bagian 2: Reset Password */}
-            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200 space-y-3">
-              <div className="flex items-center gap-2 text-blue-900">
-                <KeyRound className="h-4 w-4 text-blue-600" />
-                <span className="text-xs font-bold">Reset Password Akun</span>
-              </div>
+            {canManageUsers && (
+              <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200 space-y-3">
+                <div className="flex items-center gap-2 text-blue-900">
+                  <KeyRound className="h-4 w-4 text-blue-600" />
+                  <span className="text-xs font-bold">Reset Password Akun</span>
+                </div>
 
               {resetPasswordMsg && (
                 <div
@@ -1481,6 +1503,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                 </div>
               </form>
             </div>
+            )}
           </div>
 
           <DialogFooter className="pt-4 border-t border-gray-100">

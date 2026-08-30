@@ -73,6 +73,7 @@ const DEFAULT_PERMISSIONS = [
   // Kelola User & Role
   { kodePermission: 'user.manage', modul: 'kelola_user', deskripsi: 'Mengelola pengguna dan hak akses role' },
   { kodePermission: 'user.create', modul: 'kelola_user', deskripsi: 'Membuat akun/user baru (tanpa akses penuh kelola role)' },
+  { kodePermission: 'user.edit_name', modul: 'kelola_user', deskripsi: 'Mengubah nama user (tanpa akses penuh kelola role)' },
   { kodePermission: 'user.view', modul: 'kelola_user', deskripsi: 'Melihat daftar pengguna' },
 
   // Tim Inovator
@@ -138,7 +139,7 @@ const DEFAULT_PERMISSIONS = [
 
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
   admin_ic: [
-    'user.manage', 'user.create', 'user.view',
+    'user.manage', 'user.create', 'user.edit_name', 'user.view',
     'tim.manage', 'tim.edit', 'tim.view',
     'import.execute',
     'system.reset_data',
@@ -204,6 +205,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'fmi.view', 'dossier.view'
   ],
   coach: [
+    'user.create', 'user.edit_name',
     'tim.view',
     'charter.edit', 'charter.view',
     'kanban.manage', 'sprint.manage_count', 'kanban.edit', 'kanban.view',
