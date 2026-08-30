@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { roles, permissions, rolePermissions, users, userRoleTim, timInovator } from "@/lib/db/schema";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, ne, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -120,10 +120,54 @@ export async function assignUserRoleTimAction(data: {
       };
     }
 
+    const [targetRole] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, data.roleId))
+      .limit(1);
+
+    if (!targetRole) {
+      return { success: false, error: 'Role yang dipilih tidak valid.' };
+    }
+
+    let finalTimId: string | null = data.timInovatorId || null;
+    if (targetRole.scope === 'per_tim') {
+      if (!finalTimId) {
+        return {
+          success: false,
+          error: `Role "${targetRole.namaRole}" berscope "per_tim", wajib memilih Tim Inovator sasaran.`,
+        };
+      }
+    } else {
+      finalTimId = null;
+    }
+
+    // Cek duplikasi
+    const duplicateConditions = [
+      eq(userRoleTim.userId, data.userId),
+      eq(userRoleTim.roleId, data.roleId),
+    ];
+    if (finalTimId) {
+      duplicateConditions.push(eq(userRoleTim.timInovatorId, finalTimId));
+    }
+
+    const [duplicate] = await db
+      .select()
+      .from(userRoleTim)
+      .where(and(...duplicateConditions))
+      .limit(1);
+
+    if (duplicate) {
+      return {
+        success: false,
+        error: `Pengguna ini sudah memiliki penugasan role "${targetRole.namaRole}" untuk ${finalTimId ? 'tim yang dipilih' : 'scope global'}.`,
+      };
+    }
+
     const [inserted] = await db.insert(userRoleTim).values({
       userId: data.userId,
       roleId: data.roleId,
-      timInovatorId: data.timInovatorId || null,
+      timInovatorId: finalTimId,
     }).returning();
 
     await logAudit({
@@ -132,13 +176,124 @@ export async function assignUserRoleTimAction(data: {
       action: 'USER_ROLE_ASSIGN',
       entity: 'user_role_tim',
       entityId: inserted.id,
-      details: { targetUserId: data.userId, roleId: data.roleId, timInovatorId: data.timInovatorId },
+      details: { targetUserId: data.userId, roleId: data.roleId, timInovatorId: finalTimId },
     });
 
     revalidatePath('/admin/roles');
     return { success: true, data: inserted };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menetapkan role pengguna.' };
+  }
+}
+
+export async function updateUserRoleTimAction(data: {
+  assignmentId: string;
+  roleId: string;
+  timInovatorId?: string | null;
+}) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isPermitted = await hasPermission(user, 'user.manage');
+    if (!isPermitted) {
+      return {
+        success: false,
+        error: 'Forbidden: Khusus Admin Innovation Center yang dapat mengubah penugasan role.',
+      };
+    }
+
+    // 1. Cek assignment yang ada
+    const [existingAssignment] = await db
+      .select()
+      .from(userRoleTim)
+      .where(eq(userRoleTim.id, data.assignmentId))
+      .limit(1);
+
+    if (!existingAssignment) {
+      return { success: false, error: 'Data penugasan role tidak ditemukan.' };
+    }
+
+    // 2. Ambil informasi role baru
+    const [targetRole] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, data.roleId))
+      .limit(1);
+
+    if (!targetRole) {
+      return { success: false, error: 'Role yang dipilih tidak valid.' };
+    }
+
+    // 3. Validasi scope vs timInovatorId
+    let finalTimId: string | null = data.timInovatorId || null;
+    if (targetRole.scope === 'per_tim') {
+      if (!finalTimId) {
+        return {
+          success: false,
+          error: `Role "${targetRole.namaRole}" berscope "per_tim", wajib memilih Tim Inovator sasaran.`,
+        };
+      }
+    } else {
+      // Role scope global -> timInovatorId dikunci null
+      finalTimId = null;
+    }
+
+    // 4. Cek duplikasi: jangan sampai user sudah punya role yang sama di tim yang sama di baris lain
+    const duplicateConditions = [
+      eq(userRoleTim.userId, existingAssignment.userId),
+      eq(userRoleTim.roleId, data.roleId),
+      ne(userRoleTim.id, data.assignmentId),
+    ];
+    if (finalTimId) {
+      duplicateConditions.push(eq(userRoleTim.timInovatorId, finalTimId));
+    }
+
+    const [duplicate] = await db
+      .select()
+      .from(userRoleTim)
+      .where(and(...duplicateConditions))
+      .limit(1);
+
+    if (duplicate) {
+      return {
+        success: false,
+        error: `Pengguna ini sudah memiliki penugasan role "${targetRole.namaRole}" untuk ${finalTimId ? 'tim yang dipilih' : 'scope global'}.`,
+      };
+    }
+
+    // 5. Update assignment
+    const [updated] = await db
+      .update(userRoleTim)
+      .set({
+        roleId: data.roleId,
+        timInovatorId: finalTimId,
+        updatedAt: new Date(),
+      })
+      .where(eq(userRoleTim.id, data.assignmentId))
+      .returning();
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'USER_ROLE_UPDATE',
+      entity: 'user_role_tim',
+      entityId: data.assignmentId,
+      details: {
+        targetUserId: existingAssignment.userId,
+        oldRoleId: existingAssignment.roleId,
+        oldTimId: existingAssignment.timInovatorId,
+        newRoleId: data.roleId,
+        newTimId: finalTimId,
+      },
+    });
+
+    revalidatePath('/admin/roles');
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal memperbarui penugasan role pengguna.' };
   }
 }
 

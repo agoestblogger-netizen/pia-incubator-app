@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   toggleRolePermissionAction,
   assignUserRoleTimAction,
+  updateUserRoleTimAction,
   removeUserRoleTimAction,
   createCustomRoleAction,
   deleteCustomRoleAction,
@@ -140,6 +141,13 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [selectedTimId, setSelectedTimId] = useState("");
   const [savingAssign, setSavingAssign] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+
+  // State for Editing User Role Assignment
+  const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
+  const [editRoleId, setEditRoleId] = useState("");
+  const [editTimId, setEditTimId] = useState("");
+  const [savingEditAssign, setSavingEditAssign] = useState(false);
+  const [editAssignError, setEditAssignError] = useState<string | null>(null);
 
   // State for Custom Role Creation
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
@@ -288,6 +296,62 @@ export function RolesClient({ initialData }: { initialData: any }) {
     }
 
     setSavingAssign(false);
+  };
+
+  const handleOpenEditAssign = (assignment: any) => {
+    setEditingAssignment(assignment);
+    setEditRoleId(assignment.roleId);
+    setEditTimId(assignment.timInovatorId || "");
+    setEditAssignError(null);
+  };
+
+  const handleUpdateAssignRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAssignment || !editRoleId) {
+      toast.error("Harap pilih role terlebih dahulu.", "Validasi Diperlukan");
+      return;
+    }
+
+    const selectedRole = rolesList.find((r: any) => r.id === editRoleId);
+    if (selectedRole?.scope === "per_tim" && !editTimId) {
+      setEditAssignError(`Role "${selectedRole.namaRole}" berscope "per_tim", wajib memilih Tim Inovator sasaran.`);
+      return;
+    }
+
+    setSavingEditAssign(true);
+    setEditAssignError(null);
+
+    const finalTimId = selectedRole?.scope === "global" ? null : (editTimId || null);
+
+    const res = await updateUserRoleTimAction({
+      assignmentId: editingAssignment.id,
+      roleId: editRoleId,
+      timInovatorId: finalTimId,
+    });
+
+    if (res.success && res.data) {
+      setUserRoles((prev) =>
+        prev.map((ur) =>
+          ur.id === editingAssignment.id
+            ? {
+                ...ur,
+                roleId: editRoleId,
+                timInovatorId: finalTimId,
+                roleName: selectedRole?.namaRole,
+                roleCode: selectedRole?.kodeRole,
+              }
+            : ur
+        )
+      );
+
+      toast.success("Penugasan role berhasil diperbarui!", "Penugasan Role Diperbarui");
+      setEditingAssignment(null);
+    } else {
+      const errMsg = res.error || "Gagal memperbarui penugasan role.";
+      toast.error(errMsg, "Gagal Memperbarui Role");
+      setEditAssignError(errMsg);
+    }
+    setSavingEditAssign(false);
   };
 
   const handleRemoveRole = async (id: string) => {
@@ -843,15 +907,26 @@ export function RolesClient({ initialData }: { initialData: any }) {
                           )}
                         </td>
                         <td className="p-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveRole(ur.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
-                            title="Hapus penugasan role"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEditAssign(ur)}
+                              className="text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 h-7 w-7 p-0"
+                              title="Edit penugasan role"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveRole(ur.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
+                              title="Hapus penugasan role"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1800,7 +1875,11 @@ export function RolesClient({ initialData }: { initialData: any }) {
               <select
                 className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white"
                 value={selectedRoleId}
-                onChange={(e) => setSelectedRoleId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedRoleId(e.target.value);
+                  const r = rolesList.find((x: any) => x.id === e.target.value);
+                  if (r?.scope === 'global') setSelectedTimId("");
+                }}
                 required
               >
                 <option value="">-- Pilih Role --</option>
@@ -1812,23 +1891,40 @@ export function RolesClient({ initialData }: { initialData: any }) {
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
-                Scope Tim Inovator <span className="text-gray-400 font-normal">(Opsional)</span>
-              </label>
-              <select
-                className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white"
-                value={selectedTimId}
-                onChange={(e) => setSelectedTimId(e.target.value)}
-              >
-                <option value="">-- Global / Seluruh Tim --</option>
-                {teams.map((t: any) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nama}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {(() => {
+              const currentRole = rolesList.find((r: any) => r.id === selectedRoleId);
+              const isGlobalRole = currentRole?.scope === "global";
+
+              return (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Scope / Tim Inovator {isGlobalRole ? "(Terkunci Global)" : <span className="text-red-500">*</span>}
+                  </label>
+                  {isGlobalRole ? (
+                    <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-800 font-semibold flex items-center justify-between">
+                      <span>Global (Seluruh Tim)</span>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-900 border-purple-300 text-[10px]">
+                        Otomatis Lintas Tim
+                      </Badge>
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white"
+                      value={selectedTimId}
+                      onChange={(e) => setSelectedTimId(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Pilih Tim Inovator Sasaran (Wajib) --</option>
+                      {teams.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nama}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              );
+            })()}
 
             <DialogFooter className="pt-2">
               <Button
@@ -1847,6 +1943,132 @@ export function RolesClient({ initialData }: { initialData: any }) {
                 className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold"
               >
                 {savingAssign ? "Menyimpan..." : "Simpan Penugasan"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      {/* MODAL DIALOG: EDIT PENUGASAN ROLE PENGGUNA */}
+      {/* ───────────────────────────────────────────────────────────────────────── */}
+      <Dialog open={Boolean(editingAssignment)} onOpenChange={(open) => { if (!open) setEditingAssignment(null); }}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Edit className="h-4 w-4 text-[#0F5132]" />
+              Edit Penugasan Role Pengguna
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Ubah role atau scope tim untuk penugasan akun ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editAssignError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{editAssignError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdateAssignRole} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Nama Pengguna (Read-only)</label>
+              <Input
+                value={editingAssignment?.userName || ""}
+                disabled
+                className="bg-gray-100/80 text-gray-700 text-xs font-semibold cursor-not-allowed border-gray-200"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Email Pengguna (Read-only)</label>
+              <Input
+                value={editingAssignment?.userEmail || ""}
+                disabled
+                className="bg-gray-100/80 text-gray-500 text-xs font-mono cursor-not-allowed border-gray-200"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Role Diberikan</label>
+              <select
+                className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white"
+                value={editRoleId}
+                onChange={(e) => {
+                  setEditRoleId(e.target.value);
+                  const r = rolesList.find((x: any) => x.id === e.target.value);
+                  if (r?.scope === 'global') setEditTimId("");
+                }}
+                required
+              >
+                <option value="">-- Pilih Role --</option>
+                {rolesList.map((r: any) => (
+                  <option key={r.id} value={r.id}>
+                    {r.namaRole} ({r.scope}) {!r.isDefault ? "[Custom]" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(() => {
+              const currentRole = rolesList.find((r: any) => r.id === editRoleId);
+              const isGlobalRole = currentRole?.scope === "global";
+
+              return (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Scope / Tim Inovator {isGlobalRole ? "(Terkunci Global)" : <span className="text-red-500">*</span>}
+                  </label>
+                  {isGlobalRole ? (
+                    <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-800 font-semibold flex items-center justify-between">
+                      <span>Global (Seluruh Tim)</span>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-900 border-purple-300 text-[10px]">
+                        Otomatis Lintas Tim
+                      </Badge>
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full h-9 rounded-lg border border-gray-300 text-xs px-2.5 bg-white"
+                      value={editTimId}
+                      onChange={(e) => setEditTimId(e.target.value)}
+                      required
+                    >
+                      <option value="">-- Pilih Tim Inovator Sasaran (Wajib) --</option>
+                      {teams.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nama}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              );
+            })()}
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingAssignment(null)}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingEditAssign}
+                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5"
+              >
+                {savingEditAssign ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Perubahan"
+                )}
               </Button>
             </DialogFooter>
           </form>
