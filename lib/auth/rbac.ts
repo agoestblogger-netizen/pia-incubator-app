@@ -141,3 +141,90 @@ export async function hasPermission(
 
   return allowed.length > 0;
 }
+
+/**
+ * Menentukan cakupan (scope) izin pengguna untuk kode permission tertentu:
+ * - 'global': User memiliki izin melalui role ber-scope 'global' (atau admin_ic). Berlaku lintas tim / seluruh aplikasi.
+ * - string[]: Daftar timInovatorId tempat user memiliki izin melalui role ber-scope 'per_tim'. HANYA berlaku di tim tersebut.
+ * - null: User tidak memiliki izin ini di scope manapun.
+ */
+export async function getEffectivePermissionScope(
+  user: UserProfile,
+  permissionCode: string
+): Promise<'global' | string[] | null> {
+  if (user.globalRoles.includes('admin_ic')) return 'global';
+
+  const [perm] = await db
+    .select({ id: permissions.id })
+    .from(permissions)
+    .where(eq(permissions.kodePermission, permissionCode))
+    .limit(1);
+
+  if (!perm) return null;
+
+  // 1. Cek apakah ada role di globalRoles yang memiliki izin ini
+  if (user.globalRoles.length > 0) {
+    const globalRoleRows = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(
+        and(
+          inArray(roles.kodeRole, user.globalRoles),
+          eq(roles.scope, 'global')
+        )
+      );
+
+    if (globalRoleRows.length > 0) {
+      const allowedGlobal = await db
+        .select()
+        .from(rolePermissions)
+        .where(
+          and(
+            inArray(rolePermissions.roleId, globalRoleRows.map(r => r.id)),
+            eq(rolePermissions.permissionId, perm.id),
+            eq(rolePermissions.diizinkan, true)
+          )
+        )
+        .limit(1);
+
+      if (allowedGlobal.length > 0) {
+        return 'global';
+      }
+    }
+  }
+
+  // 2. Cek apakah ada timRoles yang memiliki izin ini
+  if (user.timRoles.length === 0) return null;
+
+  const timRoleCodes = Array.from(new Set(user.timRoles.map(tr => tr.roleCode)));
+  const perTimRoleRows = await db
+    .select({ id: roles.id, kodeRole: roles.kodeRole })
+    .from(roles)
+    .where(inArray(roles.kodeRole, timRoleCodes));
+
+  if (perTimRoleRows.length === 0) return null;
+
+  const allowedRp = await db
+    .select({ roleId: rolePermissions.roleId })
+    .from(rolePermissions)
+    .where(
+      and(
+        inArray(rolePermissions.roleId, perTimRoleRows.map(r => r.id)),
+        eq(rolePermissions.permissionId, perm.id),
+        eq(rolePermissions.diizinkan, true)
+      )
+    );
+
+  if (allowedRp.length === 0) return null;
+
+  const allowedRoleIds = new Set(allowedRp.map(rp => rp.roleId));
+  const allowedRoleCodes = new Set(
+    perTimRoleRows.filter(r => allowedRoleIds.has(r.id)).map(r => r.kodeRole)
+  );
+
+  const matchedTimIds = user.timRoles
+    .filter(tr => allowedRoleCodes.has(tr.roleCode))
+    .map(tr => tr.timId);
+
+  return matchedTimIds.length > 0 ? Array.from(new Set(matchedTimIds)) : null;
+}

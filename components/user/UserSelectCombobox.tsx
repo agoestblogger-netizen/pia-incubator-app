@@ -19,6 +19,7 @@ interface UserSelectComboboxProps {
   onChange: (user: SelectedUser | null) => void;
   placeholder?: string;
   disabled?: boolean;
+  timId?: string;
 }
 
 export function UserSelectCombobox({
@@ -27,6 +28,7 @@ export function UserSelectCombobox({
   onChange,
   placeholder = 'Pilih Akun User...',
   disabled = false,
+  timId,
 }: UserSelectComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,6 +120,7 @@ export function UserSelectCombobox({
       nama: newNama,
       email: newEmail,
       password: newPassword,
+      timId,
     });
 
     if (res.success && res.user) {

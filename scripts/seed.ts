@@ -56,7 +56,7 @@ const DEFAULT_ROLES = [
     kodeRole: 'coach',
     namaRole: 'Innovation Coach',
     deskripsi: 'Pelatih metodologi inovasi yang membimbing penyusunan charter dan eksperimen validasi.',
-    scope: 'per_tim',
+    scope: 'global',
     isDefault: true,
   },
   {

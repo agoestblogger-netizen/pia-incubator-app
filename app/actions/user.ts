@@ -2,8 +2,8 @@
 
 import { db } from '@/lib/db';
 import { users, roles, userRoleTim, timInovator, auditLogs, anggotaTim } from '@/lib/db/schema';
-import { eq, ilike, or, desc, count } from 'drizzle-orm';
-import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
+import { eq, ilike, or, desc, count, and, inArray } from 'drizzle-orm';
+import { getCurrentUser, hasPermission, getEffectivePermissionScope } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/db/audit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
@@ -103,18 +103,42 @@ export async function createUserAction(data: {
   nama: string;
   email: string;
   password: string;
+  timId?: string;
+  roleCode?: string;
 }) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
     return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
   }
 
-  const canCreateUser =
-    (await hasPermission(currentUser, 'user.manage')) ||
-    (await hasPermission(currentUser, 'user.create'));
+  const manageScope = await getEffectivePermissionScope(currentUser, 'user.manage');
+  const createScope = await getEffectivePermissionScope(currentUser, 'user.create');
 
-  if (!canCreateUser) {
-    return { success: false, error: 'Forbidden: Anda tidak memiliki izin untuk membuat user baru.' };
+  const isGlobal = manageScope === 'global' || createScope === 'global';
+  const allowedTimIds = new Set<string>();
+
+  if (!isGlobal) {
+    if (Array.isArray(manageScope)) manageScope.forEach(id => allowedTimIds.add(id));
+    if (Array.isArray(createScope)) createScope.forEach(id => allowedTimIds.add(id));
+
+    if (allowedTimIds.size === 0) {
+      return { success: false, error: 'Forbidden: Anda tidak memiliki izin untuk membuat user baru.' };
+    }
+  }
+
+  // Jika pemanggil ber-scope per_tim, pastikan user baru diasosiasikan ke tim pemanggil
+  let targetTimId = data.timId;
+  if (!isGlobal) {
+    if (!targetTimId && allowedTimIds.size === 1) {
+      targetTimId = Array.from(allowedTimIds)[0];
+    }
+
+    if (!targetTimId || !allowedTimIds.has(targetTimId)) {
+      return {
+        success: false,
+        error: 'Akses ditolak: Anda hanya dapat membuat user baru untuk tim tempat Anda bertugas.',
+      };
+    }
   }
 
   const nama = (data.nama || '').trim();
@@ -194,8 +218,30 @@ export async function createUserAction(data: {
         createdUserId: newUser.id,
         nama: newUser.nama,
         email: newUser.email,
+        timId: targetTimId || null,
       },
     });
+
+    // Asosiasikan ke tim jika targetTimId tersedia
+    if (targetTimId) {
+      const targetRoleCode = data.roleCode || 'inisiator';
+      const [roleRow] = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.kodeRole, targetRoleCode))
+        .limit(1);
+
+      if (roleRow) {
+        await db
+          .insert(userRoleTim)
+          .values({
+            userId: newUser.id,
+            roleId: roleRow.id,
+            timInovatorId: targetTimId,
+          })
+          .onConflictDoNothing();
+      }
+    }
 
     revalidatePath('/admin/roles');
     return {
@@ -221,12 +267,54 @@ export async function updateUserNameAction(userId: string, nama: string) {
     return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
   }
 
-  const canEditName =
-    (await hasPermission(currentUser, 'user.manage')) ||
-    (await hasPermission(currentUser, 'user.edit_name'));
+  const manageScope = await getEffectivePermissionScope(currentUser, 'user.manage');
+  const editNameScope = await getEffectivePermissionScope(currentUser, 'user.edit_name');
 
-  if (!canEditName) {
-    return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin mengedit data user.' };
+  const isGlobal = manageScope === 'global' || editNameScope === 'global';
+  const allowedTimIds = new Set<string>();
+
+  if (!isGlobal) {
+    if (Array.isArray(manageScope)) manageScope.forEach(id => allowedTimIds.add(id));
+    if (Array.isArray(editNameScope)) editNameScope.forEach(id => allowedTimIds.add(id));
+
+    if (allowedTimIds.size === 0) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin mengedit data user.' };
+    }
+
+    // Verifikasi bahwa targetUser terdaftar di salah satu tim pemanggil
+    const timIdsArray = Array.from(allowedTimIds);
+    const [roleInTeam] = await db
+      .select({ id: userRoleTim.id })
+      .from(userRoleTim)
+      .where(
+        and(
+          eq(userRoleTim.userId, userId),
+          inArray(userRoleTim.timInovatorId, timIdsArray)
+        )
+      )
+      .limit(1);
+
+    const [memberInTeam] = roleInTeam
+      ? [roleInTeam]
+      : await db
+          .select({ id: anggotaTim.id })
+          .from(anggotaTim)
+          .where(
+            and(
+              eq(anggotaTim.userId, userId),
+              inArray(anggotaTim.timInovatorId, timIdsArray)
+            )
+          )
+          .limit(1);
+
+    const isSelf = userId === currentUser.id;
+
+    if (!roleInTeam && !memberInTeam && !isSelf) {
+      return {
+        success: false,
+        error: 'Akses ditolak: Anda hanya dapat mengedit nama pengguna yang terdaftar di tim Anda.',
+      };
+    }
   }
 
   const trimmedNama = (nama || '').trim();

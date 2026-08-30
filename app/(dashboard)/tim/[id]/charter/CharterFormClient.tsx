@@ -773,6 +773,7 @@ export function CharterFormClient({
                                         value={item.userId || null}
                                         selectedUserData={selectedUser}
                                         disabled={isRolesReadOnly}
+                                        timId={timId}
                                         onChange={(user) =>
                                           handlePersonUserChange(item.id!, user)
                                         }

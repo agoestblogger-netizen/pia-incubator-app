@@ -65,6 +65,8 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const canManageUsers = initialData?.canManageUsers ?? true;
   const canCreateUser = initialData?.canCreateUser ?? true;
   const canEditName = initialData?.canEditName ?? true;
+  const isPerTimScope = Boolean(initialData?.isPerTimScope);
+  const callerTimIds: string[] = initialData?.callerTimIds || [];
 
   const [activeTab, setActiveTab] = useState<"matrix" | "users" | "sprint-capacity" | "phase-gate-bypass">(
     canManageUsers ? "matrix" : "users"
@@ -380,6 +382,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
       nama: newNama,
       email: newEmail,
       password: newPassword,
+      timId: isPerTimScope && callerTimIds.length > 0 ? callerTimIds[0] : undefined,
     });
 
     if (res.success && res.user) {
@@ -865,6 +868,18 @@ export function RolesClient({ initialData }: { initialData: any }) {
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "users" && (
         <div className="space-y-6">
+          {isPerTimScope && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex items-center gap-3 shadow-xs">
+              <Users className="h-5 w-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-bold text-sm">Mode Akses Per-Tim Aktif</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Hak akses Anda dibatasi dalam konteks tim Anda. Anda hanya dapat melihat dan mengelola pengguna yang terdaftar di tim Anda.
+                </p>
+              </div>
+            </div>
+          )}
+
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
             <CardHeader className="bg-gray-50/50 border-b border-gray-100">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
