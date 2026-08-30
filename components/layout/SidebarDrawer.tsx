@@ -33,6 +33,9 @@ export function SidebarDrawer({
   taskCount?: number;
   adminPermissions?: {
     canManageUsers?: boolean;
+    canCreateUser?: boolean;
+    canEditUserName?: boolean;
+    canAccessUserRoles?: boolean;
     canCreateTeam?: boolean;
     canImport?: boolean;
     canReset?: boolean;
@@ -43,11 +46,17 @@ export function SidebarDrawer({
   const router = useRouter();
   const supabase = createClient();
 
-  const canManageUsers = Boolean(adminPermissions?.canManageUsers || user?.globalRoles.includes('admin_ic'));
-  const canCreateTeam = Boolean(adminPermissions?.canCreateTeam || user?.globalRoles.includes('admin_ic'));
-  const canImport = Boolean(adminPermissions?.canImport || user?.globalRoles.includes('admin_ic'));
-  const canReset = Boolean(adminPermissions?.canReset || user?.globalRoles.includes('admin_ic'));
-  const canSeeAdminGroup = canManageUsers || canImport || canReset;
+  const canAccessUserRoles = Boolean(
+    adminPermissions?.canAccessUserRoles ||
+    adminPermissions?.canManageUsers ||
+    adminPermissions?.canCreateUser ||
+    adminPermissions?.canEditUserName
+  );
+  const canManageUsers = Boolean(adminPermissions?.canManageUsers);
+  const canCreateTeam = Boolean(adminPermissions?.canCreateTeam);
+  const canImport = Boolean(adminPermissions?.canImport);
+  const canReset = Boolean(adminPermissions?.canReset);
+  const canSeeAdminGroup = canAccessUserRoles || canImport || canReset;
 
   const userTeams = user?.timRoles || [];
 
@@ -279,7 +288,7 @@ export function SidebarDrawer({
                   </Link>
                 )}
 
-                {canManageUsers && (
+                {canAccessUserRoles && (
                   <Link
                     href="/admin/roles"
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
@@ -289,7 +298,7 @@ export function SidebarDrawer({
                     }`}
                   >
                     <ShieldCheck className={`h-4 w-4 ${isActive('/admin/roles') ? 'text-[#0F5132]' : 'text-gray-400'}`} />
-                    <span>Kelola User & Role (RBAC)</span>
+                    <span>{canManageUsers ? 'Kelola User & Role (RBAC)' : 'Kelola Pengguna'}</span>
                   </Link>
                 )}
 

@@ -18,6 +18,9 @@ export function Navbar({
   taskCount?: number;
   adminPermissions?: {
     canManageUsers?: boolean;
+    canCreateUser?: boolean;
+    canEditUserName?: boolean;
+    canAccessUserRoles?: boolean;
     canCreateTeam?: boolean;
     canImport?: boolean;
     canReset?: boolean;

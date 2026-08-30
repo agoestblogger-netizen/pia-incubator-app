@@ -10,19 +10,26 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminRolesPage() {
   const user = await getCurrentUser();
-  if (!user || !(await hasPermission(user, "user.manage"))) {
-    redirect("/dashboard");
+  if (!user) {
+    redirect("/login");
   }
 
-  const [data, sprintRoleConfigs, phaseGateBypassConfigs, canCreateUser, canEditName] = await Promise.all([
-    getRbacMatrixData(),
-    getSprintCapacityRoleConfigAction(),
-    getPhaseGateBypassRoleConfigAction(),
+  const [canManageUsers, canCreateUser, canEditName] = await Promise.all([
+    hasPermission(user, "user.manage"),
     hasPermission(user, "user.create"),
     hasPermission(user, "user.edit_name"),
   ]);
 
-  const canManageUsers = await hasPermission(user, "user.manage");
+  const canAccess = canManageUsers || canCreateUser || canEditName;
+  if (!canAccess) {
+    redirect("/dashboard");
+  }
+
+  const [data, sprintRoleConfigs, phaseGateBypassConfigs] = await Promise.all([
+    getRbacMatrixData(),
+    getSprintCapacityRoleConfigAction(),
+    getPhaseGateBypassRoleConfigAction(),
+  ]);
 
   return (
     <div className="space-y-6">

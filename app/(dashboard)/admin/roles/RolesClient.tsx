@@ -62,7 +62,13 @@ import {
 } from "@/lib/theme/tokens";
 
 export function RolesClient({ initialData }: { initialData: any }) {
-  const [activeTab, setActiveTab] = useState<"matrix" | "users" | "sprint-capacity" | "phase-gate-bypass">("matrix");
+  const canManageUsers = initialData?.canManageUsers ?? true;
+  const canCreateUser = initialData?.canCreateUser ?? true;
+  const canEditName = initialData?.canEditName ?? true;
+
+  const [activeTab, setActiveTab] = useState<"matrix" | "users" | "sprint-capacity" | "phase-gate-bypass">(
+    canManageUsers ? "matrix" : "users"
+  );
 
   // State for Phase Gate Bypass Role Config
   const [phaseGateBypassConfigs, setPhaseGateBypassConfigs] = useState<PhaseGateBypassRoleItem[]>(
@@ -170,11 +176,6 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [showResetConfirmPasswordVal, setShowResetConfirmPasswordVal] = useState(false);
   const [savingResetPassword, setSavingResetPassword] = useState(false);
   const [resetPasswordMsg, setResetPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  // User Management Permissions
-  const canManageUsers = initialData?.canManageUsers ?? true;
-  const canCreateUser = initialData?.canCreateUser ?? true;
-  const canEditName = initialData?.canEditName ?? true;
 
   // Delete User State
   const [deletingUser, setDeletingUser] = useState<any | null>(null);
@@ -574,17 +575,19 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
       {/* Main Tab Navigation */}
       <div className="flex border-b border-gray-200 gap-8">
-        <button
-          onClick={() => setActiveTab("matrix")}
-          className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === "matrix"
-              ? "border-[#0F5132] text-[#0F5132]"
-              : "border-transparent text-gray-500 hover:text-gray-900"
-          }`}
-        >
-          <Shield className="h-4 w-4" />
-          <span>Matriks Hak Akses Role ({rolesList.length})</span>
-        </button>
+        {canManageUsers && (
+          <button
+            onClick={() => setActiveTab("matrix")}
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === "matrix"
+                ? "border-[#0F5132] text-[#0F5132]"
+                : "border-transparent text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            <Shield className="h-4 w-4" />
+            <span>Matriks Hak Akses Role ({rolesList.length})</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab("users")}
@@ -598,35 +601,39 @@ export function RolesClient({ initialData }: { initialData: any }) {
           <span>Kelola User ({usersList.length})</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab("sprint-capacity")}
-          className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === "sprint-capacity"
-              ? "border-[#0F5132] text-[#0F5132]"
-              : "border-transparent text-gray-500 hover:text-gray-900"
-          }`}
-        >
-          <Layers className="h-4 w-4" />
-          <span>Kapasitas Sprint ({sprintRoleConfigs.filter((r) => r.isIncluded).length} Aktif)</span>
-        </button>
+        {canManageUsers && (
+          <button
+            onClick={() => setActiveTab("sprint-capacity")}
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === "sprint-capacity"
+                ? "border-[#0F5132] text-[#0F5132]"
+                : "border-transparent text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            <span>Kapasitas Sprint ({sprintRoleConfigs.filter((r) => r.isIncluded).length} Aktif)</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveTab("phase-gate-bypass")}
-          className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === "phase-gate-bypass"
-              ? "border-[#0F5132] text-[#0F5132]"
-              : "border-transparent text-gray-500 hover:text-gray-900"
-          }`}
-        >
-          <ShieldCheck className="h-4 w-4" />
-          <span>Gerbang Fase CV→MV ({phaseGateBypassConfigs.filter((r) => r.isBypass).length} Bypass Aktif)</span>
-        </button>
+        {canManageUsers && (
+          <button
+            onClick={() => setActiveTab("phase-gate-bypass")}
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === "phase-gate-bypass"
+                ? "border-[#0F5132] text-[#0F5132]"
+                : "border-transparent text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span>Gerbang Fase CV→MV ({phaseGateBypassConfigs.filter((r) => r.isBypass).length} Bypass Aktif)</span>
+          </button>
+        )}
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* TAB 1: MATRIKS HAK AKSES ROLE */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "matrix" && (
+      {canManageUsers && activeTab === "matrix" && (
         <div className="space-y-8">
           {/* Bagian 1: Matriks Permission */}
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
@@ -1040,7 +1047,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* TAB 3: PENGATURAN ROLE KAPASITAS SPRINT PLANNING (PAKET 24B) */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "sprint-capacity" && (
+      {canManageUsers && activeTab === "sprint-capacity" && (
         <div className="space-y-6">
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
             <CardHeader className="bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 border-b border-gray-100 p-5">
@@ -1146,7 +1153,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {/* TAB 4: PENGATURAN BYPASS GERBANG FASE CV -> MV */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "phase-gate-bypass" && (
+      {canManageUsers && activeTab === "phase-gate-bypass" && (
         <div className="space-y-6">
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
             <CardHeader className="bg-gradient-to-r from-emerald-50/70 via-white to-blue-50/40 border-b border-gray-100 p-5">

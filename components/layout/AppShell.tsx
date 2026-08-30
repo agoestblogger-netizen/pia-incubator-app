@@ -14,16 +14,31 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     redirect('/ganti-password');
   }
 
-  const [tasksSummary, canManageUsers, canCreateTeam, canImport, canReset] = await Promise.all([
+  const [
+    tasksSummary,
+    canManageUsers,
+    canCreateUser,
+    canEditUserName,
+    canCreateTeam,
+    canImport,
+    canReset,
+  ] = await Promise.all([
     getMyTasks(user),
     hasPermission(user, 'user.manage'),
+    hasPermission(user, 'user.create'),
+    hasPermission(user, 'user.edit_name'),
     hasPermission(user, 'tim.manage'),
     hasPermission(user, 'import.execute'),
     hasPermission(user, 'system.reset_data'),
   ]);
 
+  const canAccessUserRoles = canManageUsers || canCreateUser || canEditUserName;
+
   const adminPermissions = {
     canManageUsers,
+    canCreateUser,
+    canEditUserName,
+    canAccessUserRoles,
     canCreateTeam,
     canImport,
     canReset,
