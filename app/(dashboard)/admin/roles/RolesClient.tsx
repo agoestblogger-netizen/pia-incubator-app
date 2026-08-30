@@ -149,6 +149,9 @@ export function RolesClient({ initialData }: { initialData: any }) {
   const [savingEditAssign, setSavingEditAssign] = useState(false);
   const [editAssignError, setEditAssignError] = useState<string | null>(null);
 
+  // State for User Role Assignment Search
+  const [searchAssignmentQuery, setSearchAssignmentQuery] = useState("");
+
   // State for Custom Role Creation
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
@@ -595,6 +598,30 @@ export function RolesClient({ initialData }: { initialData: any }) {
       u.email?.toLowerCase().includes(searchUserQuery.toLowerCase())
   );
 
+  // Filter user role assignments by search
+  const filteredUserRoles = userRoles.filter((ur: any) => {
+    if (!searchAssignmentQuery.trim()) return true;
+    const q = searchAssignmentQuery.toLowerCase().trim();
+
+    const userName = (ur.userName || "").toLowerCase();
+    const userEmail = (ur.userEmail || "").toLowerCase();
+    const roleName = (ur.roleName || "").toLowerCase();
+    const roleCode = (ur.roleCode || "").toLowerCase();
+
+    const teamObj = teams.find((t: any) => t.id === ur.timInovatorId);
+    const teamName = (teamObj?.nama || ur.timInovatorId || "").toLowerCase();
+    const scopeText = ur.timInovatorId ? `tim: ${teamName}` : "global (seluruh tim)";
+
+    return (
+      userName.includes(q) ||
+      userEmail.includes(q) ||
+      roleName.includes(q) ||
+      roleCode.includes(q) ||
+      teamName.includes(q) ||
+      scopeText.includes(q)
+    );
+  });
+
   return (
     <div className="space-y-6">
       {/* Header Banner Gradient Pegadaian */}
@@ -840,23 +867,52 @@ export function RolesClient({ initialData }: { initialData: any }) {
 
           {/* Bagian 2: Penugasan Role Global/Tim */}
           <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl overflow-hidden">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-bold text-gray-900">
-                  Daftar Penugasan Role Akun Pengguna
-                </CardTitle>
-                <CardDescription className="text-xs text-gray-500">
-                  Riwayat role yang terhubung ke masing-masing pengguna di seluruh tim inovator
-                </CardDescription>
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base font-bold text-gray-900">
+                    Daftar Penugasan Role Akun Pengguna
+                  </CardTitle>
+                  <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    Riwayat role yang terhubung ke masing-masing pengguna di seluruh tim inovator
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setIsAssignOpen(true)}
+                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Tetapkan Role Baru
+                </Button>
               </div>
-              <Button
-                size="sm"
-                onClick={() => setIsAssignOpen(true)}
-                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Tetapkan Role Baru
-              </Button>
+
+              {/* Search Bar Penugasan Role */}
+              <div className="pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="relative max-w-sm w-full">
+                  <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Cari nama, email, role, atau tim..."
+                    value={searchAssignmentQuery}
+                    onChange={(e) => setSearchAssignmentQuery(e.target.value)}
+                    className="pl-9 pr-8 h-9 text-xs border-gray-200 bg-white"
+                  />
+                  {searchAssignmentQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchAssignmentQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {searchAssignmentQuery && (
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    Menampilkan {filteredUserRoles.length} dari {userRoles.length} penugasan
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
@@ -876,8 +932,15 @@ export function RolesClient({ initialData }: { initialData: any }) {
                         Belum ada penugasan role terdaftar.
                       </td>
                     </tr>
+                  ) : filteredUserRoles.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-gray-400 space-y-1">
+                        <p className="font-medium text-gray-600">Tidak ada penugasan yang cocok dengan pencarian ini</p>
+                        <p className="text-[11px] text-gray-400">Coba kata kunci lain atau hapus filter pencarian.</p>
+                      </td>
+                    </tr>
                   ) : (
-                    userRoles.map((ur: any) => (
+                    filteredUserRoles.map((ur: any) => (
                       <tr key={ur.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="p-3 font-semibold text-gray-900">{ur.userName}</td>
                         <td className="p-3 text-gray-500 font-mono">{ur.userEmail}</td>
