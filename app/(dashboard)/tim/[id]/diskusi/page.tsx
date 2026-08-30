@@ -30,7 +30,7 @@ export default async function DiskusiListPage({
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-4 space-y-6">
+    <div className="w-full space-y-6">
       <DiscussionCanvasListClient
         timId={tim.id}
         timNama={tim.namaProyekInovasi}
