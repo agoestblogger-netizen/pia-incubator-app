@@ -1225,20 +1225,20 @@ export function KeuanganClient({
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               type="button"
+              onClick={handleOpenSubmitModal}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs gap-1.5 font-semibold shadow-xs cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Ajukan Anggaran Baru (RAB)</span>
+            </Button>
+            <Button
+              type="button"
               onClick={() => handleOpenLpjModal()}
               variant="outline"
               className="border-[#0F5132] text-[#0F5132] hover:bg-emerald-50 text-xs gap-1.5 font-semibold shadow-xs cursor-pointer"
             >
               <FileText className="h-4 w-4" />
               <span>Ajukan LPJ Baru</span>
-            </Button>
-            <Button
-              type="button"
-              onClick={handleOpenSubmitModal}
-              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs gap-1.5 font-semibold shadow-xs cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Ajukan Anggaran Baru (RAB)</span>
             </Button>
           </div>
         )}
