@@ -620,6 +620,42 @@ export const anggaranPengajuan = pgTable('anggaran_pengajuan', {
   index('anggaran_tim_idx').on(t.timInovatorId),
 ]);
 
+export interface LpjEvidenceItem {
+  id: string;
+  tipe: 'file' | 'link';
+  url: string;
+  nama: string;
+  ukuran?: number;
+}
+
+export interface LpjItemRow {
+  id: string;
+  uraian: string;
+  nominal: number;
+  keterangan?: string;
+  evidence: LpjEvidenceItem[];
+}
+
+export interface LpjPicPernyataan {
+  teks: string;
+  nama: string;
+  nik: string;
+  unitKerja: string;
+  tanggal: string;
+  signatureImage?: string;
+}
+
+export interface LpjDetailPengajuan {
+  namaPic: string;
+  unitKerjaPic: string;
+  noHpPic: string;
+  judulProyek: string;
+  kategoriProyek: string;
+  items: LpjItemRow[];
+  totalNominal: number;
+  pernyataanPic: LpjPicPernyataan;
+}
+
 export const lpj = pgTable('lpj', {
   id: uuid('id').primaryKey().defaultRandom(),
   anggaranPengajuanId: uuid('anggaran_pengajuan_id').notNull().references(() => anggaranPengajuan.id, { onDelete: 'cascade' }).unique(),
@@ -628,7 +664,8 @@ export const lpj = pgTable('lpj', {
   tanggalKegiatanSelesai: timestamp('tanggal_kegiatan_selesai', { withTimezone: true }),
   tanggalKirim: timestamp('tanggal_kirim', { withTimezone: true }).notNull().defaultNow(),
   batasKirim: timestamp('batas_kirim', { withTimezone: true }), // computed: tanggal_kegiatan_selesai + 10 hari kerja
-  status: text('status').notNull().default('dikirim'), // 'dikirim' | 'disetujui' | 'terlambat'
+  status: text('status').notNull().default('terkirim'), // 'dikirim' | 'terkirim' | 'disetujui' | 'terlambat'
+  detailLpj: jsonb('detail_lpj').$type<LpjDetailPengajuan>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

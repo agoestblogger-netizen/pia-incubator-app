@@ -49,10 +49,74 @@ import {
   Eye,
   AlertTriangle,
   RotateCcw,
+  Paperclip,
+  Link2,
+  Clock,
+  Calendar,
+  DollarSign,
+  CheckCheck,
 } from "lucide-react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
-import { type AnggaranDetailPengajuan, type RabItemRow } from "@/lib/db/schema";
+import {
+  type AnggaranDetailPengajuan,
+  type RabItemRow,
+  type LpjDetailPengajuan,
+  type LpjItemRow,
+  type LpjEvidenceItem,
+} from "@/lib/db/schema";
+
+export function calculateLpjDeadlineInfo(startDate?: Date | string | null): {
+  deadline: Date;
+  isLate: boolean;
+  businessDaysCount: number;
+} | null {
+  if (!startDate) return null;
+  const start = new Date(startDate);
+  const deadline = new Date(start);
+  let added = 0;
+  while (added < 10) {
+    deadline.setDate(deadline.getDate() + 1);
+    const day = deadline.getDay();
+    if (day !== 0 && day !== 6) {
+      added++;
+    }
+  }
+  deadline.setHours(23, 59, 59, 999);
+
+  const now = new Date();
+  if (now > deadline) {
+    let cur = new Date(deadline);
+    let lateDays = 0;
+    while (cur < now) {
+      cur.setDate(cur.getDate() + 1);
+      const day = cur.getDay();
+      if (day !== 0 && day !== 6) {
+        lateDays++;
+      }
+    }
+    return {
+      deadline,
+      isLate: true,
+      businessDaysCount: Math.max(1, lateDays),
+    };
+  } else {
+    let cur = new Date(now);
+    let remainingDays = 0;
+    while (cur < deadline) {
+      cur.setDate(cur.getDate() + 1);
+      const day = cur.getDay();
+      if (day !== 0 && day !== 6) {
+        remainingDays++;
+      }
+    }
+    return {
+      deadline,
+      isLate: false,
+      businessDaysCount: remainingDays,
+    };
+  }
+}
 
 const KATEGORI_PROYEK_OPTIONS = [
   "Regional Innovation",
@@ -143,7 +207,7 @@ export function KeuanganClient({
 
   // Modal Signature Pad state
   const [isSigPadOpen, setIsSigPadOpen] = useState(false);
-  const [sigPadTarget, setSigPadTarget] = useState<"submit" | "edit" | "approve">("submit");
+  const [sigPadTarget, setSigPadTarget] = useState<"submit" | "edit" | "approve" | "lpj">("submit");
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
 
@@ -166,6 +230,69 @@ export function KeuanganClient({
     open: false,
     item: null,
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FORM LPJ (FORMULIR B - LAMPIRAN III) STATE
+  // ═══════════════════════════════════════════════════════════════════════════
+  const [isLpjFormOpen, setIsLpjFormOpen] = useState(false);
+  const [lpjSelectedRabId, setLpjSelectedRabId] = useState<string>("");
+
+  // Bagian A — Identitas Pengajuan Inovator
+  const [lpjNamaPic, setLpjNamaPic] = useState("");
+  const [lpjUnitKerjaPic, setLpjUnitKerjaPic] = useState("");
+  const [lpjNoHpPic, setLpjNoHpPic] = useState("");
+
+  // Bagian B — Informasi Inovasi
+  const [lpjJudulProyek, setLpjJudulProyek] = useState("");
+  const [lpjKategoriProyek, setLpjKategoriProyek] = useState("");
+
+  // Bagian C — Ringkasan Penggunaan Anggaran (Tabel Dinamis)
+  const [lpjItems, setLpjItems] = useState<LpjItemRow[]>([
+    {
+      id: "lpj-row-1",
+      uraian: "",
+      nominal: 0,
+      keterangan: "",
+      evidence: [],
+    },
+  ]);
+
+  // Bagian D — Pernyataan & Pengesahan
+  const [lpjNikPic, setLpjNikPic] = useState("");
+  const [lpjSignatureImage, setLpjSignatureImage] = useState<string | null>(null);
+
+  // Uploading indicator & Modal Detail LPJ
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState<{ [rowId: string]: boolean }>({});
+  const [isSubmittingLpj, setIsSubmittingLpj] = useState(false);
+
+  // Modal View Detail LPJ
+  const [detailLpjModal, setDetailLpjModal] = useState<{
+    open: boolean;
+    item: any | null;
+    rabItem?: any | null;
+  }>({
+    open: false,
+    item: null,
+    rabItem: null,
+  });
+
+  // Modal Input Link Evidence per Baris
+  const [linkInputModal, setLinkInputModal] = useState<{
+    open: boolean;
+    rowId: string;
+    url: string;
+    label: string;
+  }>({
+    open: false,
+    rowId: "",
+    url: "",
+    label: "",
+  });
+
+  // Total Penggunaan Dana LPJ
+  const totalNominalLpj = lpjItems.reduce((sum, item) => sum + (Number(item.nominal) || 0), 0);
+  const selectedRabForLpj = list.find((item) => item.id === lpjSelectedRabId);
+  const approvedRabNominal = Number(selectedRabForLpj?.nominalDiajukan) || 0;
 
   // Edit Anggaran Modal state
   const [editModal, setEditModal] = useState<{
@@ -572,27 +699,263 @@ export function KeuanganClient({
     setDeleting(false);
   };
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FORMULIR B — LPJ HANDLERS
+  // ═══════════════════════════════════════════════════════════════════════════
+  const handleSelectRabForLpj = (rabId: string) => {
+    setLpjSelectedRabId(rabId);
+    const targetRab = list.find((item) => item.id === rabId);
+    if (!targetRab) return;
+
+    const d = (targetRab.detailPengajuan as AnggaranDetailPengajuan) || null;
+    setLpjNamaPic(d?.namaPic || currentUser?.nama || "");
+    setLpjUnitKerjaPic(d?.unitKerjaPic || getDefaultUnitKerja());
+    setLpjNoHpPic(d?.noHpPic || "");
+    setLpjJudulProyek(d?.judulProyek || timInfo?.namaProyekInovasi || "Proyek Inovasi");
+    setLpjKategoriProyek(d?.kategoriProyek || "");
+    setLpjNikPic(d?.pengesahanPic?.nik || "");
+    setLpjSignatureImage(null);
+
+    // Initial row
+    setLpjItems([
+      {
+        id: "lpj-row-" + Math.random().toString(36).substring(2, 9),
+        uraian: "",
+        nominal: 0,
+        keterangan: "",
+        evidence: [],
+      },
+    ]);
+  };
+
+  const handleOpenLpjModal = (preselectedRabId?: string) => {
+    const eligibleRabs = list.filter(
+      (item) => (item.status === "disetujui" || item.status === "diotorisasi") && !item.lpj
+    );
+
+    if (eligibleRabs.length === 0) {
+      toast.warning(
+        "Tidak ada pengajuan RAB yang dapat diajukan LPJ-nya (RAB harus berstatus Disetujui dan belum memiliki LPJ).",
+        "Belum Ada RAB Disetujui"
+      );
+      return;
+    }
+
+    const targetId =
+      preselectedRabId && eligibleRabs.some((r) => r.id === preselectedRabId)
+        ? preselectedRabId
+        : eligibleRabs[0].id;
+
+    handleSelectRabForLpj(targetId);
+    setIsLpjFormOpen(true);
+  };
+
+  const handleAddLpjRow = () => {
+    const newRow: LpjItemRow = {
+      id: "lpj-row-" + Math.random().toString(36).substring(2, 9),
+      uraian: "",
+      nominal: 0,
+      keterangan: "",
+      evidence: [],
+    };
+    setLpjItems((prev) => [...prev, newRow]);
+  };
+
+  const handleRemoveLpjRow = (id: string) => {
+    if (lpjItems.length <= 1) {
+      toast.warning("Minimal harus ada 1 baris rincian pengeluaran dana LPJ.");
+      return;
+    }
+    setLpjItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleUpdateLpjRow = (
+    id: string,
+    field: "uraian" | "nominal" | "keterangan",
+    val: any
+  ) => {
+    setLpjItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: val } : item))
+    );
+  };
+
+  const handleFileUploadEvidence = async (
+    rowId: string,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingEvidence((prev) => ({ ...prev, [rowId]: true }));
+    try {
+      const formData = new FormData();
+      formData.append("timId", timId);
+      formData.append("file", file);
+
+      const res = await fetch("/api/keuangan/upload-attachment", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.publicUrl) {
+        const newEvidence: LpjEvidenceItem = {
+          id: "ev-" + Math.random().toString(36).substring(2, 9),
+          tipe: "file",
+          url: data.publicUrl,
+          nama: data.fileName || file.name,
+          ukuran: data.fileSize || file.size,
+        };
+
+        setLpjItems((prev) =>
+          prev.map((row) =>
+            row.id === rowId
+              ? { ...row, evidence: [...(row.evidence || []), newEvidence] }
+              : row
+          )
+        );
+        toast.success(`Bukti "${file.name}" berhasil diunggah.`);
+      } else {
+        toast.error(data.message || "Gagal mengunggah file bukti.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat upload bukti.");
+    } finally {
+      setIsUploadingEvidence((prev) => ({ ...prev, [rowId]: false }));
+      e.target.value = "";
+    }
+  };
+
+  const handleAddLinkEvidence = (rowId: string, url: string, label: string) => {
+    if (!url.trim()) return;
+    const newEvidence: LpjEvidenceItem = {
+      id: "ev-" + Math.random().toString(36).substring(2, 9),
+      tipe: "link",
+      url: url.trim(),
+      nama: label.trim() || url.trim(),
+    };
+    setLpjItems((prev) =>
+      prev.map((row) =>
+        row.id === rowId
+          ? { ...row, evidence: [...(row.evidence || []), newEvidence] }
+          : row
+      )
+    );
+    toast.success("Tautan bukti dokumen berhasil ditambahkan.");
+  };
+
+  const handleRemoveEvidence = (rowId: string, evidenceId: string) => {
+    setLpjItems((prev) =>
+      prev.map((row) =>
+        row.id === rowId
+          ? { ...row, evidence: (row.evidence || []).filter((e) => e.id !== evidenceId) }
+          : row
+      )
+    );
+  };
+
   const handleSubmitLpj = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeAnggaranId) return;
-    setSaving(true);
-    setMsg(null);
-
-    const res = await submitLpjAction(activeAnggaranId, timId, {
-      fileDokumenUrl: lpjDocUrl,
-      tanggalKegiatanSelesai: new Date(tglKegiatanSelesai),
-    });
-
-    if (res.success) {
-      setIsLpjOpen(false);
-      toast.success("Laporan Pertanggungjawaban (LPJ) berhasil dikirim!", "Pengiriman LPJ");
-      setMsg({ type: "success", text: "Laporan Pertanggungjawaban (LPJ) berhasil dikirim!" });
-      window.location.reload();
-    } else {
-      const errMsg = res.error || "Gagal mengirim LPJ.";
-      toast.error(errMsg, "Gagal Mengirim LPJ");
+    if (!lpjSelectedRabId) {
+      toast.warning("Pilih pengajuan RAB terkait terlebih dahulu.");
+      return;
     }
-    setSaving(false);
+
+    const selectedRab = list.find((item) => item.id === lpjSelectedRabId);
+    if (!selectedRab) {
+      toast.error("Pengajuan RAB terkait tidak ditemukan.");
+      return;
+    }
+
+    const maxNominal = Number(selectedRab.nominalDiajukan) || 0;
+    if (totalNominalLpj > maxNominal) {
+      toast.error(
+        `Total penggunaan dana LPJ (${formatRupiah(totalNominalLpj)}) melebihi nominal RAB yang disetujui (${formatRupiah(maxNominal)}). Harap kurangi rincian agar tidak melebihi anggaran yang disetujui.`,
+        "Pagu Anggaran Terlampaui"
+      );
+      return;
+    }
+
+    if (totalNominalLpj <= 0) {
+      toast.warning("Total penggunaan dana LPJ harus lebih dari Rp 0.");
+      return;
+    }
+
+    // Validasi baris
+    for (let i = 0; i < lpjItems.length; i++) {
+      const row = lpjItems[i];
+      if (!row.uraian.trim()) {
+        toast.warning(`Uraian penggunaan pada baris ke-${i + 1} belum diisi.`);
+        return;
+      }
+      if (!row.nominal || row.nominal <= 0) {
+        toast.warning(`Nominal pada baris ke-${i + 1} harus lebih dari Rp 0.`);
+        return;
+      }
+      if (!row.evidence || row.evidence.length === 0) {
+        toast.warning(
+          `Baris ke-${i + 1} ("${row.uraian}") wajib melampirkan minimal 1 bukti nota/kwitansi atau tautan bukti.`
+        );
+        return;
+      }
+    }
+
+    if (!lpjNikPic.trim()) {
+      toast.warning("NIK PIC wajib diisi pada Bagian D (Pernyataan Pengesahan).");
+      return;
+    }
+
+    if (!lpjSignatureImage) {
+      toast.warning("Tanda tangan digital PIC wajib dibubuhkan pada Bagian D.");
+      return;
+    }
+
+    setIsSubmittingLpj(true);
+    try {
+      const detailLpj: LpjDetailPengajuan = {
+        namaPic: lpjNamaPic.trim(),
+        unitKerjaPic: lpjUnitKerjaPic.trim(),
+        noHpPic: lpjNoHpPic.trim(),
+        judulProyek: lpjJudulProyek.trim(),
+        kategoriProyek: lpjKategoriProyek.trim(),
+        items: lpjItems.map((item) => ({
+          ...item,
+          nominal: Number(item.nominal) || 0,
+        })),
+        totalNominal: totalNominalLpj,
+        pernyataanPic: {
+          teks: "Dengan ini saya selaku PIC Tim Inovator menyatakan bahwa seluruh penggunaan anggaran telah dilaksanakan sesuai dengan kebutuhan pelaksanaan MVP Proyek Inovasi dan dapat dipertanggungjawabkan.",
+          nama: lpjNamaPic.trim(),
+          nik: lpjNikPic.trim(),
+          unitKerja: lpjUnitKerjaPic.trim(),
+          tanggal: new Date().toISOString(),
+          signatureImage: lpjSignatureImage,
+        },
+      };
+
+      const res = await submitLpjAction(lpjSelectedRabId, timId, {
+        detailLpj,
+      });
+
+      if (res.success && res.data) {
+        setList((prev) =>
+          prev.map((item) =>
+            item.id === lpjSelectedRabId ? { ...item, lpj: res.data } : item
+          )
+        );
+        setIsLpjFormOpen(false);
+        toast.success(
+          "Formulir B (LPJ) berhasil dikirim dan tersimpan resmi!",
+          "Pengiriman LPJ Berhasil"
+        );
+      } else {
+        toast.error(res.error || "Gagal mengirimkan Formulir LPJ.", "Pengiriman Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat mengirim Formulir LPJ.");
+    } finally {
+      setIsSubmittingLpj(false);
+    }
   };
 
   const handleConfirmApproval = async (e: React.FormEvent) => {
@@ -762,15 +1125,27 @@ export function KeuanganClient({
           </p>
         </div>
 
-        {/* Tombol Ajukan Anggaran Baru HANYA muncul jika canSubmit = true */}
+        {/* Tombol Aksi HANYA muncul jika canSubmit = true */}
         {canSubmit && (
-          <Button
-            onClick={handleOpenSubmitModal}
-            className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs gap-1.5 font-semibold shadow-xs cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Ajukan Anggaran Baru (RAB)</span>
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              onClick={() => handleOpenLpjModal()}
+              variant="outline"
+              className="border-[#0F5132] text-[#0F5132] hover:bg-emerald-50 text-xs gap-1.5 font-semibold shadow-xs cursor-pointer"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Ajukan LPJ Baru</span>
+            </Button>
+            <Button
+              type="button"
+              onClick={handleOpenSubmitModal}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs gap-1.5 font-semibold shadow-xs cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Ajukan Anggaran Baru (RAB)</span>
+            </Button>
+          </div>
         )}
       </div>
 
@@ -964,90 +1339,92 @@ export function KeuanganClient({
                     )}
 
                     {/* LPJ Section */}
-                    {item.lpj ? (
-                      <div className="text-right space-y-1.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-[10px] text-gray-400">Status LPJ:</span>
-                          <Badge
-                            className={`text-[10px] capitalize ${
-                              item.lpj.status === "disetujui"
-                                ? "bg-green-100 text-green-800 border-green-200"
-                                : item.lpj.status === "ditolak"
-                                ? "bg-red-100 text-red-800 border-red-200"
-                                : "bg-amber-50 text-amber-800 border-amber-200"
-                            }`}
-                          >
-                            LPJ {item.lpj.status}
-                          </Badge>
-                        </div>
-                        {item.lpj.fileDokumenUrl && (
-                          <a
-                            href={item.lpj.fileDokumenUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[11px] text-[#0F5132] hover:underline inline-flex items-center gap-1 font-medium"
-                          >
-                            <FileText className="h-3 w-3" />
-                            <span>Lihat LPJ</span>
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </a>
-                        )}
-
-                        {canManage && isPendingLpj && (
-                          <div className="flex items-center gap-1.5 pt-1">
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setApprovalNotes("");
-                                setApprovalModal({
-                                  open: true,
-                                  type: "lpj",
-                                  targetId: item.lpj.id,
-                                  action: "approve",
-                                });
-                              }}
-                              className="bg-green-700 hover:bg-green-800 text-white h-6 px-2 text-[11px] font-semibold gap-1 cursor-pointer"
+                    {item.status === "disetujui" || item.status === "diotorisasi" ? (
+                      item.lpj ? (
+                        <div className="flex flex-col items-end gap-1.5 bg-emerald-50/40 p-2.5 rounded-xl border border-emerald-200">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-gray-500 font-medium">Status LPJ:</span>
+                            <Badge
+                              className={`text-[10px] font-bold ${
+                                item.lpj.status === "terlambat"
+                                  ? "bg-rose-100 text-rose-800 border-rose-300"
+                                  : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                              }`}
                             >
-                              <Check className="h-3 w-3" />
-                              <span>Setujui LPJ</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setApprovalNotes("");
-                                setApprovalModal({
-                                  open: true,
-                                  type: "lpj",
-                                  targetId: item.lpj.id,
-                                  action: "reject",
-                                });
-                              }}
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 h-6 px-2 text-[11px] font-semibold gap-1 cursor-pointer"
-                            >
-                              <X className="h-3 w-3" />
-                              <span>Tolak</span>
-                            </Button>
+                              <CheckCircle2 className="h-3 w-3 mr-1 inline" />
+                              LPJ {item.lpj.status === "terlambat" ? "Terkirim (Terlambat)" : "Terkirim"}
+                            </Badge>
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      canSubmit &&
-                      (item.status === "disetujui" || item.status === "diotorisasi") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setActiveAnggaranId(item.id);
-                            setIsLpjOpen(true);
-                          }}
-                          className="text-xs font-semibold gap-1.5 cursor-pointer"
-                        >
-                          <Upload className="h-3.5 w-3.5" />
-                          <span>Submit LPJ</span>
-                        </Button>
+                          <span className="text-[10px] text-gray-500">
+                            Dikirim: {formatDateIndo(item.lpj.tanggalKirim)}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setDetailLpjModal({ open: true, item: item.lpj, rabItem: item })
+                            }
+                            className="text-xs h-7 px-2.5 font-semibold text-[#0F5132] border-emerald-300 hover:bg-emerald-50 gap-1 cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>Lihat Detail LPJ</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        (() => {
+                          const deadlineInfo = calculateLpjDeadlineInfo(
+                            item.detailPengajuan?.pengesahanApprover?.tanggal ||
+                              item.updatedAt ||
+                              item.tanggalPengajuan
+                          );
+                          return (
+                            <div className="flex flex-col items-end gap-1.5 bg-amber-50/40 p-2.5 rounded-xl border border-amber-200">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-500 font-medium">Status LPJ:</span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                                  Belum Diajukan
+                                </span>
+                              </div>
+
+                              {deadlineInfo && (
+                                <div className="text-[10px] flex items-center gap-1 text-right">
+                                  {deadlineInfo.isLate ? (
+                                    <span className="text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200 inline-flex items-center gap-1">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Lewat tenggat {deadlineInfo.businessDaysCount} hari kerja
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      Jatuh tempo dlm {deadlineInfo.businessDaysCount} hari kerja ({formatDateIndo(deadlineInfo.deadline)})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {canSubmit && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleOpenLpjModal(item.id)}
+                                  className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-7.5 px-3 font-semibold gap-1.5 cursor-pointer shadow-xs mt-0.5"
+                                >
+                                  <FileText className="h-3.5 w-3.5" />
+                                  <span>Ajukan LPJ</span>
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })()
                       )
-                    )}
+                    ) : item.status === "diajukan" ? (
+                      <div className="text-right">
+                        <Badge variant="outline" className="text-[10px] text-gray-400 bg-gray-50 border-gray-200">
+                          LPJ: Menunggu Approval RAB
+                        </Badge>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </Card>
@@ -2353,7 +2730,7 @@ export function KeuanganClient({
       </Dialog>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      {/* SIGNATURE PAD MODAL (REUSABLE: PIC SUBMIT, EDIT, ATAU APPROVER IC)     */}
+      {/* SIGNATURE PAD MODAL (REUSABLE: PIC SUBMIT, EDIT, APPROVER IC, LPJ)    */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       <SignaturePadModal
         isOpen={isSigPadOpen}
@@ -2368,6 +2745,10 @@ export function KeuanganClient({
             setEditModal((prev) => ({ ...prev, signatureImage: dataUrl }));
             setIsSigPadOpen(false);
             toast.success("Tanda tangan digital PIC berhasil disimpan.", "Tanda Tangan");
+          } else if (sigPadTarget === "lpj") {
+            setLpjSignatureImage(dataUrl);
+            setIsSigPadOpen(false);
+            toast.success("Tanda tangan digital PIC untuk LPJ berhasil disimpan.", "Tanda Tangan LPJ");
           } else {
             setSignatureImage(dataUrl);
             setIsSigPadOpen(false);
@@ -2377,16 +2758,18 @@ export function KeuanganClient({
         title={
           sigPadTarget === "approve"
             ? "Tanda Tangan Digital — Disetujui Oleh (Kepala Departemen IC)"
+            : sigPadTarget === "lpj"
+            ? "Tanda Tangan Digital — PIC Tim Inovator (Formulir B - LPJ)"
             : "Tanda Tangan Digital — PIC Tim Inovator"
         }
-        roleName={
-          sigPadTarget === "approve" ? "Kepala Departemen IC" : "PIC Tim Inovator"
-        }
+        roleName="PIC Tim Inovator"
         userName={
           sigPadTarget === "approve"
             ? currentUser?.nama || "Kepala Departemen IC"
             : sigPadTarget === "edit"
             ? editModal.namaPic
+            : sigPadTarget === "lpj"
+            ? lpjNamaPic
             : namaPic
         }
       />
@@ -2522,52 +2905,835 @@ export function KeuanganClient({
       </Dialog>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      {/* DIALOG SUBMIT LPJ                                                     */}
+      {/* DIALOG FORMULIR B — LPJ RESMI (JUKLAK LAMPIRAN III)                    */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      <Dialog open={isLpjOpen} onOpenChange={setIsLpjOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Kirim Laporan Pertanggungjawaban (LPJ)</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">
-              Unggah tautan bukti kegiatan dan kwitansi pertanggungjawaban dana.
-            </DialogDescription>
+      <Dialog open={isLpjFormOpen} onOpenChange={setIsLpjFormOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-6 bg-white rounded-2xl">
+          <DialogHeader className="border-b border-gray-100 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0F5132] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Formulir B — Lampiran III Juklak
+                </span>
+                <DialogTitle className="text-base font-bold text-gray-900 mt-1">
+                  Laporan Pertanggungjawaban (LPJ) Penggunaan Anggaran Inkubasi
+                </DialogTitle>
+                <DialogDescription className="text-xs text-gray-500">
+                  Pertanggungjawaban realisasi dana pelaksanaan MVP program inkubasi inovasi.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitLpj} className="space-y-3 pt-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700">
-                Tanggal Kegiatan Selesai *
-              </label>
-              <Input
-                type="date"
+          <form onSubmit={handleSubmitLpj} className="space-y-6 pt-2">
+            {/* ── DROPDOWN WAJIB: PILIH PENGAJUAN RAB TERKAIT ─────────────────── */}
+            <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Wallet className="h-4 w-4 text-[#0F5132]" />
+                  <span>Pilih Pengajuan RAB Terkait <span className="text-rose-600">*</span></span>
+                </label>
+                {selectedRabForLpj && (
+                  <span className="text-xs font-bold text-[#0F5132] bg-white px-2.5 py-1 rounded-lg border border-emerald-300">
+                    Pagu Disetujui: {formatRupiah(approvedRabNominal)}
+                  </span>
+                )}
+              </div>
+
+              <select
                 required
-                value={tglKegiatanSelesai}
-                onChange={(e) => setTglKegiatanSelesai(e.target.value)}
-              />
-              <p className="text-[10px] text-gray-400">
-                Batas pengiriman LPJ adalah 10 hari kerja setelah kegiatan selesai.
+                value={lpjSelectedRabId}
+                onChange={(e) => handleSelectRabForLpj(e.target.value)}
+                className="w-full h-9 px-3 rounded-lg border border-gray-300 bg-white text-xs font-medium text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-[#0F5132]"
+              >
+                <option value="" disabled>-- Pilih Pengajuan Anggaran (RAB) Disetujui --</option>
+                {list
+                  .filter((item) => (item.status === "disetujui" || item.status === "diotorisasi") && !item.lpj)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      Fase {item.fase.replace("_", " ").toUpperCase()} — {formatRupiah(item.nominalDiajukan)} (Diajukan: {formatDateIndo(item.tanggalPengajuan)})
+                    </option>
+                  ))}
+              </select>
+              <p className="text-[10px] text-gray-500">
+                Hanya menampilkan RAB berstatus Disetujui yang belum memiliki LPJ terkait.
               </p>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700">
-                Link Dokumen LPJ &amp; Kwitansi *
-              </label>
-              <Input
-                type="url"
-                required
-                placeholder="https://drive.google.com/..."
-                value={lpjDocUrl}
-                onChange={(e) => setLpjDocUrl(e.target.value)}
-              />
+            {/* ── BAGIAN A: IDENTITAS PENGAJUAN INOVATOR ───────────────────────── */}
+            <div className="space-y-3 p-4 rounded-xl border border-gray-200 bg-white">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                <div className="h-6 w-6 rounded-full bg-[#0F5132] text-white flex items-center justify-center text-xs font-bold">
+                  A
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                    Identitas Pengajuan Inovator
+                  </h4>
+                  <p className="text-[10px] text-gray-500">
+                    Data penanggung jawab pelaksanaan dan penggunaan dana inkubasi.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-700 flex items-center gap-1">
+                    <User className="h-3 w-3 text-gray-400" />
+                    <span>Nama Penanggung Jawab (PIC) *</span>
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Nama lengkap PIC"
+                    value={lpjNamaPic}
+                    onChange={(e) => setLpjNamaPic(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3 text-gray-400" />
+                      <span>Unit Kerja *</span>
+                    </span>
+                    <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1 rounded">
+                      Auto-fill Tim
+                    </span>
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Divisi / Unit Kerja"
+                    value={lpjUnitKerjaPic}
+                    onChange={(e) => setLpjUnitKerjaPic(e.target.value)}
+                    className="h-8 text-xs font-medium text-gray-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-700 flex items-center gap-1">
+                    <Phone className="h-3 w-3 text-gray-400" />
+                    <span>No. Handphone (WhatsApp) *</span>
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="0812xxxx"
+                    value={lpjNoHpPic}
+                    onChange={(e) => setLpjNoHpPic(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
             </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="submit" disabled={saving} className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white">
-                {saving ? "Mengirim..." : "Kirim LPJ"}
+            {/* ── BAGIAN B: INFORMASI INOVASI ─────────────────────────────────── */}
+            <div className="space-y-3 p-4 rounded-xl border border-gray-200 bg-white">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                <div className="h-6 w-6 rounded-full bg-[#0F5132] text-white flex items-center justify-center text-xs font-bold">
+                  B
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                    Informasi Inovasi
+                  </h4>
+                  <p className="text-[10px] text-gray-500">
+                    Konteks proyek inovasi yang didanai melalui anggaran ini.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-700">
+                    Judul Proyek Inovasi *
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Judul Proyek Inovasi"
+                    value={lpjJudulProyek}
+                    onChange={(e) => setLpjJudulProyek(e.target.value)}
+                    className="h-8 text-xs font-medium text-gray-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-gray-700">
+                    Kategori Proyek Inovasi *
+                  </label>
+                  <select
+                    required
+                    value={lpjKategoriProyek}
+                    onChange={(e) => setLpjKategoriProyek(e.target.value)}
+                    className="w-full h-8 px-2 rounded-lg border border-gray-300 bg-white text-xs font-medium text-gray-800 focus:outline-hidden focus:ring-1 focus:ring-[#0F5132]"
+                  >
+                    <option value="" disabled>-- Pilih Kategori --</option>
+                    {KATEGORI_PROYEK_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* ── BAGIAN C: RINGKASAN PENGGUNAAN ANGGARAN PELAKSANAAN MVP (TABEL DINAMIS) ── */}
+            <div className="space-y-3 p-4 rounded-xl border border-gray-200 bg-white">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-[#0F5132] text-white flex items-center justify-center text-xs font-bold">
+                    C
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                      Ringkasan Penggunaan Anggaran Pelaksanaan MVP
+                    </h4>
+                    <p className="text-[10px] text-gray-500">
+                      Rincian pengeluaran aktual beserta bukti foto/nota/kwitansi (wajib diisi per baris).
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-500 block">Total Penggunaan LPJ:</span>
+                  <span className={`text-xs font-extrabold font-mono ${totalNominalLpj > approvedRabNominal ? "text-rose-600" : "text-[#0F5132]"}`}>
+                    {formatRupiah(totalNominalLpj)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tabel Dinamis */}
+              <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-gray-50 text-[11px] text-gray-700 font-bold border-b border-gray-200">
+                    <tr>
+                      <th className="p-2 text-center w-8">No</th>
+                      <th className="p-2 w-48">Uraian Penggunaan</th>
+                      <th className="p-2 w-32">Nominal (Rp)</th>
+                      <th className="p-2 w-36">Keterangan</th>
+                      <th className="p-2">Evidence (Bukti/Nota/Kwitansi) *</th>
+                      <th className="p-2 w-10 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {lpjItems.map((row, idx) => (
+                      <tr key={row.id} className="align-top hover:bg-slate-50/50">
+                        <td className="p-2 text-center text-gray-400 font-medium pt-3">{idx + 1}</td>
+                        <td className="p-2">
+                          <Input
+                            type="text"
+                            required
+                            placeholder="Contoh: Honor narasumber interview"
+                            value={row.uraian}
+                            onChange={(e) => handleUpdateLpjRow(row.id, "uraian", e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            type="number"
+                            required
+                            min={1}
+                            placeholder="Rp 0"
+                            value={row.nominal || ""}
+                            onChange={(e) => handleUpdateLpjRow(row.id, "nominal", Number(e.target.value))}
+                            className="h-8 text-xs font-mono"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            type="text"
+                            placeholder="Catatan tambahan..."
+                            value={row.keterangan || ""}
+                            onChange={(e) => handleUpdateLpjRow(row.id, "keterangan", e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                        <td className="p-2">
+                          <div className="space-y-1.5">
+                            {/* Evidence list tags */}
+                            {row.evidence && row.evidence.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {row.evidence.map((ev) => (
+                                  <span
+                                    key={ev.id}
+                                    className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200 max-w-[200px] truncate"
+                                    title={ev.nama}
+                                  >
+                                    {ev.tipe === "file" ? (
+                                      <Paperclip className="h-3 w-3 shrink-0 text-emerald-600" />
+                                    ) : (
+                                      <Link2 className="h-3 w-3 shrink-0 text-emerald-600" />
+                                    )}
+                                    <span className="truncate">{ev.nama}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveEvidence(row.id, ev.id)}
+                                      className="text-gray-400 hover:text-rose-600 ml-0.5 cursor-pointer"
+                                    >
+                                      &times;
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 inline-block">
+                                Wajib melampirkan bukti
+                              </span>
+                            )}
+
+                            {/* Tombol aksi upload / link */}
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <label className="cursor-pointer inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 px-2 py-1 rounded-md shadow-2xs">
+                                {isUploadingEvidence[row.id] ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    <span>Upload...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Paperclip className="h-3 w-3" />
+                                    <span>Upload File</span>
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  disabled={isUploadingEvidence[row.id]}
+                                  onChange={(e) => handleFileUploadEvidence(row.id, e)}
+                                  className="hidden"
+                                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLinkInputModal({
+                                    open: true,
+                                    rowId: row.id,
+                                    url: "",
+                                    label: "",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 px-2 py-1 rounded-md shadow-2xs cursor-pointer"
+                              >
+                                <Link2 className="h-3 w-3" />
+                                <span>Tautan Link</span>
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-2 text-center pt-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={lpjItems.length <= 1}
+                            onClick={() => handleRemoveLpjRow(row.id)}
+                            className="h-7 w-7 p-0 text-gray-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer disabled:opacity-40"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddLpjRow}
+                  className="text-xs border-dashed gap-1 h-8 text-[#0F5132] border-[#0F5132] hover:bg-emerald-50 font-semibold cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Tambah Baris Penggunaan Dana</span>
+                </Button>
+
+                {/* Ringkasan & Komparasi Dana */}
+                <div className="p-2.5 rounded-xl border border-gray-200 bg-slate-50 space-y-1 text-xs text-right">
+                  <div className="flex items-center justify-end gap-3">
+                    <span className="text-gray-500">Pagu RAB Disetujui:</span>
+                    <span className="font-bold text-gray-800 font-mono">{formatRupiah(approvedRabNominal)}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-3">
+                    <span className="text-gray-500">Total Penggunaan LPJ:</span>
+                    <span className={`font-extrabold font-mono ${totalNominalLpj > approvedRabNominal ? "text-rose-600" : "text-[#0F5132]"}`}>
+                      {formatRupiah(totalNominalLpj)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-1">
+                    <span className="text-gray-500">Sisa Anggaran (Efisiensi):</span>
+                    <span className="font-bold font-mono text-gray-700">
+                      {formatRupiah(Math.max(0, approvedRabNominal - totalNominalLpj))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning jika melebihi plafon */}
+              {totalNominalLpj > approvedRabNominal && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="font-bold block text-rose-700">Pagu Anggaran Terlampaui!</strong>
+                    <span>
+                      Total pengeluaran dana LPJ ({formatRupiah(totalNominalLpj)}) melebihi nominal RAB yang telah disetujui ({formatRupiah(approvedRabNominal)}). Harap sesuaikan kembali nominal agar tidak melebihi pagu.
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── BAGIAN D: PERNYATAAN & PENGESAHAN ────────────────────────────── */}
+            <div className="space-y-3 p-4 rounded-xl border border-gray-200 bg-white">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                <div className="h-6 w-6 rounded-full bg-[#0F5132] text-white flex items-center justify-center text-xs font-bold">
+                  D
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                    Pernyataan Pertanggungjawaban
+                  </h4>
+                  <p className="text-[10px] text-gray-500">
+                    Pernyataan resmi penanggung jawab atas akuntabilitas dan keabsahan penggunaan dana.
+                  </p>
+                </div>
+              </div>
+
+              {/* Teks Statis Resmi Pernyataan */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-gray-800 leading-relaxed italic">
+                &ldquo;Dengan ini saya selaku PIC Tim Inovator menyatakan bahwa seluruh penggunaan anggaran telah dilaksanakan sesuai dengan kebutuhan pelaksanaan MVP Proyek Inovasi dan dapat dipertanggungjawabkan.&rdquo;
+              </div>
+
+              {/* Blok Tanda Tangan PIC */}
+              <div className="p-4 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="space-y-1 text-xs w-full sm:w-auto">
+                  <span className="text-[10px] font-bold uppercase text-gray-400 block">
+                    Penanggung Jawab (PIC Tim Inovator):
+                  </span>
+                  <div className="font-bold text-gray-900 text-sm">{lpjNamaPic || "Nama PIC"}</div>
+                  <div className="text-[11px] text-gray-600">
+                    Unit Kerja: {lpjUnitKerjaPic || "-"}
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    Tanggal: {formatDateIndo(new Date())}
+                  </div>
+
+                  <div className="pt-1.5 w-full max-w-xs">
+                    <label className="text-[11px] font-semibold text-gray-700">
+                      NIK PIC *
+                    </label>
+                    <Input
+                      type="text"
+                      required
+                      placeholder="Masukkan NIK Anda"
+                      value={lpjNikPic}
+                      onChange={(e) => setLpjNikPic(e.target.value)}
+                      className="h-8 text-xs font-mono mt-0.5 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  {lpjSignatureImage ? (
+                    <div className="space-y-1 text-center">
+                      <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[170px]">
+                        <img
+                          src={lpjSignatureImage}
+                          alt="Tanda Tangan PIC LPJ"
+                          className="h-14 w-auto object-contain block mx-auto"
+                        />
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                        <span>Tanda Tangan Siap</span>
+                      </span>
+                      <div className="flex items-center justify-center gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSigPadTarget("lpj");
+                            setIsSigPadOpen(true);
+                          }}
+                          className="h-6 text-[10px] px-2 text-gray-600 cursor-pointer"
+                        >
+                          Ubah
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setLpjSignatureImage(null)}
+                          className="h-6 text-[10px] px-2 text-red-600 hover:text-red-700 cursor-pointer"
+                        >
+                          Hapus
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-2">
+                      <div className="h-14 w-44 rounded-xl border border-dashed border-gray-300 bg-white flex items-center justify-center text-[11px] text-gray-400 italic">
+                        Belum ada tanda tangan
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setSigPadTarget("lpj");
+                          setIsSigPadOpen(true);
+                        }}
+                        className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-8 px-3 font-semibold gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <PenTool className="h-3.5 w-3.5" />
+                        <span>Bubuhkan Tanda Tangan PIC</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-gray-100 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLpjFormOpen(false)}
+                className="text-xs cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmittingLpj ||
+                  !lpjSelectedRabId ||
+                  totalNominalLpj <= 0 ||
+                  totalNominalLpj > approvedRabNominal ||
+                  !lpjNikPic.trim() ||
+                  !lpjSignatureImage
+                }
+                className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold gap-1.5 px-4 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingLpj ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Mengirimkan LPJ...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Kirim Formulir LPJ Resmi</span>
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* DIALOG LIHAT DETAIL LPJ (FORMULIR B RESMI)                             */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog
+        open={detailLpjModal.open}
+        onOpenChange={(open) => !open && setDetailLpjModal({ open: false, item: null, rabItem: null })}
+      >
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-6 bg-white rounded-2xl">
+          <DialogHeader className="border-b border-gray-100 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0F5132] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Formulir B — Lampiran III Juklak
+                  </span>
+                  <Badge
+                    className={`text-[10px] font-bold ${
+                      detailLpjModal.item?.status === "terlambat"
+                        ? "bg-rose-100 text-rose-800 border-rose-300"
+                        : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                    }`}
+                  >
+                    LPJ {detailLpjModal.item?.status === "terlambat" ? "Terkirim (Terlambat)" : "Terkirim"}
+                  </Badge>
+                </div>
+                <DialogTitle className="text-base font-bold text-gray-900 mt-1">
+                  Laporan Pertanggungjawaban (LPJ) Penggunaan Anggaran Inkubasi
+                </DialogTitle>
+                <DialogDescription className="text-xs text-gray-500">
+                  Dokumen pertanggungjawaban resmi yang telah dikirimkan oleh PIC Tim Inovator.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {detailLpjModal.item && (() => {
+            const d = (detailLpjModal.item.detailLpj as LpjDetailPengajuan) || null;
+            return (
+              <div className="space-y-5 pt-2">
+                {/* Bagian A: Identitas */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <h5 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-[#0F5132]" />
+                    <span>A. Identitas Pengajuan Inovator</span>
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Nama Penanggung Jawab (PIC):</span>
+                      <span className="font-bold text-gray-900">{d?.namaPic || "-"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Unit Kerja:</span>
+                      <span className="font-medium text-gray-800">{d?.unitKerjaPic || "-"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">No. Handphone (WhatsApp):</span>
+                      <span className="font-mono text-gray-800">{d?.noHpPic || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bagian B: Informasi Inovasi */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <h5 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                    <Wallet className="h-3.5 w-3.5 text-[#0F5132]" />
+                    <span>B. Informasi Inovasi</span>
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Judul Proyek Inovasi:</span>
+                      <span className="font-bold text-gray-900">{d?.judulProyek || "-"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 text-[10px] block">Kategori Proyek Inovasi:</span>
+                      <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                        {d?.kategoriProyek || "-"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bagian C: Ringkasan Penggunaan Dana */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-bold text-[11px] uppercase tracking-wider text-gray-700">
+                      C. Ringkasan Penggunaan Anggaran Pelaksanaan MVP
+                    </h5>
+                    <span className="text-xs font-bold text-[#0F5132]">
+                      Total LPJ: {formatRupiah(d?.totalNominal || 0)}
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-gray-100 text-[11px] text-gray-700 font-bold border-b border-gray-200">
+                        <tr>
+                          <th className="p-2 text-center w-10">No</th>
+                          <th className="p-2">Uraian Penggunaan</th>
+                          <th className="p-2 w-32 text-right">Nominal (Rp)</th>
+                          <th className="p-2 w-44">Keterangan</th>
+                          <th className="p-2">Bukti (Evidence)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {d?.items?.map((row, idx) => (
+                          <tr key={row.id || idx} className="hover:bg-slate-50/50 align-top">
+                            <td className="p-2 text-center text-gray-500">{idx + 1}</td>
+                            <td className="p-2 font-medium text-gray-900">{row.uraian}</td>
+                            <td className="p-2 text-right font-mono font-bold text-gray-800 bg-gray-50/50">
+                              {formatRupiah(row.nominal)}
+                            </td>
+                            <td className="p-2 text-gray-600">{row.keterangan || "-"}</td>
+                            <td className="p-2">
+                              {row.evidence && row.evidence.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {row.evidence.map((ev) => (
+                                    <a
+                                      key={ev.id}
+                                      href={ev.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200 cursor-pointer"
+                                    >
+                                      {ev.tipe === "file" ? (
+                                        <Paperclip className="h-3 w-3 text-emerald-600" />
+                                      ) : (
+                                        <Link2 className="h-3 w-3 text-emerald-600" />
+                                      )}
+                                      <span>{ev.nama}</span>
+                                      <ExternalLink className="h-2.5 w-2.5" />
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-[11px]">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 font-bold border-t border-gray-200">
+                        <tr>
+                          <td colSpan={2} className="p-2 text-right text-gray-700">
+                            Total Pengeluaran LPJ:
+                          </td>
+                          <td className="p-2 text-right text-[#0F5132] font-mono font-extrabold">
+                            {formatRupiah(d?.totalNominal || 0)}
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Bagian D: Pernyataan & Tanda Tangan */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-slate-50/70 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">
+                    D. Pernyataan &amp; Pengesahan PIC
+                  </span>
+
+                  <p className="text-xs text-gray-800 italic bg-white p-3 rounded-lg border border-gray-200">
+                    &ldquo;{d?.pernyataanPic?.teks || "Dengan ini saya selaku PIC Tim Inovator menyatakan bahwa seluruh penggunaan anggaran telah dilaksanakan sesuai dengan kebutuhan pelaksanaan MVP Proyek Inovasi dan dapat dipertanggungjawabkan."}&rdquo;
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
+                    <div className="space-y-1 text-xs">
+                      <div className="font-bold text-gray-900 text-sm">
+                        {d?.pernyataanPic?.nama || d?.namaPic}
+                      </div>
+                      {d?.pernyataanPic?.nik && (
+                        <div className="text-[11px] text-gray-600 font-mono">
+                          NIK: {d.pernyataanPic.nik}
+                        </div>
+                      )}
+                      <div className="text-[11px] text-gray-600">
+                        Unit Kerja: {d?.pernyataanPic?.unitKerja || d?.unitKerjaPic}
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        Ditandatangani pada: {formatDateIndo(d?.pernyataanPic?.tanggal || detailLpjModal.item.tanggalKirim)}
+                      </div>
+                    </div>
+
+                    {d?.pernyataanPic?.signatureImage && (
+                      <div className="text-center space-y-1">
+                        <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[170px] mx-auto">
+                          <img
+                            src={d.pernyataanPic.signatureImage}
+                            alt="Tanda Tangan PIC"
+                            className="h-14 w-auto object-contain block mx-auto"
+                          />
+                        </div>
+                        <span className="text-[10px] text-emerald-700 font-bold">
+                          Tanda Tangan Digital Terverifikasi
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <DialogFooter className="pt-2 border-t border-gray-100">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDetailLpjModal({ open: false, item: null, rabItem: null })}
+                    className="text-xs cursor-pointer"
+                  >
+                    Tutup
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* DIALOG INPUT TAUTAN LINK BUKTI                                         */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog
+        open={linkInputModal.open}
+        onOpenChange={(open) => !open && setLinkInputModal({ open: false, rowId: "", url: "", label: "" })}
+      >
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-[#0F5132]">
+              <Link2 className="h-5 w-5" />
+              <DialogTitle className="text-base font-bold text-gray-900">
+                Tambah Tautan Bukti (Evidence)
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-gray-500">
+              Masukkan tautan Google Drive, OneDrive, atau dokumen cloud bukti transaksi.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700">
+                Nama / Label Bukti *
+              </label>
+              <Input
+                type="text"
+                placeholder="Contoh: Nota Toko ATK 12 Agustus"
+                value={linkInputModal.label}
+                onChange={(e) =>
+                  setLinkInputModal((prev) => ({ ...prev, label: e.target.value }))
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-700">
+                URL Tautan Bukti *
+              </label>
+              <Input
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={linkInputModal.url}
+                onChange={(e) =>
+                  setLinkInputModal((prev) => ({ ...prev, url: e.target.value }))
+                }
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setLinkInputModal({ open: false, rowId: "", url: "", label: "" })}
+              className="text-xs cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!linkInputModal.url.trim()}
+              onClick={() => {
+                handleAddLinkEvidence(
+                  linkInputModal.rowId,
+                  linkInputModal.url,
+                  linkInputModal.label
+                );
+                setLinkInputModal({ open: false, rowId: "", url: "", label: "" });
+              }}
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-semibold cursor-pointer"
+            >
+              Simpan Tautan
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -6,6 +6,7 @@ import {
   lpj,
   type AnggaranDetailPengajuan,
   type AnggaranApproverPengesahan,
+  type LpjDetailPengajuan,
   userRoleTim,
   roles,
   users,
@@ -359,70 +360,164 @@ export async function deleteAnggaranAction(anggaranId: string, timId: string) {
   }
 }
 
-export async function submitLpjAction(anggaranId: string, timId: string, data: {
-  fileDokumenUrl: string;
-  buktiElektronikUrl?: string;
-  tanggalKegiatanSelesai: Date;
-}) {
+function addBusinessDays(startDate: Date, businessDays: number): Date {
+  const target = new Date(startDate);
+  let added = 0;
+  while (added < businessDays) {
+    target.setDate(target.getDate() + 1);
+    const day = target.getDay();
+    if (day !== 0 && day !== 6) {
+      added++;
+    }
+  }
+  return target;
+}
+
+export async function submitLpjAction(
+  anggaranId: string,
+  timId: string,
+  data: {
+    detailLpj: LpjDetailPengajuan;
+    fileDokumenUrl?: string;
+    buktiElektronikUrl?: string;
+    tanggalKegiatanSelesai?: Date | string;
+  }
+) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+      return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
     }
 
-    const allowed = await hasPermission(user, 'anggaran.submit', timId);
+    const allowed = await hasPermission(user, "anggaran.submit", timId);
     if (!allowed) {
       return {
         success: false,
-        error: 'Forbidden: Anda tidak memiliki izin untuk mengirimkan LPJ untuk tim ini.',
+        error: "Forbidden: Anda tidak memiliki izin untuk mengirimkan LPJ untuk tim ini.",
       };
     }
 
-    const batasKirim = new Date(data.tanggalKegiatanSelesai);
-    // 10 business days approx 14 calendar days
-    batasKirim.setDate(batasKirim.getDate() + 14);
+    // 1. Ambil data pengajuan RAB terkait
+    const [anggaran] = await db
+      .select()
+      .from(anggaranPengajuan)
+      .where(and(eq(anggaranPengajuan.id, anggaranId), eq(anggaranPengajuan.timInovatorId, timId)))
+      .limit(1);
 
-    const isLate = new Date() > batasKirim;
-
-    const [existing] = await db.select().from(lpj).where(eq(lpj.anggaranPengajuanId, anggaranId)).limit(1);
-    let lpjId = existing?.id;
-
-    if (existing) {
-      await db.update(lpj).set({
-        fileDokumenUrl: data.fileDokumenUrl,
-        buktiElektronikUrl: data.buktiElektronikUrl,
-        tanggalKegiatanSelesai: data.tanggalKegiatanSelesai,
-        tanggalKirim: new Date(),
-        batasKirim,
-        status: isLate ? 'terlambat' : 'dikirim',
-        updatedAt: new Date(),
-      }).where(eq(lpj.id, existing.id));
-    } else {
-      const [inserted] = await db.insert(lpj).values({
-        anggaranPengajuanId: anggaranId,
-        fileDokumenUrl: data.fileDokumenUrl,
-        buktiElektronikUrl: data.buktiElektronikUrl,
-        tanggalKegiatanSelesai: data.tanggalKegiatanSelesai,
-        tanggalKirim: new Date(),
-        batasKirim,
-        status: isLate ? 'terlambat' : 'dikirim',
-      }).returning();
-      lpjId = inserted.id;
+    if (!anggaran) {
+      return { success: false, error: "Pengajuan anggaran (RAB) terkait tidak ditemukan." };
     }
+
+    if (anggaran.status !== "disetujui" && anggaran.status !== "diotorisasi") {
+      return {
+        success: false,
+        error: `LPJ hanya dapat diajukan untuk RAB yang telah disetujui (status saat ini: "${anggaran.status}").`,
+      };
+    }
+
+    // 2. Cek apakah RAB ini sudah memiliki LPJ
+    const [existingLpj] = await db
+      .select()
+      .from(lpj)
+      .where(eq(lpj.anggaranPengajuanId, anggaranId))
+      .limit(1);
+
+    if (existingLpj) {
+      return {
+        success: false,
+        error: "Pengajuan RAB ini sudah memiliki LPJ. Setiap pengajuan RAB hanya dapat memiliki 1 LPJ terkait.",
+      };
+    }
+
+    // 3. Validasi Total Nominal LPJ tidak boleh melebihi Nominal RAB Disetujui
+    const totalNominal = Number(data.detailLpj.totalNominal) || 0;
+    const maxNominal = Number(anggaran.nominalDiajukan) || 0;
+    if (totalNominal > maxNominal) {
+      return {
+        success: false,
+        error: `Total penggunaan dana LPJ (${formatRupiah(totalNominal)}) melebihi nominal RAB yang disetujui (${formatRupiah(maxNominal)}). Harap sesuaikan rincian pengeluaran agar tidak melebihi anggaran yang disetujui.`,
+      };
+    }
+
+    // 4. Validasi Evidence wajib per baris
+    if (!data.detailLpj.items || data.detailLpj.items.length === 0) {
+      return { success: false, error: "Minimal harus ada 1 baris rincian penggunaan anggaran." };
+    }
+
+    for (let i = 0; i < data.detailLpj.items.length; i++) {
+      const row = data.detailLpj.items[i];
+      if (!row.uraian || row.uraian.trim() === "") {
+        return { success: false, error: `Uraian penggunaan pada baris ke-${i + 1} wajib diisi.` };
+      }
+      if (!row.nominal || row.nominal <= 0) {
+        return { success: false, error: `Nominal pada baris ke-${i + 1} harus lebih besar dari Rp 0.` };
+      }
+      if (!row.evidence || row.evidence.length === 0) {
+        return {
+          success: false,
+          error: `Baris ke-${i + 1} ("${row.uraian}") wajib menyertakan bukti penggunaan dana (upload nota/kwitansi atau link bukti).`,
+        };
+      }
+    }
+
+    // 5. Validasi Tanda Tangan PIC
+    if (!data.detailLpj.pernyataanPic?.signatureImage) {
+      return {
+        success: false,
+        error: "Pernyataan PIC wajib ditandatangani secara digital sebelum mengirimkan LPJ.",
+      };
+    }
+
+    if (!data.detailLpj.pernyataanPic?.nik || data.detailLpj.pernyataanPic.nik.trim() === "") {
+      return {
+        success: false,
+        error: "NIK PIC wajib diisi pada bagian pernyataan pengesahan.",
+      };
+    }
+
+    // Hitung batas kirim 10 hari kerja
+    const refDate = data.tanggalKegiatanSelesai
+      ? new Date(data.tanggalKegiatanSelesai)
+      : anggaran.updatedAt || new Date();
+    const batasKirim = addBusinessDays(refDate, 10);
+    const now = new Date();
+    const isLate = now > batasKirim;
+
+    const [inserted] = await db
+      .insert(lpj)
+      .values({
+        anggaranPengajuanId: anggaranId,
+        fileDokumenUrl: data.fileDokumenUrl || null,
+        buktiElektronikUrl: data.buktiElektronikUrl || null,
+        tanggalKegiatanSelesai: data.tanggalKegiatanSelesai ? new Date(data.tanggalKegiatanSelesai) : new Date(),
+        tanggalKirim: now,
+        batasKirim,
+        status: isLate ? "terlambat" : "terkirim",
+        detailLpj: data.detailLpj,
+      })
+      .returning();
 
     await logAudit({
       userId: user.id,
       userName: user.nama,
-      action: 'LPJ_SUBMIT',
-      entity: 'lpj',
-      entityId: lpjId,
-      details: { timId, anggaranId, isLate },
+      action: "LPJ_SUBMIT",
+      entity: "lpj",
+      entityId: inserted.id,
+      details: {
+        timId,
+        anggaranId,
+        totalNominal,
+        nominalRab: maxNominal,
+        isLate,
+      },
     });
 
     revalidatePath(`/tim/${timId}/keuangan`);
-    return { success: true };
+    revalidatePath(`/tim/${timId}/market-validation`);
+    return { success: true, data: inserted };
   } catch (error: any) {
-    return { success: false, error: error.message || 'Gagal mengirim LPJ.' };
+    console.error("[submitLpjAction] Error:", error);
+    return { success: false, error: error.message || "Gagal mengirimkan Formulir LPJ." };
   }
 }
 
