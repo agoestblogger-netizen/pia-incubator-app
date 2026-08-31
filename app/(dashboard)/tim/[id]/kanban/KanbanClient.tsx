@@ -4197,7 +4197,7 @@ export function KanbanClient({
       {/* Modal / Dialog Tambah Kartu Baru */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isNewCardOpen} onOpenChange={setIsNewCardOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-900">
               Tambah Kartu ke Kolom: {targetColumn}
@@ -4338,7 +4338,7 @@ export function KanbanClient({
       {/* Dialog Buat Kartu Issue (Paket 24c - Coach & Admin Only) */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isNewIssueOpen} onOpenChange={setIsNewIssueOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-orange-100 text-orange-950 border border-orange-300">
@@ -4475,15 +4475,15 @@ export function KanbanClient({
       {/* Dialog Selesaikan Sprint (Penyelesaian Task Belum Selesai) */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isCompleteModalOpen} onOpenChange={setIsCompleteModalOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-5 pb-3 border-b border-gray-100 shrink-0">
             <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-blue-600" />
               Selesaikan Sprint {currentSprintObj?.nomorSprint}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-xs">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
             {incompleteCardsInCurrentSprint.length === 0 ? (
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 space-y-1">
                 <p className="font-bold">🎉 Luar Biasa!</p>
@@ -4539,7 +4539,7 @@ export function KanbanClient({
             )}
 
             {/* ══ Sprint Review & Retrospective Form (Template 3.2) ══ */}
-            <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
+            <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
               <div className="flex items-center justify-between border-b border-blue-200 pb-2">
                 <div>
                   <h4 className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
@@ -4581,13 +4581,13 @@ export function KanbanClient({
               )}
 
               {/* Review Section */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-gray-800 block">
                     Demo / Fitur yang Didemonstrasikan
                   </label>
                   <Textarea
-                    rows={2}
+                    rows={3}
                     placeholder="Apa saja luaran/fitur yang didemokan ke stakeholder..."
                     value={reviewDemo}
                     onChange={(e) => setReviewDemo(e.target.value)}
@@ -4595,13 +4595,13 @@ export function KanbanClient({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-gray-800 block">
                       Feedback Reviewer
                     </label>
                     <Textarea
-                      rows={2}
+                      rows={3}
                       placeholder="Umpan balik dari Coach / SME / User..."
                       value={reviewFeedback}
                       onChange={(e) => setReviewFeedback(e.target.value)}
@@ -4614,7 +4614,7 @@ export function KanbanClient({
                       Value / Dampak yang Dihasilkan
                     </label>
                     <Textarea
-                      rows={2}
+                      rows={3}
                       placeholder="Nilai tambah atau capaian sprint ini..."
                       value={reviewValue}
                       onChange={(e) => setReviewValue(e.target.value)}
@@ -4627,7 +4627,8 @@ export function KanbanClient({
                   <label className="text-[11px] font-bold text-gray-800 block">
                     Questions (Pertanyaan Terbuka untuk Sprint Berikutnya)
                   </label>
-                  <Input
+                  <Textarea
+                    rows={2}
                     placeholder="Pertanyaan strategis atau hal yang masih perlu dijawab..."
                     value={reviewQuestions}
                     onChange={(e) => setReviewQuestions(e.target.value)}
@@ -4637,17 +4638,17 @@ export function KanbanClient({
               </div>
 
               {/* Retrospective Section */}
-              <div className="pt-2 border-t border-blue-200 space-y-2">
+              <div className="pt-2.5 border-t border-blue-200 space-y-2.5">
                 <span className="text-[11px] font-extrabold text-blue-900 block uppercase tracking-wide">
                   Retrospective (Continue / Stop / Start)
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-emerald-800 block">
                       Continue (Pertahankan)
                     </label>
                     <Textarea
-                      rows={2}
+                      rows={3}
                       placeholder="Praktik baik yang dilanjutkan..."
                       value={reviewContinue}
                       onChange={(e) => setReviewContinue(e.target.value)}
@@ -4659,7 +4660,7 @@ export function KanbanClient({
                       Stop (Hentikan)
                     </label>
                     <Textarea
-                      rows={2}
+                      rows={3}
                       placeholder="Hambatan/kebiasaan yang dihentikan..."
                       value={reviewStop}
                       onChange={(e) => setReviewStop(e.target.value)}
@@ -4671,7 +4672,7 @@ export function KanbanClient({
                       Start (Mulai Baru)
                     </label>
                     <Textarea
-                      rows={2}
+                      rows={3}
                       placeholder="Inisiatif baru di sprint depan..."
                       value={reviewStart}
                       onChange={(e) => setReviewStart(e.target.value)}
@@ -4695,7 +4696,7 @@ export function KanbanClient({
             </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="p-4 border-t border-gray-100 bg-gray-50/80 shrink-0 sticky bottom-0 z-10 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -4710,7 +4711,7 @@ export function KanbanClient({
               size="sm"
               disabled={actionLoading}
               onClick={handleConfirmCompleteSprint}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 cursor-pointer shadow-xs"
             >
               {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
               <span>Konfirmasi &amp; Simpan Sprint Review</span>
@@ -4723,7 +4724,7 @@ export function KanbanClient({
       {/* Dialog Kelola Jumlah Sprint */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       <Dialog open={isSprintCountModalOpen} onOpenChange={setIsSprintCountModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-[#0F5132]" />
