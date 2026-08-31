@@ -1,12 +1,121 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { anggaranPengajuan, lpj, type AnggaranDetailPengajuan } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import {
+  anggaranPengajuan,
+  lpj,
+  type AnggaranDetailPengajuan,
+  userRoleTim,
+  roles,
+  users,
+  anggotaTim,
+} from "@/lib/db/schema";
+import { eq, desc, and, sql, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
 import { formatRupiah } from "@/lib/utils";
+
+export async function getUserTeamUnitKerja(userId?: string | null, timId?: string | null): Promise<string> {
+  if (!userId || !timId) return "";
+
+  try {
+    // 1. Query Struktur Role & Akuntabilitas Tim (userRoleTim joined with roles, users, and anggotaTim)
+    const assignments = await db
+      .select({
+        roleCode: roles.kodeRole,
+        unitKerja: anggotaTim.unitKerja,
+      })
+      .from(userRoleTim)
+      .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
+      .innerJoin(users, eq(userRoleTim.userId, users.id))
+      .leftJoin(
+        anggotaTim,
+        and(
+          eq(anggotaTim.timInovatorId, timId),
+          or(
+            eq(anggotaTim.userId, userRoleTim.userId),
+            sql`LOWER(TRIM(${anggotaTim.nama})) = LOWER(TRIM(${users.nama}))`
+          )
+        )
+      )
+      .where(
+        and(
+          eq(userRoleTim.timInovatorId, timId),
+          eq(userRoleTim.userId, userId)
+        )
+      );
+
+    if (assignments.length > 0) {
+      // Prioritas peran yang paling relevan untuk pengajuan anggaran (PO -> Inisiator -> Co-creator -> Promotor -> Coach -> Lainnya)
+      const ROLE_PRIORITY: Record<string, number> = {
+        project_owner: 1,
+        inisiator: 2,
+        co_creator: 3,
+        promotor: 4,
+        sponsor: 5,
+        coach: 6,
+        sme: 7,
+      };
+
+      assignments.sort((a, b) => {
+        const prioA = ROLE_PRIORITY[a.roleCode] || 99;
+        const prioB = ROLE_PRIORITY[b.roleCode] || 99;
+        return prioA - prioB;
+      });
+
+      const matchedWithUnit = assignments.find((a) => a.unitKerja && a.unitKerja.trim().length > 0);
+      if (matchedWithUnit?.unitKerja) {
+        return matchedWithUnit.unitKerja.trim();
+      }
+    }
+
+    // 2. Fallback: Cek anggotaTim langsung berdasarkan userId dan timId
+    const [directAnggota] = await db
+      .select({ unitKerja: anggotaTim.unitKerja })
+      .from(anggotaTim)
+      .where(
+        and(
+          eq(anggotaTim.timInovatorId, timId),
+          eq(anggotaTim.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (directAnggota?.unitKerja && directAnggota.unitKerja.trim().length > 0) {
+      return directAnggota.unitKerja.trim();
+    }
+
+    // 3. Fallback: Cek apakah user ada di anggotaTim dengan pencocokan nama user
+    const [userObj] = await db
+      .select({ nama: users.nama })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (userObj?.nama) {
+      const [angByName] = await db
+        .select({ unitKerja: anggotaTim.unitKerja })
+        .from(anggotaTim)
+        .where(
+          and(
+            eq(anggotaTim.timInovatorId, timId),
+            sql`LOWER(TRIM(${anggotaTim.nama})) = LOWER(TRIM(${userObj.nama}))`
+          )
+        )
+        .limit(1);
+
+      if (angByName?.unitKerja && angByName.unitKerja.trim().length > 0) {
+        return angByName.unitKerja.trim();
+      }
+    }
+
+    return "";
+  } catch (error) {
+    console.error("[getUserTeamUnitKerja] Error:", error);
+    return "";
+  }
+}
 
 export async function getKeuanganData(timId: string) {
   const pengajuanList = await db

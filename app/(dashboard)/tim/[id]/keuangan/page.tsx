@@ -1,5 +1,5 @@
 import { getTimInovatorById } from "@/app/actions/tim";
-import { getKeuanganData } from "@/app/actions/keuangan";
+import { getKeuanganData, getUserTeamUnitKerja } from "@/app/actions/keuangan";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
@@ -18,20 +18,13 @@ export default async function KeuanganPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
-  const [list, phaseGateStatus, canSubmit, canManage] = await Promise.all([
+  const [list, phaseGateStatus, canSubmit, canManage, userUnitKerja] = await Promise.all([
     getKeuanganData(tim.id),
     getTeamPhaseGateStatus(tim.id),
     user ? hasPermission(user, 'anggaran.submit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
+    user ? getUserTeamUnitKerja(user.id, tim.id) : Promise.resolve(""),
   ]);
-
-  // Cari unit kerja user dari struktur peran / anggota tim
-  const matchedAnggota = tim.anggota?.find(
-    (a) =>
-      (user?.id && a.userId === user.id) ||
-      (user?.nama && a.nama.toLowerCase().trim() === user.nama.toLowerCase().trim())
-  );
-  const userUnitKerja = matchedAnggota?.unitKerja || "";
 
   return (
     <div className="space-y-6">
