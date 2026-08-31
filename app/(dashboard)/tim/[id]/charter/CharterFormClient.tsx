@@ -238,12 +238,12 @@ export function CharterFormClient({
       }));
     }
     return [
-      { nomorSprint: 1, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Problem Validation & Setup" },
-      { nomorSprint: 2, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Solution Exploration & Prototyping" },
-      { nomorSprint: 3, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Customer Validation & Testing" },
-      { nomorSprint: 4, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "MVP Development & Pilot Prep" },
-      { nomorSprint: 5, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Market Validation & Pilot Execution" },
-      { nomorSprint: 6, tanggalMulaiRencana: "", tanggalSelesaiRencana: "", tujuan: "Pitch & FMI Preparation" },
+      { nomorSprint: 1, tanggalMulaiRencana: "2026-09-07", tanggalSelesaiRencana: "2026-09-18", tujuan: "Perencanaan Customer Validation" },
+      { nomorSprint: 2, tanggalMulaiRencana: "2026-09-21", tanggalSelesaiRencana: "2026-10-02", tujuan: "Laporan Customer Validation" },
+      { nomorSprint: 3, tanggalMulaiRencana: "2026-10-05", tanggalSelesaiRencana: "2026-10-16", tujuan: "Perencanaan Market Validation" },
+      { nomorSprint: 4, tanggalMulaiRencana: "2026-10-19", tanggalSelesaiRencana: "2026-10-30", tujuan: "Market Testing" },
+      { nomorSprint: 5, tanggalMulaiRencana: "2026-11-02", tanggalSelesaiRencana: "2026-11-13", tujuan: "Market Testing" },
+      { nomorSprint: 6, tanggalMulaiRencana: "2026-11-16", tanggalSelesaiRencana: "2026-11-27", tujuan: "Penyelesaian Laporan Market Validation" },
     ];
   });
 

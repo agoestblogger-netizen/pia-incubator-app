@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { timInovator, anggotaTim, durasiLog, kanbanColumn } from "@/lib/db/schema";
+import { timInovator, anggotaTim, durasiLog, kanbanColumn, sprint } from "@/lib/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission, type UserProfile } from "@/lib/auth/rbac";
@@ -103,6 +103,59 @@ export async function createTimInovatorAction(formData: {
         urutan: idx + 1,
       }))
     );
+
+    // Seed default 6 milestone sprints resmi PIA Season 12
+    const defaultSprints = [
+      {
+        timInovatorId: tim.id,
+        nomorSprint: 1,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-09-07T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-09-18T23:59:59.000Z"),
+        tujuan: "Perencanaan Customer Validation",
+      },
+      {
+        timInovatorId: tim.id,
+        nomorSprint: 2,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-09-21T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-10-02T23:59:59.000Z"),
+        tujuan: "Laporan Customer Validation",
+      },
+      {
+        timInovatorId: tim.id,
+        nomorSprint: 3,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-10-05T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-10-16T23:59:59.000Z"),
+        tujuan: "Perencanaan Market Validation",
+      },
+      {
+        timInovatorId: tim.id,
+        nomorSprint: 4,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-10-19T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-10-30T23:59:59.000Z"),
+        tujuan: "Market Testing",
+      },
+      {
+        timInovatorId: tim.id,
+        nomorSprint: 5,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-11-02T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-11-13T23:59:59.000Z"),
+        tujuan: "Market Testing",
+      },
+      {
+        timInovatorId: tim.id,
+        nomorSprint: 6,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-11-16T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-11-27T23:59:59.000Z"),
+        tujuan: "Penyelesaian Laporan Market Validation",
+      },
+    ];
+    await db.insert(sprint).values(defaultSprints).onConflictDoNothing();
 
     await logAudit({
       userId: user.id,

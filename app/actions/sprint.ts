@@ -25,15 +25,57 @@ export async function getSprintsByTimId(timId: string) {
     .where(eq(sprint.timInovatorId, timId))
     .orderBy(asc(sprint.nomorSprint));
 
-  // If no sprints exist yet, initialize 6 default sprints (Paket 24a)
+  // If no sprints exist yet, initialize 6 default sprints with official PIA Season 12 schedule
   if (list.length === 0) {
     const defaultSprints = [
-      { timInovatorId: timId, nomorSprint: 1, status: "belum_dimulai", tujuan: "Problem Validation & Setup" },
-      { timInovatorId: timId, nomorSprint: 2, status: "belum_dimulai", tujuan: "Solution Exploration & Prototyping" },
-      { timInovatorId: timId, nomorSprint: 3, status: "belum_dimulai", tujuan: "Customer Validation & Testing" },
-      { timInovatorId: timId, nomorSprint: 4, status: "belum_dimulai", tujuan: "MVP Development & Pilot Prep" },
-      { timInovatorId: timId, nomorSprint: 5, status: "belum_dimulai", tujuan: "Market Validation & Pilot Execution" },
-      { timInovatorId: timId, nomorSprint: 6, status: "belum_dimulai", tujuan: "Pitch & FMI Preparation" },
+      {
+        timInovatorId: timId,
+        nomorSprint: 1,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-09-07T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-09-18T23:59:59.000Z"),
+        tujuan: "Perencanaan Customer Validation",
+      },
+      {
+        timInovatorId: timId,
+        nomorSprint: 2,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-09-21T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-10-02T23:59:59.000Z"),
+        tujuan: "Laporan Customer Validation",
+      },
+      {
+        timInovatorId: timId,
+        nomorSprint: 3,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-10-05T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-10-16T23:59:59.000Z"),
+        tujuan: "Perencanaan Market Validation",
+      },
+      {
+        timInovatorId: timId,
+        nomorSprint: 4,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-10-19T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-10-30T23:59:59.000Z"),
+        tujuan: "Market Testing",
+      },
+      {
+        timInovatorId: timId,
+        nomorSprint: 5,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-11-02T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-11-13T23:59:59.000Z"),
+        tujuan: "Market Testing",
+      },
+      {
+        timInovatorId: timId,
+        nomorSprint: 6,
+        status: "belum_dimulai",
+        tanggalMulaiRencana: new Date("2026-11-16T00:00:00.000Z"),
+        tanggalSelesaiRencana: new Date("2026-11-27T23:59:59.000Z"),
+        tujuan: "Penyelesaian Laporan Market Validation",
+      },
     ];
 
     await db.insert(sprint).values(defaultSprints).onConflictDoNothing();
