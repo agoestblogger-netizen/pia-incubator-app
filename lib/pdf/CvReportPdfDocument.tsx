@@ -382,7 +382,7 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
           <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
             <Text style={styles.tableCellLabel}>Responden Aktual</Text>
             <Text style={styles.tableCellValue}>
-              Jumlah: {data.jumlahRespondenAktual ?? 0} responden {'\n'}
+              Jumlah: {data.jumlahRespondenAktual ? `${data.jumlahRespondenAktual} responden` : '-'} {'\n'}
               Profil: {data.profilRespondenAktual || '-'}
             </Text>
           </View>

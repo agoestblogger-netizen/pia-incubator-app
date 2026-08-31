@@ -278,13 +278,13 @@ export function CustomerValidationClient({
     problemHypothesis: initialData?.plan?.problemHypothesis || "",
     hmw: initialData?.plan?.hmw || "",
     solutionHypothesis: initialData?.plan?.solutionHypothesis || "",
-    prototypeType: initialData?.plan?.prototypeType || "Figma / Clickable Prototype",
+    prototypeType: initialData?.plan?.prototypeType || "",
     fiturAlurDiuji: initialData?.plan?.fiturAlurDiuji || "",
     skenarioUserTesting: initialData?.plan?.skenarioUserTesting || "",
     instrumenValidasi: initialData?.plan?.instrumenValidasi || "",
     targetEarlyAdopters: initialData?.plan?.targetEarlyAdopters || "",
     kriteriaSeleksi: initialData?.plan?.kriteriaSeleksi || "",
-    jumlahTargetResponden: initialData?.plan?.jumlahTargetResponden || 10,
+    jumlahTargetResponden: initialData?.plan?.jumlahTargetResponden ?? "",
     lokasiChannelTesting: initialData?.plan?.lokasiChannelTesting || "",
     metodeRekrutmen: initialData?.plan?.metodeRekrutmen || "",
     etikaPersetujuanData: initialData?.plan?.etikaPersetujuanData || "",
@@ -438,8 +438,8 @@ export function CustomerValidationClient({
     return DIMENSI_ROWS.slice(0, 4).map((d, i) => ({
       id: `default_d${i}`,
       dimensi: d.label,
-      fokusValidasi: d.fokus,
-      contohPertanyaan: d.contoh,
+      fokusValidasi: "",
+      contohPertanyaan: "",
       evidenceYangDikumpulkan: "",
     }));
   };
@@ -488,7 +488,7 @@ export function CustomerValidationClient({
     prototypeSolusiLink: initialData?.report?.prototypeSolusiLink || "",
     mekanismeUserTesting: initialData?.report?.mekanismeUserTesting || "",
     tanggalLokasiTesting: initialData?.report?.tanggalLokasiTesting || "",
-    jumlahRespondenAktual: initialData?.report?.jumlahRespondenAktual ?? 10,
+    jumlahRespondenAktual: initialData?.report?.jumlahRespondenAktual ?? "",
     profilRespondenAktual: initialData?.report?.profilRespondenAktual || "",
     kesimpulan: initialData?.report?.kesimpulan || "",
     ketercapaianPsf: initialData?.report?.ketercapaianPsf || "tercapai",
@@ -523,7 +523,7 @@ export function CustomerValidationClient({
       return {
         validasi: row.validasi,
         metrik: row.metrik,
-        target: rencana?.catatan || found?.target || row.kriteria,
+        target: rencana?.kriteriaKesuksesan || rencana?.catatan || found?.target || "",
         hasilAktual: found?.hasilAktual || "",
         interpretasi: found?.interpretasi || "",
         learning: found?.learning || "",
@@ -1361,9 +1361,10 @@ export function CustomerValidationClient({
                       <Input
                         type="number"
                         min={1}
+                        placeholder="10"
                         value={planForm.jumlahTargetResponden}
                         disabled={!canEditCv}
-                        onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: Number(e.target.value) })}
+                        onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: e.target.value ? Number(e.target.value) : ("" as any) })}
                       />
                     )}
                   </div>
@@ -1485,7 +1486,7 @@ export function CustomerValidationClient({
                                         newRows[globalIndex].fokusValidasi = e.target.value;
                                         setDimensiRows(newRows);
                                       }}
-                                      placeholder="Fokus Validasi"
+                                      placeholder={DIMENSI_ROWS.find(dr => dr.label.toLowerCase() === (d.dimensi || "").toLowerCase())?.fokus || "Fokus Validasi"}
                                       className="text-xs resize-none min-h-[32px] overflow-hidden"
                                       rows={1}
                                     />
@@ -1500,7 +1501,7 @@ export function CustomerValidationClient({
                                         newRows[globalIndex].contohPertanyaan = e.target.value;
                                         setDimensiRows(newRows);
                                       }}
-                                      placeholder="Contoh Pertanyaan"
+                                      placeholder={DIMENSI_ROWS.find(dr => dr.label.toLowerCase() === (d.dimensi || "").toLowerCase())?.contoh || "Contoh Pertanyaan"}
                                       className="text-xs resize-none min-h-[32px] overflow-hidden"
                                       rows={1}
                                     />
@@ -2424,8 +2425,9 @@ export function CustomerValidationClient({
                     <Input
                       type="number"
                       min={0}
+                      placeholder="10"
                       value={reportForm.jumlahRespondenAktual}
-                      onChange={(e) => setReportForm({ ...reportForm, jumlahRespondenAktual: parseInt(e.target.value, 10) || 0 })}
+                      onChange={(e) => setReportForm({ ...reportForm, jumlahRespondenAktual: e.target.value ? parseInt(e.target.value, 10) : ("" as any) })}
                     />
                   </div>
                   <div className="sm:col-span-2 space-y-1">

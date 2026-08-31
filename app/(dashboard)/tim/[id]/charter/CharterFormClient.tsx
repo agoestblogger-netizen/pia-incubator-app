@@ -176,8 +176,8 @@ export function CharterFormClient({
     feasibilityHypothesis: initialData?.feasibilityHypothesis || "",
     viabilityHypothesis: initialData?.viabilityHypothesis || "",
     linkProposal: initialData?.linkProposal || "",
-    ritmeKerja: initialData?.ritmeKerja || "Weekly Sprint & Standup 2x seminggu",
-    pacingMonitoring: initialData?.pacingMonitoring || "Review kemajuan bersama Coach tiap 2 minggu",
+    ritmeKerja: initialData?.ritmeKerja || "",
+    pacingMonitoring: initialData?.pacingMonitoring || "",
     kebutuhanDukungan: initialData?.kebutuhanDukungan || "",
     risikoAwal: initialData?.risikoAwal || "",
   });
@@ -1224,6 +1224,7 @@ export function CharterFormClient({
                 </label>
                 <Input
                   disabled={isReadOnly}
+                  placeholder="Contoh: Weekly Sprint & Standup 2x seminggu"
                   value={formData.ritmeKerja}
                   onChange={(e) => handleChange("ritmeKerja", e.target.value)}
                   className="disabled:bg-gray-50"
@@ -1236,6 +1237,7 @@ export function CharterFormClient({
                 </label>
                 <Input
                   disabled={isReadOnly}
+                  placeholder="Contoh: Review kemajuan bersama Coach tiap 2 minggu"
                   value={formData.pacingMonitoring}
                   onChange={(e) => handleChange("pacingMonitoring", e.target.value)}
                   className="disabled:bg-gray-50"

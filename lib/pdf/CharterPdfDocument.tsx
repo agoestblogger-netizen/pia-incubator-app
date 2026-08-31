@@ -289,7 +289,7 @@ function formatPersonsList(persons?: RolePerson[]): string {
     .join('\n');
 }
 
-function formatPersonsCommitment(persons?: RolePerson[], defaultText = '<Bentuk dukungan yang disepakati>'): string {
+function formatPersonsCommitment(persons?: RolePerson[], defaultText = '-'): string {
   if (!persons || persons.length === 0) return defaultText;
   const commitments = persons
     .map((p) => p.komitmenDukungan)
@@ -311,7 +311,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
             return `Sprint ${s.nomorSprint}: ${s.tujuan || 'Aktivitas Inkubasi'}${dateRange}`;
           })
           .join('\n')
-      : '<Sprint 1: MVP dasar; Sprint 2: release MVP 1.0; Sprint 3: traction; Sprint 4: MVP lanjutan/Product-Market Fit Validation. Sesuaikan dengan program final.>';
+      : '-';
 
   return (
     <Document title={`Innovation Charter - ${data.namaProyekInovasi || 'PIA'}`}>
@@ -330,105 +330,105 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Nama Proyek Inovasi</Text>
             <Text style={[styles.tableCellValue, { fontWeight: 'bold' }]}>
-              {fmtVal(data.namaProyekInovasi, '<Nama Proyek Inovasi yang diajukan>')}
+              {fmtVal(data.namaProyekInovasi)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Kategori PIA</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.kategoriPia, '<Kategori PIA Season 12>')}
+              {fmtVal(data.kategoriPia)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Klasifikasi Inovasi</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.klasifikasiInovasi, '<BREAKTHROUGH / IMPROVEMENT / BEST PRACTICE>')}
+              {fmtVal(data.klasifikasiInovasi)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Project Mission</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.projectMission, '<Rumusan aspiratif, kuantitatif, dan time-bound. Contoh: Meningkatkan X sebesar Y dalam Z bulan melalui ...>')}
+              {fmtVal(data.projectMission)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Customer / Early Adopters Utama</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.customerEarlyAdopters, '<Segmen customer/pengguna prioritas yang akan dibantu dan diuji.>')}
+              {fmtVal(data.customerEarlyAdopters)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Context / Area Bantuan</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.contextAreaBantuan, '<Dalam hal apa customer ingin dibantu; gunakan sudut pandang customer dan tidak mengarah pada solusi.>')}
+              {fmtVal(data.contextAreaBantuan)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Problem Worth Solving</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.problemWorthSolving, '<Masalah utama/serumpun masalah yang paling berat dan layak diselesaikan, beserta bukti awal.>')}
+              {fmtVal(data.problemWorthSolving)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>How Might We (HMW)</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.hmw, '<Rumusan pertanyaan peluang: Bagaimana kita dapat membantu [customer] untuk [outcome] dalam konteks [area bantuan], tanpa langsung mengunci solusi?>')}
+              {fmtVal(data.hmw)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Opportunity Statement</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.opportunityStatement, '<Peluang nilai/manfaat yang dapat diciptakan bila masalah terselesaikan.>')}
+              {fmtVal(data.opportunityStatement)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Business Opportunity</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.businessOpportunity, '<Peluang bisnis/operasional yang dapat ditangkap: revenue, cost saving, productivity, risk mitigation, customer experience, atau manfaat strategis lainnya.>')}
+              {fmtVal(data.businessOpportunity)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Solusi Awal</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.solusiAwal, '<Nama dan deskripsi singkat solusi.>')}
+              {fmtVal(data.solusiAwal)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Desirability Hypothesis</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.desirabilityHypothesis, '<Asumsi mengapa customer akan membutuhkan, menggunakan, merekomendasikan, atau bersedia membayar/mengadopsi solusi.>')}
+              {fmtVal(data.desirabilityHypothesis)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Feasibility Hypothesis</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.feasibilityHypothesis, '<Asumsi awal tentang kesiapan proses, sistem, teknologi, data, SDM, dan operasional untuk menjalankan solusi.>')}
+              {fmtVal(data.feasibilityHypothesis)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Viability Hypothesis</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.viabilityHypothesis, '<Asumsi awal tentang manfaat bisnis, cost-benefit, potensi skala, dan keberlanjutan solusi.>')}
+              {fmtVal(data.viabilityHypothesis)}
             </Text>
           </View>
 
           <View style={[styles.tableRow, { borderBottomWidth: 0 }]} wrap={false}>
             <Text style={styles.tableCellLabel}>Link Proposal / Pitch Deck / Prototype Awal</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.linkProposal, '<Tautan dokumen pendukung.>')}
+              {fmtVal(data.linkProposal)}
             </Text>
           </View>
         </View>
@@ -468,7 +468,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
               Menjadi calon rumah Inovasi, memberi perspektif bisnis, akses, dan dukungan operasional.
             </Text>
             <Text style={[styles.tableDataCell, { width: '26%', borderRightWidth: 0 }]}>
-              {formatPersonsCommitment(data.roles?.promotor, '<Bentuk dukungan yang disepakati>')}
+              {formatPersonsCommitment(data.roles?.promotor)}
             </Text>
           </View>
 
@@ -482,7 +482,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
               Mengelola visi produk, prioritas backlog, scope MVP, dan keputusan produk.
             </Text>
             <Text style={[styles.tableDataCell, { width: '26%', borderRightWidth: 0 }]}>
-              {formatPersonsCommitment(data.roles?.projectOwner, '<Keputusan yang menjadi mandat PO>')}
+              {formatPersonsCommitment(data.roles?.projectOwner)}
             </Text>
           </View>
 
@@ -496,7 +496,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
               Mendefinisikan customer, context, problem, opportunity, dan solusi tervalidasi.
             </Text>
             <Text style={[styles.tableDataCell, { width: '26%', borderRightWidth: 0 }]}>
-              {formatPersonsCommitment(data.roles?.inisiator, '<Tanggung jawab utama>')}
+              {formatPersonsCommitment(data.roles?.inisiator)}
             </Text>
           </View>
 
@@ -510,7 +510,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
               Mengembangkan prototype/MVP, menjalankan task list, testing, dan dokumentasi.
             </Text>
             <Text style={[styles.tableDataCell, { width: '26%', borderRightWidth: 0 }]}>
-              {formatPersonsCommitment(data.roles?.coCreators, '<Tanggung jawab utama>')}
+              {formatPersonsCommitment(data.roles?.coCreators)}
             </Text>
           </View>
 
@@ -524,7 +524,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
               Memfasilitasi metodologi, koordinasi, monitoring, dan capability building.
             </Text>
             <Text style={[styles.tableDataCell, { width: '26%', borderRightWidth: 0 }]}>
-              {formatPersonsCommitment(data.roles?.coach, '<Ritme coaching/pacing>')}
+              {formatPersonsCommitment(data.roles?.coach)}
             </Text>
           </View>
 
@@ -538,7 +538,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
               Memberikan expertise, akses data/sistem, review, atau dukungan lintas fungsi sesuai kebutuhan.
             </Text>
             <Text style={[styles.tableDataCell, { width: '26%', borderRightWidth: 0 }]}>
-              {formatPersonsCommitment(data.roles?.sme, '<Bentuk kolaborasi dan deliverable yang disepakati>')}
+              {formatPersonsCommitment(data.roles?.sme)}
             </Text>
           </View>
         </View>
@@ -549,7 +549,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Ritme Kerja</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.ritmeKerja, '<Cycle meeting, sprint planning, sprint review, retrospective, dan kanal komunikasi.>')}
+              {fmtVal(data.ritmeKerja)}
             </Text>
           </View>
 
@@ -563,21 +563,21 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Pacing dan Monitoring</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.pacingMonitoring, '<Pacer/Innovation Coach, frekuensi update, format progress, dan eskalasi hambatan.>')}
+              {fmtVal(data.pacingMonitoring)}
             </Text>
           </View>
 
           <View style={styles.tableRow} wrap={false}>
             <Text style={styles.tableCellLabel}>Kebutuhan Dukungan</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.kebutuhanDukungan, '<Akses data, approval, sistem, budget, early adopters, promosi terbatas, vendor, SME.>')}
+              {fmtVal(data.kebutuhanDukungan)}
             </Text>
           </View>
 
           <View style={[styles.tableRow, { borderBottomWidth: 0 }]} wrap={false}>
             <Text style={styles.tableCellLabel}>Risiko Awal</Text>
             <Text style={styles.tableCellValue}>
-              {fmtVal(data.risikoAwal, '<Risiko regulasi, operasional, IT, data privacy, adopsi pengguna, budget, timeline.>')}
+              {fmtVal(data.risikoAwal)}
             </Text>
           </View>
         </View>
@@ -614,16 +614,16 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
                   {item.sprintNumber ? `Sprint ${item.sprintNumber}` : '-'}
                 </Text>
                 <Text style={[styles.tableDataCell, { width: '25%' }]}>
-                  {fmtVal(item.acceptanceCriteria, '<Output yang dapat didemonstrasikan dan kriteria selesai>')}
+                  {fmtVal(item.acceptanceCriteria)}
                 </Text>
                 <Text style={[styles.tableDataCell, { width: '14%' }]}>
-                  {fmtVal(item.ownerName, '<Owner>')}
+                  {fmtVal(item.ownerName)}
                 </Text>
                 <Text style={[styles.tableDataCell, { width: '16%' }]}>
-                  {fmtVal(item.dependencyRisiko, '<Dependency>')}
+                  {fmtVal(item.dependencyRisiko)}
                 </Text>
                 <Text style={[styles.tableDataCell, { width: '12%', borderRightWidth: 0 }]}>
-                  {fmtVal(item.timeline, '<Tanggal>')}
+                  {fmtVal(item.timeline)}
                 </Text>
               </View>
             ))

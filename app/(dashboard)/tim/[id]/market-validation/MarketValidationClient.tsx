@@ -299,16 +299,16 @@ export function MarketValidationClient({
   // ── Plan Form State ────────────────────────────────────────────────────────
   const [planForm, setPlanForm] = useState({
     hasilCustomerValidationRingkasan: defaultHasilCv,
-    mvpVersion: initialData?.plan?.mvpVersion || "v1.0-pilot",
-    channelRelease: initialData?.plan?.channelRelease || "Internal Web Pilot",
+    mvpVersion: initialData?.plan?.mvpVersion || "",
+    channelRelease: initialData?.plan?.channelRelease || "",
     periodeReleaseMulai: formatDateForInput(initialData?.plan?.periodeReleaseMulai),
     periodeReleaseSelesai: formatDateForInput(initialData?.plan?.periodeReleaseSelesai),
     deskripsiMvp: initialData?.plan?.deskripsiMvp || "",
     deskripsiProsesMvp: initialData?.plan?.deskripsiProsesMvp || "",
     fiturMvpDirilis: initialData?.plan?.fiturMvpDirilis || "",
-    targetEarlyAdopters: initialData?.plan?.targetEarlyAdopters || "50 Pengguna Aktif",
-    lokasiPilot: initialData?.plan?.lokasiPilot || "3 Kantor Cabang Percontohan",
-    jumlahTargetPengguna: initialData?.plan?.jumlahTargetPengguna || 50,
+    targetEarlyAdopters: initialData?.plan?.targetEarlyAdopters || "",
+    lokasiPilot: initialData?.plan?.lokasiPilot || "",
+    jumlahTargetPengguna: initialData?.plan?.jumlahTargetPengguna ?? "",
     daftarEarlyAdopters: initialData?.plan?.daftarEarlyAdopters || "",
     batasanScopeMvp: initialData?.plan?.batasanScopeMvp || "",
     dataDukungMvp: Array.isArray(initialData?.plan?.dataDukungMvp)
@@ -426,13 +426,13 @@ export function MarketValidationClient({
       return {
         validasi: row.validasi,
         metrik: row.metrik,
-        unitUkuran: found?.unitUkuran || row.unitUkuran,
-        baseline: found?.baseline || row.baseline,
-        target: found?.target || row.target,
-        threshold: found?.threshold || row.threshold,
-        caraPengukuran: found?.caraPengukuran || row.caraPengukuran,
-        pic: found?.pic || row.pic,
-        evidence: found?.evidence || row.evidence,
+        unitUkuran: found?.unitUkuran || "",
+        baseline: found?.baseline || "",
+        target: found?.target || "",
+        threshold: found?.threshold || "",
+        caraPengukuran: found?.caraPengukuran || "",
+        pic: found?.pic || "",
+        evidence: found?.evidence || "",
       };
     });
   });
@@ -758,8 +758,8 @@ export function MarketValidationClient({
 
   // ── Report Tab (Tab 3) State & Signatures ───────────────────────────────────
   const [reportForm, setReportForm] = useState({
-    mvpVersionDilaporkan: initialData?.report?.mvpVersionDilaporkan || "v1.0-pilot",
-    jumlahEarlyAdoptersAktual: initialData?.report?.jumlahEarlyAdoptersAktual || 45,
+    mvpVersionDilaporkan: initialData?.report?.mvpVersionDilaporkan || "",
+    jumlahEarlyAdoptersAktual: initialData?.report?.jumlahEarlyAdoptersAktual ?? "",
     ringkasanAktivitasRilis: initialData?.report?.ringkasanAktivitasRilis || "",
     kendalaUtama: initialData?.report?.kendalaUtama || "",
     kesimpulanPmf: initialData?.report?.kesimpulanPmf || "",
@@ -1219,6 +1219,7 @@ export function MarketValidationClient({
                       disabled={!canEdit}
                       type="number"
                       min={1}
+                      placeholder="50"
                       value={planForm.jumlahTargetPengguna}
                       onChange={(e) =>
                         setPlanForm({
@@ -1650,96 +1651,106 @@ export function MarketValidationClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {metrikList.map((m, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
-                          <td className="p-2.5 align-top bg-gray-50/50">
-                            <span
-                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
-                                m.validasi === "Desirability"
-                                  ? "bg-amber-100 text-amber-900"
-                                  : m.validasi === "Feasibility"
-                                  ? "bg-blue-100 text-blue-900"
-                                  : "bg-purple-100 text-purple-900"
-                              }`}
-                            >
-                              {m.validasi}
-                            </span>
-                          </td>
-                          <td className="p-2.5 align-top font-bold text-gray-800 text-[11px]">
-                            {m.metrik}
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.unitUkuran}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "unitUkuran", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white"
-                            />
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.baseline}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "baseline", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white"
-                            />
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.target}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "target", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white font-semibold"
-                            />
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.threshold}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "threshold", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white"
-                            />
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.caraPengukuran}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "caraPengukuran", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white text-[11px]"
-                            />
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.pic}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "pic", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white"
-                            />
-                          </td>
-                          <td className="p-2 align-top">
-                            <Input
-                              disabled={!canEdit}
-                              value={m.evidence}
-                              onChange={(e) =>
-                                handleUpdateMetrik(idx, "evidence", e.target.value)
-                              }
-                              className="text-xs h-8 bg-white text-[11px]"
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {metrikList.map((m, idx) => {
+                        const rowMeta = MV_METRIK_ROWS.find((r) => r.metrik === m.metrik);
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
+                            <td className="p-2.5 align-top bg-gray-50/50">
+                              <span
+                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                                  m.validasi === "Desirability"
+                                    ? "bg-amber-100 text-amber-900"
+                                    : m.validasi === "Feasibility"
+                                    ? "bg-blue-100 text-blue-900"
+                                    : "bg-purple-100 text-purple-900"
+                                }`}
+                              >
+                                {m.validasi}
+                              </span>
+                            </td>
+                            <td className="p-2.5 align-top font-bold text-gray-800 text-[11px]">
+                              {m.metrik}
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.unitUkuran || "Unit..."}
+                                value={m.unitUkuran}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "unitUkuran", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.baseline || "Baseline..."}
+                                value={m.baseline}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "baseline", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.target || "Target..."}
+                                value={m.target}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "target", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white font-semibold"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.threshold || "Threshold..."}
+                                value={m.threshold}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "threshold", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.caraPengukuran || "Cara pengukuran..."}
+                                value={m.caraPengukuran}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "caraPengukuran", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white text-[11px]"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.pic || "PIC..."}
+                                value={m.pic}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "pic", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={rowMeta?.evidence || "Evidence..."}
+                                value={m.evidence}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "evidence", e.target.value)
+                                }
+                                className="text-xs h-8 bg-white text-[11px]"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2202,7 +2213,7 @@ export function MarketValidationClient({
                   <div>
                     <span className="text-[10px] text-gray-400 font-bold uppercase block">Versi MVP</span>
                     <span className="text-xs font-extrabold text-gray-900">
-                      {initialData?.report?.mvpVersionDilaporkan || initialData?.plan?.mvpVersion || "v1.0-pilot"}
+                      {initialData?.report?.mvpVersionDilaporkan || initialData?.plan?.mvpVersion || "-"}
                     </span>
                   </div>
                   <div>
@@ -2228,6 +2239,7 @@ export function MarketValidationClient({
                     <Input
                       disabled={!canEdit}
                       type="number"
+                      placeholder="0"
                       value={reportForm.jumlahEarlyAdoptersAktual}
                       onChange={(e) =>
                         setReportForm({

@@ -289,7 +289,7 @@ export function MvReportPdfDocument({
         <View style={styles.table}>
           <View style={styles.tableRow}>
             <Text style={styles.tableCellLabel}>Versi MVP Dilaporkan</Text>
-            <Text style={styles.tableCellValue}>{report?.mvpVersionDilaporkan || plan?.mvpVersion || 'v1.0-pilot'}</Text>
+            <Text style={styles.tableCellValue}>{report?.mvpVersionDilaporkan || plan?.mvpVersion || '-'}</Text>
           </View>
           <View style={styles.tableRow}>
             <Text style={styles.tableCellLabel}>Periode Rilis</Text>
@@ -307,7 +307,7 @@ export function MvReportPdfDocument({
           <View style={styles.tableRow}>
             <Text style={styles.tableCellLabel}>Pengguna Aktif Aktual (Adopters)</Text>
             <Text style={styles.tableCellValue}>
-              {report?.jumlahEarlyAdoptersAktual ?? plan?.jumlahTargetPengguna ?? 0} Pengguna Aktif
+              {(report?.jumlahEarlyAdoptersAktual ?? plan?.jumlahTargetPengguna) ? `${report?.jumlahEarlyAdoptersAktual ?? plan?.jumlahTargetPengguna} Pengguna Aktif` : '-'}
             </Text>
           </View>
           <View style={styles.tableRow}>
