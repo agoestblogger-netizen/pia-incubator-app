@@ -26,7 +26,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
   Plus,
+  ChevronDown,
   Wallet,
   FileText,
   CheckCircle2,
@@ -141,6 +147,80 @@ const SATUAN_SUGGESTIONS = [
   "Sesi",
   "Lisensi",
 ];
+
+function SatuanInputCombobox({
+  value,
+  onChange,
+  disabled,
+  className = "h-8 text-xs",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative flex items-center w-full min-w-[90px]">
+        <Input
+          type="text"
+          required
+          list="satuan-options"
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          onClick={() => setOpen(true)}
+          placeholder="Satuan..."
+          className={`${className} pr-7 font-medium`}
+        />
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            tabIndex={-1}
+            disabled={disabled}
+            className="absolute right-1 text-gray-400 hover:text-gray-700 p-0.5 cursor-pointer rounded"
+            title="Pilih rekomendasi satuan"
+          >
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180 text-[#0F5132]" : ""}`} />
+          </button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="w-44 p-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto"
+      >
+        <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+          Pilih Satuan:
+        </div>
+        <div className="py-1 space-y-0.5">
+          {SATUAN_SUGGESTIONS.map((s) => {
+            const isSelected = value?.toLowerCase() === s.toLowerCase();
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  onChange(s);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-2.5 py-1 text-xs rounded-lg transition-colors flex items-center justify-between hover:bg-emerald-50 hover:text-[#0F5132] cursor-pointer ${
+                  isSelected ? "bg-emerald-50 text-[#0F5132] font-bold" : "text-gray-700"
+                }`}
+              >
+                <span>{s}</span>
+                {isSelected && <Check className="h-3 w-3 text-[#0F5132]" />}
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function KeuanganClient({
   timId,
@@ -1786,13 +1866,9 @@ export function KeuanganClient({
                           />
                         </td>
                         <td className="p-2">
-                          <Input
-                            type="text"
-                            required
-                            placeholder="Paket / Org / Bln"
-                            list="satuan-options"
+                          <SatuanInputCombobox
                             value={item.satuan}
-                            onChange={(e) => handleUpdateRabRow(item.id, "satuan", e.target.value)}
+                            onChange={(val) => handleUpdateRabRow(item.id, "satuan", val)}
                             className="h-8 text-xs"
                           />
                         </td>
@@ -2236,12 +2312,10 @@ export function KeuanganClient({
                           />
                         </td>
                         <td className="p-1.5">
-                          <Input
-                            type="text"
-                            list="satuan-options"
+                          <SatuanInputCombobox
                             value={item.satuan}
-                            onChange={(e) =>
-                              handleUpdateRabRow(item.id, "satuan", e.target.value, true)
+                            onChange={(val) =>
+                              handleUpdateRabRow(item.id, "satuan", val, true)
                             }
                             className="h-7 text-xs"
                           />
