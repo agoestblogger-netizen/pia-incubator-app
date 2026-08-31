@@ -55,6 +55,7 @@ import {
   Calendar,
   DollarSign,
   CheckCheck,
+  Download,
 } from "lucide-react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import { SignaturePadModal } from "@/components/ui/SignaturePad";
@@ -1245,6 +1246,18 @@ export function KeuanganClient({
                         <span>Lihat Formulir &amp; RAB</span>
                       </button>
 
+                      {/* Tombol Unduh PDF RAB */}
+                      <a
+                        href={`/api/pdf/rab/${item.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-700 hover:text-emerald-900 hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
+                        title="Unduh Formulir Pengajuan Anggaran (RAB) format PDF"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Unduh PDF</span>
+                      </a>
+
                       {item.fileDokumenUrl && (
                         <a
                           href={item.fileDokumenUrl}
@@ -1358,18 +1371,31 @@ export function KeuanganClient({
                           <span className="text-[10px] text-gray-500">
                             Dikirim: {formatDateIndo(item.lpj.tanggalKirim)}
                           </span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              setDetailLpjModal({ open: true, item: item.lpj, rabItem: item })
-                            }
-                            className="text-xs h-7 px-2.5 font-semibold text-[#0F5132] border-emerald-300 hover:bg-emerald-50 gap-1 cursor-pointer"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>Lihat Detail LPJ</span>
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setDetailLpjModal({ open: true, item: item.lpj, rabItem: item })
+                              }
+                              className="text-xs h-7 px-2.5 font-semibold text-[#0F5132] border-emerald-300 hover:bg-emerald-50 gap-1 cursor-pointer"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>Lihat Detail LPJ</span>
+                            </Button>
+
+                            <a
+                              href={`/api/pdf/lpj/${item.lpj.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs h-7 px-2.5 rounded-lg font-semibold text-emerald-800 bg-white border border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                              title="Unduh Laporan Pertanggungjawaban (LPJ) format PDF"
+                            >
+                              <Download className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Unduh PDF</span>
+                            </a>
+                          </div>
                         </div>
                       ) : (
                         (() => {
@@ -2713,7 +2739,17 @@ export function KeuanganClient({
                 </div>
               )}
 
-              <DialogFooter className="pt-3 border-t border-gray-100">
+              <DialogFooter className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                <a
+                  href={`/api/pdf/rab/${detailModal.item.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer mr-auto"
+                  title="Unduh Formulir Pengajuan Anggaran (RAB) format PDF"
+                >
+                  <Download className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Unduh PDF RAB</span>
+                </a>
                 <Button
                   type="button"
                   variant="outline"
@@ -3638,7 +3674,17 @@ export function KeuanganClient({
                   </div>
                 </div>
 
-                <DialogFooter className="pt-2 border-t border-gray-100">
+                <DialogFooter className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                  <a
+                    href={`/api/pdf/lpj/${detailLpjModal.item.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer mr-auto"
+                    title="Unduh Laporan Pertanggungjawaban (LPJ) format PDF"
+                  >
+                    <Download className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Unduh PDF LPJ</span>
+                  </a>
                   <Button
                     type="button"
                     variant="outline"
