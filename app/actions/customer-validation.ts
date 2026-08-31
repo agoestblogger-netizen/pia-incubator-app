@@ -818,7 +818,7 @@ export async function signCvPlanAction(
       unit: anggota?.unitKerja || 'PT Pegadaian (Persero)',
       tanggal: new Date().toISOString(),
       email: user.email,
-      status: 'approved',
+      status: 'signed',
       disetujui: true,
       signatureImage: processedImageUrl,
     };
@@ -835,11 +835,11 @@ export async function signCvPlanAction(
     };
 
     if (roleType === 'inisiator') {
-      updatePayload.ttdInisiator = ttdData;
+      updatePayload.ttdDisusun = ttdData;
     } else if (roleType === 'coach') {
-      updatePayload.ttdCoach = ttdData;
+      updatePayload.ttdDiperiksa = ttdData;
     } else {
-      updatePayload.ttdPo = ttdData;
+      updatePayload.ttdDisetujui = ttdData;
     }
 
     if (existing) {

@@ -368,11 +368,15 @@ export function CustomerValidationClient({
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
+  // Helper untuk memvalidasi apakah blok tanda tangan sudah terisi sah
+  const isSigned = (ttd: any) =>
+    Boolean(ttd && (ttd.status === "signed" || ttd.status === "approved" || ttd.signatureImage || ttd.disetujui));
+
   // Land on 'backlog' by default if all 3 plan signatures are complete
   const allPlanSignedOnLoad = Boolean(
-    initialData?.plan?.ttdDisusun?.status === "signed" &&
-    initialData?.plan?.ttdDiperiksa?.status === "signed" &&
-    initialData?.plan?.ttdDisetujui?.status === "signed"
+    isSigned(initialData?.plan?.ttdDisusun) &&
+    isSigned(initialData?.plan?.ttdDiperiksa) &&
+    isSigned(initialData?.plan?.ttdDisetujui)
   );
 
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -746,7 +750,9 @@ export function CustomerValidationClient({
           if (roleType === 'po') setReportTtdDisetujui(res.signatureData);
           toast.success("Tanda tangan digital Laporan CV berhasil dibubuhkan.", "Tanda Tangan Berhasil");
         } else {
-          toast.error(res.error || "Gagal menandatangani Laporan CV.", "Gagal");
+          const errMsg = res.error || "Gagal menandatangani Laporan CV.";
+          toast.error(errMsg, "Gagal Menandatangani");
+          throw new Error(errMsg);
         }
       } else {
         const res = await signCvPlanAction(timId, roleType, dataUrl);
@@ -756,11 +762,14 @@ export function CustomerValidationClient({
           if (roleType === 'po') setTtdDisetujui(res.signatureData);
           toast.success("Tanda tangan digital berhasil dibubuhkan.", "Tanda Tangan Berhasil");
         } else {
-          toast.error(res.error || "Gagal menandatangani.", "Gagal");
+          const errMsg = res.error || "Gagal menandatangani.";
+          toast.error(errMsg, "Gagal Menandatangani");
+          throw new Error(errMsg);
         }
       }
     } catch (err: any) {
-      toast.error(err.message || "Gagal menandatangani.", "Gagal");
+      toast.error(err.message || "Gagal menandatangani.", "Kesalahan Sistem");
+      throw err;
     } finally {
       setSigningRole(null);
     }
@@ -1809,7 +1818,7 @@ export function CustomerValidationClient({
                   {/* Kartu 1: Inisiator */}
                   <div
                     className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
-                      ttdDisusun?.status === 'signed'
+                      isSigned(ttdDisusun)
                         ? 'border-emerald-300 bg-emerald-50/40'
                         : 'border-dashed border-gray-200 bg-gray-50/70'
                     }`}
@@ -1818,7 +1827,7 @@ export function CustomerValidationClient({
                       <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
                         Disusun Oleh
                       </span>
-                      {ttdDisusun?.status === 'signed' ? (
+                      {isSigned(ttdDisusun) ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle className="h-3 w-3 text-emerald-600" />
                           <span>Ditandatangani</span>
@@ -1831,7 +1840,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      {ttdDisusun?.status === 'signed' ? (
+                      {isSigned(ttdDisusun) ? (
                         <>
                           <div className="font-bold text-gray-900">{inisiatorCharterName || ttdDisusun.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
@@ -1878,7 +1887,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {ttdDisusun?.status === 'signed' ? (
+                      {isSigned(ttdDisusun) ? (
                         canSignAsInisiator ? (
                           <Button
                             type="button"
@@ -1922,7 +1931,7 @@ export function CustomerValidationClient({
                   {/* Kartu 2: Innovation Coach */}
                   <div
                     className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
-                      ttdDiperiksa?.status === 'signed'
+                      isSigned(ttdDiperiksa)
                         ? 'border-emerald-300 bg-emerald-50/40'
                         : 'border-dashed border-gray-200 bg-gray-50/70'
                     }`}
@@ -1931,7 +1940,7 @@ export function CustomerValidationClient({
                       <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
                         Diperiksa Oleh
                       </span>
-                      {ttdDiperiksa?.status === 'signed' ? (
+                      {isSigned(ttdDiperiksa) ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle className="h-3 w-3 text-emerald-600" />
                           <span>Ditandatangani</span>
@@ -1944,7 +1953,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      {ttdDiperiksa?.status === 'signed' ? (
+                      {isSigned(ttdDiperiksa) ? (
                         <>
                           <div className="font-bold text-gray-900">{coachCharterName || ttdDiperiksa.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
@@ -1991,7 +2000,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {ttdDiperiksa?.status === 'signed' ? (
+                      {isSigned(ttdDiperiksa) ? (
                         canSignAsCoach ? (
                           <Button
                             type="button"
@@ -2035,7 +2044,7 @@ export function CustomerValidationClient({
                   {/* Kartu 3: Project Owner */}
                   <div
                     className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
-                      ttdDisetujui?.status === 'signed'
+                      isSigned(ttdDisetujui)
                         ? 'border-emerald-300 bg-emerald-50/40'
                         : 'border-dashed border-gray-200 bg-gray-50/70'
                     }`}
@@ -2044,7 +2053,7 @@ export function CustomerValidationClient({
                       <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
                         Disetujui Oleh
                       </span>
-                      {ttdDisetujui?.status === 'signed' ? (
+                      {isSigned(ttdDisetujui) ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle className="h-3 w-3 text-emerald-600" />
                           <span>Ditandatangani</span>
@@ -2057,7 +2066,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      {ttdDisetujui?.status === 'signed' ? (
+                      {isSigned(ttdDisetujui) ? (
                         <>
                           <div className="font-bold text-gray-900">{poCharterName || ttdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
@@ -2104,7 +2113,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {ttdDisetujui?.status === 'signed' ? (
+                      {isSigned(ttdDisetujui) ? (
                         canSignAsPo ? (
                           <Button
                             type="button"
@@ -2804,7 +2813,7 @@ export function CustomerValidationClient({
                       <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                         Disusun Oleh
                       </span>
-                      {reportTtdDisusun?.status === 'signed' ? (
+                      {isSigned(reportTtdDisusun) ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle className="h-3 w-3 text-emerald-600" />
                           <span>Ditandatangani</span>
@@ -2817,7 +2826,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      {reportTtdDisusun?.status === 'signed' ? (
+                      {isSigned(reportTtdDisusun) ? (
                         <>
                           <div className="font-bold text-gray-900">{inisiatorCharterName || reportTtdDisusun.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
@@ -2864,7 +2873,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {reportTtdDisusun?.status === 'signed' ? (
+                      {isSigned(reportTtdDisusun) ? (
                         canSignReportAsInisiator ? (
                           <Button
                             type="button"
@@ -2911,7 +2920,7 @@ export function CustomerValidationClient({
                       <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                         Diperiksa Oleh
                       </span>
-                      {reportTtdDiperiksa?.status === 'signed' ? (
+                      {isSigned(reportTtdDiperiksa) ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle className="h-3 w-3 text-emerald-600" />
                           <span>Ditandatangani</span>
@@ -2924,7 +2933,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      {reportTtdDiperiksa?.status === 'signed' ? (
+                      {isSigned(reportTtdDiperiksa) ? (
                         <>
                           <div className="font-bold text-gray-900">{coachCharterName || reportTtdDiperiksa.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
@@ -2971,7 +2980,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {reportTtdDiperiksa?.status === 'signed' ? (
+                      {isSigned(reportTtdDiperiksa) ? (
                         canSignReportAsCoach ? (
                           <Button
                             type="button"
@@ -3018,7 +3027,7 @@ export function CustomerValidationClient({
                       <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                         Disetujui Oleh
                       </span>
-                      {reportTtdDisetujui?.status === 'signed' ? (
+                      {isSigned(reportTtdDisetujui) ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                           <CheckCircle className="h-3 w-3 text-emerald-600" />
                           <span>Ditandatangani</span>
@@ -3031,7 +3040,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="text-xs">
-                      {reportTtdDisetujui?.status === 'signed' ? (
+                      {isSigned(reportTtdDisetujui) ? (
                         <>
                           <div className="font-bold text-gray-900">{poCharterName || reportTtdDisetujui.nama}</div>
                           <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
@@ -3078,7 +3087,7 @@ export function CustomerValidationClient({
                     </div>
 
                     <div className="pt-2 border-t border-gray-200/60">
-                      {reportTtdDisetujui?.status === 'signed' ? (
+                      {isSigned(reportTtdDisetujui) ? (
                         canSignReportAsPo ? (
                           <Button
                             type="button"
