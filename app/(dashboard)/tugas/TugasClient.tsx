@@ -60,7 +60,7 @@ export function TugasClient({ initialSummary }: { initialSummary: MyTasksSummary
     },
     {
       id: "kanban",
-      label: "Kartu Kanban Saya",
+      label: "Kartu Board Sprint Saya",
       count: summary.tasksByCategory.kanban.length,
       icon: CheckSquare,
     },
@@ -131,7 +131,7 @@ export function TugasClient({ initialSummary }: { initialSummary: MyTasksSummary
             Tugas & Tindak Lanjut Saya
           </h1>
           <p className="text-sm text-green-100/90 leading-relaxed">
-            Daftar tugas yang memerlukan persetujuan, otorisasi, penginputan keputusan, atau penyelesaian kartu Kanban Anda.
+            Daftar tugas yang memerlukan persetujuan, otorisasi, penginputan keputusan, atau penyelesaian kartu Board Sprint Anda.
           </p>
         </div>
 

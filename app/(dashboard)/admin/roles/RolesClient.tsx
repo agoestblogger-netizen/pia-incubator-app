@@ -804,7 +804,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                     <tr key={modul} className="group">
                       <td colSpan={rolesList.length + 1} className="p-0">
                         <div className="bg-gray-100/70 font-bold text-gray-800 px-3.5 py-1.5 uppercase text-[10px] tracking-wider">
-                          Modul: {modul.replace("_", " ")}
+                          Modul: {modul === "kanban" ? "BOARD SPRINT" : modul.replace("_", " ")}
                         </div>
                         <table className="w-full border-collapse">
                           <tbody>
@@ -817,7 +817,13 @@ export function RolesClient({ initialData }: { initialData: any }) {
                                   <div className="font-semibold text-gray-900 font-mono text-[11px]">
                                     {p.kodePermission}
                                   </div>
-                                  <div className="text-gray-500 text-[11px]">{p.deskripsi}</div>
+                                  <div className="text-gray-500 text-[11px]">
+                                    {p.deskripsi
+                                      ?.replace(/kanban board/gi, "Board Sprint")
+                                      .replace(/board kanban/gi, "Board Sprint")
+                                      .replace(/kartu kanban/gi, "kartu Board Sprint")
+                                      .replace(/kanban/gi, "Board Sprint")}
+                                  </div>
                                 </td>
                                 {rolesList.map((r: any) => {
                                   const allowed = isAllowed(r.id, p.id);

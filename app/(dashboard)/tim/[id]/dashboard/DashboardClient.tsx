@@ -183,7 +183,7 @@ export function DashboardClient({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#3E9463] hover:bg-[#2d7a50] text-white transition-all shadow-md hover:shadow-lg"
           >
             <Layers className="h-3.5 w-3.5" />
-            <span>Buka Kanban Board</span>
+            <span>Buka Board Sprint</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -340,7 +340,7 @@ export function DashboardClient({
                 Belum ada sprint yang sedang aktif
               </p>
               <p className="text-[11px] text-gray-500 max-w-sm mx-auto">
-                Mulai sprint melalui panel Sprint Planning di Kanban Board untuk mengaktifkan pelacakan progress real-time.
+                Mulai sprint melalui panel Sprint Planning di Board Sprint untuk mengaktifkan pelacakan progress real-time.
               </p>
             </div>
           )}
@@ -601,7 +601,7 @@ export function DashboardClient({
           <CardContent className="pt-4">
             {recentActivities.length === 0 ? (
               <div className="py-8 text-center text-xs text-gray-400 italic">
-                Belum ada aktivitas tercatat pada kartu kanban tim ini.
+                Belum ada aktivitas tercatat pada kartu Board Sprint tim ini.
               </div>
             ) : (
               <div className="space-y-3">

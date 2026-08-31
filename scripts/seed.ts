@@ -62,7 +62,7 @@ const DEFAULT_ROLES = [
   {
     kodeRole: 'sme',
     namaRole: 'Collaborator / SME',
-    deskripsi: 'Subject Matter Expert yang memberikan masukan teknis dan review pada kartu kanban.',
+    deskripsi: 'Subject Matter Expert yang memberikan masukan teknis dan review pada kartu Board Sprint.',
     scope: 'per_tim',
     isDefault: true,
   },
@@ -86,12 +86,12 @@ const DEFAULT_PERMISSIONS = [
   { kodePermission: 'charter.edit', modul: 'charter', deskripsi: 'Menyusun dan mengedit charter' },
   { kodePermission: 'charter.view', modul: 'charter', deskripsi: 'Melihat dokumen charter' },
 
-  // Kanban Board
-  { kodePermission: 'kanban.manage', modul: 'kanban', deskripsi: 'Akses penuh kanban board dan timeline' },
+  // Board Sprint
+  { kodePermission: 'kanban.manage', modul: 'kanban', deskripsi: 'Akses penuh Board Sprint dan timeline' },
   { kodePermission: 'sprint.manage_count', modul: 'kanban', deskripsi: 'Mengubah jumlah sprint tim (Kelola Jumlah Sprint)' },
-  { kodePermission: 'kanban.edit', modul: 'kanban', deskripsi: 'Menambah dan menggeser kartu kanban' },
-  { kodePermission: 'kanban.comment', modul: 'kanban', deskripsi: 'Memberikan komentar pada kartu kanban' },
-  { kodePermission: 'kanban.view', modul: 'kanban', deskripsi: 'Melihat board kanban dan timeline' },
+  { kodePermission: 'kanban.edit', modul: 'kanban', deskripsi: 'Menambah dan menggeser kartu Board Sprint' },
+  { kodePermission: 'kanban.comment', modul: 'kanban', deskripsi: 'Memberikan komentar pada kartu Board Sprint' },
+  { kodePermission: 'kanban.view', modul: 'kanban', deskripsi: 'Melihat Board Sprint dan timeline' },
 
   // Customer Validation
   { kodePermission: 'cust_val.manage', modul: 'customer_validation', deskripsi: 'Akses penuh customer validation' },

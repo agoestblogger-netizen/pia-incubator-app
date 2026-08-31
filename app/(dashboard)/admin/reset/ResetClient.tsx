@@ -351,7 +351,7 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
                 {[
                   { id: 'charter', label: 'Innovation Charter', desc: 'Project mission, HMW, hipotesis' },
-                  { id: 'kanban', label: 'Kanban Board & Sprint', desc: 'Kartu aktivitas, sprint & log perubahan' },
+                  { id: 'kanban', label: 'Board Sprint & Sprint', desc: 'Kartu aktivitas, sprint & log perubahan' },
                   { id: 'customer_validation', label: 'Customer Validation', desc: 'Plan, feedback testing & report' },
                   { id: 'market_validation', label: 'Market Validation', desc: 'MVP plan, sprint review & PMF' },
                   { id: 'keuangan', label: 'Keuangan (RAB & LPJ)', desc: 'Pengajuan anggaran Rp 20jt & LPJ' },
@@ -442,7 +442,7 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
             </div>
 
             <div className="bg-white p-3 rounded-lg border border-gray-200">
-              <span className="text-[10px] text-gray-400 font-bold block uppercase">Kanban & Sprint</span>
+              <span className="text-[10px] text-gray-400 font-bold block uppercase">Board Sprint & Sprint</span>
               <span className="text-lg font-extrabold text-gray-900">{counts.kanbanCardCount} Kartu</span>
               <span className="text-[10px] text-gray-500 font-medium block">
                 ({counts.sprintCount} Sprint, {counts.sprintLogCount} Log)

@@ -32,7 +32,7 @@ export function InnovationSetupSubNav({ timId, activeTab }: InnovationSetupSubNa
         }`}
       >
         <KanbanSquare className={`h-4 w-4 shrink-0 ${activeTab === "kanban" ? "text-[#5142D6]" : "text-gray-400"}`} />
-        <span>2. Sprint Planning &amp; Kanban Board</span>
+        <span>2. Sprint Planning &amp; Board Sprint</span>
       </Link>
     </div>
   );

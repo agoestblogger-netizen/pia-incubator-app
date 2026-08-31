@@ -1763,7 +1763,7 @@ export function KanbanClient({
     if (res.success) {
       setCards((prev) => prev.filter((c) => c.id !== selectedCardForDetail.id));
       toast.success(
-        `Kartu "${selectedCardForDetail.judul}" berhasil dihapus dari Kanban board.`,
+        `Kartu "${selectedCardForDetail.judul}" berhasil dihapus dari Board Sprint.`,
         "Kartu Dihapus"
       );
       setSelectedCardForDetail(null);
@@ -1881,7 +1881,7 @@ export function KanbanClient({
       setIsDaftarSprintOpen(true);
       setActiveSubSection(2);
       toast.success(
-        `Sprint ${selectedSprintNum} resmi dimulai! Melanjutkan ke Kanban Board.`,
+        `Sprint ${selectedSprintNum} resmi dimulai! Melanjutkan ke Board Sprint.`,
         "Sprint Aktif 🚀"
       );
     } else {
@@ -2577,7 +2577,7 @@ export function KanbanClient({
                   </span>
                   <div>
                     <h2 className="text-sm sm:text-base font-extrabold text-gray-900 flex items-center gap-2">
-                      <span>Kanban Board — Sprint {selectedSprintNum} (Eksekusi Harian)</span>
+                      <span>Board Sprint — Sprint {selectedSprintNum} (Eksekusi Harian)</span>
                       {currentPlanningSprintObj && (
                         <Badge
                           variant={

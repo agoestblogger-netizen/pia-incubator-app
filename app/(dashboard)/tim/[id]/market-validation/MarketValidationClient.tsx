@@ -2134,7 +2134,7 @@ export function MarketValidationClient({
               </div>
               <div>
                 <h3 className="text-xs font-bold text-gray-900">
-                  Kanban Board &amp; Sprint Execution (Market Validation)
+                  Board Sprint &amp; Sprint Execution (Market Validation)
                 </h3>
                 <p className="text-[11px] text-gray-500">
                   Eksekusi 7 kartu baku dan rekomendasi backlog Market Validation pada rangkaian sprint tim.
@@ -2200,7 +2200,7 @@ export function MarketValidationClient({
                       />
                     </CardTitle>
                     <CardDescription className="text-xs text-gray-500 mt-0.5">
-                      Data hasil peluncuran MVP di lapangan (tersinkronisasi dari kartu Kanban "MVP Release").
+                      Data hasil peluncuran MVP di lapangan (tersinkronisasi dari kartu Board Sprint "MVP Release").
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50">
@@ -2372,7 +2372,7 @@ export function MarketValidationClient({
                   </div>
                 ) : (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
-                    Belum ada release log yang disimpan dari kartu Kanban "MVP Release".
+                    Belum ada release log yang disimpan dari kartu Board Sprint "MVP Release".
                   </div>
                 )}
               </CardContent>
@@ -2606,7 +2606,7 @@ export function MarketValidationClient({
                   </div>
                 ) : (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
-                    Hasil pengukuran DFV belum diisi dari kartu Kanban "Market Testing (ukur metrik DFV)".
+                    Hasil pengukuran DFV belum diisi dari kartu Board Sprint "Market Testing (ukur metrik DFV)".
                   </div>
                 )}
               </CardContent>
@@ -2670,7 +2670,7 @@ export function MarketValidationClient({
                   </div>
                 ) : (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
-                    Rekapitulasi DFV belum diisi dari kartu Kanban "Analisis hasil &amp; isi Laporan MV".
+                    Rekapitulasi DFV belum diisi dari kartu Board Sprint "Analisis hasil &amp; isi Laporan MV".
                   </div>
                 )}
               </CardContent>
@@ -2781,7 +2781,7 @@ export function MarketValidationClient({
                     </CardDescription>
                   </div>
                   <span className="text-[10px] text-gray-400 font-medium">
-                    Dikelola via Kartu Kanban &ldquo;Preliminary Review (SME)&rdquo;
+                    Dikelola via Kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo;
                   </span>
                 </div>
               </CardHeader>
@@ -2829,7 +2829,7 @@ export function MarketValidationClient({
                   </div>
                 ) : (
                   <p className="text-[11px] text-gray-500 italic bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200">
-                    Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Kanban &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan MV&rdquo;.
+                    Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan MV&rdquo;.
                   </p>
                 )}
 

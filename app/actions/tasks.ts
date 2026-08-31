@@ -431,7 +431,7 @@ export async function getMyTasks(currentUser?: UserProfile | null): Promise<MyTa
         taskType: "kanban_card",
         entityId: card.id,
         category: "kanban",
-        categoryLabel: "Kartu Kanban Saya",
+        categoryLabel: "Kartu Board Sprint Saya",
         title: card.judul,
         description: `Tugas di tim ${timNama} • Kolom: ${card.statusKolom}${card.tahap ? ` • Tahap: ${card.tahap.replace("_", " ")}` : ""}`,
         teamId: card.timId,

@@ -139,7 +139,7 @@ export async function createKanbanCardAction(
     if (!allowed) {
       return {
         success: false,
-        error: "Forbidden: Anda tidak memiliki izin untuk menambah kartu di Kanban board tim ini.",
+        error: "Forbidden: Anda tidak memiliki izin untuk menambah kartu di Board Sprint tim ini.",
       };
     }
 
@@ -275,7 +275,7 @@ export async function updateKanbanCardStatusAction(
     if (!allowed) {
       return {
         success: false,
-        error: "Forbidden: Anda tidak memiliki izin untuk memindahkan kartu di Kanban board tim ini.",
+        error: "Forbidden: Anda tidak memiliki izin untuk memindahkan kartu di Board Sprint tim ini.",
       };
     }
 
@@ -449,7 +449,7 @@ export async function updateKanbanCardFullAction(
     if (!allowed) {
       return {
         success: false,
-        error: "Forbidden: Anda tidak memiliki izin untuk mengedit kartu di Kanban board tim ini.",
+        error: "Forbidden: Anda tidak memiliki izin untuk mengedit kartu di Board Sprint tim ini.",
       };
     }
 
@@ -684,7 +684,7 @@ export async function deleteKanbanCardAction(timId: string, cardId: string) {
     if (!allowed) {
       return {
         success: false,
-        error: "Forbidden: Anda tidak memiliki izin untuk menghapus kartu di Kanban board tim ini.",
+        error: "Forbidden: Anda tidak memiliki izin untuk menghapus kartu di Board Sprint tim ini.",
       };
     }
 

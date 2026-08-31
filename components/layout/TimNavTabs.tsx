@@ -29,7 +29,7 @@ export function TimNavTabs({ timId }: { timId: string }) {
       icon: FileText,
     },
     {
-      name: "Kanban & Roadmap",
+      name: "Board Sprint & Roadmap",
       href: `/tim/${timId}/kanban`,
       icon: Kanban,
     },

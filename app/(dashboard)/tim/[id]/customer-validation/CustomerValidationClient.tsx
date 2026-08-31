@@ -2760,7 +2760,7 @@ export function CustomerValidationClient({
                       <span>Dokumen Preliminary Review (Hasil Review SME / Coach)</span>
                     </span>
                     <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
-                      Dikelola via Kartu Kanban &ldquo;Preliminary Review (SME)&rdquo;
+                      Dikelola via Kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo;
                     </span>
                   </div>
 
@@ -2806,7 +2806,7 @@ export function CustomerValidationClient({
                     </div>
                   ) : (
                     <p className="text-[11px] text-gray-500 italic bg-white/70 p-2.5 rounded-xl border border-dashed border-gray-200">
-                      Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Kanban &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan CV&rdquo;.
+                      Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan CV&rdquo;.
                     </p>
                   )}
                 </div>

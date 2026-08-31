@@ -95,7 +95,7 @@ const ROLES_CONFIG: RoleConfig[] = [
     title: 'Project Owner',
     badge: 'Leader & Eksekutor',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    accountability: 'Memimpin eksekusi harian tim, mengelola Kanban board, dan menyusun pengajuan anggaran/LPJ.',
+    accountability: 'Memimpin eksekusi harian tim, mengelola Board Sprint, dan menyusun pengajuan anggaran/LPJ.',
     isMulti: false,
   },
   {
@@ -689,7 +689,7 @@ export function CharterFormClient({
                   <span>Struktur Role &amp; Akuntabilitas Tim</span>
                   <SectionInfo
                     title="Template 1 — Bagian 0: Struktur Role & Akuntabilitas Tim"
-                    text="Penugasan peran dan akuntabilitas resmi: Sponsor (Menetapkan arah, legitimasi, dan dukungan sumber daya), Promotor (Menjadi calon rumah inovasi, memberi perspektif bisnis, akses, dan dukungan operasional), Project Owner (Memimpin eksekusi harian tim, mengelola Kanban board, dan pengajuan anggaran/LPJ), Inisiator (Penggagas ide awal proposal PIA dan menjaga visi solusi), Co-creator (Anggota inti pengembangan prototipe, customer testing, dan iterasi sprint), Innovation Coach (Membimbing metodologi design thinking/lean startup dan fasilitasi sprint review), dan Collaborator/SME (Memberikan keahlian domain spesifik)."
+                    text="Penugasan peran dan akuntabilitas resmi: Sponsor (Menetapkan arah, legitimasi, dan dukungan sumber daya), Promotor (Menjadi calon rumah inovasi, memberi perspektif bisnis, akses, dan dukungan operasional), Project Owner (Memimpin eksekusi harian tim, mengelola Board Sprint, dan pengajuan anggaran/LPJ), Inisiator (Penggagas ide awal proposal PIA dan menjaga visi solusi), Co-creator (Anggota inti pengembangan prototipe, customer testing, dan iterasi sprint), Innovation Coach (Membimbing metodologi design thinking/lean startup dan fasilitasi sprint review), dan Collaborator/SME (Memberikan keahlian domain spesifik)."
                   />
                 </CardTitle>
                 <CardDescription className="text-xs text-gray-500 mt-0.5">
@@ -1292,7 +1292,7 @@ export function CharterFormClient({
                     Rencana Milestone per Sprint
                   </h4>
                   <p className="text-[11px] text-gray-500">
-                    Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Kanban).
+                    Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Board Sprint).
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1302,10 +1302,10 @@ export function CharterFormClient({
                   <Link
                     href={`/tim/${timId}/kanban`}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5142D6]/10 text-[#5142D6] hover:bg-[#5142D6]/20 text-xs font-bold transition-all border border-[#5142D6]/20 shadow-2xs"
-                    title="Buka Sprint Planning & Kanban Board"
+                    title="Buka Sprint Planning & Board Sprint"
                   >
                     <KanbanSquare className="h-3.5 w-3.5" />
-                    <span>Buka Sprint Planning &amp; Kanban &rarr;</span>
+                    <span>Buka Sprint Planning &amp; Board Sprint &rarr;</span>
                   </Link>
                 </div>
               </div>
