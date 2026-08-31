@@ -5,6 +5,7 @@ import {
   anggaranPengajuan,
   lpj,
   type AnggaranDetailPengajuan,
+  type AnggaranApproverPengesahan,
   userRoleTim,
   roles,
   users,
@@ -425,10 +426,170 @@ export async function submitLpjAction(anggaranId: string, timId: string, data: {
   }
 }
 
+export async function getAnggaranApprovers(): Promise<Array<{ id: string; nama: string; email: string }>> {
+  try {
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.kodeRole, 'approve_anggaran'))
+      .limit(1);
+
+    if (!role) return [];
+
+    const assigned = await db
+      .select({
+        id: users.id,
+        nama: users.nama,
+        email: users.email,
+      })
+      .from(userRoleTim)
+      .innerJoin(users, eq(userRoleTim.userId, users.id))
+      .where(eq(userRoleTim.roleId, role.id));
+
+    return assigned;
+  } catch (err) {
+    console.error("[getAnggaranApprovers] error:", err);
+    return [];
+  }
+}
+
+export async function approveAnggaranWithSignatureAction(
+  anggaranId: string,
+  timId: string,
+  data: {
+    signatureImage: string;
+    nik?: string;
+    unitKerja?: string;
+    catatan?: string;
+  }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    const isApprover =
+      user.globalRoles.includes('approve_anggaran') ||
+      user.timRoles.some((r) => r.roleCode === 'approve_anggaran') ||
+      (await hasPermission(user, 'anggaran.manage', timId));
+
+    if (!isApprover) {
+      return {
+        success: false,
+        error: 'Forbidden: Hanya akun dengan role Approve Anggaran (Kepala Departemen IC) yang berhak menyetujui anggaran.',
+      };
+    }
+
+    const [existing] = await db
+      .select()
+      .from(anggaranPengajuan)
+      .where(eq(anggaranPengajuan.id, anggaranId))
+      .limit(1);
+
+    if (!existing || existing.timInovatorId !== timId) {
+      return { success: false, error: 'Data pengajuan anggaran tidak ditemukan.' };
+    }
+
+    const currentDetail = (existing.detailPengajuan as AnggaranDetailPengajuan) || {};
+    const pengesahanApprover: AnggaranApproverPengesahan = {
+      nama: user.nama,
+      nik: data.nik || undefined,
+      unitKerja: data.unitKerja || "Innovation Center",
+      tanggal: new Date().toISOString(),
+      signatureImage: data.signatureImage,
+      userId: user.id,
+    };
+
+    const updatedDetail: AnggaranDetailPengajuan = {
+      ...currentDetail,
+      pengesahanApprover,
+    };
+
+    const [updated] = await db
+      .update(anggaranPengajuan)
+      .set({
+        status: 'disetujui',
+        detailPengajuan: updatedDetail,
+        catatanPenilaian: data.catatan || existing.catatanPenilaian || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(anggaranPengajuan.id, anggaranId))
+      .returning();
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'ANGGARAN_APPROVE_SIGN',
+      entity: 'anggaran_pengajuan',
+      entityId: anggaranId,
+      details: { timId, approverNama: user.nama, catatan: data.catatan },
+    });
+
+    revalidatePath(`/tim/${timId}/keuangan`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menandatangani dan menyetujui anggaran.' };
+  }
+}
+
+export async function rejectAnggaranAction(
+  anggaranId: string,
+  timId: string,
+  alasanPenolakan: string
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+    }
+
+    if (!alasanPenolakan || !alasanPenolakan.trim()) {
+      return { success: false, error: 'Alasan penolakan wajib diisi.' };
+    }
+
+    const isApprover =
+      user.globalRoles.includes('approve_anggaran') ||
+      user.timRoles.some((r) => r.roleCode === 'approve_anggaran') ||
+      (await hasPermission(user, 'anggaran.manage', timId));
+
+    if (!isApprover) {
+      return {
+        success: false,
+        error: 'Forbidden: Anda tidak memiliki izin untuk menolak pengajuan anggaran.',
+      };
+    }
+
+    const [updated] = await db
+      .update(anggaranPengajuan)
+      .set({
+        status: 'ditolak',
+        catatanPenilaian: alasanPenolakan.trim(),
+        updatedAt: new Date(),
+      })
+      .where(eq(anggaranPengajuan.id, anggaranId))
+      .returning();
+
+    await logAudit({
+      userId: user.id,
+      userName: user.nama,
+      action: 'ANGGARAN_REJECT',
+      entity: 'anggaran_pengajuan',
+      entityId: anggaranId,
+      details: { timId, alasanPenolakan: alasanPenolakan.trim() },
+    });
+
+    revalidatePath(`/tim/${timId}/keuangan`);
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal menolak pengajuan anggaran.' };
+  }
+}
+
 export async function authorizeAnggaranAction(
   anggaranId: string,
   timId: string,
-  status: 'diotorisasi' | 'ditolak',
+  status: 'disetujui' | 'diotorisasi' | 'ditolak',
   catatanPenilaian?: string
 ) {
   try {
@@ -458,7 +619,7 @@ export async function authorizeAnggaranAction(
     await logAudit({
       userId: user.id,
       userName: user.nama,
-      action: status === 'diotorisasi' ? 'ANGGARAN_AUTHORIZE' : 'ANGGARAN_REJECT',
+      action: status === 'ditolak' ? 'ANGGARAN_REJECT' : 'ANGGARAN_AUTHORIZE',
       entity: 'anggaran_pengajuan',
       entityId: anggaranId,
       details: { timId, status, catatanPenilaian },

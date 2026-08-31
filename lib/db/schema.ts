@@ -581,6 +581,15 @@ export interface AnggaranPicPengesahan {
   signatureImage?: string;
 }
 
+export interface AnggaranApproverPengesahan {
+  nama: string;
+  nik?: string;
+  unitKerja: string;
+  tanggal: string;
+  signatureImage?: string;
+  userId?: string;
+}
+
 export interface AnggaranDetailPengajuan {
   namaPic: string;
   unitKerjaPic: string;
@@ -592,6 +601,7 @@ export interface AnggaranDetailPengajuan {
   rabItems: RabItemRow[];
   totalRab: number;
   pengesahanPic?: AnggaranPicPengesahan;
+  pengesahanApprover?: AnggaranApproverPengesahan;
 }
 
 export const anggaranPengajuan = pgTable('anggaran_pengajuan', {

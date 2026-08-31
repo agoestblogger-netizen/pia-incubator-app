@@ -8,6 +8,8 @@ import {
   submitLpjAction,
   authorizeAnggaranAction,
   approveLpjAction,
+  approveAnggaranWithSignatureAction,
+  rejectAnggaranAction,
 } from "@/app/actions/keuangan";
 import { toast } from "@/components/ui/ToastProvider";
 import { Card } from "@/components/ui/card";
@@ -32,6 +34,7 @@ import {
   ShieldCheck,
   Check,
   X,
+  XCircle,
   Loader2,
   ExternalLink,
   AlertCircle,
@@ -65,6 +68,8 @@ export function KeuanganClient({
   initialList,
   canSubmit = false,
   canManage = false,
+  canApproveAnggaran = false,
+  approvers = [],
   timInfo,
   currentUser,
   anggotaTim = [],
@@ -73,6 +78,8 @@ export function KeuanganClient({
   initialList: any[];
   canSubmit?: boolean;
   canManage?: boolean;
+  canApproveAnggaran?: boolean;
+  approvers?: Array<{ id: string; nama: string; email: string; unitKerja?: string }>;
   timInfo?: {
     namaProyekInovasi?: string | null;
     kategoriPia?: string | null;
@@ -128,7 +135,7 @@ export function KeuanganClient({
       keterangan: "",
     },
   ]);
-  // Bagian 5 — Pengesahan PIC
+  // Bagian 5 — Pengesahan (PIC)
   const [nikPic, setNikPic] = useState("");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   // Lampiran Tambahan (Opsional)
@@ -136,9 +143,22 @@ export function KeuanganClient({
 
   // Modal Signature Pad state
   const [isSigPadOpen, setIsSigPadOpen] = useState(false);
-  const [sigPadTarget, setSigPadTarget] = useState<"submit" | "edit">("submit");
+  const [sigPadTarget, setSigPadTarget] = useState<"submit" | "edit" | "approve">("submit");
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
 
-  // View Detail Modal state
+  // Reject modal state
+  const [rejectModal, setRejectModal] = useState<{
+    open: boolean;
+    targetId: string;
+    alasan: string;
+  }>({
+    open: false,
+    targetId: "",
+    alasan: "",
+  });
+  const [isRejecting, setIsRejecting] = useState(false);
+
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
     item: any | null;
@@ -647,6 +667,76 @@ export function KeuanganClient({
     setProcessingApproval(false);
   };
 
+  const handleApproveWithSignature = async (dataUrl: string) => {
+    if (!approveTargetId) return;
+    setIsApproving(true);
+    try {
+      const res = await approveAnggaranWithSignatureAction(approveTargetId, timId, {
+        signatureImage: dataUrl,
+        unitKerja: currentUser?.unitKerja || "Innovation Center",
+      });
+
+      if (res.success && res.data) {
+        setList((prev) =>
+          prev.map((item) => (item.id === approveTargetId ? { ...item, ...res.data } : item))
+        );
+        if (detailModal.item?.id === approveTargetId) {
+          setDetailModal((prev) => ({
+            ...prev,
+            item: { ...prev.item, ...res.data },
+          }));
+        }
+        toast.success(
+          "Pengajuan anggaran berhasil disetujui & ditandatangani oleh Kepala Departemen IC!",
+          "Persetujuan Berhasil"
+        );
+        setIsSigPadOpen(false);
+        setApproveTargetId(null);
+      } else {
+        toast.error(res.error || "Gagal menyetujui pengajuan anggaran.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat menyetujui anggaran.", "Gagal");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleConfirmReject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectModal.alasan.trim()) {
+      toast.warning("Alasan penolakan wajib diisi.");
+      return;
+    }
+    setIsRejecting(true);
+    try {
+      const res = await rejectAnggaranAction(
+        rejectModal.targetId,
+        timId,
+        rejectModal.alasan.trim()
+      );
+      if (res.success && res.data) {
+        setList((prev) =>
+          prev.map((item) => (item.id === rejectModal.targetId ? { ...item, ...res.data } : item))
+        );
+        if (detailModal.item?.id === rejectModal.targetId) {
+          setDetailModal((prev) => ({
+            ...prev,
+            item: { ...prev.item, ...res.data },
+          }));
+        }
+        toast.warning("Pengajuan anggaran telah ditolak.", "Penolakan Selesai");
+        setRejectModal({ open: false, targetId: "", alasan: "" });
+      } else {
+        toast.error(res.error || "Gagal menolak pengajuan anggaran.", "Gagal");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat menolak anggaran.", "Gagal");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Role Banner Info */}
@@ -729,21 +819,25 @@ export function KeuanganClient({
                       </span>
                       <Badge
                         variant={
-                          item.status === "diotorisasi"
+                          item.status === "disetujui" || item.status === "diotorisasi"
                             ? "secondary"
                             : item.status === "ditolak"
                             ? "destructive"
                             : "outline"
                         }
-                        className={`text-[10px] capitalize ${
-                          item.status === "diotorisasi"
-                            ? "bg-green-100 text-green-800 border-green-200"
+                        className={`text-[10px] font-semibold capitalize ${
+                          item.status === "disetujui" || item.status === "diotorisasi"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                             : item.status === "ditolak"
-                            ? "bg-red-100 text-red-800 border-red-200"
-                            : "bg-amber-50 text-amber-800 border-amber-200"
+                            ? "bg-rose-50 text-rose-800 border-rose-300"
+                            : "bg-amber-50 text-amber-800 border-amber-300"
                         }`}
                       >
-                        Status: {item.status}
+                        Status: {item.status === "disetujui" || item.status === "diotorisasi"
+                          ? "Disetujui"
+                          : item.status === "ditolak"
+                          ? "Ditolak"
+                          : "Diajukan (Menunggu Review)"}
                       </Badge>
                       {detail?.kategoriProyek && (
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -773,7 +867,7 @@ export function KeuanganClient({
                         className="text-[#0F5132] hover:text-[#1B7A4D] hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        <span>Lihat Formulir & RAB</span>
+                        <span>Lihat Formulir &amp; RAB</span>
                       </button>
 
                       {item.fileDokumenUrl && (
@@ -789,9 +883,23 @@ export function KeuanganClient({
                       )}
                     </div>
 
-                    {item.catatanPenilaian && (
+                    {item.status === "ditolak" && item.catatanPenilaian && (
+                      <div className="mt-2 text-xs bg-rose-50/80 border border-rose-200 text-rose-800 p-2.5 rounded-lg flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="font-semibold block text-[11px] uppercase tracking-wider text-rose-700">
+                            Alasan Penolakan:
+                          </strong>
+                          <p className="mt-0.5 text-xs text-gray-700 leading-relaxed">
+                            {item.catatanPenilaian}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {(item.status === "disetujui" || item.status === "diotorisasi") && item.catatanPenilaian && (
                       <p className="text-[11px] text-gray-600 bg-gray-50 p-2 rounded-md border border-gray-100 mt-1">
-                        <span className="font-semibold">Catatan Otorisasi:</span> {item.catatanPenilaian}
+                        <span className="font-semibold">Catatan Persetujuan:</span> {item.catatanPenilaian}
                       </p>
                     )}
                   </div>
@@ -821,45 +929,35 @@ export function KeuanganClient({
                       </div>
                     )}
 
-                    {/* Status Otorisasi Anggaran Actions for Approver */}
-                    {canManage && isPendingAnggaran && (
-                      <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200">
-                        <span className="text-[11px] font-semibold text-gray-600 px-1">Otorisasi RAB:</span>
+                    {/* Status Persetujuan Anggaran Actions for Approver */}
+                    {canApproveAnggaran && isPendingAnggaran && (
+                      <div className="flex items-center gap-2 bg-emerald-50/60 p-1.5 rounded-xl border border-emerald-200">
+                        <span className="text-[11px] font-semibold text-emerald-900 px-1">Persetujuan RAB:</span>
                         <Button
                           size="sm"
                           onClick={() => {
-                            setApprovalNotes("");
-                            setApprovalModal({
-                              open: true,
-                              type: "anggaran",
-                              targetId: item.id,
-                              action: "approve",
-                              nominal: item.nominalDiajukan,
-                              fase: item.fase,
-                            });
+                            setApproveTargetId(item.id);
+                            setSigPadTarget("approve");
+                            setIsSigPadOpen(true);
                           }}
-                          className="bg-green-700 hover:bg-green-800 text-white h-7 px-2.5 text-xs font-semibold gap-1 cursor-pointer"
+                          className="bg-[#0F5132] hover:bg-[#0F5132]/90 text-white h-7 px-2.5 text-xs font-semibold gap-1 cursor-pointer"
                         >
-                          <Check className="h-3 w-3" />
-                          <span>Otorisasi</span>
+                          <PenTool className="h-3 w-3" />
+                          <span>Tandatangani &amp; Setujui</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            setApprovalNotes("");
-                            setApprovalModal({
+                            setRejectModal({
                               open: true,
-                              type: "anggaran",
                               targetId: item.id,
-                              action: "reject",
-                              nominal: item.nominalDiajukan,
-                              fase: item.fase,
+                              alasan: "",
                             });
                           }}
                           className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 h-7 px-2.5 text-xs font-semibold gap-1 cursor-pointer"
                         >
-                          <X className="h-3 w-3" />
+                          <XCircle className="h-3 w-3" />
                           <span>Tolak</span>
                         </Button>
                       </div>
@@ -935,7 +1033,7 @@ export function KeuanganClient({
                       </div>
                     ) : (
                       canSubmit &&
-                      item.status === "diotorisasi" && (
+                      (item.status === "disetujui" || item.status === "diotorisasi") && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1364,100 +1462,142 @@ export function KeuanganClient({
                 </div>
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900">
-                    Pengesahan (PIC Tim Inovator)
+                    Pengesahan (PIC &amp; Kepala Departemen IC)
                   </h4>
                   <p className="text-[10px] text-gray-500">
-                    Bubuhkan tanda tangan digital dan lengkapi NIK sebelum mengirim pengajuan.
+                    Bubuhkan tanda tangan digital PIC sebelum mengirim pengajuan. Persetujuan Kepala Departemen IC dilakukan setelah formulir diajukan.
                   </p>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border-2 border-dashed border-gray-300 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="space-y-1 text-xs w-full sm:w-auto">
-                  <div className="text-[10px] font-extrabold uppercase text-gray-400">
-                    Dibuat Oleh:
-                  </div>
-                  <div className="font-bold text-gray-900 text-sm">{namaPic || "Nama PIC"}</div>
-                  <div className="text-[11px] text-gray-500 flex items-center gap-1">
-                    <Building2 className="h-3 w-3 text-gray-400" />
-                    <span>{unitKerjaPic || "Unit Kerja Belum Diisi"}</span>
-                  </div>
-                  <div className="text-[11px] text-gray-500 flex items-center gap-1">
-                    <span>Tanggal:</span>
-                    <span className="font-medium text-gray-700">{formatDateIndo(new Date())}</span>
-                  </div>
-
-                  <div className="pt-1 w-full max-w-xs">
-                    <label className="text-[11px] font-semibold text-gray-700">
-                      NIK PIC *
-                    </label>
-                    <Input
-                      type="text"
-                      required
-                      placeholder="Masukkan NIK Anda"
-                      value={nikPic}
-                      onChange={(e) => setNikPic(e.target.value)}
-                      className="h-8 text-xs font-mono mt-0.5 bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-2 shrink-0">
-                  {signatureImage ? (
-                    <div className="space-y-1 text-center">
-                      <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[180px]">
-                        <img
-                          src={signatureImage}
-                          alt="Tanda Tangan PIC"
-                          className="h-16 w-auto object-contain block mx-auto"
-                        />
-                      </div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                        <span>Tanda Tangan Siap</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Blok 1: Dibuat Oleh (PIC Tim Inovator) */}
+                <div className="p-4 rounded-xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/20 flex flex-col justify-between gap-4">
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-gray-400">
+                        Dibuat Oleh:
                       </span>
-                      <div className="flex items-center justify-center gap-2 pt-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        PIC Tim Inovator
+                      </span>
+                    </div>
+                    <div className="font-bold text-gray-900 text-sm">{namaPic || "Nama PIC"}</div>
+                    <div className="text-[11px] text-gray-500 flex items-center gap-1">
+                      <Building2 className="h-3 w-3 text-gray-400" />
+                      <span>{unitKerjaPic || "Unit Kerja Belum Diisi"}</span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 flex items-center gap-1">
+                      <span>Tanggal:</span>
+                      <span className="font-medium text-gray-700">{formatDateIndo(new Date())}</span>
+                    </div>
+
+                    <div className="pt-1.5 w-full">
+                      <label className="text-[11px] font-semibold text-gray-700">
+                        NIK PIC *
+                      </label>
+                      <Input
+                        type="text"
+                        required
+                        placeholder="Masukkan NIK Anda"
+                        value={nikPic}
+                        onChange={(e) => setNikPic(e.target.value)}
+                        className="h-8 text-xs font-mono mt-0.5 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-2 pt-2 border-t border-emerald-100">
+                    {signatureImage ? (
+                      <div className="space-y-1 text-center w-full">
+                        <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[170px] mx-auto">
+                          <img
+                            src={signatureImage}
+                            alt="Tanda Tangan PIC"
+                            className="h-14 w-auto object-contain block mx-auto"
+                          />
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          <span>Tanda Tangan Siap</span>
+                        </span>
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSigPadTarget("submit");
+                              setIsSigPadOpen(true);
+                            }}
+                            className="h-6 text-[10px] px-2 text-gray-600 cursor-pointer"
+                          >
+                            Ubah
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSignatureImage(null)}
+                            className="h-6 text-[10px] px-2 text-red-600 hover:text-red-700 cursor-pointer"
+                          >
+                            Hapus
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-2 w-full">
+                        <div className="h-14 rounded-xl border border-dashed border-gray-300 bg-white flex items-center justify-center text-[11px] text-gray-400 italic">
+                          Belum ada tanda tangan
+                        </div>
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
                           onClick={() => {
                             setSigPadTarget("submit");
                             setIsSigPadOpen(true);
                           }}
-                          className="h-6 text-[10px] px-2 text-gray-600 cursor-pointer"
+                          className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-8 px-3 font-semibold gap-1.5 cursor-pointer shadow-xs w-full justify-center"
                         >
-                          Ubah
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSignatureImage(null)}
-                          className="h-6 text-[10px] px-2 text-red-600 hover:text-red-700 cursor-pointer"
-                        >
-                          Hapus
+                          <PenTool className="h-3.5 w-3.5" />
+                          <span>Bubuhkan Tanda Tangan PIC</span>
                         </Button>
                       </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Blok 2: Disetujui Oleh (Kepala Departemen IC) */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between gap-4">
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-gray-400">
+                        Disetujui Oleh:
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Menunggu Pengajuan
+                      </span>
                     </div>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <div className="h-16 w-44 rounded-xl border border-dashed border-gray-300 bg-white flex items-center justify-center text-[11px] text-gray-400 italic">
-                        Belum ada tanda tangan
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          setSigPadTarget("submit");
-                          setIsSigPadOpen(true);
-                        }}
-                        className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-8 px-3 font-semibold gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <PenTool className="h-3.5 w-3.5" />
-                        <span>Bubuhkan Tanda Tangan</span>
-                      </Button>
+                    <div className="font-bold text-gray-900 text-sm">
+                      {approvers.length > 0
+                        ? approvers.map((a) => a.nama).join(" / ")
+                        : "Kepala Departemen Innovation Center"}
                     </div>
-                  )}
+                    <div className="text-[11px] text-gray-600">
+                      Jabatan: Kepala Departemen Innovation Center
+                    </div>
+                    <div className="text-[11px] text-gray-500 flex items-center gap-1">
+                      <Building2 className="h-3 w-3 text-gray-400" />
+                      <span>Innovation Center</span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                      <span>Waktu:</span>
+                      <span>Setelah form diajukan</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-dashed border-gray-200 text-center text-gray-400 text-xs italic">
+                    Tanda tangan pengesahan dan persetujuan akan dibubuhkan oleh Kepala Departemen IC setelah formulir RAB ini diajukan.
+                  </div>
                 </div>
               </div>
             </div>
@@ -1974,44 +2114,172 @@ export function KeuanganClient({
                         </div>
                       </div>
 
-                      {/* Bagian 5: Pengesahan */}
-                      <div className="p-4 rounded-xl border border-gray-200 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                            5. Dibuat Oleh (PIC Tim Inovator):
-                          </span>
-                          <div className="text-sm font-bold text-gray-900">
-                            {d.pengesahanPic?.nama || d.namaPic}
-                          </div>
-                          {d.pengesahanPic?.nik && (
-                            <div className="text-[11px] text-gray-600 font-mono">
-                              NIK: {d.pengesahanPic.nik}
+                      {/* Bagian 5: Pengesahan Dua Pihak (PIC & Kepala Departemen IC) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Kolom 1: Dibuat Oleh (PIC Tim Inovator) */}
+                        <div className="p-4 rounded-xl border border-gray-200 bg-slate-50/70 flex flex-col justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                5. Dibuat Oleh:
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                PIC Tim Inovator
+                              </span>
                             </div>
-                          )}
-                          <div className="text-[11px] text-gray-600">
-                            Unit Kerja: {d.pengesahanPic?.unitKerja || d.unitKerjaPic}
+                            <div className="text-sm font-bold text-gray-900">
+                              {d.pengesahanPic?.nama || d.namaPic}
+                            </div>
+                            {d.pengesahanPic?.nik && (
+                              <div className="text-[11px] text-gray-600 font-mono">
+                                NIK: {d.pengesahanPic.nik}
+                              </div>
+                            )}
+                            <div className="text-[11px] text-gray-600">
+                              Unit Kerja: {d.pengesahanPic?.unitKerja || d.unitKerjaPic}
+                            </div>
+                            {d.pengesahanPic?.tanggal && (
+                              <div className="text-[10px] text-gray-400">
+                                Ditandatangani pada: {formatDateIndo(d.pengesahanPic.tanggal)}
+                              </div>
+                            )}
                           </div>
-                          {d.pengesahanPic?.tanggal && (
-                            <div className="text-[10px] text-gray-400">
-                              Ditandatangani pada: {formatDateIndo(d.pengesahanPic.tanggal)}
+
+                          {d.pengesahanPic?.signatureImage && (
+                            <div className="text-center space-y-1 pt-2 border-t border-gray-200">
+                              <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[170px] mx-auto">
+                                <img
+                                  src={d.pengesahanPic.signatureImage}
+                                  alt="Tanda Tangan PIC"
+                                  className="h-14 w-auto object-contain block mx-auto"
+                                />
+                              </div>
+                              <span className="text-[10px] text-emerald-700 font-bold">
+                                Tanda Tangan PIC Terverifikasi
+                              </span>
                             </div>
                           )}
                         </div>
 
-                        {d.pengesahanPic?.signatureImage && (
-                          <div className="text-center space-y-1">
-                            <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[170px]">
-                              <img
-                                src={d.pengesahanPic.signatureImage}
-                                alt="Tanda Tangan PIC"
-                                className="h-16 w-auto object-contain block mx-auto"
-                              />
+                        {/* Kolom 2: Disetujui Oleh (Kepala Departemen IC) */}
+                        <div
+                          className={`p-4 rounded-xl border flex flex-col justify-between gap-4 ${
+                            d.pengesahanApprover?.signatureImage ||
+                            detailModal.item.status === "disetujui" ||
+                            detailModal.item.status === "diotorisasi"
+                              ? "bg-emerald-50/30 border-emerald-200"
+                              : detailModal.item.status === "ditolak"
+                              ? "bg-rose-50/30 border-rose-200"
+                              : "bg-amber-50/30 border-amber-200"
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                Disetujui Oleh:
+                              </span>
+                              {d.pengesahanApprover?.signatureImage ||
+                              detailModal.item.status === "disetujui" ||
+                              detailModal.item.status === "diotorisasi" ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  Disetujui
+                                </span>
+                              ) : detailModal.item.status === "ditolak" ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                                  Ditolak
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                                  Menunggu Persetujuan
+                                </span>
+                              )}
                             </div>
-                            <span className="text-[10px] text-emerald-700 font-bold">
-                              Tanda Tangan Digital Terverifikasi
-                            </span>
+
+                            <div className="text-sm font-bold text-gray-900">
+                              {d.pengesahanApprover?.nama ||
+                                (approvers.length > 0
+                                  ? approvers.map((a) => a.nama).join(" / ")
+                                  : "Kepala Departemen Innovation Center")}
+                            </div>
+                            <div className="text-[11px] text-gray-600">
+                              Jabatan: Kepala Departemen Innovation Center
+                            </div>
+                            <div className="text-[11px] text-gray-600">
+                              Unit Kerja: {d.pengesahanApprover?.unitKerja || "Innovation Center"}
+                            </div>
+                            {d.pengesahanApprover?.tanggal && (
+                              <div className="text-[10px] text-gray-400">
+                                Disetujui pada: {formatDateIndo(d.pengesahanApprover.tanggal)}
+                              </div>
+                            )}
                           </div>
-                        )}
+
+                          {/* Signature view atau Action buttons */}
+                          {d.pengesahanApprover?.signatureImage ? (
+                            <div className="text-center space-y-1 pt-2 border-t border-emerald-200">
+                              <div className="bg-white p-2 rounded-xl border border-emerald-300 shadow-xs max-w-[170px] mx-auto">
+                                <img
+                                  src={d.pengesahanApprover.signatureImage}
+                                  alt="Tanda Tangan Kepala Departemen IC"
+                                  className="h-14 w-auto object-contain block mx-auto"
+                                />
+                              </div>
+                              <span className="text-[10px] text-emerald-700 font-bold">
+                                Tanda Tangan Persetujuan IC
+                              </span>
+                            </div>
+                          ) : detailModal.item.status === "ditolak" ? (
+                            <div className="p-3 bg-white rounded-xl border border-rose-200 text-rose-800 text-xs">
+                              <strong className="font-semibold block text-[11px] text-rose-700">
+                                Alasan Penolakan:
+                              </strong>
+                              <p className="mt-0.5 text-gray-700 leading-relaxed">
+                                {detailModal.item.catatanPenilaian || "Tidak ada catatan penolakan."}
+                              </p>
+                            </div>
+                          ) : detailModal.item.status === "diajukan" && canApproveAnggaran ? (
+                            <div className="space-y-2 pt-2 border-t border-amber-200">
+                              <p className="text-[11px] text-amber-900 font-medium">
+                                Anda memiliki role <strong>Approve Anggaran (Kepala Departemen IC)</strong>. Silakan review dan bubuhkan tanda tangan:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => {
+                                    setApproveTargetId(detailModal.item.id);
+                                    setSigPadTarget("approve");
+                                    setIsSigPadOpen(true);
+                                  }}
+                                  className="bg-[#0F5132] hover:bg-[#0F5132]/90 text-white text-xs font-semibold gap-1.5 h-8 cursor-pointer"
+                                >
+                                  <PenTool className="h-3.5 w-3.5" />
+                                  <span>Tandatangani sbg Kepala Departemen IC</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setRejectModal({
+                                      open: true,
+                                      targetId: detailModal.item.id,
+                                      alasan: "",
+                                    });
+                                  }}
+                                  className="border-rose-300 text-rose-700 hover:bg-rose-50 text-xs font-semibold gap-1 h-8 cursor-pointer"
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                  <span>Tolak</span>
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-white/80 rounded-xl border border-dashed border-amber-200 text-[11px] text-amber-800 italic">
+                              Menunggu tanda tangan digital dari pejabat berwenang dengan role Approve Anggaran (Kepala Departemen IC).
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {detailModal.item.fileDokumenUrl && (
@@ -2085,24 +2353,116 @@ export function KeuanganClient({
       </Dialog>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      {/* SIGNATURE PAD MODAL (REUSABLE UNTUK PIC SUBMIT / EDIT)                 */}
+      {/* SIGNATURE PAD MODAL (REUSABLE: PIC SUBMIT, EDIT, ATAU APPROVER IC)     */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       <SignaturePadModal
         isOpen={isSigPadOpen}
-        onClose={() => setIsSigPadOpen(false)}
+        onClose={() => {
+          setIsSigPadOpen(false);
+          setApproveTargetId(null);
+        }}
         onSave={(dataUrl) => {
-          if (sigPadTarget === "edit") {
+          if (sigPadTarget === "approve") {
+            handleApproveWithSignature(dataUrl);
+          } else if (sigPadTarget === "edit") {
             setEditModal((prev) => ({ ...prev, signatureImage: dataUrl }));
+            setIsSigPadOpen(false);
+            toast.success("Tanda tangan digital PIC berhasil disimpan.", "Tanda Tangan");
           } else {
             setSignatureImage(dataUrl);
+            setIsSigPadOpen(false);
+            toast.success("Tanda tangan digital PIC berhasil disimpan.", "Tanda Tangan");
           }
-          setIsSigPadOpen(false);
-          toast.success("Tanda tangan digital PIC berhasil disimpan.", "Tanda Tangan");
         }}
-        title="Tanda Tangan Digital — PIC Tim Inovator"
-        roleName="PIC Tim Inovator"
-        userName={sigPadTarget === "edit" ? editModal.namaPic : namaPic}
+        title={
+          sigPadTarget === "approve"
+            ? "Tanda Tangan Digital — Disetujui Oleh (Kepala Departemen IC)"
+            : "Tanda Tangan Digital — PIC Tim Inovator"
+        }
+        roleName={
+          sigPadTarget === "approve" ? "Kepala Departemen IC" : "PIC Tim Inovator"
+        }
+        userName={
+          sigPadTarget === "approve"
+            ? currentUser?.nama || "Kepala Departemen IC"
+            : sigPadTarget === "edit"
+            ? editModal.namaPic
+            : namaPic
+        }
       />
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* DIALOG TOLAK PENGAJUAN ANGGARAN (ALASAN WAJIB)                          */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <Dialog
+        open={rejectModal.open}
+        onOpenChange={(open) => {
+          if (!open) setRejectModal({ open: false, targetId: "", alasan: "" });
+        }}
+      >
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6">
+          <form onSubmit={handleConfirmReject} className="space-y-4">
+            <DialogHeader>
+              <div className="flex items-center gap-2 text-rose-700">
+                <XCircle className="h-5 w-5" />
+                <DialogTitle className="text-base font-bold text-gray-900">
+                  Tolak Pengajuan Anggaran (RAB)
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-xs text-gray-500">
+                Silakan berikan alasan penolakan secara jelas. Catatan ini akan tersimpan dan dapat ditinjau oleh tim inovator pengusul.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">
+                Alasan Penolakan <span className="text-rose-600">*</span>
+              </label>
+              <Textarea
+                required
+                rows={3}
+                placeholder="Contoh: Rincian biaya pada baris ke-2 belum disertai justifikasi kebutuhan pilot..."
+                value={rejectModal.alasan}
+                onChange={(e) =>
+                  setRejectModal((prev) => ({ ...prev, alasan: e.target.value }))
+                }
+                className="text-xs resize-none"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isRejecting}
+                onClick={() => setRejectModal({ open: false, targetId: "", alasan: "" })}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isRejecting || !rejectModal.alasan.trim()}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold gap-1.5"
+              >
+                {isRejecting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Menolak...</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Tolak Pengajuan</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* DIALOG KONFIRMASI HAPUS / BATALKAN ANGGARAN                           */}

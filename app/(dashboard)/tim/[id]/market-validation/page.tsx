@@ -2,7 +2,7 @@ import { getTimInovatorById } from "@/app/actions/tim";
 import { getMarketValidationData } from "@/app/actions/market-validation";
 import { getKanbanData } from "@/app/actions/kanban";
 import { getSprintsByTimId } from "@/app/actions/sprint";
-import { getKeuanganData, getUserTeamUnitKerja } from "@/app/actions/keuangan";
+import { getKeuanganData, getUserTeamUnitKerja, getAnggaranApprovers } from "@/app/actions/keuangan";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCharterRolesData } from "@/app/actions/charter";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
@@ -35,6 +35,7 @@ export default async function MarketValidationPage({
     canSubmitAnggaran,
     canManageAnggaran,
     userUnitKerja,
+    approvers,
   ] = await Promise.all([
     getMarketValidationData(tim.id),
     getTeamPhaseGateStatus(tim.id),
@@ -48,6 +49,7 @@ export default async function MarketValidationPage({
     user ? hasPermission(user, 'anggaran.submit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
     user ? getUserTeamUnitKerja(user.id, tim.id) : Promise.resolve(""),
+    getAnggaranApprovers(),
   ]);
 
   const [
@@ -79,6 +81,12 @@ export default async function MarketValidationPage({
     },
   };
 
+  const hasApproveRole = Boolean(
+    user?.globalRoles?.includes('approve_anggaran') ||
+    user?.timRoles?.some((r: any) => r.roleCode === 'approve_anggaran')
+  );
+  const canApproveAnggaran = hasApproveRole || canManageAnggaran;
+
   return (
     <div className="space-y-6">
       <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
@@ -101,6 +109,8 @@ export default async function MarketValidationPage({
         canEditKanban={canEditKanban}
         canSubmitAnggaran={canSubmitAnggaran}
         canManageAnggaran={canManageAnggaran}
+        canApproveAnggaran={canApproveAnggaran}
+        approvers={approvers}
         currentUser={user ? { ...user, unitKerja: userUnitKerja } : null}
         phaseGateStatus={phaseGateStatus}
         signPermissions={signPermissions}

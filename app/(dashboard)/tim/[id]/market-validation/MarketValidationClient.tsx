@@ -226,6 +226,8 @@ export function MarketValidationClient({
   canEditKanban = true,
   canSubmitAnggaran = false,
   canManageAnggaran = false,
+  canApproveAnggaran = false,
+  approvers = [],
   currentUser,
   phaseGateStatus,
   signPermissions,
@@ -247,6 +249,8 @@ export function MarketValidationClient({
   canEditKanban?: boolean;
   canSubmitAnggaran?: boolean;
   canManageAnggaran?: boolean;
+  canApproveAnggaran?: boolean;
+  approvers?: any[];
   currentUser?: any;
   phaseGateStatus?: any;
   signPermissions?: {
@@ -3233,6 +3237,8 @@ export function MarketValidationClient({
             initialList={initialKeuanganList}
             canSubmit={canSubmitAnggaran}
             canManage={canManageAnggaran}
+            canApproveAnggaran={canApproveAnggaran}
+            approvers={approvers}
             timInfo={timInfo}
             currentUser={currentUser}
             anggotaTim={anggotaTim}
