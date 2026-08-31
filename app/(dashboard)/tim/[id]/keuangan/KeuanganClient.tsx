@@ -126,7 +126,21 @@ const KATEGORI_PROYEK_OPTIONS = [
   "Business Case Innovation",
 ];
 
-const SATUAN_SUGGESTIONS = ["Paket", "Orang", "Bulan", "Kali", "Unit", "Hari", "Kegiatan", "Sesi", "Lisensi"];
+const SATUAN_SUGGESTIONS = [
+  "Paket",
+  "Orang",
+  "Jam",
+  "Hari",
+  "Minggu",
+  "Bulan",
+  "Kali",
+  "Unit",
+  "Buah",
+  "Lembar",
+  "Kegiatan",
+  "Sesi",
+  "Lisensi",
+];
 
 export function KeuanganClient({
   timId,
@@ -2224,6 +2238,7 @@ export function KeuanganClient({
                         <td className="p-1.5">
                           <Input
                             type="text"
+                            list="satuan-options"
                             value={item.satuan}
                             onChange={(e) =>
                               handleUpdateRabRow(item.id, "satuan", e.target.value, true)
