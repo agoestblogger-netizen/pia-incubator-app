@@ -25,6 +25,14 @@ export default async function KeuanganPage({
     user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
   ]);
 
+  // Cari unit kerja user dari struktur peran / anggota tim
+  const matchedAnggota = tim.anggota?.find(
+    (a) =>
+      (user?.id && a.userId === user.id) ||
+      (user?.nama && a.nama.toLowerCase().trim() === user.nama.toLowerCase().trim())
+  );
+  const userUnitKerja = matchedAnggota?.unitKerja || "";
+
   return (
     <div className="space-y-6">
       <TimPhaseGateNav phaseGateStatus={phaseGateStatus} />
@@ -34,6 +42,17 @@ export default async function KeuanganPage({
         initialList={list}
         canSubmit={canSubmit}
         canManage={canManage}
+        timInfo={{
+          namaProyekInovasi: tim.namaProyekInovasi,
+          kategoriPia: tim.kategoriPia,
+        }}
+        currentUser={{
+          id: user?.id || "",
+          nama: user?.nama || "",
+          email: user?.email || "",
+          unitKerja: userUnitKerja,
+        }}
+        anggotaTim={tim.anggota}
       />
     </div>
   );

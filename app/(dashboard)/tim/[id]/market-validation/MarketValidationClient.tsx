@@ -3233,6 +3233,9 @@ export function MarketValidationClient({
             initialList={initialKeuanganList}
             canSubmit={canSubmitAnggaran}
             canManage={canManageAnggaran}
+            timInfo={timInfo}
+            currentUser={currentUser}
+            anggotaTim={anggotaTim}
           />
         </TabsContent>
       </Tabs>

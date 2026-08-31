@@ -563,12 +563,44 @@ export const dfvRekapitulasi = pgTable('dfv_rekapitulasi', {
 // GRUP F — KEUANGAN (RAB & LPJ)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+export interface RabItemRow {
+  id: string;
+  uraian: string;
+  kuantitas: number;
+  satuan: string;
+  hargaSatuan: number;
+  jumlah: number;
+  keterangan?: string;
+}
+
+export interface AnggaranPicPengesahan {
+  nama: string;
+  nik?: string;
+  unitKerja: string;
+  tanggal: string;
+  signatureImage?: string;
+}
+
+export interface AnggaranDetailPengajuan {
+  namaPic: string;
+  unitKerjaPic: string;
+  noHpPic: string;
+  judulProyek: string;
+  kategoriProyek: string;
+  tujuanPenggunaan: string;
+  outputYangDiharapkan: string;
+  rabItems: RabItemRow[];
+  totalRab: number;
+  pengesahanPic?: AnggaranPicPengesahan;
+}
+
 export const anggaranPengajuan = pgTable('anggaran_pengajuan', {
   id: uuid('id').primaryKey().defaultRandom(),
   timInovatorId: uuid('tim_inovator_id').notNull().references(() => timInovator.id, { onDelete: 'cascade' }),
   fase: text('fase').notNull(), // 'customer_validation' | 'market_validation'
   nominalDiajukan: doublePrecision('nominal_diajukan').notNull(), // max Rp 20.000.000
   fileDokumenUrl: text('file_dokumen_url'),
+  detailPengajuan: jsonb('detail_pengajuan').$type<AnggaranDetailPengajuan>(),
   tanggalPengajuan: timestamp('tanggal_pengajuan', { withTimezone: true }).notNull().defaultNow(),
   status: text('status').notNull().default('diajukan'), // 'diajukan' | 'dinilai' | 'diotorisasi' | 'ditolak'
   catatanPenilaian: text('catatan_penilaian'),

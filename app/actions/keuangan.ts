@@ -1,11 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { anggaranPengajuan, lpj } from "@/lib/db/schema";
+import { anggaranPengajuan, lpj, type AnggaranDetailPengajuan } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
+import { formatRupiah } from "@/lib/utils";
 
 export async function getKeuanganData(timId: string) {
   const pengajuanList = await db
@@ -28,6 +29,7 @@ export async function submitAnggaranAction(timId: string, data: {
   fase: string;
   nominalDiajukan: number;
   fileDokumenUrl?: string;
+  detailPengajuan?: AnggaranDetailPengajuan;
 }) {
   try {
     const user = await getCurrentUser();
@@ -47,11 +49,29 @@ export async function submitAnggaranAction(timId: string, data: {
       return { success: false, error: 'Maksimal pengajuan anggaran per fase adalah Rp 20.000.000.' };
     }
 
+    // Validasi akumulasi total anggaran per tim (maks Rp 40.000.000, mengecualikan status ditolak)
+    const existingList = await db
+      .select({ nominal: anggaranPengajuan.nominalDiajukan, status: anggaranPengajuan.status })
+      .from(anggaranPengajuan)
+      .where(eq(anggaranPengajuan.timInovatorId, timId));
+
+    const currentTotal = existingList
+      .filter((item) => item.status !== 'ditolak')
+      .reduce((sum, item) => sum + (Number(item.nominal) || 0), 0);
+
+    if (currentTotal + Number(data.nominalDiajukan) > 40000000) {
+      return {
+        success: false,
+        error: `Total akumulasi pengajuan anggaran tim tidak boleh melebihi Rp 40.000.000. Saat ini sudah diajukan ${formatRupiah(currentTotal)}, sisa alokasi adalah ${formatRupiah(Math.max(0, 40000000 - currentTotal))}.`,
+      };
+    }
+
     const [pengajuan] = await db.insert(anggaranPengajuan).values({
       timInovatorId: timId,
       fase: data.fase,
       nominalDiajukan: data.nominalDiajukan,
-      fileDokumenUrl: data.fileDokumenUrl,
+      fileDokumenUrl: data.fileDokumenUrl || null,
+      detailPengajuan: data.detailPengajuan || null,
       status: 'diajukan',
     }).returning();
 
@@ -78,6 +98,7 @@ export async function updateAnggaranAction(
     fase: string;
     nominalDiajukan: number;
     fileDokumenUrl?: string;
+    detailPengajuan?: AnggaranDetailPengajuan;
   }
 ) {
   try {
@@ -115,12 +136,30 @@ export async function updateAnggaranAction(
       return { success: false, error: 'Maksimal pengajuan anggaran per fase adalah Rp 20.000.000.' };
     }
 
+    // Validasi akumulasi total anggaran per tim mengecualikan pengajuan yang sedang diedit
+    const existingList = await db
+      .select({ id: anggaranPengajuan.id, nominal: anggaranPengajuan.nominalDiajukan, status: anggaranPengajuan.status })
+      .from(anggaranPengajuan)
+      .where(eq(anggaranPengajuan.timInovatorId, timId));
+
+    const otherTotal = existingList
+      .filter((item) => item.id !== anggaranId && item.status !== 'ditolak')
+      .reduce((sum, item) => sum + (Number(item.nominal) || 0), 0);
+
+    if (otherTotal + Number(data.nominalDiajukan) > 40000000) {
+      return {
+        success: false,
+        error: `Total akumulasi pengajuan anggaran tim tidak boleh melebihi Rp 40.000.000. Total pengajuan lain adalah ${formatRupiah(otherTotal)}, sisa alokasi adalah ${formatRupiah(Math.max(0, 40000000 - otherTotal))}.`,
+      };
+    }
+
     const [updated] = await db
       .update(anggaranPengajuan)
       .set({
         fase: data.fase,
         nominalDiajukan: data.nominalDiajukan,
         fileDokumenUrl: data.fileDokumenUrl || null,
+        detailPengajuan: data.detailPengajuan || existing.detailPengajuan,
         updatedAt: new Date(),
       })
       .where(eq(anggaranPengajuan.id, anggaranId))
