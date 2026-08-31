@@ -46,30 +46,35 @@ const DIMENSI_ROWS = [
     label: "Usability",
     fokus: "Kemudahan, kejelasan, dan pengalaman interaksi dengan prototype.",
     contoh: "Bagian mana yang mudah, membingungkan, atau membutuhkan bantuan?",
+    evidencePlaceholder: "Skor, observasi task, waktu, error, kutipan customer",
   },
   {
     key: "functionality",
     label: "Functionality",
     fokus: "Kesesuaian fungsi/fitur dengan kebutuhan dan apakah alur bekerja seperti yang diharapkan.",
     contoh: "Fungsi apa yang paling membantu, tidak bekerja, atau masih kurang?",
+    evidencePlaceholder: "Feedback fitur, task completion, issue log",
   },
   {
     key: "solvability",
     label: "Solvability",
     fokus: "Kemampuan solusi menyelesaikan problem worth solving dan menghasilkan outcome yang dibutuhkan.",
     contoh: "Sejauh mana solusi ini menyelesaikan masalah utama Anda? Mengapa?",
+    evidencePlaceholder: "Skor kecocokan solusi, bukti problem-solution fit",
   },
   {
     key: "payability",
     label: "Payability",
     fokus: "Kesediaan membayar, menggunakan, berkomitmen, atau menanggung effort/perubahan perilaku.",
     contoh: "Apakah value yang diperoleh sepadan dengan biaya, waktu, atau effort?",
+    evidencePlaceholder: "Willingness to pay/use, komitmen, letter of interest",
   },
   {
     key: "others",
     label: "Others",
     fokus: "Masukan di luar empat dimensi utama, termasuk risiko, kebutuhan tambahan, dan ide baru.",
     contoh: "Apa yang perlu ditambah, dikurangi, diubah, atau diperhatikan?",
+    evidencePlaceholder: "Insight terbuka, kutipan, risiko/ide baru",
   },
 ];
 
@@ -1517,7 +1522,7 @@ export function CustomerValidationClient({
                                           newRows[globalIndex].evidenceYangDikumpulkan = e.target.value;
                                           setDimensiRows(newRows);
                                         }}
-                                        placeholder="Evidence/Catatan"
+                                        placeholder={localIdx === 0 ? (DIMENSI_ROWS.find(dr => dr.label.toLowerCase() === (d.dimensi || "").toLowerCase())?.evidencePlaceholder || "Evidence/Catatan") : "Evidence/Catatan"}
                                         className="text-xs resize-none min-h-[32px] overflow-hidden flex-1"
                                         rows={1}
                                       />
