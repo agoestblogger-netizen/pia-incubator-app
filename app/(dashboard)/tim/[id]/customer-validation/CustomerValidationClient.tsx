@@ -85,6 +85,7 @@ const METRIK_ROWS = [
     unit: "Skala 1-5",
     kriteria: 'Rata-rata ≥4 atau target lain yang disepakati',
     cara: "Survey pasca-testing dan alasan verbal di balik skor",
+    catatan: "Diisi",
   },
   {
     validasi: "Desirability",
@@ -92,6 +93,7 @@ const METRIK_ROWS = [
     unit: "Sering sekali/Sering/Kadang/Jarang/Tidak pernah",
     kriteria: 'Mayoritas minimal "Sering" atau target lain yang disepakati',
     cara: "Survey/wawancara",
+    catatan: "Diisi",
   },
   {
     validasi: "Desirability",
@@ -99,6 +101,7 @@ const METRIK_ROWS = [
     unit: "Ya pasti/Mungkin/Tidak yakin/Mungkin tidak/Pasti tidak",
     kriteria: 'Mayoritas minimal "Mungkin"',
     cara: "Survey/wawancara",
+    catatan: "Diisi",
   },
   {
     validasi: "Desirability",
@@ -106,20 +109,23 @@ const METRIK_ROWS = [
     unit: "Skala 1-5 atau Mudah sekali s.d. Sangat sulit",
     kriteria: 'Rata-rata ≥4 atau mayoritas "Mudah"',
     cara: "Observasi dan survey",
+    catatan: "Diisi",
   },
   {
     validasi: "Desirability",
-    metrik: "Kesediaan Membayar / Menggunakan",
+    metrik: "Kesediaan Membayar/Menggunakan",
     unit: "Skala kesediaan",
     kriteria: "Mayoritas bersedia membayar/menggunakan sesuai konteks inovasi",
     cara: "Survey harga/value atau komitmen penggunaan",
+    catatan: "Diisi",
   },
   {
     validasi: "Feasibility On Paper",
     metrik: "Kelayakan teknis/operasional awal",
-    unit: "Skala 1-5 / catatan SME",
+    unit: "Skala 1-5/catatan SME",
     kriteria: "Tidak ada blocker kritis sebelum MVP",
     cara: "Review awal IT/Operasional/SME",
+    catatan: "Diisi bila relevan",
   },
   {
     validasi: "Viability On Paper",
@@ -127,6 +133,7 @@ const METRIK_ROWS = [
     unit: "Estimasi Rp/%/skala 1-5",
     kriteria: "Terdapat potensi manfaat dan asumsi yang dapat diuji saat MVP",
     cara: "Estimasi dampak, cost-benefit awal, input Renstra/Finance",
+    catatan: "Diisi bila relevan",
   },
 ];
 
@@ -462,23 +469,49 @@ export function CustomerValidationClient({
   };
 
   const initMetrik = () => {
-    if (initialData?.metrikRencana && initialData.metrikRencana.length > 0) {
-      return initialData.metrikRencana.map((r: any, i: number) => ({
-        id: r.id || `db_m${i}`,
-        validasi: normalizeValidasi(r.validasi),
-        metrik: r.metrik || "",
-        unitUkuran: r.unitUkuran || "",
-        kriteriaKesuksesan: r.kriteriaKesuksesan || "",
-        caraPengukuran: r.caraPengukuran || "",
-        catatan: r.catatan || "",
+    if (!initialData?.metrikRencana || initialData.metrikRencana.length === 0) {
+      return METRIK_ROWS.map((row, i) => ({
+        id: `default_m${i}`,
+        validasi: row.validasi,
+        metrik: row.metrik,
+        unitUkuran: "",
+        kriteriaKesuksesan: "",
+        caraPengukuran: "",
+        catatan: "",
       }));
     }
-    // Default 3 rows
-    return [
-      { id: "default_m0", validasi: "Desirability", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
-      { id: "default_m1", validasi: "Feasibility On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" },
-      { id: "default_m2", validasi: "Viability On Paper", metrik: "", unitUkuran: "", kriteriaKesuksesan: "", caraPengukuran: "", catatan: "" }
-    ];
+
+    const existing = initialData.metrikRencana.map((r: any, i: number) => ({
+      id: r.id || `db_m${i}`,
+      validasi: normalizeValidasi(r.validasi),
+      metrik: r.metrik || "",
+      unitUkuran: r.unitUkuran || "",
+      kriteriaKesuksesan: r.kriteriaKesuksesan || "",
+      caraPengukuran: r.caraPengukuran || "",
+      catatan: r.catatan || "",
+    }));
+
+    // If legacy rows (e.g. only 3 rows from before), ensure all 7 METRIK_ROWS are present
+    if (existing.length <= 3 && !existing.some((r: any) => r.metrik === "Ketertarikan Penggunaan Berulang")) {
+      return METRIK_ROWS.map((mRow, i) => {
+        const found = existing.find(
+          (r: any) =>
+            r.metrik === mRow.metrik ||
+            (r.validasi === mRow.validasi && (!r.metrik || r.metrik === mRow.metrik))
+        );
+        return {
+          id: found?.id || `default_m${i}`,
+          validasi: mRow.validasi,
+          metrik: mRow.metrik,
+          unitUkuran: found?.unitUkuran || "",
+          kriteriaKesuksesan: found?.kriteriaKesuksesan || "",
+          caraPengukuran: found?.caraPengukuran || "",
+          catatan: found?.catatan || "",
+        };
+      });
+    }
+
+    return existing;
   };
   const [metrikRows, setMetrikRows] = useState<any[]>(initMetrik);
 
@@ -1609,7 +1642,12 @@ export function CustomerValidationClient({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {metrikRows.map((r, index) => (
+                      {metrikRows.map((r, index) => {
+                        const defaultMeta =
+                          METRIK_ROWS.find(
+                            (mr) => mr.metrik.toLowerCase() === (r.metrik || "").toLowerCase()
+                          ) || (index < METRIK_ROWS.length && r.validasi === METRIK_ROWS[index].validasi ? METRIK_ROWS[index] : undefined);
+                        return (
                         <tr key={r.id} className="hover:bg-gray-50/60 transition-colors">
                           <td className="px-4 py-3 align-top">
                             <select
@@ -1645,8 +1683,8 @@ export function CustomerValidationClient({
                                 newRows[index].metrik = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[36px] overflow-hidden"
-                              placeholder="Metrik"
+                              className="text-xs resize-none min-h-[36px] overflow-hidden font-semibold"
+                              placeholder={defaultMeta?.metrik || "Metrik"}
                               rows={1}
                             />
                           </td>
@@ -1661,7 +1699,7 @@ export function CustomerValidationClient({
                                 setMetrikRows(newRows);
                               }}
                               className="text-xs resize-none min-h-[36px] overflow-hidden"
-                              placeholder="Unit Ukur"
+                              placeholder={defaultMeta?.unit || "Unit Ukur"}
                               rows={1}
                             />
                           </td>
@@ -1676,7 +1714,7 @@ export function CustomerValidationClient({
                                 setMetrikRows(newRows);
                               }}
                               className="text-xs resize-none min-h-[36px] overflow-hidden"
-                              placeholder="Kriteria Kesuksesan"
+                              placeholder={defaultMeta?.kriteria || "Kriteria Kesuksesan"}
                               rows={1}
                             />
                           </td>
@@ -1691,7 +1729,7 @@ export function CustomerValidationClient({
                                 setMetrikRows(newRows);
                               }}
                               className="text-xs resize-none min-h-[36px] overflow-hidden"
-                              placeholder="Cara Pengukuran"
+                              placeholder={defaultMeta?.cara || "Cara Pengukuran"}
                               rows={1}
                             />
                           </td>
@@ -1699,7 +1737,7 @@ export function CustomerValidationClient({
                             <div className="flex gap-2">
                               <Textarea
                                 rows={1}
-                                placeholder="Catatan & hasil aktual tim..."
+                                placeholder={defaultMeta?.catatan || "Catatan & hasil aktual tim..."}
                                 className="text-xs resize-none min-h-[36px] overflow-hidden flex-1"
                                 value={r.catatan || ""}
                                 onChange={(e) => {
@@ -1724,7 +1762,8 @@ export function CustomerValidationClient({
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                   <div className="p-3 bg-gray-50/50 border-t border-gray-200">
@@ -2556,9 +2595,9 @@ export function CustomerValidationClient({
                         <th className="p-2.5 w-[160px]">Metrik</th>
                         <th className="p-2.5 w-[140px]">Target</th>
                         <th className="p-2.5 w-[140px]">Hasil Aktual</th>
-                        <th className="p-2.5 w-[150px]">Interpretasi</th>
-                        <th className="p-2.5 w-[150px]">Learning</th>
-                        <th className="p-2.5 w-[150px]">Enhancement</th>
+                        <th className="p-2.5 w-[150px]">% Tercapai / Interpretasi</th>
+                        <th className="p-2.5 w-[150px]">Learning Utama</th>
+                        <th className="p-2.5 w-[150px]">Enhancement Prototype</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -2583,7 +2622,7 @@ export function CustomerValidationClient({
                           </td>
                           <td className="p-2 align-top">
                             <Input
-                              placeholder="Hasil aktual..."
+                              placeholder="Hasil Aktual"
                               value={m.hasilAktual || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -2596,7 +2635,7 @@ export function CustomerValidationClient({
                           </td>
                           <td className="p-2 align-top">
                             <Input
-                              placeholder="Interpretasi..."
+                              placeholder="% Tercapai / Interpretasi"
                               value={m.interpretasi || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -2609,7 +2648,7 @@ export function CustomerValidationClient({
                           </td>
                           <td className="p-2 align-top">
                             <Input
-                              placeholder="Pembelajaran..."
+                              placeholder="Learning Utama"
                               value={m.learning || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -2622,7 +2661,7 @@ export function CustomerValidationClient({
                           </td>
                           <td className="p-2 align-top">
                             <Input
-                              placeholder="Rencana perbaikan..."
+                              placeholder="Enhancement Prototype"
                               value={m.enhancement || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
