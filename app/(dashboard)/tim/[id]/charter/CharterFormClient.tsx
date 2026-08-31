@@ -226,18 +226,7 @@ export function CharterFormClient({
   });
 
   const [sprints, setSprints] = useState<any[]>(() => {
-    if (initialSprints && initialSprints.length > 0) {
-      return initialSprints.map((s) => ({
-        ...s,
-        tanggalMulaiRencana: s.tanggalMulaiRencana
-          ? new Date(s.tanggalMulaiRencana).toISOString().split("T")[0]
-          : "",
-        tanggalSelesaiRencana: s.tanggalSelesaiRencana
-          ? new Date(s.tanggalSelesaiRencana).toISOString().split("T")[0]
-          : "",
-      }));
-    }
-    return [
+    const defaultMilestones = [
       { nomorSprint: 1, tanggalMulaiRencana: "2026-09-07", tanggalSelesaiRencana: "2026-09-18", tujuan: "Perencanaan Customer Validation" },
       { nomorSprint: 2, tanggalMulaiRencana: "2026-09-21", tanggalSelesaiRencana: "2026-10-02", tujuan: "Laporan Customer Validation" },
       { nomorSprint: 3, tanggalMulaiRencana: "2026-10-05", tanggalSelesaiRencana: "2026-10-16", tujuan: "Perencanaan Market Validation" },
@@ -245,6 +234,47 @@ export function CharterFormClient({
       { nomorSprint: 5, tanggalMulaiRencana: "2026-11-02", tanggalSelesaiRencana: "2026-11-13", tujuan: "Market Testing" },
       { nomorSprint: 6, tanggalMulaiRencana: "2026-11-16", tanggalSelesaiRencana: "2026-11-27", tujuan: "Penyelesaian Laporan Market Validation" },
     ];
+
+    const legacyTitles = [
+      "Problem Validation & Setup",
+      "Solution Exploration & Prototyping",
+      "Customer Validation & Testing",
+      "MVP Development & Pilot Prep",
+      "Market Validation & Pilot Execution",
+      "Pitch & FMI Preparation",
+    ];
+
+    const formatInputDate = (dt: any) => {
+      if (!dt) return "";
+      try {
+        const d = new Date(dt);
+        if (isNaN(d.getTime())) return "";
+        return d.toISOString().split("T")[0];
+      } catch {
+        return "";
+      }
+    };
+
+    if (initialSprints && initialSprints.length > 0) {
+      return initialSprints.map((s) => {
+        const def = defaultMilestones.find((d) => d.nomorSprint === s.nomorSprint);
+        const tMulai = formatInputDate(s.tanggalMulaiRencana) || def?.tanggalMulaiRencana || "";
+        const tSelesai = formatInputDate(s.tanggalSelesaiRencana) || def?.tanggalSelesaiRencana || "";
+        const tujuan =
+          !s.tujuan || legacyTitles.includes(s.tujuan)
+            ? (def?.tujuan || s.tujuan || "")
+            : s.tujuan;
+
+        return {
+          ...s,
+          tanggalMulaiRencana: tMulai,
+          tanggalSelesaiRencana: tSelesai,
+          tujuan: tujuan,
+        };
+      });
+    }
+
+    return defaultMilestones;
   });
 
   const [isSprintModalOpen, setIsSprintModalOpen] = useState(false);
