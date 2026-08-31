@@ -21,6 +21,7 @@ import { logAudit } from "@/lib/db/audit";
 import { randomUUID } from "crypto";
 import { detectCvBakuCardType, type CvBakuCardType } from "@/lib/utils/cv-cards";
 import { detectMvBakuCardType, type MvBakuCardType } from "@/lib/utils/mv-cards";
+import { METRIK_ROWS } from "@/lib/data/cv-metrics";
 
 export { type CvBakuCardType, type MvBakuCardType };
 
@@ -902,6 +903,49 @@ export async function getMandatorySubtaskDataAction(
         };
         break;
       }
+      case "psf_7param_measurement": {
+        let existingResults: any[] = [];
+        if (report) {
+          existingResults = await db
+            .select()
+            .from(hasilValidasiMetrik)
+            .where(
+              and(
+                eq(hasilValidasiMetrik.reportId, report.id),
+                eq(hasilValidasiMetrik.fase, "customer_validation")
+              )
+            );
+        }
+        let planMetrikRows: any[] = [];
+        if (plan) {
+          planMetrikRows = await db
+            .select()
+            .from(rencanaValidasiMetrik)
+            .where(
+              and(
+                eq(rencanaValidasiMetrik.planId, plan.id),
+                eq(rencanaValidasiMetrik.fase, "customer_validation")
+              )
+            );
+        }
+
+        const rows = METRIK_ROWS.map((row) => {
+          const rencana = planMetrikRows.find((r) => r.metrik === row.metrik);
+          const found = existingResults.find((m) => m.metrik === row.metrik);
+          return {
+            validasi: row.validasi,
+            metrik: row.metrik,
+            target: rencana?.kriteriaKesuksesan || row.kriteria || found?.target || "-",
+            hasilAktual: found?.hasilAktual || "",
+            interpretasi: found?.interpretasi || "",
+            learning: found?.learning || "",
+            enhancement: found?.enhancement || "",
+          };
+        });
+
+        data = { psfMeasurementRows: rows };
+        break;
+      }
       case "validated_solution_psf":
         data = {
           validatedSolution: report.validatedSolution || "",
@@ -1258,6 +1302,35 @@ export async function saveMandatorySubtaskDataAction(
           if (insertPayload.length > 0) {
             await db.insert(customerTestingFeedbackResponden).values(insertPayload);
           }
+        }
+        break;
+      }
+
+      case "psf_7param_measurement": {
+        const rows: any[] = Array.isArray(payload.psfMeasurementRows) ? payload.psfMeasurementRows : [];
+        await db
+          .delete(hasilValidasiMetrik)
+          .where(
+            and(
+              eq(hasilValidasiMetrik.reportId, report.id),
+              eq(hasilValidasiMetrik.fase, "customer_validation")
+            )
+          );
+
+        if (rows.length > 0) {
+          const insertPayload = rows.map((r: any) => ({
+            reportId: report.id,
+            fase: "customer_validation",
+            validasi: r.validasi || "Desirability",
+            metrik: r.metrik || "",
+            target: r.target || null,
+            hasilAktual: r.hasilAktual || null,
+            interpretasi: r.interpretasi || null,
+            learning: r.learning || null,
+            enhancement: r.enhancement || null,
+          }));
+
+          await db.insert(hasilValidasiMetrik).values(insertPayload);
         }
         break;
       }

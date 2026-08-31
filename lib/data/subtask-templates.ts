@@ -49,6 +49,12 @@ export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
       subtaskType: "mandatory_complex",
       reportFieldMapping: { field: "feedback_matrix" },
     },
+    {
+      title: "Isi Hasil Pengukuran Metrik PSF (7 Parameter)",
+      estimatedHours: 180,
+      subtaskType: "mandatory_complex",
+      reportFieldMapping: { field: "psf_7param_measurement" },
+    },
     { title: "Eksekusi sesi testing dengan responden batch 1", estimatedHours: 360, subtaskType: "regular" },
     { title: "Eksekusi sesi testing dengan responden batch 2", estimatedHours: 360, subtaskType: "regular" },
     { title: "Catat feedback verbatim 4 dimensi (Problem, Solution, Usability, Willingness)", estimatedHours: 240, subtaskType: "regular" },

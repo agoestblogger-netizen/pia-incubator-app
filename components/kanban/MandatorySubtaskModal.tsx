@@ -89,6 +89,14 @@ function extractMappingField(st: MandatorySubtaskModalProps["subtask"]): string 
   if (title.includes("feedback matrix") || title.includes("matriks feedback")) {
     return "feedback_matrix";
   }
+  if (
+    title.includes("7 parameter") ||
+    title.includes("metrik psf") ||
+    title.includes("pengukuran metrik psf") ||
+    title.includes("hasil pengukuran metrik psf")
+  ) {
+    return "psf_7param_measurement";
+  }
   if (title.includes("validated solution") || title.includes("psf")) {
     return "validated_solution_psf";
   }
@@ -231,6 +239,15 @@ export function MandatorySubtaskModal({
   const handleDeleteFeedbackRow = (idx: number) => {
     const next = feedbackRows.filter((_, i) => i !== idx);
     updateField("feedbackRows", next);
+  };
+
+  // ── PSF 7 Parameter Measurement Rows Handling (for CV mandatory_complex) ──
+  const psfMeasurementRows: any[] = Array.isArray(formData.psfMeasurementRows) ? formData.psfMeasurementRows : [];
+
+  const handleUpdatePsfMeasurementRow = (idx: number, key: string, val: any) => {
+    const next = [...psfMeasurementRows];
+    next[idx] = { ...next[idx], [key]: val };
+    updateField("psfMeasurementRows", next);
   };
 
   // ── File Upload for Preliminary Review ──
@@ -577,6 +594,121 @@ export function MandatorySubtaskModal({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 4b. HASIL PENGUKURAN METRIK PSF (7 PARAMETER) (CV Mandatory Complex) */}
+            {mappingField === "psf_7param_measurement" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-gray-800 text-xs flex items-center gap-1.5">
+                      <Table2 className="h-4 w-4 text-[#3E9463]" />
+                      <span>Tabel Pengukuran 7 Parameter Metrik PSF (Customer Validation)</span>
+                    </label>
+                    <p className="text-[10px] text-gray-500">
+                      Evaluasi pencapaian aktual terhadap target yang ditetapkan di Section E CV Plan. Data tersimpan langsung ke Section D Laporan CV.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    7 Parameter Baku
+                  </span>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto max-h-[52vh]">
+                    <table className="min-w-[1100px] w-full text-[11px] text-left border-collapse">
+                      <thead className="bg-[#0B3D2E] text-white font-bold sticky top-0 z-10 text-[10.5px]">
+                        <tr>
+                          <th className="p-2.5 border-r border-emerald-900 w-10 text-center">#</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-28 text-center">Validasi</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-52">Metrik Baku</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-44">Target / Kriteria</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-36 bg-emerald-950">Hasil Aktual *</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-40">% Tercapai / Interpretasi</th>
+                          <th className="p-2.5 border-r border-emerald-900 w-48">Learning Utama</th>
+                          <th className="p-2.5 w-48">Enhancement Prototype</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {psfMeasurementRows.map((row, idx) => {
+                          const catName = String(row.validasi || "").toLowerCase();
+                          const isDesirability = catName === "desirability";
+                          const isFeasibility = catName === "feasibility";
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                              <td className="p-2.5 font-bold text-gray-500 text-center border-r border-gray-100 align-top pt-3">
+                                {idx + 1}
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top text-center">
+                                <span
+                                  className={`inline-block px-1.5 py-0.5 rounded text-[9.5px] font-extrabold uppercase ${
+                                    isDesirability
+                                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                      : isFeasibility
+                                      ? "bg-blue-100 text-blue-800 border border-blue-300"
+                                      : "bg-purple-100 text-purple-800 border border-purple-300"
+                                  }`}
+                                >
+                                  {row.validasi}
+                                </span>
+                              </td>
+                              <td className="p-2.5 border-r border-gray-100 align-top font-bold text-gray-800 text-[11px]">
+                                {row.metrik}
+                              </td>
+                              <td className="p-2.5 border-r border-gray-100 align-top text-[10.5px] text-gray-600 bg-gray-50/50 leading-relaxed font-medium">
+                                {row.target || "-"}
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top bg-emerald-50/20">
+                                <Input
+                                  required
+                                  placeholder="Hasil pengujian..."
+                                  value={row.hasilAktual || ""}
+                                  onChange={(e) =>
+                                    handleUpdatePsfMeasurementRow(idx, "hasilAktual", e.target.value)
+                                  }
+                                  className="h-8 text-[11px] bg-white border-emerald-300 focus:border-emerald-600 font-semibold"
+                                />
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Input
+                                  placeholder="Contoh: 85% / Sesuai..."
+                                  value={row.interpretasi || ""}
+                                  onChange={(e) =>
+                                    handleUpdatePsfMeasurementRow(idx, "interpretasi", e.target.value)
+                                  }
+                                  className="h-8 text-[11px] bg-white border-gray-300"
+                                />
+                              </td>
+                              <td className="p-2 border-r border-gray-100 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Learning utama..."
+                                  value={row.learning || ""}
+                                  onChange={(e) =>
+                                    handleUpdatePsfMeasurementRow(idx, "learning", e.target.value)
+                                  }
+                                  className="text-[10.5px] bg-white border-gray-300 min-h-[34px] leading-tight"
+                                />
+                              </td>
+                              <td className="p-2 align-top">
+                                <Textarea
+                                  rows={2}
+                                  placeholder="Tindak lanjut penyempurnaan..."
+                                  value={row.enhancement || ""}
+                                  onChange={(e) =>
+                                    handleUpdatePsfMeasurementRow(idx, "enhancement", e.target.value)
+                                  }
+                                  className="text-[10.5px] bg-white border-gray-300 min-h-[34px] leading-tight"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 

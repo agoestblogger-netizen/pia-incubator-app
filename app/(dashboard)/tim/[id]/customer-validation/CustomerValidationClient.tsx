@@ -561,7 +561,7 @@ export function CustomerValidationClient({
       return {
         validasi: row.validasi,
         metrik: row.metrik,
-        target: rencana?.kriteriaKesuksesan || rencana?.catatan || found?.target || "",
+        target: rencana?.kriteriaKesuksesan || row.kriteria || found?.target || "-",
         hasilAktual: found?.hasilAktual || "",
         interpretasi: found?.interpretasi || "",
         learning: found?.learning || "",
