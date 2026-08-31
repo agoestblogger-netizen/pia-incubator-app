@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   createKanbanCardAction,
   updateKanbanCardStatusAction,
@@ -640,6 +641,7 @@ export function KanbanClient({
   phaseGateStatus?: any;
   tahapScope?: string;
 }) {
+  const router = useRouter();
   const isAdmin = Boolean(
     currentUser?.globalRoles?.some((r: string) =>
       ["super_admin", "admin_ic", "admin"].includes(r)
@@ -1815,7 +1817,12 @@ export function KanbanClient({
   const handleSprintTabClick = (sprintNum: number) => {
     setSelectedSprintNum(sprintNum);
     setSelectedSprintTab(String(sprintNum));
-    setActiveSubSection(0);
+    const targetSprint = sprints.find((s) => s.nomorSprint === sprintNum);
+    if (targetSprint?.status === "aktif" || targetSprint?.status === "selesai") {
+      setActiveSubSection(2);
+    } else {
+      setActiveSubSection(1);
+    }
   };
 
   const handleSelectSprintForPlanning = (sprintNum: number) => {
@@ -2127,6 +2134,7 @@ export function KanbanClient({
 
       toast.success(`Sprint ${currentSprintObj.nomorSprint} berhasil diselesaikan!`, "Sprint Selesai");
       setIsCompleteModalOpen(false);
+      router.refresh();
     } else {
       const errMsg = res.error || "Gagal menyelesaikan sprint.";
       toast.error(errMsg, "Gagal Menyelesaikan Sprint");
