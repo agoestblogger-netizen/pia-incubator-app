@@ -2103,11 +2103,19 @@ export function KanbanClient({
         )
       );
 
-      // Update local card sprint numbers
+      // Update local card sprint numbers & reviewStatus
       setCards((prev) =>
         prev.map((card) => {
           const mov = cardMovements.find((m) => m.cardId === card.id);
           if (mov) {
+            if (mov.destination === "backlog") {
+              return {
+                ...card,
+                sprintNumber: null,
+                reviewStatus: "ai_reference",
+                statusKolom: "To Do",
+              };
+            }
             return {
               ...card,
               sprintNumber: mov.destination === "next_sprint" ? nextSprintNum : null,

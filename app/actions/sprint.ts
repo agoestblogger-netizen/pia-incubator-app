@@ -419,14 +419,26 @@ export async function completeSprintAction(
     // Move incomplete cards if specified
     if (cardMovements && cardMovements.length > 0) {
       for (const mov of cardMovements) {
-        const newSprintNumber = mov.destination === "next_sprint" ? mov.nextSprintNumber : null;
-        await db
-          .update(kanbanCard)
-          .set({
-            sprintNumber: newSprintNumber || null,
-            updatedAt: new Date(),
-          })
-          .where(eq(kanbanCard.id, mov.cardId));
+        if (mov.destination === "backlog") {
+          await db
+            .update(kanbanCard)
+            .set({
+              sprintNumber: null,
+              reviewStatus: "ai_reference",
+              statusKolom: "To Do",
+              updatedAt: new Date(),
+            })
+            .where(eq(kanbanCard.id, mov.cardId));
+        } else {
+          const newSprintNumber = mov.destination === "next_sprint" ? mov.nextSprintNumber : null;
+          await db
+            .update(kanbanCard)
+            .set({
+              sprintNumber: newSprintNumber || null,
+              updatedAt: new Date(),
+            })
+            .where(eq(kanbanCard.id, mov.cardId));
+        }
       }
     }
 
