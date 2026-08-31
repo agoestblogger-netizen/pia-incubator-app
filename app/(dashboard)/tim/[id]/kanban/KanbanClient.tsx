@@ -666,11 +666,10 @@ export function KanbanClient({
   }, [initialSprints]);
   const [columns] = useState<any[]>(
     initialColumns.length > 0
-      ? initialColumns
+      ? initialColumns.filter((c: any) => c.namaKolom !== "Review")
       : [
           { id: "1", namaKolom: "To Do" },
           { id: "2", namaKolom: "In Progress" },
-          { id: "3", namaKolom: "Review" },
           { id: "4", namaKolom: "Done" },
         ]
   );
@@ -2598,7 +2597,7 @@ export function KanbanClient({
                       )}
                     </h2>
                     <p className="text-xs text-gray-500 hidden sm:block">
-                      Papan kerja harian untuk mengeksekusi kartu kerja sprint (To Do, In Progress, Review, Done).
+                      Papan kerja harian untuk mengeksekusi kartu kerja sprint (To Do, In Progress, Done).
                     </p>
                   </div>
                 </div>
@@ -2737,7 +2736,7 @@ export function KanbanClient({
                         )}
                       </div>
 
-                      {/* View Mode 1: Board Columns (4 Columns: To Do, In Progress, Review, Done) */}
+                      {/* View Mode 1: Board Columns (3 Columns: To Do, In Progress, Done) */}
                       {viewMode === "board" && (
                         isMounted ? (
                           <DndContext
@@ -2748,7 +2747,7 @@ export function KanbanClient({
                             onDragOver={handleDragOver}
                             onDragEnd={handleDragEnd}
                           >
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                               {columns.map((col, colIdx) => {
                                 const colCards = activeSprintCards.filter(
                                   (c) => c.statusKolom === col.namaKolom

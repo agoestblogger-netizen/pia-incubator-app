@@ -100,11 +100,10 @@ function getActivityActionText(act: TeamDashboardActivityItem) {
   }
 }
 
-// ── Donut Chart warna per status kolom (SAMA PERSIS dengan Kanban Board) ──
+// ── Donut Chart warna per status kolom (SAMA PERSIS dengan Board Sprint: 3 Kolom) ──
 const DONUT_COLORS = {
   todo: "#94a3b8",       // slate-400 — To Do / Backlog
   in_progress: "#f59e0b", // amber-500 — In Progress
-  review: "#3b82f6",     // blue-500 — Review
   done: "#10b981",       // emerald-500 — Done
 };
 
@@ -145,11 +144,10 @@ export function DashboardClient({
       ? Math.round((cardsCompletedInActiveSprint / totalCardsInActiveSprint) * 100)
       : 0;
 
-  // Donut chart data
+  // Donut chart data (3 statuses: To Do, In Progress, Done)
   const donutData = [
     { name: "To Do", value: cardDistribution.todo, fill: DONUT_COLORS.todo },
     { name: "In Progress", value: cardDistribution.in_progress, fill: DONUT_COLORS.in_progress },
-    { name: "Review", value: cardDistribution.review, fill: DONUT_COLORS.review },
     { name: "Done", value: cardDistribution.done, fill: DONUT_COLORS.done },
   ].filter((d) => d.value > 0);
 
@@ -444,20 +442,6 @@ export function DashboardClient({
                         <span className="text-xs font-extrabold text-amber-900">{cardDistribution.in_progress}</span>
                         <span className="text-[10px] text-amber-700 font-semibold">
                           ({totalCardsInActiveSprint > 0 ? Math.round((cardDistribution.in_progress / totalCardsInActiveSprint) * 100) : 0}%)
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Review */}
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-blue-50 border border-blue-200">
-                      <div className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full shrink-0" style={{ background: DONUT_COLORS.review }} />
-                        <span className="text-xs font-bold text-blue-900">Review / QA</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-extrabold text-blue-900">{cardDistribution.review}</span>
-                        <span className="text-[10px] text-blue-700 font-semibold">
-                          ({totalCardsInActiveSprint > 0 ? Math.round((cardDistribution.review / totalCardsInActiveSprint) * 100) : 0}%)
                         </span>
                       </div>
                     </div>

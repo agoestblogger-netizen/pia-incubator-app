@@ -60,7 +60,6 @@ export interface TeamDashboardData {
   cardDistribution: {
     todo: number;
     in_progress: number;
-    review: number;
     done: number;
   };
 
@@ -111,11 +110,10 @@ export async function getTimDashboardDataAction(
         );
     }
 
-    const normalizeStatus = (status: string | null | undefined): "todo" | "in_progress" | "review" | "done" => {
+    const normalizeStatus = (status: string | null | undefined): "todo" | "in_progress" | "done" => {
       if (!status) return "todo";
       const s = status.toLowerCase().replace(/[\s\-_/]/g, "");
-      if (s.includes("progress")) return "in_progress";
-      if (s.includes("review") || s.includes("qa")) return "review";
+      if (s.includes("progress") || s.includes("review") || s.includes("qa")) return "in_progress";
       if (s.includes("done") || s.includes("selesai")) return "done";
       return "todo";
     };
@@ -128,7 +126,6 @@ export async function getTimDashboardDataAction(
     const cardDistribution = {
       todo: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "todo").length,
       in_progress: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "in_progress").length,
-      review: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "review").length,
       done: sprintCards.filter((c) => normalizeStatus(c.statusKolom) === "done").length,
     };
 

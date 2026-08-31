@@ -94,8 +94,8 @@ export async function createTimInovatorAction(formData: {
       );
     }
 
-    // Seed default kanban columns for this team
-    const defaultCols = ['To Do', 'In Progress', 'Review', 'Done'];
+    // Seed default kanban columns for this team (3 columns: To Do, In Progress, Done)
+    const defaultCols = ['To Do', 'In Progress', 'Done'];
     await db.insert(kanbanColumn).values(
       defaultCols.map((name, idx) => ({
         timInovatorId: tim.id,
