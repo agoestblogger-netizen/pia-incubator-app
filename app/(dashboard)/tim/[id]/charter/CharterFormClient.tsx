@@ -132,6 +132,15 @@ const ROLES_CONFIG: RoleConfig[] = [
   },
 ];
 
+const OFFICIAL_SPRINT_TITLES: Record<number, string> = {
+  1: "Perencanaan Customer Validation",
+  2: "Laporan Customer Validation",
+  3: "Perencanaan Market Validation",
+  4: "Market Testing",
+  5: "Market Testing",
+  6: "Penyelesaian Laporan Market Validation",
+};
+
 export function CharterFormClient({
   timId,
   initialData,
@@ -1302,19 +1311,29 @@ export function CharterFormClient({
               </div>
 
               <div className="space-y-3">
-                {sprints.map((s) => (
-                  <div
-                    key={s.nomorSprint}
-                    className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <Badge variant="default" className="text-xs bg-[#0F5132] font-bold">
-                        Sprint {s.nomorSprint}
-                      </Badge>
-                      <span className="text-[10px] text-gray-400 font-medium">
-                        {s.status === 'aktif' ? '🟢 Sedang Aktif' : s.status === 'selesai' ? '🔵 Selesai' : '⚪ Belum Dimulai'}
-                      </span>
-                    </div>
+                {sprints.map((s) => {
+                  const defaultTitle = OFFICIAL_SPRINT_TITLES[s.nomorSprint] || `Sprint ${s.nomorSprint}`;
+                  const cleanTitle = (s.tujuan || defaultTitle).replace(
+                    new RegExp(`^Sprint\\s*${s.nomorSprint}\\s*:\\s*`, "i"),
+                    ""
+                  );
+
+                  return (
+                    <div
+                      key={s.nomorSprint}
+                      className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <Badge
+                          variant="default"
+                          className="text-xs bg-[#0F5132] text-white font-bold px-3 py-1 rounded-lg shadow-2xs inline-flex items-center gap-1.5"
+                        >
+                          <span>Sprint {s.nomorSprint}: {cleanTitle}</span>
+                        </Badge>
+                        <span className="text-[10px] text-gray-500 font-medium">
+                          {s.status === 'aktif' ? '🟢 Sedang Aktif' : s.status === 'selesai' ? '🔵 Selesai' : '⚪ Belum Dimulai'}
+                        </span>
+                      </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                       <div className="md:col-span-3 space-y-1">
@@ -1363,7 +1382,8 @@ export function CharterFormClient({
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
 
