@@ -1598,9 +1598,9 @@ export function KanbanClient({
     );
     const effectiveStoryPoint =
       subtasks.length > 0
-        ? Number((totalSubtaskMinutes / 60).toFixed(2))
-        : (detailStoryPoint ?? 3);
-    const effectiveEstimasiJam = Math.round(effectiveStoryPoint);
+        ? Math.max(1, Math.round(totalSubtaskMinutes / 60))
+        : Math.max(1, Math.round(detailStoryPoint ?? 3));
+    const effectiveEstimasiJam = effectiveStoryPoint;
 
     // Case 1: Created from "+ Tambah Backlog"
     if (selectedCardForDetail.isNewBacklog) {
@@ -1790,8 +1790,8 @@ export function KanbanClient({
         judul: detailJudul,
         deskripsi: detailDeskripsi,
         acceptanceCriteria: detailAcceptanceCriteria,
-        estimasiJam: detailEstimasiJam,
-        storyPoint: detailStoryPoint ?? 3,
+        estimasiJam: detailEstimasiJam !== null && detailEstimasiJam !== undefined ? Math.max(0, Math.round(Number(detailEstimasiJam))) : null,
+        storyPoint: Math.max(1, Math.round(detailStoryPoint ?? 3)),
         ownerAnggotaId: detailOwnerAnggotaId,
       }
     );
@@ -1992,8 +1992,8 @@ export function KanbanClient({
       const targetSprintNum = activeSprintObj ? activeSprintObj.nomorSprint : selectedSprintNum;
 
       const effectiveMenit = typeof issueMenit === "number" && issueMenit > 0 ? issueMenit : 180;
-      const effectiveStoryPoint = Number((effectiveMenit / 60).toFixed(2));
-      const effectiveEstimasiJam = Math.round(effectiveStoryPoint);
+      const effectiveStoryPoint = Math.max(1, Math.round(effectiveMenit / 60));
+      const effectiveEstimasiJam = effectiveStoryPoint;
 
       const res = await createKanbanCardAction(timId, {
         judul: issueJudul.trim(),
@@ -3171,14 +3171,27 @@ export function KanbanClient({
                                         ) : (
                                           <span
                                             onClick={() => { if (canEdit && !isMandatory) handleStartEditHours(st); }}
-                                            title={canEdit && !isMandatory ? 'Klik untuk mengedit estimasi durasi menit' : undefined}
-                                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
-                                              canEdit && !isMandatory ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
-                                            } transition-colors`}
+                                            title={
+                                              isMandatory
+                                                ? "Durasi subtask wajib bersifat baku dari template"
+                                                : canEdit
+                                                ? "Klik untuk mengedit estimasi durasi menit"
+                                                : undefined
+                                            }
+                                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors inline-flex items-center gap-1 ${
+                                              isMandatory
+                                                ? "bg-amber-50/80 text-amber-900 border border-amber-300/80 cursor-not-allowed opacity-90 shadow-2xs"
+                                                : `bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
+                                                    canEdit ? "cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]" : ""
+                                                  }`
+                                            }`}
                                           >
-                                            {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
-                                              ? `${st.estimatedHours} menit`
-                                              : canEdit ? '— menit' : ''}
+                                            {isMandatory && <Lock className="h-2.5 w-2.5 text-amber-700 shrink-0" />}
+                                            <span>
+                                              {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
+                                                ? `${st.estimatedHours} menit`
+                                                : canEdit ? "— menit" : ""}
+                                            </span>
                                           </span>
                                         )}
 
@@ -4023,7 +4036,7 @@ export function KanbanClient({
                                 onChange={(e) => {
                                   if (hasSubtasks) return;
                                   const min = Math.max(1, parseInt(e.target.value, 10) || 60);
-                                  setDetailStoryPoint(Number((min / 60).toFixed(2)));
+                                  setDetailStoryPoint(Math.max(1, Math.round(min / 60)));
                                 }}
                                 className={`w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37] ${
                                   hasSubtasks ? "opacity-80 bg-gray-50 cursor-not-allowed" : ""

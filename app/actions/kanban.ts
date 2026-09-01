@@ -479,8 +479,12 @@ export async function updateKanbanCardFullAction(
     if (cardData.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardData.acceptanceCriteria;
     if (cardData.dependencyRisiko !== undefined) updatePayload.dependencyRisiko = cardData.dependencyRisiko;
     if (cardData.reviewStatus !== undefined) updatePayload.reviewStatus = cardData.reviewStatus;
-    if (cardData.estimasiJam !== undefined) updatePayload.estimasiJam = cardData.estimasiJam;
-    if (cardData.storyPoint !== undefined) updatePayload.storyPoint = cardData.storyPoint;
+    if (cardData.estimasiJam !== undefined) {
+      updatePayload.estimasiJam = cardData.estimasiJam !== null ? Math.max(0, Math.round(Number(cardData.estimasiJam))) : null;
+    }
+    if (cardData.storyPoint !== undefined) {
+      updatePayload.storyPoint = cardData.storyPoint !== null ? Math.max(1, Math.round(Number(cardData.storyPoint))) : null;
+    }
     if (cardData.suggestedSprintNumber !== undefined) updatePayload.suggestedSprintNumber = cardData.suggestedSprintNumber;
     if (cardData.customDocumentData !== undefined) updatePayload.customDocumentData = cardData.customDocumentData;
 
@@ -637,8 +641,12 @@ export async function adoptAiCardAction(
     if (cardOverrides?.judul) updatePayload.judul = cardOverrides.judul;
     if (cardOverrides?.deskripsi !== undefined) updatePayload.deskripsi = cardOverrides.deskripsi;
     if (cardOverrides?.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardOverrides.acceptanceCriteria;
-    if (cardOverrides?.estimasiJam !== undefined) updatePayload.estimasiJam = cardOverrides.estimasiJam;
-    if (cardOverrides?.storyPoint !== undefined) updatePayload.storyPoint = cardOverrides.storyPoint;
+    if (cardOverrides?.estimasiJam !== undefined) {
+      updatePayload.estimasiJam = cardOverrides.estimasiJam !== null ? Math.max(0, Math.round(Number(cardOverrides.estimasiJam))) : null;
+    }
+    if (cardOverrides?.storyPoint !== undefined) {
+      updatePayload.storyPoint = cardOverrides.storyPoint !== null ? Math.max(1, Math.round(Number(cardOverrides.storyPoint))) : null;
+    }
     if (cardOverrides?.ownerAnggotaId !== undefined) updatePayload.ownerAnggotaId = cardOverrides.ownerAnggotaId;
 
     const [updated] = await db

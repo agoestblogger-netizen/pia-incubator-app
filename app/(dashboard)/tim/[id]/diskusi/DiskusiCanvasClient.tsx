@@ -1953,110 +1953,131 @@ export function DiskusiCanvasClient({
                     <p className="text-[11px] text-gray-400 italic py-1">Belum ada subtask pada kartu ini.</p>
                   ) : (
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                      {subtasks.map((st) => (
-                        <div
-                          key={st.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:bg-[#E3F0E6]/50 transition-colors group"
-                        >
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleSubtaskInModal(st.id, st.isDone)}
-                              className="text-[#0F5132] hover:text-[#146C43] transition-colors shrink-0 cursor-pointer"
-                            >
-                              {st.isDone ? (
-                                <CheckSquare className="h-4 w-4 text-[#0F5132]" />
-                              ) : (
-                                <Square className="h-4 w-4 text-gray-400" />
-                              )}
-                            </button>
-
-                            {/* Judul Subtask: Inline Edit */}
-                            {editingSubtaskId === st.id && editingSubtaskField === 'title' ? (
-                              <Input
-                                autoFocus
-                                value={editTitleDraft}
-                                onChange={(e) => setEditTitleDraft(e.target.value)}
-                                onBlur={() => handleSaveSubtaskTitle(st.id)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleSaveSubtaskTitle(st.id);
-                                  } else if (e.key === 'Escape') {
-                                    e.preventDefault();
-                                    handleCancelEditSubtask();
-                                  }
-                                }}
-                                className="h-7 text-xs px-1.5 py-0 bg-white border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] flex-1 font-medium"
-                              />
-                            ) : (
-                              <span
-                                onClick={() => handleStartEditTitle(st)}
-                                className={`text-xs flex-1 truncate cursor-pointer hover:bg-yellow-50/80 hover:text-[#0B3D2E] px-1 py-0.5 rounded transition-colors ${
-                                  st.isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'
-                                }`}
-                                title="Klik untuk mengedit judul subtask"
+                      {subtasks.map((st) => {
+                        const isMandatory = st.subtaskType === 'mandatory_simple' || st.subtaskType === 'mandatory_complex';
+                        return (
+                          <div
+                            key={st.id}
+                            className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white border border-[#C9E4D0] hover:bg-[#E3F0E6]/50 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <button
+                                type="button"
+                                disabled={isMandatory}
+                                onClick={() => !isMandatory && handleToggleSubtaskInModal(st.id, st.isDone)}
+                                className={`text-[#0F5132] transition-colors shrink-0 ${isMandatory ? 'cursor-default opacity-80' : 'cursor-pointer hover:text-[#146C43]'}`}
+                                title={isMandatory ? 'Checklist subtask wajib diisi via modal Laporan CV/MV di Kanban Board' : undefined}
                               >
-                                {st.title}
-                              </span>
-                            )}
-                          </div>
+                                {st.isDone ? (
+                                  <CheckSquare className="h-4 w-4 text-[#0F5132]" />
+                                ) : isMandatory ? (
+                                  <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                ) : (
+                                  <Square className="h-4 w-4 text-gray-400" />
+                                )}
+                              </button>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* Jam Subtask: Inline Edit */}
-                            {editingSubtaskId === st.id && editingSubtaskField === 'hours' ? (
-                              <div className="flex items-center gap-1">
+                              {/* Judul Subtask: Inline Edit */}
+                              {editingSubtaskId === st.id && editingSubtaskField === 'title' ? (
                                 <Input
                                   autoFocus
-                                  type="number"
-                                  min={0}
-                                  max={999}
-                                  value={editHoursDraft}
-                                  onChange={(e) =>
-                                    setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))
-                                  }
-                                  onBlur={() => handleSaveSubtaskHours(st.id)}
+                                  value={editTitleDraft}
+                                  onChange={(e) => setEditTitleDraft(e.target.value)}
+                                  onBlur={() => handleSaveSubtaskTitle(st.id)}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      handleSaveSubtaskHours(st.id);
+                                      handleSaveSubtaskTitle(st.id);
                                     } else if (e.key === 'Escape') {
                                       e.preventDefault();
                                       handleCancelEditSubtask();
                                     }
                                   }}
-                                  className="h-6 w-16 text-[10px] px-1 py-0 text-center bg-white border-[#D4AF37] font-bold"
+                                  className="h-7 text-xs px-1.5 py-0 bg-white border-[#3E9463] focus:ring-1 focus:ring-[#3E9463] flex-1 font-medium"
                                 />
-                                <span className="text-[10px] text-gray-500 font-semibold">menit</span>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleStartEditHours(st)}
-                                className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
-                                title="Klik untuk mengedit estimasi menit subtask"
-                              >
-                                {st.estimatedHours ? `${st.estimatedHours} menit` : '+ menit'}
-                              </button>
-                            )}
-
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              disabled={deletingSubtaskId === st.id}
-                              onClick={() => handleDeleteSubtaskInModal(st.id)}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 rounded transition-all cursor-pointer"
-                              title="Hapus subtask"
-                            >
-                              {deletingSubtaskId === st.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-red-600" />
                               ) : (
-                                <Trash2 className="h-3 w-3" />
+                                <span
+                                  onClick={() => { if (!isMandatory) handleStartEditTitle(st); }}
+                                  className={`text-xs flex-1 truncate px-1 py-0.5 rounded transition-colors ${
+                                    isMandatory
+                                      ? 'text-gray-800 font-semibold cursor-default'
+                                      : `cursor-pointer hover:bg-yellow-50/80 hover:text-[#0B3D2E] ${
+                                          st.isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'
+                                        }`
+                                  }`}
+                                  title={isMandatory ? undefined : "Klik untuk mengedit judul subtask"}
+                                >
+                                  {st.title}
+                                </span>
                               )}
-                            </button>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {/* Jam Subtask: Inline Edit */}
+                              {editingSubtaskId === st.id && editingSubtaskField === 'hours' ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    autoFocus
+                                    type="number"
+                                    min={0}
+                                    max={999}
+                                    value={editHoursDraft}
+                                    onChange={(e) =>
+                                      setEditHoursDraft(e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0))
+                                    }
+                                    onBlur={() => handleSaveSubtaskHours(st.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSaveSubtaskHours(st.id);
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        handleCancelEditSubtask();
+                                      }
+                                    }}
+                                    className="h-6 w-16 text-[10px] px-1 py-0 text-center bg-white border-[#D4AF37] font-bold"
+                                  />
+                                  <span className="text-[10px] text-gray-500 font-semibold">menit</span>
+                                </div>
+                              ) : isMandatory ? (
+                                <span
+                                  className="text-[10px] font-bold text-amber-900 px-1.5 py-0.5 rounded bg-amber-50/80 border border-amber-300/80 cursor-not-allowed opacity-90 inline-flex items-center gap-1 shadow-2xs"
+                                  title="Durasi subtask wajib bersifat baku dari template"
+                                >
+                                  <Lock className="h-2.5 w-2.5 text-amber-700 shrink-0" />
+                                  <span>{st.estimatedHours ? `${st.estimatedHours} menit` : '— menit'}</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditHours(st)}
+                                  className="text-[10px] font-bold text-amber-800 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                                  title="Klik untuk mengedit estimasi menit subtask"
+                                >
+                                  {st.estimatedHours ? `${st.estimatedHours} menit` : '+ menit'}
+                                </button>
+                              )}
+
+                              {/* Delete Button */}
+                              {!isMandatory && (
+                                <button
+                                  type="button"
+                                  disabled={deletingSubtaskId === st.id}
+                                  onClick={() => handleDeleteSubtaskInModal(st.id)}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 rounded transition-all cursor-pointer"
+                                  title="Hapus subtask"
+                                >
+                                  {deletingSubtaskId === st.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin text-red-600" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 

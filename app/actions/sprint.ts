@@ -334,8 +334,12 @@ export async function startSprintAction(
           sprintNumber: targetSprint.nomorSprint,
           updatedAt: new Date(),
         };
-        if (item.storyPoint !== undefined) updateData.storyPoint = item.storyPoint;
-        if (item.estimasiJam !== undefined) updateData.estimasiJam = item.estimasiJam;
+        if (item.storyPoint !== undefined) {
+          updateData.storyPoint = item.storyPoint !== null ? Math.max(1, Math.round(Number(item.storyPoint))) : null;
+        }
+        if (item.estimasiJam !== undefined) {
+          updateData.estimasiJam = item.estimasiJam !== null ? Math.max(0, Math.round(Number(item.estimasiJam))) : null;
+        }
         if (item.ownerAnggotaId !== undefined) updateData.ownerAnggotaId = item.ownerAnggotaId;
 
         await db

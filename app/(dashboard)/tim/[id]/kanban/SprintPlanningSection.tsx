@@ -287,7 +287,7 @@ export function SprintPlanningSection({
   // Handle updating Estimasi Waktu (menit) for a card (Paket 24a)
   const handleMinutesChange = (cardId: string, value: string) => {
     const minutes = value === "" ? null : Math.max(1, parseInt(value, 10) || 60);
-    const storyPoint = minutes !== null ? Number((minutes / 60).toFixed(2)) : null;
+    const storyPoint = minutes !== null ? Math.max(1, Math.round(minutes / 60)) : null;
 
     setAssignments((prev) => ({
       ...prev,
