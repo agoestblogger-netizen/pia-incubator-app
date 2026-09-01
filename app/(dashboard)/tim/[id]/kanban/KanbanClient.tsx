@@ -1665,37 +1665,7 @@ export function KanbanClient({
         }
       }
     }
-    // Case 2: Direct adoption of an ai_reference card
-    else if (selectedCardForDetail.reviewStatus === "ai_reference") {
-      const res = await adoptAiCardAction(
-        timId,
-        selectedCardForDetail.id,
-        targetSprint,
-        {
-          judul: detailJudul,
-          deskripsi: detailDeskripsi,
-          acceptanceCriteria: detailAcceptanceCriteria,
-          estimasiJam: effectiveEstimasiJam,
-          storyPoint: effectiveStoryPoint,
-          ownerAnggotaId: detailOwnerAnggotaId,
-        }
-      );
-      if (res.success && res.data) {
-        setCards((prev) =>
-          prev.map((c) => (c.id === selectedCardForDetail.id ? { ...c, ...res.data } : c))
-        );
-        toast.success(
-          `Kartu "${detailJudul}" berhasil diadopsi ke Sprint ${targetSprint}!`,
-          "Adopsi Berhasil ✓"
-        );
-        setSelectedCardForDetail(null);
-      } else {
-        const errMsg = res.error || "Gagal mengadopsi kartu.";
-        toast.error(errMsg, "Gagal");
-        setErrorMessage(errMsg);
-      }
-    }
-    // Case 3: Regular update of existing card
+    // Case 2: Regular update of existing card
     else {
       const payload = {
         judul: detailJudul,
