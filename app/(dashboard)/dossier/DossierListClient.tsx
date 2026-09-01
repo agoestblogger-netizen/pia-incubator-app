@@ -1,24 +1,87 @@
 'use client';
 
-import { useState } from 'react';
-import { type DossierListItem } from '@/app/actions/dossier';
+import { useState, useEffect } from 'react';
+import {
+  type DossierListItem,
+  updateKlasifikasiInovasiAction,
+} from '@/app/actions/dossier';
+import { BAKU_KLASIFIKASI_OPTIONS } from '@/lib/data/dossier-constants';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, ArrowUpRight, Award, FolderArchive, Users, Filter, Sparkles, Gem } from 'lucide-react';
+import {
+  Search,
+  FileText,
+  ArrowUpRight,
+  Award,
+  FolderArchive,
+  Users,
+  Filter,
+  Sparkles,
+  Gem,
+  Check,
+  RefreshCw,
+} from 'lucide-react';
 import Link from 'next/link';
 import {
   PEGADAIAN_HEADER_GRADIENT_STYLE,
   getCategoryBadgeToken,
   getMedalToken,
 } from '@/lib/theme/tokens';
+import { toast } from '@/components/ui/ToastProvider';
 
-export function DossierListClient({ initialItems }: { initialItems: DossierListItem[] }) {
+export function DossierListClient({
+  initialItems,
+  canEditKlasifikasi = false,
+}: {
+  initialItems: DossierListItem[];
+  canEditKlasifikasi?: boolean;
+}) {
+  const [items, setItems] = useState<DossierListItem[]>(initialItems);
   const [search, setSearch] = useState('');
   const [seasonFilter, setSeasonFilter] = useState('ALL');
   const [kategoriFilter, setKategoriFilter] = useState('ALL');
+  const [editingRows, setEditingRows] = useState<Record<string, string>>({});
+  const [savingRows, setSavingRows] = useState<Record<string, boolean>>({});
 
-  const filteredItems = initialItems.filter((item) => {
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  const handleRowMedalChange = (itemId: string, newMedal: string) => {
+    setEditingRows((prev) => ({ ...prev, [itemId]: newMedal }));
+  };
+
+  const handleSaveRowMedal = async (item: DossierListItem) => {
+    const newMedal = editingRows[item.id];
+    if (!newMedal || !item.timInovatorId) return;
+
+    setSavingRows((prev) => ({ ...prev, [item.id]: true }));
+    try {
+      const res = await updateKlasifikasiInovasiAction(item.timInovatorId, newMedal);
+      if (res.success) {
+        toast.success(res.message, 'Klasifikasi Diperbarui');
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === item.id ? { ...it, peringkatMedali: newMedal, timKlasifikasi: newMedal } : it
+          )
+        );
+        setEditingRows((prev) => {
+          const next = { ...prev };
+          delete next[item.id];
+          return next;
+        });
+      } else {
+        toast.error(res.message, 'Gagal Memperbarui');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Terjadi kesalahan sistem.', 'Gagal');
+    } finally {
+      setSavingRows((prev) => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  const filteredItems = items.filter((item) => {
     const matchesSearch =
       !search ||
       item.namaProyek.toLowerCase().includes(search.toLowerCase()) ||
@@ -222,17 +285,70 @@ export function DossierListClient({ initialItems }: { initialItems: DossierListI
                         </td>
 
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          <span
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white shadow-2xs"
-                            style={{ background: medal.bgGradient }}
-                          >
-                            {medal.iconType === "diamond" ? (
-                              <Gem className="h-3 w-3 text-white" />
-                            ) : (
-                              <Award className="h-3 w-3 text-white" />
-                            )}
-                            <span>{medal.name}</span>
-                          </span>
+                          {canEditKlasifikasi && item.timInovatorId ? (
+                            <div className="inline-flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-1">
+                                <select
+                                  value={editingRows[item.id] || item.peringkatMedali}
+                                  onChange={(e) => handleRowMedalChange(item.id, e.target.value)}
+                                  disabled={savingRows[item.id]}
+                                  className="text-[11px] font-bold rounded-md border border-gray-300 bg-white px-2 py-1 text-gray-800 shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#0F5132] cursor-pointer"
+                                >
+                                  {!BAKU_KLASIFIKASI_OPTIONS.includes(item.peringkatMedali as any) && (
+                                    <option value={item.peringkatMedali} disabled>
+                                      {item.peringkatMedali} (Data Non-Baku)
+                                    </option>
+                                  )}
+                                  {BAKU_KLASIFIKASI_OPTIONS.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {editingRows[item.id] && editingRows[item.id] !== item.peringkatMedali && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={savingRows[item.id]}
+                                    onClick={() => handleSaveRowMedal(item)}
+                                    className="h-6 px-1.5 bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-[10px] font-bold shadow-xs cursor-pointer"
+                                    title="Simpan Perubahan Klasifikasi"
+                                  >
+                                    {savingRows[item.id] ? (
+                                      <RefreshCw className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Check className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold text-white shadow-2xs"
+                                style={{ background: medal.bgGradient }}
+                              >
+                                {medal.iconType === 'diamond' ? (
+                                  <Gem className="h-2.5 w-2.5 text-white" />
+                                ) : (
+                                  <Award className="h-2.5 w-2.5 text-white" />
+                                )}
+                                <span>{editingRows[item.id] || item.peringkatMedali}</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white shadow-2xs"
+                              style={{ background: medal.bgGradient }}
+                            >
+                              {medal.iconType === 'diamond' ? (
+                                <Gem className="h-3 w-3 text-white" />
+                              ) : (
+                                <Award className="h-3 w-3 text-white" />
+                              )}
+                              <span>{medal.name}</span>
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-3.5 text-center whitespace-nowrap">

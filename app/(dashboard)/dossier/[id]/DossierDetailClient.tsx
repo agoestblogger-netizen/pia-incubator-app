@@ -30,12 +30,20 @@ import {
   Lock,
   Layers,
   FileCheck,
+  RefreshCw,
+  Gem,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
   PEGADAIAN_HEADER_GRADIENT_STYLE,
   getCategoryBadgeToken,
+  getMedalToken,
 } from '@/lib/theme/tokens';
+import {
+  updateKlasifikasiInovasiAction,
+} from '@/app/actions/dossier';
+import { BAKU_KLASIFIKASI_OPTIONS } from '@/lib/data/dossier-constants';
+import { toast } from '@/components/ui/ToastProvider';
 
 function formatDateSafe(dateStr?: string | null, options?: Intl.DateTimeFormatOptions) {
   if (!dateStr) return '-';
@@ -56,7 +64,13 @@ function formatDocTitle(fileName: string): string {
   return fileName;
 }
 
-export function DossierDetailClient({ dossier }: { dossier: any }) {
+export function DossierDetailClient({
+  dossier,
+  canEditKlasifikasi = false,
+}: {
+  dossier: any;
+  canEditKlasifikasi?: boolean;
+}) {
   const [activeTab, setActiveTab] = useState<'submisi' | 'diskusi' | 'juri' | 'dokumen'>('submisi');
   const [selectedDocIndex, setSelectedDocIndex] = useState<number>(0);
   const [pdfZoom, setPdfZoom] = useState<number>(100);
@@ -66,6 +80,43 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
   const pengusul = dataSubmisi.pengusul || {};
   const formDetail = dataSubmisi.form_detail || {};
   const statusAkhir = snap.status_akhir || {};
+
+  // State Klasifikasi Inovasi / Peringkat Medali
+  const initialMedal =
+    dossier.timKlasifikasi ||
+    statusAkhir.peringkat_medali ||
+    dataSubmisi.klasifikasi_inovasi ||
+    'Platinum';
+
+  const [currentMedal, setCurrentMedal] = useState<string>(initialMedal);
+  const [selectedMedal, setSelectedMedal] = useState<string>(initialMedal);
+  const [savingMedal, setSavingMedal] = useState<boolean>(false);
+
+  const handleSaveKlasifikasi = async () => {
+    if (!dossier.timInovatorId) {
+      toast.error('ID Tim Inovator tidak ditemukan pada dossier ini.', 'Gagal');
+      return;
+    }
+    setSavingMedal(true);
+    try {
+      const res = await updateKlasifikasiInovasiAction(dossier.timInovatorId, selectedMedal);
+      if (res.success) {
+        setCurrentMedal(selectedMedal);
+        toast.success(res.message, 'Klasifikasi Diperbarui');
+      } else {
+        toast.error(res.message, 'Gagal Memperbarui');
+        setSelectedMedal(currentMedal);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Terjadi kesalahan saat menyimpan.', 'Gagal');
+      setSelectedMedal(currentMedal);
+    } finally {
+      setSavingMedal(false);
+    }
+  };
+
+  const isOldValueNonBaku = !BAKU_KLASIFIKASI_OPTIONS.includes(currentMedal as any);
+  const activeMedalToken = getMedalToken(selectedMedal);
   const voting = snap.voting_summary || {
     nominate_votes: 10,
     not_nominate_votes: 0,
@@ -193,12 +244,100 @@ export function DossierDetailClient({ dossier }: { dossier: any }) {
 
             {/* Medal & Status Badge Box */}
             <div className="flex flex-col sm:items-end gap-3 shrink-0">
-              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-right space-y-1 shadow-inner">
-                <div className="text-[10px] text-green-200 font-bold uppercase tracking-wider">Hasil Grand Final</div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-400/25 border border-amber-300/50 text-amber-200 font-extrabold text-sm">
-                  <Award className="h-4 w-4 text-[#E6CA65]" />
-                  {statusAkhir.peringkat_medali || dataSubmisi.klasifikasi_inovasi || 'Platinum'}
+              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-right space-y-2 shadow-inner">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] text-green-200 font-bold uppercase tracking-wider">
+                    Hasil Grand Final
+                  </span>
+                  {canEditKlasifikasi && (
+                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">
+                      Mode Admin
+                    </span>
+                  )}
                 </div>
+
+                {canEditKlasifikasi ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 justify-end">
+                      <select
+                        value={selectedMedal}
+                        onChange={(e) => setSelectedMedal(e.target.value)}
+                        disabled={savingMedal}
+                        className="text-xs font-bold rounded-lg bg-white/95 text-gray-900 border border-amber-300 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-xs cursor-pointer"
+                      >
+                        {isOldValueNonBaku && (
+                          <option value={currentMedal} disabled>
+                            {currentMedal} (Data Non-Baku)
+                          </option>
+                        )}
+                        {BAKU_KLASIFIKASI_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-extrabold text-xs shadow-2xs text-white"
+                        style={{ background: activeMedalToken.bgGradient }}
+                      >
+                        {activeMedalToken.iconType === 'diamond' ? (
+                          <Gem className="h-3.5 w-3.5 text-white" />
+                        ) : (
+                          <Award className="h-3.5 w-3.5 text-white" />
+                        )}
+                        <span>{selectedMedal}</span>
+                      </div>
+                    </div>
+
+                    {selectedMedal !== currentMedal && (
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={savingMedal}
+                          onClick={handleSaveKlasifikasi}
+                          className="bg-amber-400 hover:bg-amber-500 text-gray-950 font-extrabold text-[11px] h-7 px-3 shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          {savingMedal ? (
+                            <>
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                              Menyimpan...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-3.5 w-3.5" />
+                              Simpan Perubahan Klasifikasi
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={savingMedal}
+                          onClick={() => setSelectedMedal(currentMedal)}
+                          className="text-white/80 hover:text-white hover:bg-white/10 text-[10px] h-7 px-2 cursor-pointer"
+                        >
+                          Batal
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-xl font-extrabold text-sm text-white shadow-2xs"
+                    style={{ background: activeMedalToken.bgGradient }}
+                  >
+                    {activeMedalToken.iconType === 'diamond' ? (
+                      <Gem className="h-4 w-4 text-white" />
+                    ) : (
+                      <Award className="h-4 w-4 text-white" />
+                    )}
+                    <span>{currentMedal}</span>
+                  </div>
+                )}
+
                 <div className="text-[11px] text-green-100 font-semibold flex items-center justify-end gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
                   Status: {statusAkhir.status || 'Release'}

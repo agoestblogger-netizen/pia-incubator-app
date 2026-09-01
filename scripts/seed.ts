@@ -114,6 +114,7 @@ const DEFAULT_PERMISSIONS = [
 
   // Dossier Arsip PIA
   { kodePermission: 'dossier.view', modul: 'dossier', deskripsi: 'Melihat arsip proposal asli PIA' },
+  { kodePermission: 'dossier.edit_klasifikasi', modul: 'dossier', deskripsi: 'Mengubah klasifikasi inovasi / peringkat medali tim pasca-Grand Final' },
 
   // Import Calon Peserta
   { kodePermission: 'import.execute', modul: 'tim_inovator', deskripsi: 'Mengimpor calon peserta dari PIA Curation' },
@@ -151,7 +152,7 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'market_val.manage', 'market_val.edit', 'market_val.view',
     'anggaran.manage', 'anggaran.view',
     'fmi.manage', 'fmi.view',
-    'dossier.view',
+    'dossier.view', 'dossier.edit_klasifikasi',
     'cv_plan.sign_inisiator', 'cv_plan.sign_coach', 'cv_plan.sign_po',
     'cv_report.sign_inisiator', 'cv_report.sign_coach', 'cv_report.sign_po',
     'mv_plan.sign_po', 'mv_plan.sign_coach', 'mv_plan.sign_promotor',
