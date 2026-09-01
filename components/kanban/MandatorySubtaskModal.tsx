@@ -32,6 +32,7 @@ import {
   getMandatorySubtaskDataAction,
   saveMandatorySubtaskDataAction,
 } from "@/app/actions/kanban-custom-doc";
+import { TEMUAN_KUALITATIF_BAKU_ROWS } from "@/lib/data/subtask-templates";
 
 interface MandatorySubtaskModalProps {
   isOpen: boolean;
@@ -96,6 +97,18 @@ function extractMappingField(st: MandatorySubtaskModalProps["subtask"]): string 
     title.includes("hasil pengukuran metrik psf")
   ) {
     return "psf_7param_measurement";
+  }
+  if (
+    title.includes("value proposition") ||
+    title.includes("fitur kunci")
+  ) {
+    return "value_proposition_features";
+  }
+  if (
+    title.includes("temuan kualitatif") ||
+    title.includes("6 pertanyaan baku")
+  ) {
+    return "temuan_kualitatif_6baris";
   }
   if (title.includes("validated solution") || title.includes("psf")) {
     return "validated_solution_psf";
@@ -743,6 +756,124 @@ export function MandatorySubtaskModal({
                     <option value="tercapai_dengan_catatan">⚠️ Tercapai dengan Catatan Perbaikan</option>
                     <option value="belum_tercapai">❌ Belum Tercapai (Perlu Iterasi / Pivot)</option>
                   </select>
+                </div>
+              </div>
+            )}
+
+            {/* Value Proposition & Fitur Kunci Solusi */}
+            {mappingField === "value_proposition_features" && (
+              <div className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-800 block text-xs">
+                    Value Proposition (Nilai Unik Solusi) *
+                  </label>
+                  <Textarea
+                    required
+                    rows={3}
+                    placeholder="Nilai unik atau manfaat utama yang dirasakan pelanggan dibanding solusi eksisting..."
+                    value={formData.valueProposition || ""}
+                    onChange={(e) => updateField("valueProposition", e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-gray-800 block text-xs">
+                    Fitur Kunci Solusi (Tiga Fitur Utama yang Divalidasi) *
+                  </label>
+                  <div className="space-y-2">
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-semibold text-gray-600">Fitur Kunci 1 *</span>
+                      <Input
+                        required
+                        placeholder="Contoh: Otomasi kalkulator taksiran emas"
+                        value={formData.fiturKunci1 || ""}
+                        onChange={(e) => updateField("fiturKunci1", e.target.value)}
+                        className="text-xs h-8 bg-white"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-semibold text-gray-600">Fitur Kunci 2 *</span>
+                      <Input
+                        required
+                        placeholder="Contoh: Booking jemput berkas gadai"
+                        value={formData.fiturKunci2 || ""}
+                        onChange={(e) => updateField("fiturKunci2", e.target.value)}
+                        className="text-xs h-8 bg-white"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-semibold text-gray-600">Fitur Kunci 3 *</span>
+                      <Input
+                        required
+                        placeholder="Contoh: Notifikasi peringatan jatuh tempo via WA"
+                        value={formData.fiturKunci3 || ""}
+                        onChange={(e) => updateField("fiturKunci3", e.target.value)}
+                        className="text-xs h-8 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-gray-800 block text-xs">
+                    Flow Solusi (Alur Interaksi Pengguna &amp; Operasional) *
+                  </label>
+                  <Textarea
+                    required
+                    rows={3}
+                    placeholder="Jelaskan langkah demi langkah bagaimana pengguna berinteraksi dengan solusi mulai dari awal hingga tuntas..."
+                    value={formData.flowSolusi || ""}
+                    onChange={(e) => updateField("flowSolusi", e.target.value)}
+                    className="text-xs bg-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Temuan Kualitatif (6 Pertanyaan Baku) */}
+            {mappingField === "temuan_kualitatif_6baris" && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Evaluasi 6 pertanyaan kunci baku resmi dari Template 2.2 untuk menggali feedback esensial responden. Kolom Kategori dan Pertanyaan Kunci bersifat baku (read-only), silakan lengkapi Temuan Utama hasil pengujian tim.
+                </p>
+                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-2xs">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                      <tr>
+                        <th className="p-2.5 w-1/4">Kategori</th>
+                        <th className="p-2.5 w-1/3">Pertanyaan Kunci (Baku)</th>
+                        <th className="p-2.5">Temuan Utama (Isian Tim) *</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {(formData.temuanRows || TEMUAN_KUALITATIF_BAKU_ROWS).map((row: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
+                          <td className="p-2.5 font-bold text-gray-900 align-top bg-gray-50/50">
+                            {row.kategori}
+                          </td>
+                          <td className="p-2.5 text-gray-600 align-top text-[11px] leading-relaxed">
+                            {row.pertanyaanKunci}
+                          </td>
+                          <td className="p-2 align-top">
+                            <Textarea
+                              required
+                              rows={2}
+                              placeholder={`Tulis temuan utama untuk ${row.kategori.toLowerCase()}...`}
+                              value={row.temuanUtama || ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const currentRows = [...(formData.temuanRows || TEMUAN_KUALITATIF_BAKU_ROWS)];
+                                currentRows[idx] = { ...currentRows[idx], temuanUtama: val };
+                                updateField("temuanRows", currentRows);
+                              }}
+                              className="text-xs bg-white border border-gray-200 focus:border-[#3E9463]"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

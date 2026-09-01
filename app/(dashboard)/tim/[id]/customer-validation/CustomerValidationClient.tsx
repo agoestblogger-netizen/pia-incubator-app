@@ -2320,92 +2320,114 @@ export function CustomerValidationClient({
 
           <form onSubmit={handleSaveReport} className="space-y-5">
             {/* ══ SECTION A: Ringkasan Solusi & Value Proposition ══ */}
-            <Card id="section-solusi" className="border-gray-200/80 shadow-2xs">
+            <Card className="border-gray-200/80 shadow-2xs" id="section-solusi">
               <CardHeader className="pb-3 border-b border-gray-100">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
-                      <span>A. Ringkasan Problem dan Solusi Tervalidasi</span>
-                      <SectionInfo
-                        title="Template 2.2 — Bagian A: Problem & Solusi Tervalidasi"
-                        text="Dokumentasi hasil validasi: Validated Solution (bentuk solusi yang terbukti menyelesaikan masalah utama pelanggan) dan Value Proposition (nilai unik atau manfaat utama yang dirasakan pelanggan dibanding solusi eksisting)."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
-                      Definisi solusi yang terbukti menjawab problem worth solving dan value proposition bagi pelanggan.
-                    </CardDescription>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] font-bold text-gray-600 bg-gray-50">
-                    Template 2.2
+                  <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-[#3E9463]" />
+                    <span>A. Ringkasan Problem dan Solusi Tervalidasi</span>
+                    <SectionInfo
+                      title="Template 2.2 — Bagian A: Problem & Solusi Tervalidasi"
+                      text="Ringkasan eksekutif solusi yang terbukti menjawab problem tervalidasi: Validated Solution (deskripsi solusi final tervalidasi), Value Proposition (manfaat unik utama bagi pengguna), Fitur Kunci 1-3 (3 kapabilitas utama solusi), dan Flow Solusi (alur interaksi pengguna dari awal hingga akhir). Seluruh field ini dikelola melalui subtask wajib kartu Board Sprint 'Analisis hasil & isi Laporan Customer Validation'."
+                    />
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50 border-emerald-300">
+                    Dikelola via Board Sprint
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">
-                    Validated Solution (Solusi yang Terbukti Dibutuhkan)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 block">
+                      Validated Solution (Solusi yang Terbukti Dibutuhkan)
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
+                      Dikelola via Subtask Validated Solution
+                    </span>
+                  </div>
                   <Textarea
+                    readOnly
                     rows={2}
-                    placeholder="Jelaskan bentuk solusi yang terbukti menyelesaikan masalah utama pelanggan..."
+                    placeholder="Belum diisi via subtask kartu Board Sprint 'Isi Validated Solution & Ketercapaian PSF'..."
                     value={reportForm.validatedSolution}
-                    onChange={(e) => setReportForm({ ...reportForm, validatedSolution: e.target.value })}
+                    className="bg-gray-50/80 text-gray-700 cursor-not-allowed border-gray-200"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">
-                    Value Proposition
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 block">
+                      Value Proposition
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
+                      Dikelola via Subtask Value Proposition
+                    </span>
+                  </div>
                   <Textarea
+                    readOnly
                     rows={2}
-                    placeholder="Nilai unik atau manfaat utama yang dirasakan pelanggan dibanding solusi eksisting..."
+                    placeholder="Belum diisi via subtask kartu Board Sprint 'Isi Value Proposition & Fitur Kunci Solusi'..."
                     value={reportForm.valueProposition}
-                    onChange={(e) => setReportForm({ ...reportForm, valueProposition: e.target.value })}
+                    className="bg-gray-50/80 text-gray-700 cursor-not-allowed border-gray-200"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">
-                    Fitur Kunci Solusi (Tiga Fitur Utama yang Divalidasi)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 block">
+                      Fitur Kunci Solusi (Tiga Fitur Utama yang Divalidasi)
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
+                      Dikelola via Subtask Fitur Kunci
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] font-semibold text-gray-600">Fitur Kunci 1</label>
                       <Input
-                        placeholder="Contoh: Otomasi kalkulator taksiran emas"
+                        readOnly
+                        placeholder="Belum diisi..."
                         value={reportForm.fiturKunci1}
-                        onChange={(e) => setReportForm({ ...reportForm, fiturKunci1: e.target.value })}
+                        className="bg-gray-50/80 text-gray-700 cursor-not-allowed border-gray-200 h-8"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[11px] font-semibold text-gray-600">Fitur Kunci 2</label>
                       <Input
-                        placeholder="Contoh: Booking jemput berkas gadai"
+                        readOnly
+                        placeholder="Belum diisi..."
                         value={reportForm.fiturKunci2}
-                        onChange={(e) => setReportForm({ ...reportForm, fiturKunci2: e.target.value })}
+                        className="bg-gray-50/80 text-gray-700 cursor-not-allowed border-gray-200 h-8"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[11px] font-semibold text-gray-600">Fitur Kunci 3</label>
                       <Input
-                        placeholder="Contoh: Notifikasi peringatan jatuh tempo via WA"
+                        readOnly
+                        placeholder="Belum diisi..."
                         value={reportForm.fiturKunci3}
-                        onChange={(e) => setReportForm({ ...reportForm, fiturKunci3: e.target.value })}
+                        className="bg-gray-50/80 text-gray-700 cursor-not-allowed border-gray-200 h-8"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">
-                    Flow Solusi (Alur Interaksi Pengguna &amp; Operasional)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 block">
+                      Flow Solusi (Alur Interaksi Pengguna &amp; Operasional)
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
+                      Dikelola via Subtask Flow Solusi
+                    </span>
+                  </div>
                   <Textarea
+                    readOnly
                     rows={3}
-                    placeholder="Jelaskan langkah demi langkah bagaimana pengguna berinteraksi dengan solusi mulai dari awal hingga tuntas..."
+                    placeholder="Belum diisi via subtask kartu Board Sprint 'Isi Value Proposition & Fitur Kunci Solusi'..."
                     value={reportForm.flowSolusi}
-                    onChange={(e) => setReportForm({ ...reportForm, flowSolusi: e.target.value })}
+                    className="bg-gray-50/80 text-gray-700 cursor-not-allowed border-gray-200"
                   />
                 </div>
               </CardContent>
@@ -2518,9 +2540,14 @@ export function CustomerValidationClient({
                       6 pertanyaan baku resmi dari Template 2.2 untuk menggali feedback esensial responden.
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50">
-                    6 Baris Baku
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-gray-500 font-medium bg-emerald-100/60 text-emerald-900 px-2 py-0.5 rounded-full">
+                      Dikelola via Board Sprint
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50 border-emerald-300">
+                      6 Baris Baku
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
@@ -2544,16 +2571,11 @@ export function CustomerValidationClient({
                           </td>
                           <td className="p-2.5 align-top">
                             <Textarea
+                              readOnly
                               rows={2}
-                              placeholder={`Tulis temuan utama untuk ${item.kategori.toLowerCase()}...`}
-                              value={item.temuanUtama}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setTemuanKualitatifList((prev) =>
-                                  prev.map((t, i) => (i === idx ? { ...t, temuanUtama: val } : t))
-                                );
-                              }}
-                              className="text-xs bg-white border border-gray-200 focus:border-[#3E9463]"
+                              placeholder="Belum diisi via subtask kartu Board Sprint 'Isi Temuan Kualitatif (6 Pertanyaan Baku)'..."
+                              value={item.temuanUtama || ""}
+                              className="text-xs bg-gray-50/80 text-gray-700 cursor-not-allowed border border-gray-200 resize-none"
                             />
                           </td>
                         </tr>

@@ -57,6 +57,7 @@ export interface ResetParams {
   selectedTeamIds?: string[];
   selectedSections?: string[]; // 'tim_profil' | 'charter' | 'kanban' | 'customer_validation' | 'market_validation' | 'keuangan' | 'governance' | 'dossier'
   confirmationWord?: string;
+  keepUserRoles?: boolean;
 }
 
 export async function getResetPreview(params: {
@@ -64,6 +65,7 @@ export async function getResetPreview(params: {
   teamScope: 'all' | 'selected';
   selectedTeamIds?: string[];
   selectedSections?: string[];
+  keepUserRoles?: boolean;
 }): Promise<{ success: boolean; message?: string; counts: ResetCountSummary; teams: { id: string; nama: string; status: string }[] }> {
   const user = await getCurrentUser();
   if (!user || !(await hasPermission(user, 'system.reset_data'))) {
@@ -140,18 +142,20 @@ export async function getResetPreview(params: {
   };
 
   if (targetTeamIds.length > 0) {
+    // Selalu hitung penugasan role user untuk tim-tim target
+    const roleTim = await db
+      .select()
+      .from(userRoleTim)
+      .where(
+        and(
+          isNotNull(userRoleTim.timInovatorId),
+          inArray(userRoleTim.timInovatorId, targetTeamIds)
+        )
+      );
+    counts.roleTimCount = roleTim.length;
+
     if (sections.includes('tim_profil') || params.mode === 'total') {
       counts.timCount = targetTeamIds.length;
-      const roleTim = await db
-        .select()
-        .from(userRoleTim)
-        .where(
-          and(
-            isNotNull(userRoleTim.timInovatorId),
-            inArray(userRoleTim.timInovatorId, targetTeamIds)
-          )
-        );
-      counts.roleTimCount = roleTim.length;
     }
 
     if (sections.includes('charter') || sections.includes('tim_profil') || params.mode === 'total') {
@@ -345,8 +349,12 @@ export async function executeResetData(params: ResetParams): Promise<{
       deletedCounts.charterCount = charterRes.length;
     }
 
-    // 8. Tim Inovator & Profil (Complete removal of team entity & members - NEVER touch global roles where timInovatorId is NULL)
-    if (sections.includes('tim_profil') || params.mode === 'total') {
+    // 8. Tim Inovator, Anggota & User Role Assignment
+    const keepUserRoles = params.keepUserRoles ?? true;
+
+    if (!keepUserRoles) {
+      // Admin sengaja uncheck "Pertahankan Penugasan Role User"
+      // Hapus penugasan role user untuk tim-tim target
       const roleTimRes = await db
         .delete(userRoleTim)
         .where(
@@ -358,11 +366,26 @@ export async function executeResetData(params: ResetParams): Promise<{
         .returning();
       deletedCounts.roleTimCount = roleTimRes.length;
 
-      await db.delete(durasiLog).where(inArray(durasiLog.timInovatorId, targetTeamIds));
+      // Hapus anggota tim
       await db.delete(anggotaTim).where(inArray(anggotaTim.timInovatorId, targetTeamIds));
 
-      const timRes = await db.delete(timInovator).where(inArray(timInovator.id, targetTeamIds)).returning();
-      deletedCounts.timCount = timRes.length;
+      // Jika tim_profil dipilih atau mode total, hapus juga entitas tim
+      if (sections.includes('tim_profil') || params.mode === 'total') {
+        await db.delete(durasiLog).where(inArray(durasiLog.timInovatorId, targetTeamIds));
+        const timRes = await db.delete(timInovator).where(inArray(timInovator.id, targetTeamIds)).returning();
+        deletedCounts.timCount = timRes.length;
+      }
+    } else {
+      // keepUserRoles === true (DEFAULT):
+      // userRoleTim dan anggotaTim DIPERTAHANKAN (TIDAK DIHAPUS)
+      // Entitas timInovator juga TIDAK DIHAPUS (agar foreign key cascade tidak menghapus userRoleTim)
+      deletedCounts.roleTimCount = 0;
+      deletedCounts.timCount = 0;
+
+      // Bersihkan durasi log jika tim_profil / mode total dipilih
+      if (sections.includes('tim_profil') || params.mode === 'total') {
+        await db.delete(durasiLog).where(inArray(durasiLog.timInovatorId, targetTeamIds));
+      }
     }
 
     // 9. AUDIT LOGGING (MANDATORY & PERMANENT)
@@ -376,6 +399,7 @@ export async function executeResetData(params: ResetParams): Promise<{
         teamScope: params.teamScope,
         targetTeamCount: targetTeamIds.length,
         selectedSections: sections,
+        keepUserRoles,
         deletedCounts,
         performedBy: `${user.nama} (${user.email})`,
         timestamp: new Date().toISOString(),
@@ -383,10 +407,13 @@ export async function executeResetData(params: ResetParams): Promise<{
     });
 
     const totalDeleted = Object.values(deletedCounts).reduce((a, b) => a + b, 0);
+    const roleMsg = keepUserRoles
+      ? ' (Penugasan role user dipertahankan)'
+      : ' (Penugasan role user ikut direset)';
 
     return {
       success: true,
-      message: `Proses reset berhasil. Sebanyak ${totalDeleted} entitas data berhasil dihapus permanen.`,
+      message: `Proses reset berhasil. Sebanyak ${totalDeleted} entitas data berhasil dihapus permanen${roleMsg}.`,
       deletedCounts,
     };
   } catch (err: any) {

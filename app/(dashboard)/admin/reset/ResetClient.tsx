@@ -45,6 +45,7 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
     'keuangan',
     'governance',
   ]);
+  const [keepUserRoles, setKeepUserRoles] = useState<boolean>(true);
 
   const [confirmationWord, setConfirmationWord] = useState('');
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -76,6 +77,7 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
       teamScope,
       selectedTeamIds,
       selectedSections,
+      keepUserRoles,
     });
     setLoadingPreview(false);
     if (res.success) {
@@ -86,7 +88,7 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
 
   useEffect(() => {
     refreshPreview();
-  }, [mode, teamScope, selectedTeamIds, selectedSections]);
+  }, [mode, teamScope, selectedTeamIds, selectedSections, keepUserRoles]);
 
   const toggleTeam = (id: string) => {
     if (selectedTeamIds.includes(id)) {
@@ -127,6 +129,7 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
       teamScope,
       selectedTeamIds,
       selectedSections,
+      keepUserRoles,
       confirmationWord,
     });
 
@@ -145,7 +148,18 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
   };
 
   const isConfirmationValid = confirmationWord === 'HAPUS PERMANEN';
-  const totalItemsToDelete = Object.values(counts).reduce((a, b) => a + b, 0);
+  const totalItemsToDelete =
+    counts.charterCount +
+    counts.kanbanCardCount +
+    counts.sprintCount +
+    counts.sprintLogCount +
+    counts.custValCount +
+    counts.marketValCount +
+    counts.keuanganCount +
+    counts.governanceCount +
+    counts.dossierCount +
+    (keepUserRoles ? 0 : counts.roleTimCount) +
+    (keepUserRoles ? 0 : counts.timCount);
 
   return (
     <div className="space-y-6">
@@ -408,6 +422,55 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
         </div>
       )}
 
+      {/* Checkbox: Pertahankan Penugasan Role User (Berlaku untuk Mode Total & Section) */}
+      <Card className={`border-2 transition-all shadow-sm ${
+        keepUserRoles
+          ? 'border-emerald-300 bg-emerald-50/50'
+          : 'border-red-300 bg-red-50/40'
+      }`}>
+        <CardContent className="p-4">
+          <label className="flex items-start gap-3.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={keepUserRoles}
+              onChange={(e) => setKeepUserRoles(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-[#0F5132] focus:ring-[#0F5132]"
+            />
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                  <Users className="h-4 w-4 text-[#0F5132]" />
+                  Pertahankan Penugasan Role User
+                </span>
+                <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                  keepUserRoles
+                    ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                    : 'bg-red-200 text-red-900 border border-red-300'
+                }`}>
+                  {keepUserRoles ? 'Direkomendasikan (Aman)' : 'Perhatian: Role Terhapus'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-700 mt-1 leading-relaxed">
+                Jika dicentang, seluruh penugasan role user (Sponsor/Promotor/PO/Inisiator/Co-creator/Coach/SME) yang sudah ada <strong>TIDAK</strong> akan dihapus saat reset data tim.
+              </p>
+              {!keepUserRoles ? (
+                <div className="mt-2 p-2.5 rounded-lg bg-red-100/70 border border-red-300 text-red-900 text-xs flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                  <span>
+                    <strong>Peringatan Serius:</strong> Sebanyak <strong>{counts.roleTimCount} penugasan role user</strong> AKAN DIHAPUS permanen! Seluruh anggota tim harus di-assign ulang dari awal setelah reset selesai.
+                  </span>
+                </div>
+              ) : (
+                <p className="text-[11px] text-emerald-800 font-medium mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  Sebanyak <strong>{counts.roleTimCount} penugasan role user</strong> akan tetap utuh di tabel userRoleTim.
+                </p>
+              )}
+            </div>
+          </label>
+        </CardContent>
+      </Card>
+
       {/* Live Preview Box (Calculated directly from DB) */}
       <Card className="border-2 border-gray-300 bg-gray-50/70 shadow-sm">
         <CardHeader className="pb-3 border-b border-gray-200">
@@ -473,6 +536,42 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
               <span className="text-[10px] text-amber-700 font-bold block uppercase">Dossier Arsip</span>
               <span className="text-lg font-extrabold text-amber-800">{counts.dossierCount} Arsip</span>
             </div>
+
+            {/* Box Status Role Assignment */}
+            <div className={`p-3 rounded-lg border transition-colors col-span-2 sm:col-span-4 ${
+              keepUserRoles
+                ? 'bg-emerald-50 border-emerald-300'
+                : 'bg-red-50 border-red-300'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {keepUserRoles ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                  )}
+                  <div>
+                    <span className="text-xs font-bold text-gray-900 block">
+                      Struktur Role &amp; Akuntabilitas Tim (userRoleTim)
+                    </span>
+                    <span className={`text-[11px] font-semibold ${
+                      keepUserRoles ? 'text-emerald-800' : 'text-red-700'
+                    }`}>
+                      {keepUserRoles
+                        ? `${counts.roleTimCount} user role assignment akan DIPERTAHANKAN`
+                        : `${counts.roleTimCount} user role assignment AKAN DIHAPUS`}
+                    </span>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full text-center ${
+                  keepUserRoles
+                    ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                    : 'bg-red-200 text-red-900 border border-red-300'
+                }`}>
+                  {keepUserRoles ? 'DIPERTAHANKAN' : 'AKAN DIHAPUS'}
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="text-xs text-gray-600 bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
@@ -535,6 +634,21 @@ export function ResetClient({ initialTeams }: { initialTeams: TeamOption[] }) {
         </CardHeader>
         <CardContent className="p-4 space-y-4">
           <div className="space-y-2">
+            <div className="flex items-center gap-2 p-2.5 rounded-lg border text-xs font-semibold bg-white">
+              <span className="text-gray-600">Status Role User:</span>
+              {keepUserRoles ? (
+                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  {counts.roleTimCount} user role assignment akan DIPERTAHANKAN
+                </span>
+              ) : (
+                <span className="text-red-700 font-bold flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                  {counts.roleTimCount} user role assignment AKAN DIHAPUS
+                </span>
+              )}
+            </div>
+
             <label className="block text-xs font-semibold text-gray-800">
               Ketik <code className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-mono font-bold">HAPUS PERMANEN</code> untuk konfirmasi:
             </label>

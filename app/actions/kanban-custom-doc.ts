@@ -6,6 +6,7 @@ import {
   kanbanSubtask,
   customerValidationPlan,
   customerValidationReport,
+  customerValidationTemuanKualitatif,
   customerTestingFeedbackResponden,
   marketValidationPlan,
   marketValidationReport,
@@ -22,6 +23,7 @@ import { randomUUID } from "crypto";
 import { detectCvBakuCardType, type CvBakuCardType } from "@/lib/utils/cv-cards";
 import { detectMvBakuCardType, type MvBakuCardType } from "@/lib/utils/mv-cards";
 import { METRIK_ROWS } from "@/lib/data/cv-metrics";
+import { TEMUAN_KUALITATIF_BAKU_ROWS } from "@/lib/data/subtask-templates";
 
 export { type CvBakuCardType, type MvBakuCardType };
 
@@ -952,6 +954,35 @@ export async function getMandatorySubtaskDataAction(
           ketercapaianPsf: report.ketercapaianPsf || "tercapai",
         };
         break;
+      case "value_proposition_features":
+        data = {
+          valueProposition: report.valueProposition || "",
+          fiturKunci1: report.fiturKunci1 || "",
+          fiturKunci2: report.fiturKunci2 || "",
+          fiturKunci3: report.fiturKunci3 || "",
+          flowSolusi: report.flowSolusi || "",
+        };
+        break;
+      case "temuan_kualitatif_6baris": {
+        const existing = await db
+          .select()
+          .from(customerValidationTemuanKualitatif)
+          .where(eq(customerValidationTemuanKualitatif.reportId, report.id));
+
+        data = {
+          temuanRows: TEMUAN_KUALITATIF_BAKU_ROWS.map((baku) => {
+            const found = existing.find(
+              (e) => e.kategori === baku.kategori || e.pertanyaanKunci === baku.pertanyaanKunci
+            );
+            return {
+              kategori: baku.kategori,
+              pertanyaanKunci: baku.pertanyaanKunci,
+              temuanUtama: found?.temuanUtama || "",
+            };
+          }),
+        };
+        break;
+      }
       case "kesimpulan_pembelajaran":
         data = {
           kesimpulan: report.kesimpulan || "",
@@ -1339,6 +1370,32 @@ export async function saveMandatorySubtaskDataAction(
         reportUpdates.validatedSolution = payload.validatedSolution || null;
         reportUpdates.ketercapaianPsf = payload.ketercapaianPsf || null;
         break;
+
+      case "value_proposition_features":
+        reportUpdates.valueProposition = payload.valueProposition || null;
+        reportUpdates.fiturKunci1 = payload.fiturKunci1 || null;
+        reportUpdates.fiturKunci2 = payload.fiturKunci2 || null;
+        reportUpdates.fiturKunci3 = payload.fiturKunci3 || null;
+        reportUpdates.flowSolusi = payload.flowSolusi || null;
+        break;
+
+      case "temuan_kualitatif_6baris": {
+        const rows: any[] = Array.isArray(payload.temuanRows) ? payload.temuanRows : [];
+        await db
+          .delete(customerValidationTemuanKualitatif)
+          .where(eq(customerValidationTemuanKualitatif.reportId, report.id));
+
+        if (rows.length > 0) {
+          const insertPayload = rows.map((r: any) => ({
+            reportId: report.id,
+            kategori: r.kategori || "",
+            pertanyaanKunci: r.pertanyaanKunci || "",
+            temuanUtama: r.temuanUtama || "",
+          }));
+          await db.insert(customerValidationTemuanKualitatif).values(insertPayload);
+        }
+        break;
+      }
 
       case "kesimpulan_pembelajaran":
         reportUpdates.kesimpulan = payload.kesimpulan || null;

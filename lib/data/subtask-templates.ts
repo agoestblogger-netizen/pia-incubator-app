@@ -12,6 +12,39 @@ export interface PredefinedSubtask {
   reportFieldMapping?: Record<string, any>;
 }
 
+export const TEMUAN_KUALITATIF_BAKU_ROWS = [
+  {
+    kategori: "Kepuasan Pengguna",
+    pertanyaanKunci:
+      "Bagaimana Anda menilai kecocokan prototype dengan kebutuhan/permasalahan Anda? Fitur apa yang paling/kurang sesuai?",
+  },
+  {
+    kategori: "Ketertarikan Penggunaan Berulang",
+    pertanyaanKunci:
+      "Seberapa sering Anda akan menggunakan solusi ini jika tersedia? Apa yang membuat Anda mau/tidak mau menggunakan secara berkelanjutan?",
+  },
+  {
+    kategori: "Rekomendasi kepada Orang Lain",
+    pertanyaanKunci:
+      "Apakah Anda akan merekomendasikan solusi ini? Kepada siapa dan mengapa?",
+  },
+  {
+    kategori: "Kejelasan dan Kemudahan Penggunaan",
+    pertanyaanKunci:
+      "Bagian mana yang paling mudah, membingungkan, atau perlu disederhanakan?",
+  },
+  {
+    kategori: "Kesediaan Membayar/Menggunakan",
+    pertanyaanKunci:
+      "Apakah value yang diberikan sepadan dengan biaya, waktu, atau perubahan perilaku yang dibutuhkan?",
+  },
+  {
+    kategori: "Feedback Umum",
+    pertanyaanKunci:
+      "Apa yang perlu ditambah, dikurangi, diubah, atau diprioritaskan?",
+  },
+];
+
 export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
   // ─── 6 TEMPLATE BAKU CUSTOMER VALIDATION ───
   "Siapkan prototype untuk testing": [
@@ -65,6 +98,18 @@ export const BAKU_SUBTASKS_DICTIONARY: Record<string, PredefinedSubtask[]> = {
       estimatedHours: 60,
       subtaskType: "mandatory_simple",
       reportFieldMapping: { field: "validated_solution_psf" },
+    },
+    {
+      title: "Isi Value Proposition & Fitur Kunci Solusi",
+      estimatedHours: 60,
+      subtaskType: "mandatory_simple",
+      reportFieldMapping: { field: "value_proposition_features" },
+    },
+    {
+      title: "Isi Temuan Kualitatif (6 Pertanyaan Baku)",
+      estimatedHours: 120,
+      subtaskType: "mandatory_complex",
+      reportFieldMapping: { field: "temuan_kualitatif_6baris" },
     },
     {
       title: "Isi Kesimpulan & Pembelajaran",
