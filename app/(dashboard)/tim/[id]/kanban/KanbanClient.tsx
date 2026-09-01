@@ -3170,28 +3170,15 @@ export function KanbanClient({
                                           </div>
                                         ) : (
                                           <span
-                                            onClick={() => { if (canEdit && !isMandatory) handleStartEditHours(st); }}
-                                            title={
-                                              isMandatory
-                                                ? "Durasi subtask wajib bersifat baku dari template"
-                                                : canEdit
-                                                ? "Klik untuk mengedit estimasi durasi menit"
-                                                : undefined
-                                            }
-                                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors inline-flex items-center gap-1 ${
-                                              isMandatory
-                                                ? "bg-amber-50/80 text-amber-900 border border-amber-300/80 cursor-not-allowed opacity-90 shadow-2xs"
-                                                : `bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
-                                                    canEdit ? "cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]" : ""
-                                                  }`
-                                            }`}
+                                            onClick={() => { if (canEdit) handleStartEditHours(st); }}
+                                            title={canEdit ? 'Klik untuk mengedit estimasi durasi menit' : undefined}
+                                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FBF3DD] text-[#8A6300] border border-[#D4AF37] ${
+                                              canEdit ? 'cursor-text hover:bg-[#F5E9B8] hover:border-[#B8922B]' : ''
+                                            } transition-colors`}
                                           >
-                                            {isMandatory && <Lock className="h-2.5 w-2.5 text-amber-700 shrink-0" />}
-                                            <span>
-                                              {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
-                                                ? `${st.estimatedHours} menit`
-                                                : canEdit ? "— menit" : ""}
-                                            </span>
+                                            {st.estimatedHours !== null && st.estimatedHours !== undefined && st.estimatedHours > 0
+                                              ? `${st.estimatedHours} menit`
+                                              : canEdit ? '— menit' : ''}
                                           </span>
                                         )}
 

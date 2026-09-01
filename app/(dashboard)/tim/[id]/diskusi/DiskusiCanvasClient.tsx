@@ -2039,14 +2039,6 @@ export function DiskusiCanvasClient({
                                   />
                                   <span className="text-[10px] text-gray-500 font-semibold">menit</span>
                                 </div>
-                              ) : isMandatory ? (
-                                <span
-                                  className="text-[10px] font-bold text-amber-900 px-1.5 py-0.5 rounded bg-amber-50/80 border border-amber-300/80 cursor-not-allowed opacity-90 inline-flex items-center gap-1 shadow-2xs"
-                                  title="Durasi subtask wajib bersifat baku dari template"
-                                >
-                                  <Lock className="h-2.5 w-2.5 text-amber-700 shrink-0" />
-                                  <span>{st.estimatedHours ? `${st.estimatedHours} menit` : '— menit'}</span>
-                                </span>
                               ) : (
                                 <button
                                   type="button"
