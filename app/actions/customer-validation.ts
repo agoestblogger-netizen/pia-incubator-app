@@ -19,7 +19,7 @@ import {
   userRoleTim,
   roles,
 } from "@/lib/db/schema";
-import { eq, and, ne, inArray, desc } from "drizzle-orm";
+import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -39,7 +39,11 @@ export async function getCustomerValidationData(timId: string) {
 
   if (plan) {
     [report] = await db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, plan.id)).limit(1);
-    metrikRencana = await db.select().from(rencanaValidasiMetrik).where(eq(rencanaValidasiMetrik.planId, plan.id));
+    metrikRencana = await db
+      .select()
+      .from(rencanaValidasiMetrik)
+      .where(eq(rencanaValidasiMetrik.planId, plan.id))
+      .orderBy(asc(rencanaValidasiMetrik.createdAt));
     dimensiFeedback = await db.select().from(customerValidationDimensiFeedback).where(eq(customerValidationDimensiFeedback.planId, plan.id));
   }
 
@@ -235,13 +239,23 @@ export async function saveCustomerValidationPlanFullAction(
       .where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
     let planId = existing?.id;
 
+    const sanitizedPlanValues = {
+      ...planValues,
+      ...(planValues.jumlahTargetResponden !== undefined && {
+        jumlahTargetResponden:
+          (planValues.jumlahTargetResponden as any) === '' || planValues.jumlahTargetResponden === null
+            ? null
+            : Number(planValues.jumlahTargetResponden) || null,
+      }),
+    };
+
     if (existing) {
       await db.update(customerValidationPlan)
-        .set({ ...planValues, updatedAt: new Date() })
+        .set({ ...sanitizedPlanValues, updatedAt: new Date() })
         .where(eq(customerValidationPlan.id, existing.id));
     } else {
       const [inserted] = await db.insert(customerValidationPlan)
-        .values({ timInovatorId: timId, ...planValues }).returning();
+        .values({ timInovatorId: timId, ...sanitizedPlanValues }).returning();
       planId = inserted.id;
     }
 

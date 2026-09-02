@@ -364,7 +364,8 @@ export const customerValidationReport = pgTable('customer_validation_report', {
   ketercapaianPsf: text('ketercapaian_psf'), // 'tercapai' | 'tercapai_dengan_catatan' | 'belum_tercapai'
   keputusan: text('keputusan'), // 'lanjut' | 'iterasi' | 'hold' | 'stop'
   catatanMvpPlanning: text('catatan_mvp_planning'),
-  buktiPendukung: jsonb('bukti_pendukung').notNull().default(sql`'[]'`),
+  buktiPendukung: text('bukti_pendukung'),
+  catatanReviewSme: jsonb('catatan_review_sme').notNull().default(sql`'[]'`),
   ttdDisusun: jsonb('ttd_disusun'),
   ttdDiperiksa: jsonb('ttd_diperiksa'),
   ttdDisetujui: jsonb('ttd_disetujui'),
@@ -482,7 +483,8 @@ export const marketValidationReport = pgTable('market_validation_report', {
   rekomendasiIterasi: text('rekomendasi_iterasi'),
   rencanaMvpBerikutnya: text('rencana_mvp_berikutnya'),
   rekomendasiPromotorSponsor: text('rekomendasi_promotor_sponsor'),
-  buktiPendukung: jsonb('bukti_pendukung').notNull().default(sql`'[]'`),
+  buktiPendukung: text('bukti_pendukung'),
+  catatanReviewSme: jsonb('catatan_review_sme').notNull().default(sql`'[]'`),
   ttdDisusun: jsonb('ttd_disusun'),
   ttdDiperiksa: jsonb('ttd_diperiksa'),
   ttdDisetujui: jsonb('ttd_disetujui'),

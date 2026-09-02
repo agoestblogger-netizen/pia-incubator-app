@@ -588,33 +588,45 @@ export function MvReportPdfDocument({
             <Text style={styles.tableCellLabel}>Rekomendasi Promotor / Sponsor</Text>
             <Text style={styles.tableCellValue}>{report?.rekomendasiPromotorSponsor || '-'}</Text>
           </View>
+          <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
+            <Text style={styles.tableCellLabel}>Bukti Pendukung</Text>
+            <Text style={styles.tableCellValue}>{report?.buktiPendukung || '-'}</Text>
+          </View>
         </View>
 
         {/* Section 9: Dokumen & Catatan Preliminary Review SME */}
         <Text style={styles.sectionTitle}>9. DOKUMEN &amp; CATATAN PRELIMINARY REVIEW SME</Text>
         <View style={styles.table}>
-          {Array.isArray(report?.buktiPendukung) && report.buktiPendukung.length > 0 ? (
-            report.buktiPendukung.map((b: any, idx: number) => (
-              <View key={idx} style={styles.tableRow}>
-                <Text style={[styles.tableCellLabel, { width: '30%' }]}>
-                  {b.type === 'dokumen_preliminary_review'
-                    ? '📎 Dokumen Review'
-                    : `Reviewer: ${b.reviewer || 'SME / Coach'}`}
-                </Text>
-                <Text style={[styles.tableCellValue, { width: '70%' }]}>
-                  {b.type === 'dokumen_preliminary_review'
-                    ? `${b.file_name || 'Dokumen Preliminary Review'} (${formatDate(b.tanggal)})`
-                    : b.content || b.catatan || '-'}
+          {(() => {
+            const smeItems = Array.isArray(report?.catatanReviewSme)
+              ? report.catatanReviewSme
+              : Array.isArray(report?.buktiPendukung)
+              ? (report.buktiPendukung as any[])
+              : [];
+
+            return smeItems.length > 0 ? (
+              smeItems.map((b: any, idx: number) => (
+                <View key={idx} style={styles.tableRow}>
+                  <Text style={[styles.tableCellLabel, { width: '30%' }]}>
+                    {b.type === 'dokumen_preliminary_review'
+                      ? '📎 Dokumen Review'
+                      : `Reviewer: ${b.reviewer || 'SME / Coach'}`}
+                  </Text>
+                  <Text style={[styles.tableCellValue, { width: '70%' }]}>
+                    {b.type === 'dokumen_preliminary_review'
+                      ? `${b.file_name || 'Dokumen Preliminary Review'} (${formatDate(b.tanggal)})`
+                      : b.content || b.catatan || '-'}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCell, { width: '100%', textAlign: 'center', color: '#94a3b8' }]}>
+                  Belum ada dokumen atau catatan preliminary review yang dilampirkan.
                 </Text>
               </View>
-            ))
-          ) : (
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, { width: '100%', textAlign: 'center', color: '#94a3b8' }]}>
-                Belum ada dokumen atau catatan preliminary review yang dilampirkan.
-              </Text>
-            </View>
-          )}
+            );
+          })()}
         </View>
 
         {/* Section 10: Lembar Pengesahan (3 Tanda Tangan: PO, Coach, Promotor) */}

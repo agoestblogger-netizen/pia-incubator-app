@@ -196,7 +196,7 @@ export async function checkReportFieldHasDataAction(timId: string, cardId: strin
           break;
         }
         case "sme_mv": {
-          const mvBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+          const mvBukti = Array.isArray(report.catatanReviewSme) ? report.catatanReviewSme : [];
           const mvCatatan = mvBukti.find((b: any) => b.type === "catatan_sme");
           if (mvCatatan?.content?.trim()) {
             hasData = true;
@@ -364,7 +364,7 @@ export async function syncCardCustomDocToReportAction(
           break;
         }
         case "sme": {
-          const existingBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+          const existingBukti = Array.isArray(report.catatanReviewSme) ? report.catatanReviewSme : [];
           const filtered = existingBukti.filter(
             (b: any) =>
               !(
@@ -401,8 +401,8 @@ export async function syncCardCustomDocToReportAction(
             }
           }
 
-          reportUpdates.buktiPendukung = filtered;
-          syncedDetails = `Review SME & ${files.length} Dokumen ditambahkan ke Bukti Pendukung`;
+          reportUpdates.catatanReviewSme = filtered;
+          syncedDetails = `Review SME & ${files.length} Dokumen ditambahkan ke Catatan Review SME`;
           break;
         }
         case "keputusan": {
@@ -564,7 +564,7 @@ export async function syncCardCustomDocToReportAction(
 
         // 3. Preliminary Review SME (MV)
         case "sme_mv": {
-          const existingBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+          const existingBukti = Array.isArray(report.catatanReviewSme) ? report.catatanReviewSme : [];
           const filtered = existingBukti.filter(
             (b: any) =>
               !(
@@ -601,8 +601,8 @@ export async function syncCardCustomDocToReportAction(
             }
           }
 
-          reportUpdates.buktiPendukung = filtered;
-          syncedDetails = `Review SME & ${files.length} Dokumen ditambahkan ke Bukti Pendukung MV`;
+          reportUpdates.catatanReviewSme = filtered;
+          syncedDetails = `Review SME & ${files.length} Dokumen ditambahkan ke Catatan Review SME MV`;
           break;
         }
 
@@ -813,8 +813,8 @@ export async function getMandatorySubtaskDataAction(
           break;
 
         case "preliminary_review_mv": {
-          // Load existing catatan SME dan dokumen dari buktiPendukung MV
-          const mvBukti = Array.isArray(mvReport?.buktiPendukung) ? mvReport!.buktiPendukung : [];
+          // Load existing catatan SME dan dokumen dari catatanReviewSme MV
+          const mvBukti = Array.isArray(mvReport?.catatanReviewSme) ? mvReport!.catatanReviewSme : [];
           const mvCatatanObj = mvBukti.find(
             (b: any) => b.type === "catatan_sme" && b.sourceCardId === cardId
           );
@@ -989,7 +989,7 @@ export async function getMandatorySubtaskDataAction(
         };
         break;
       case "preliminary_review": {
-        const bukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+        const bukti = Array.isArray(report.catatanReviewSme) ? report.catatanReviewSme : [];
         const catatanObj = bukti.find((b: any) => b.type === "catatan_sme" && b.sourceCardId === cardId);
         const docs = bukti.filter(
           (b: any) => b.type === "dokumen_preliminary_review" && b.sourceCardId === cardId
@@ -1178,9 +1178,9 @@ export async function saveMandatorySubtaskDataAction(
           break;
 
         case "preliminary_review_mv": {
-          // Simpan catatan SME + dokumen ke buktiPendukung MV (pola sama dengan CV)
-          const existingMvBukti = Array.isArray(mvReport.buktiPendukung)
-            ? mvReport.buktiPendukung
+          // Simpan catatan SME + dokumen ke catatanReviewSme MV
+          const existingMvBukti = Array.isArray(mvReport.catatanReviewSme)
+            ? mvReport.catatanReviewSme
             : [];
           const filteredMvBukti = (existingMvBukti as any[]).filter(
             (b: any) =>
@@ -1217,7 +1217,7 @@ export async function saveMandatorySubtaskDataAction(
             }
           }
 
-          mvReportUpdates.buktiPendukung = filteredMvBukti;
+          mvReportUpdates.catatanReviewSme = filteredMvBukti;
           break;
         }
       }
@@ -1402,7 +1402,7 @@ export async function saveMandatorySubtaskDataAction(
         break;
 
       case "preliminary_review": {
-        const existingBukti = Array.isArray(report.buktiPendukung) ? report.buktiPendukung : [];
+        const existingBukti = Array.isArray(report.catatanReviewSme) ? report.catatanReviewSme : [];
         const filtered = existingBukti.filter(
           (b: any) =>
             !(
@@ -1439,7 +1439,7 @@ export async function saveMandatorySubtaskDataAction(
           }
         }
 
-        reportUpdates.buktiPendukung = filtered;
+        reportUpdates.catatanReviewSme = filtered;
         break;
       }
 

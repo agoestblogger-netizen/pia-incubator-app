@@ -183,7 +183,8 @@ export async function GET(
       ketercapaianPsf: report?.ketercapaianPsf || undefined,
       keputusan: report?.keputusan || undefined,
       catatanMvpPlanning: report?.catatanMvpPlanning || undefined,
-      buktiPendukung: (report?.buktiPendukung as any[]) || [],
+      buktiPendukung: typeof report?.buktiPendukung === 'string' ? report.buktiPendukung : undefined,
+      catatanReviewSme: (report?.catatanReviewSme as any[]) || (Array.isArray(report?.buktiPendukung) ? report.buktiPendukung : []),
       // Section G
       ttdDisusun: report?.ttdDisusun || plan?.ttdDisusun || undefined,
       ttdDiperiksa: report?.ttdDiperiksa || plan?.ttdDiperiksa || undefined,

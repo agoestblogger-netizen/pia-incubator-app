@@ -254,6 +254,18 @@ export function ImportClient() {
     }
   };
 
+  const toggleOverrideAllDuplicates = () => {
+    const duplicateIds = items.filter((i) => i.is_duplicate).map((i) => i.proposal_id);
+    const allOverridden = duplicateIds.every((id) => overrideIds.has(id));
+    const next = new Set(overrideIds);
+    if (allOverridden) {
+      duplicateIds.forEach((id) => next.delete(id));
+    } else {
+      duplicateIds.forEach((id) => next.add(id));
+    }
+    setOverrideIds(next);
+  };
+
   const handleConfirmImport = async () => {
     if (!file || selectedIds.size === 0) return;
 
@@ -368,7 +380,11 @@ export function ImportClient() {
           season: item.season,
           namaProyek: item.nama_proyek,
           kategoriPia: item.kategori_pia,
-          klasifikasiInovasi: dossierData?.status_akhir?.peringkat_medali || 'Platinum',
+          klasifikasiInovasi:
+            dossierData?.hasil_grand_final_resmi?.klasifikasi_akhir ||
+            dossierData?.status_akhir?.peringkat_medali ||
+            dossierData?.data_submisi?.klasifikasi_inovasi ||
+            'Platinum',
           pengusul: {
             nama: item.nama_pengusul,
             email: item.email_pengusul,
@@ -598,6 +614,21 @@ export function ImportClient() {
               >
                 {selectedIds.size === items.length ? 'Batal Semua' : 'Pilih Semua'}
               </Button>
+
+              {items.some((i) => i.is_duplicate) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleOverrideAllDuplicates}
+                  disabled={loadingConfirm}
+                  className="text-xs h-8 text-amber-800 border-amber-300 hover:bg-amber-50"
+                >
+                  {items.filter((i) => i.is_duplicate).every((i) => overrideIds.has(i.proposal_id))
+                    ? 'Batal Timpa Duplikat'
+                    : 'Timpa Semua Duplikat'}
+                </Button>
+              )}
 
               <Button
                 type="button"

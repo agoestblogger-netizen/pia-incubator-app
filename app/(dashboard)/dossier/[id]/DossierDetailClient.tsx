@@ -32,6 +32,9 @@ import {
   FileCheck,
   RefreshCw,
   Gem,
+  AlertCircle,
+  ShieldAlert,
+  Quote,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -57,11 +60,312 @@ function formatDateSafe(dateStr?: string | null, options?: Intl.DateTimeFormatOp
 }
 
 function formatDocTitle(fileName: string): string {
+  if (fileName.startsWith('final-deck-grandfinal')) return 'Final Deck Grand Final';
   if (fileName.startsWith('pitch-deck')) return 'Pitch Deck Utama';
   if (fileName.startsWith('dokumen-pendukung-1')) return 'Dokumen Pendukung #1';
   if (fileName.startsWith('dokumen-pendukung-2')) return 'Dokumen Pendukung #2';
   if (fileName.startsWith('surat-orisinalitas')) return 'Surat Orisinalitas';
   return fileName;
+}
+
+function hasContent(val: any): boolean {
+  if (val === null || val === undefined) return false;
+  if (typeof val === 'string') return val.trim().length > 0;
+  if (Array.isArray(val)) return val.length > 0 && val.some((item) => hasContent(item));
+  if (typeof val === 'object') {
+    return Object.values(val).some((item) => hasContent(item));
+  }
+  return false;
+}
+
+export function MateriGrandFinalSection({ hasilGrandFinal }: { hasilGrandFinal: any }) {
+  if (!hasilGrandFinal || !hasContent(hasilGrandFinal)) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Big Why & Mission */}
+      {hasContent(hasilGrandFinal.big_why_mission) && (
+        <Card className="border border-amber-200/80 shadow-xs bg-gradient-to-br from-amber-50/40 via-white to-amber-50/10 rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-amber-100/80 bg-amber-50/30">
+            <CardTitle className="text-sm font-bold text-amber-950 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-600" />
+              Big Why & Mission Inovasi
+            </CardTitle>
+            <CardDescription className="text-xs text-amber-800/80">
+              Latar belakang mendesak, peluang pasar, dan misi strategis inovasi
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 text-xs leading-relaxed text-gray-800 whitespace-pre-wrap">
+            {hasilGrandFinal.big_why_mission}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 2. Customer & Context */}
+      {hasContent(hasilGrandFinal.customer_context) && (
+        <Card className="border border-blue-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-blue-100 bg-blue-50/30">
+            <CardTitle className="text-sm font-bold text-blue-950 flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-600" />
+              Customer & Context
+            </CardTitle>
+            <CardDescription className="text-xs text-blue-800/80">
+              Profil target pengguna, konteks kebutuhan, dan temuan insight nasabah
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4 text-xs text-gray-700">
+            {hasContent(hasilGrandFinal.customer_context.target_pengguna) && (
+              <div>
+                <h5 className="font-bold text-gray-900 mb-1 flex items-center gap-1.5 text-xs">
+                  <Target className="h-3.5 w-3.5 text-blue-600" />
+                  Target Pengguna Utama
+                </h5>
+                <p className="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100/70 leading-relaxed text-gray-800">
+                  {hasilGrandFinal.customer_context.target_pengguna}
+                </p>
+              </div>
+            )}
+            {hasContent(hasilGrandFinal.customer_context.context_chosen) && (
+              <div>
+                <h5 className="font-bold text-gray-900 mb-1 flex items-center gap-1.5 text-xs">
+                  <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                  Konteks Kebutuhan yang Dipilih
+                </h5>
+                <p className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 leading-relaxed text-gray-800">
+                  {hasilGrandFinal.customer_context.context_chosen}
+                </p>
+              </div>
+            )}
+            {hasContent(hasilGrandFinal.customer_context.customer_insight) && (
+              <div>
+                <h5 className="font-bold text-blue-950 mb-1 flex items-center gap-1.5 text-xs">
+                  <Quote className="h-3.5 w-3.5 text-blue-600" />
+                  Customer Voice & Insight
+                </h5>
+                <blockquote className="bg-gradient-to-r from-blue-50 to-indigo-50/50 p-3.5 rounded-xl border-l-4 border-l-blue-500 border border-blue-100 text-blue-950 italic font-medium leading-relaxed">
+                  {hasilGrandFinal.customer_context.customer_insight}
+                </blockquote>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 3. Problem */}
+      {hasContent(hasilGrandFinal.problem) && (
+        <Card className="border border-red-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-red-100 bg-red-50/30">
+            <CardTitle className="text-sm font-bold text-red-950 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              Problem (Masalah yang Diselesaikan)
+            </CardTitle>
+            <CardDescription className="text-xs text-red-800/80">
+              Rumusan masalah, bukti lapangan, urgensi, dan relevansi bisnis Pegadaian
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4 text-xs text-gray-700">
+            {hasContent(hasilGrandFinal.problem.pernyataan_masalah) && (
+              <div>
+                <h5 className="font-bold text-gray-900 mb-1 text-xs">Pernyataan Masalah Utama</h5>
+                <p className="bg-red-50/50 p-3.5 rounded-xl border border-red-100/70 leading-relaxed text-gray-800 font-medium">
+                  {hasilGrandFinal.problem.pernyataan_masalah}
+                </p>
+              </div>
+            )}
+            {hasContent(hasilGrandFinal.problem.bukti_masalah) && (
+              <div>
+                <h5 className="font-bold text-gray-900 mb-1 text-xs">Bukti & Fakta Lapangan</h5>
+                <p className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 leading-relaxed text-gray-800 whitespace-pre-wrap">
+                  {hasilGrandFinal.problem.bukti_masalah}
+                </p>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {hasContent(hasilGrandFinal.problem.kenapa_penting) && (
+                <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-100">
+                  <h5 className="font-bold text-amber-950 mb-1 text-[11px] uppercase tracking-wider">Kenapa Mendesak & Penting</h5>
+                  <p className="text-amber-900 leading-relaxed text-xs">
+                    {hasilGrandFinal.problem.kenapa_penting}
+                  </p>
+                </div>
+              )}
+              {hasContent(hasilGrandFinal.problem.relevansi_bisnis) && (
+                <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-100">
+                  <h5 className="font-bold text-emerald-950 mb-1 text-[11px] uppercase tracking-wider">Relevansi Bisnis Pegadaian</h5>
+                  <p className="text-emerald-900 leading-relaxed text-xs">
+                    {hasilGrandFinal.problem.relevansi_bisnis}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 4. Solution */}
+      {hasContent(hasilGrandFinal.solution) && (
+        <Card className="border border-emerald-200/90 shadow-xs bg-gradient-to-br from-emerald-50/40 via-white to-green-50/20 rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-emerald-100 bg-emerald-50/50">
+            <CardTitle className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-[#0F5132]" />
+              Solution & Nilai Pembeda
+            </CardTitle>
+            <CardDescription className="text-xs text-emerald-800/80">
+              Konsep solusi final dan nilai kebaruan yang ditawarkan
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 text-xs leading-relaxed text-emerald-950 font-medium whitespace-pre-wrap">
+            {hasilGrandFinal.solution}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 5. Fitur Utama */}
+      {hasContent(hasilGrandFinal.fitur_utama) && (
+        <Card className="border border-gray-200 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-gray-100">
+            <CardTitle className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Layers className="h-4 w-4 text-[#0F5132]" />
+              Fitur Utama Solusi
+            </CardTitle>
+            <CardDescription className="text-xs text-gray-500">
+              Komponen fungsional dan kapabilitas utama yang dihadirkan
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(Array.isArray(hasilGrandFinal.fitur_utama)
+                ? hasilGrandFinal.fitur_utama
+                : [hasilGrandFinal.fitur_utama]
+              ).map((fitur: string, fIdx: number) => (
+                <div
+                  key={fIdx}
+                  className="p-3.5 rounded-xl border border-emerald-100 bg-emerald-50/30 hover:bg-emerald-50/60 transition-colors flex items-start gap-2.5"
+                >
+                  <span className="w-5 h-5 rounded-full bg-[#0F5132] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    {fIdx + 1}
+                  </span>
+                  <p className="text-xs text-gray-800 leading-relaxed font-medium">
+                    {fitur}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 6. Validasi Pasar & Pembelajaran */}
+      {hasContent(hasilGrandFinal.validasi) && (
+        <Card className="border border-purple-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-purple-100 bg-purple-50/30">
+            <CardTitle className="text-sm font-bold text-purple-950 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-purple-600" />
+              Validasi Pasar & Pembelajaran (Customer Validation)
+            </CardTitle>
+            <CardDescription className="text-xs text-purple-800/80">
+              Hasil survei, uji coba pengguna, bukti empiris, dan pembelajaran eksperimen
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4 text-xs text-gray-700">
+            {hasContent(hasilGrandFinal.validasi.ringkasan_validasi) && (
+              <div>
+                <h5 className="font-bold text-gray-900 mb-1 text-xs">Ringkasan Bukti & Hasil Eksperimen</h5>
+                <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100/70 leading-relaxed text-gray-800 whitespace-pre-wrap">
+                  {hasilGrandFinal.validasi.ringkasan_validasi}
+                </div>
+              </div>
+            )}
+            {hasContent(hasilGrandFinal.validasi.pembelajaran_validasi) && (
+              <div>
+                <h5 className="font-bold text-purple-950 mb-1 text-xs">Pembelajaran Kunci & Rekomendasi Lanjutan</h5>
+                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200/60 leading-relaxed text-amber-950 whitespace-pre-wrap">
+                  {hasilGrandFinal.validasi.pembelajaran_validasi}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 7. Business Impact */}
+      {hasContent(hasilGrandFinal.business_impact) && (
+        <Card className="border border-emerald-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-emerald-100 bg-emerald-50/30">
+            <CardTitle className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-[#0F5132]" />
+              Business Impact & Analisis DFV
+            </CardTitle>
+            <CardDescription className="text-xs text-emerald-800/80">
+              Dampak bisnis konkret, analisis kelayakan (Desirability, Feasibility, Viability), dan proyeksi nilai
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 text-xs leading-relaxed text-gray-800 whitespace-pre-wrap bg-emerald-50/10">
+            {hasilGrandFinal.business_impact}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 8. Risk & Mitigation */}
+      {hasContent(hasilGrandFinal.risk_mitigation) && (
+        <Card className="border border-orange-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-orange-100 bg-orange-50/30">
+            <CardTitle className="text-sm font-bold text-orange-950 flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-orange-600" />
+              Risk & Mitigation (Manajemen Risiko)
+            </CardTitle>
+            <CardDescription className="text-xs text-orange-800/80">
+              Identifikasi risiko operasional, teknis, kepatuhan, dan strategi mitigasi terencana
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 text-xs leading-relaxed text-gray-800 whitespace-pre-wrap bg-orange-50/10">
+            {hasilGrandFinal.risk_mitigation}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 9. Support Needed */}
+      {hasContent(hasilGrandFinal.support_needed) && (
+        <Card className="border border-indigo-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-indigo-100 bg-indigo-50/30">
+            <CardTitle className="text-sm font-bold text-indigo-950 flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-indigo-600" />
+              Support Needed (Dukungan, Tata Kelola & Kolaborasi)
+            </CardTitle>
+            <CardDescription className="text-xs text-indigo-800/80">
+              Kebutuhan persetujuan BOD, alokasi sumber daya, dan sinergi lintas fungsi
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 text-xs leading-relaxed text-gray-800 whitespace-pre-wrap bg-indigo-50/10">
+            {hasilGrandFinal.support_needed}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 10. Penutup */}
+      {hasContent(hasilGrandFinal.penutup) && (
+        <Card className="border border-emerald-300 shadow-sm bg-gradient-to-r from-emerald-900 to-[#0F5132] text-white rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-white/10">
+            <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-300" />
+              Penutup & Rangkuman Eksekutif Grand Final
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-5 text-xs leading-relaxed text-green-100 whitespace-pre-wrap font-medium">
+            {hasilGrandFinal.penutup}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Catatan Kelengkapan (Opsional) */}
+      {hasContent(hasilGrandFinal.catatan_kelengkapan) && (
+        <div className="p-3.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 text-xs flex items-center gap-2.5">
+          <FileText className="h-4 w-4 text-gray-500 shrink-0" />
+          <span><strong>Catatan Kurasi Deck:</strong> {hasilGrandFinal.catatan_kelengkapan}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function DossierDetailClient({
@@ -71,7 +375,7 @@ export function DossierDetailClient({
   dossier: any;
   canEditKlasifikasi?: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<'submisi' | 'diskusi' | 'juri' | 'dokumen'>('submisi');
+  const [activeTab, setActiveTab] = useState<'submisi' | 'grand_final' | 'dokumen' | 'diskusi' | 'juri'>('submisi');
   const [selectedDocIndex, setSelectedDocIndex] = useState<number>(0);
   const [pdfZoom, setPdfZoom] = useState<number>(100);
 
@@ -80,10 +384,13 @@ export function DossierDetailClient({
   const pengusul = dataSubmisi.pengusul || {};
   const formDetail = dataSubmisi.form_detail || {};
   const statusAkhir = snap.status_akhir || {};
+  const hasilGrandFinal = dataSubmisi.hasil_grand_final || snap.hasil_grand_final || null;
+  const hasilGrandFinalResmi = snap.hasil_grand_final_resmi || dataSubmisi.hasil_grand_final_resmi || null;
 
   // State Klasifikasi Inovasi / Peringkat Medali
   const initialMedal =
     dossier.timKlasifikasi ||
+    hasilGrandFinalResmi?.klasifikasi_akhir ||
     statusAkhir.peringkat_medali ||
     dataSubmisi.klasifikasi_inovasi ||
     'Platinum';
@@ -243,11 +550,46 @@ export function DossierDetailClient({
             </div>
 
             {/* Medal & Status Badge Box */}
-            <div className="flex flex-col sm:items-end gap-3 shrink-0">
-              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-right space-y-2 shadow-inner">
+            <div className="flex flex-col sm:items-end gap-2.5 shrink-0">
+              {/* Hasil Grand Final Resmi Box */}
+              {hasilGrandFinalResmi && (
+                <div className="p-3 rounded-2xl bg-black/35 backdrop-blur-md border border-amber-300/50 text-left space-y-1.5 shadow-lg w-full sm:w-80">
+                  <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-gray-950 font-black text-xs shadow-xs">
+                      <Award className="h-3.5 w-3.5 text-gray-950" />
+                      Peringkat #{hasilGrandFinalResmi.peringkat}
+                    </span>
+                    <span className="text-xs font-bold text-amber-200">
+                      Skor: <strong className="text-white font-mono text-sm">{hasilGrandFinalResmi.rata_rata_skor}</strong>
+                    </span>
+                  </div>
+
+                  <div className="space-y-0.5 text-xs">
+                    <div className="flex items-center justify-between text-green-100/90">
+                      <span className="text-[11px] text-green-200">Klasifikasi Akhir:</span>
+                      <span className="font-extrabold text-white text-xs">{hasilGrandFinalResmi.klasifikasi_akhir}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-green-100/90">
+                      <span className="text-[11px] text-green-200">Tanggal Penetapan:</span>
+                      <span className="font-medium text-white/90 text-xs">
+                        {formatDateSafe(hasilGrandFinalResmi.tanggal_penetapan)}
+                      </span>
+                    </div>
+
+                    {hasilGrandFinalResmi.sumber_dokumen && (
+                      <div className="text-[9px] text-amber-200/90 italic pt-1 border-t border-white/10 line-clamp-1" title={hasilGrandFinalResmi.sumber_dokumen}>
+                        📜 {hasilGrandFinalResmi.sumber_dokumen}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-right space-y-2 shadow-inner w-full sm:w-80">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[10px] text-green-200 font-bold uppercase tracking-wider">
-                    Hasil Grand Final
+                    {canEditKlasifikasi ? 'Klasifikasi Inovasi' : 'Medali Inovasi'}
                   </span>
                   {canEditKlasifikasi && (
                     <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">
@@ -393,6 +735,23 @@ export function DossierDetailClient({
             Formulir Submisi CIDA
           </button>
 
+          {hasilGrandFinal && (
+            <button
+              onClick={() => setActiveTab('grand_final')}
+              className={`py-3.5 text-xs font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'grand_final'
+                  ? 'border-[#0F5132] text-[#0F5132]'
+                  : 'border-transparent text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              <span>Materi Grand Final</span>
+              <span className="bg-amber-100 text-amber-900 text-[10px] px-2 py-0.5 rounded-full font-extrabold border border-amber-300">
+                Pitch Deck
+              </span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab('dokumen')}
             className={`py-3.5 text-xs font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${
@@ -487,11 +846,41 @@ export function DossierDetailClient({
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
+      {/* TAB 0: MATERI GRAND FINAL (PITCH DECK) */}
+      {/* ───────────────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'grand_final' && (
+        <div className="space-y-6">
+          <MateriGrandFinalSection hasilGrandFinal={hasilGrandFinal} />
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────────── */}
       {/* TAB 1: FORMULIR SUBMISI CIDA */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'submisi' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
+            {/* Section Baru: Materi Grand Final (Jika ada hasil Grand Final) */}
+            {hasilGrandFinal && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-1 border-b border-gray-200">
+                  <h3 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <span>Materi Grand Final (Pitch Deck)</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('grand_final')}
+                    className="text-xs font-semibold text-[#0F5132] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    Buka Tab Materi Grand Final
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+                <MateriGrandFinalSection hasilGrandFinal={hasilGrandFinal} />
+              </div>
+            )}
+
             {/* Deskripsi & Solusi */}
             <Card className="border border-gray-200 shadow-sm bg-white rounded-2xl">
               <CardHeader className="pb-3 border-b border-gray-100">
@@ -713,9 +1102,14 @@ export function DossierDetailClient({
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                     selectedDocIndex === idx
                       ? 'bg-[#0F5132] text-white shadow-xs'
+                      : fileName.startsWith('final-deck-grandfinal')
+                      ? 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 font-bold'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
+                  {fileName.startsWith('final-deck-grandfinal') && (
+                    <Award className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  )}
                   <span>{formatDocTitle(fileName)}</span>
                   {selectedDocIndex === idx && <Check className="h-3 w-3" />}
                 </button>

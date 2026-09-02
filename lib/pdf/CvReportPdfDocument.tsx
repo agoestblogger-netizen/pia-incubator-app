@@ -248,7 +248,8 @@ export interface CvReportPdfData {
   ketercapaianPsf?: string;
   keputusan?: string;
   catatanMvpPlanning?: string;
-  buktiPendukung?: any[];
+  buktiPendukung?: string;
+  catatanReviewSme?: any[];
   // Section G: Tanda Tangan
   ttdDisusun?: any;
   ttdDiperiksa?: any;
@@ -516,11 +517,15 @@ export function CvReportPdfDocument({ data }: { data: CvReportPdfData }) {
             <Text style={styles.tableCellLabel}>Kesimpulan &amp; Pembelajaran</Text>
             <Text style={styles.tableCellValue}>{data.kesimpulan || '-'}</Text>
           </View>
-          {data.buktiPendukung && data.buktiPendukung.length > 0 ? (
+          <View style={styles.tableRow}>
+            <Text style={styles.tableCellLabel}>Bukti Pendukung</Text>
+            <Text style={styles.tableCellValue}>{data.buktiPendukung || '-'}</Text>
+          </View>
+          {data.catatanReviewSme && data.catatanReviewSme.length > 0 ? (
             <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.tableCellLabel}>Dokumen Review &amp; Bukti</Text>
+              <Text style={styles.tableCellLabel}>Dokumen &amp; Catatan Review SME</Text>
               <View style={styles.tableCellValue}>
-                {data.buktiPendukung.map((b: any, bIdx: number) => (
+                {data.catatanReviewSme.map((b: any, bIdx: number) => (
                   <Text key={bIdx} style={{ marginBottom: 2 }}>
                     • {b.type === 'dokumen_preliminary_review'
                       ? `[Dokumen Review] ${b.file_name || 'Lampiran'}`

@@ -468,50 +468,80 @@ export function CustomerValidationClient({
     return v; // already in correct format
   };
 
+  const isCanonicalStandardMetric = (name: string): boolean => {
+    const n = (name || "").toLowerCase().trim();
+    return METRIK_ROWS.some((mr) => {
+      const m = mr.metrik.toLowerCase().trim();
+      return n === m || (m.startsWith("kesediaan membayar") && n.startsWith("kesediaan membayar"));
+    });
+  };
+
   const initMetrik = () => {
-    if (!initialData?.metrikRencana || initialData.metrikRencana.length === 0) {
-      return METRIK_ROWS.map((row, i) => ({
+    const rawRencana = initialData?.metrikRencana || [];
+
+    // Track which DB rows get mapped to the 7 standard rows
+    const matchedDbIndices = new Set<number>();
+
+    // 1. Build the 7 standard rows (always guaranteed to exist as base)
+    const standardRows = METRIK_ROWS.map((mRow, i) => {
+      // Find matching row in DB by canonical metric name first
+      let foundIdx = rawRencana.findIndex((r: any, idx: number) => {
+        if (matchedDbIndices.has(idx)) return false;
+        const rMetrik = (r.metrik || "").toLowerCase().trim();
+        const mMetrik = mRow.metrik.toLowerCase().trim();
+        return rMetrik === mMetrik || (mMetrik.startsWith("kesediaan membayar") && rMetrik.startsWith("kesediaan membayar"));
+      });
+
+      // If not found by name, fallback for legacy rows: match by validasi if DB row is not already a known canonical metric
+      if (foundIdx === -1) {
+        foundIdx = rawRencana.findIndex((r: any, idx: number) => {
+          if (matchedDbIndices.has(idx)) return false;
+          return normalizeValidasi(r.validasi) === mRow.validasi && !isCanonicalStandardMetric(r.metrik);
+        });
+      }
+
+      if (foundIdx !== -1) {
+        matchedDbIndices.add(foundIdx);
+        const r = rawRencana[foundIdx];
+        return {
+          id: r.id || `default_m${i}`,
+          validasi: mRow.validasi,
+          metrik: r.metrik || mRow.metrik,
+          unitUkuran: r.unitUkuran || "",
+          kriteriaKesuksesan: r.kriteriaKesuksesan || "",
+          caraPengukuran: r.caraPengukuran || "",
+          catatan: r.catatan || "",
+          isStandard: true,
+        };
+      }
+
+      return {
         id: `default_m${i}`,
-        validasi: row.validasi,
-        metrik: row.metrik,
+        validasi: mRow.validasi,
+        metrik: mRow.metrik,
         unitUkuran: "",
         kriteriaKesuksesan: "",
         caraPengukuran: "",
         catatan: "",
+        isStandard: true,
+      };
+    });
+
+    // 2. Any other rows stored in DB that did not match the 7 standard rows are CUSTOM rows
+    const customRows = rawRencana
+      .filter((_: any, idx: number) => !matchedDbIndices.has(idx))
+      .map((r: any, idx: number) => ({
+        id: r.id || `custom_m${idx}`,
+        validasi: normalizeValidasi(r.validasi),
+        metrik: r.metrik || "",
+        unitUkuran: r.unitUkuran || "",
+        kriteriaKesuksesan: r.kriteriaKesuksesan || "",
+        caraPengukuran: r.caraPengukuran || "",
+        catatan: r.catatan || "",
+        isStandard: false,
       }));
-    }
 
-    const existing = initialData.metrikRencana.map((r: any, i: number) => ({
-      id: r.id || `db_m${i}`,
-      validasi: normalizeValidasi(r.validasi),
-      metrik: r.metrik || "",
-      unitUkuran: r.unitUkuran || "",
-      kriteriaKesuksesan: r.kriteriaKesuksesan || "",
-      caraPengukuran: r.caraPengukuran || "",
-      catatan: r.catatan || "",
-    }));
-
-    // If legacy rows (e.g. only 3 rows from before), ensure all 7 METRIK_ROWS are present
-    if (existing.length <= 3 && !existing.some((r: any) => r.metrik === "Ketertarikan Penggunaan Berulang")) {
-      return METRIK_ROWS.map((mRow, i) => {
-        const found = existing.find(
-          (r: any) =>
-            r.metrik === mRow.metrik ||
-            (r.validasi === mRow.validasi && (!r.metrik || r.metrik === mRow.metrik))
-        );
-        return {
-          id: found?.id || `default_m${i}`,
-          validasi: mRow.validasi,
-          metrik: mRow.metrik,
-          unitUkuran: found?.unitUkuran || "",
-          kriteriaKesuksesan: found?.kriteriaKesuksesan || "",
-          caraPengukuran: found?.caraPengukuran || "",
-          catatan: found?.catatan || "",
-        };
-      });
-    }
-
-    return existing;
+    return [...standardRows, ...customRows];
   };
   const [metrikRows, setMetrikRows] = useState<any[]>(initMetrik);
 
@@ -532,6 +562,7 @@ export function CustomerValidationClient({
     ketercapaianPsf: initialData?.report?.ketercapaianPsf || "tercapai",
     keputusan: initialData?.report?.keputusan || "lanjut",
     catatanMvpPlanning: initialData?.report?.catatanMvpPlanning || "",
+    buktiPendukung: initialData?.report?.buktiPendukung || "",
   });
 
   // ── Tabel 1: Temuan Kualitatif state (6 baris tetap) ───────────────────────
@@ -631,7 +662,15 @@ export function CustomerValidationClient({
               setDimensiRows(aiDimensiRows.map((r: any, i: number) => ({ ...r, id: `mount_d${i}` })));
             }
             if (aiMetrikRows?.length > 0) {
-              setMetrikRows(aiMetrikRows.map((r: any, i: number) => ({ ...r, id: `mount_m${i}` })));
+              setMetrikRows((prev) => {
+                const userCustomRows = prev.filter((r) => !r.isStandard);
+                const mappedAiRows = aiMetrikRows.map((r: any, i: number) => ({
+                  ...r,
+                  id: `mount_m${i}`,
+                  isStandard: i < 7,
+                }));
+                return [...mappedAiRows, ...userCustomRows];
+              });
             }
             toast.info(
               "Form Perencanaan CV otomatis diisi dari Innovation Charter & AI. Silakan tinjau dan simpan.",
@@ -706,12 +745,17 @@ export function CustomerValidationClient({
           })));
         }
 
-        // Update Section E with stable IDs
+        // Update Section E with stable IDs while preserving custom rows
         if (aiMetrikRows && aiMetrikRows.length > 0) {
-          setMetrikRows(aiMetrikRows.map((r: any, i: number) => ({
-            ...r,
-            id: `fill_m${i}`,
-          })));
+          setMetrikRows((prev) => {
+            const userCustomRows = prev.filter((r) => !r.isStandard);
+            const mappedAiRows = aiMetrikRows.map((r: any, i: number) => ({
+              ...r,
+              id: `fill_m${i}`,
+              isStandard: i < 7,
+            }));
+            return [...mappedAiRows, ...userCustomRows];
+          });
         }
 
         toast.success(
@@ -1643,10 +1687,11 @@ export function CustomerValidationClient({
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {metrikRows.map((r, index) => {
-                        const defaultMeta =
-                          METRIK_ROWS.find(
-                            (mr) => mr.metrik.toLowerCase() === (r.metrik || "").toLowerCase()
-                          ) || (index < METRIK_ROWS.length && r.validasi === METRIK_ROWS[index].validasi ? METRIK_ROWS[index] : undefined);
+                        const defaultMeta = r.isStandard
+                          ? (METRIK_ROWS.find(
+                              (mr) => mr.metrik.toLowerCase().trim() === (r.metrik || "").toLowerCase().trim()
+                            ) || (index < METRIK_ROWS.length ? METRIK_ROWS[index] : undefined))
+                          : undefined;
                         return (
                         <tr key={r.id} className="hover:bg-gray-50/60 transition-colors">
                           <td className="px-4 py-3 align-top">
@@ -1748,17 +1793,27 @@ export function CustomerValidationClient({
                                   setMetrikRows(newRows);
                                 }}
                               />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 mt-1 shrink-0"
-                                onClick={() => {
-                                  setMetrikRows(metrikRows.filter((_, i) => i !== index));
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {r.isStandard ? (
+                                <span
+                                  className="mt-1 shrink-0 px-2 py-1 rounded text-[10px] font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
+                                  title="Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"
+                                >
+                                  Baku Juklak
+                                </span>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 mt-1 shrink-0"
+                                  onClick={() => {
+                                    setMetrikRows(metrikRows.filter((_, i) => i !== index));
+                                  }}
+                                  title="Hapus baris metrik custom"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1780,7 +1835,8 @@ export function CustomerValidationClient({
                           unitUkuran: "",
                           kriteriaKesuksesan: "",
                           caraPengukuran: "",
-                          catatan: ""
+                          catatan: "",
+                          isStandard: false,
                         }]);
                       }}
                     >
@@ -2774,6 +2830,26 @@ export function CustomerValidationClient({
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 block">
+                      Bukti Pendukung
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      Template 2.2 Juklak PIA
+                    </span>
+                  </div>
+                  <Textarea
+                    rows={3}
+                    placeholder="Daftar link raw data, dokumentasi user testing, prototype iterasi, notulensi, dan lampiran lainnya."
+                    value={reportForm.buktiPendukung}
+                    onChange={(e) => setReportForm({ ...reportForm, buktiPendukung: e.target.value })}
+                  />
+                  <p className="text-[11px] text-gray-500 italic">
+                    Daftar link raw data, dokumentasi user testing, prototype iterasi, notulensi, dan lampiran lainnya.
+                  </p>
+                </div>
+
                 {/* 📎 Dokumen Preliminary Review (Read-only list dari kartu Kanban) */}
                 <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 via-white to-emerald-50/40 rounded-2xl border border-[#C9E4D0] space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-1">
@@ -2786,12 +2862,16 @@ export function CustomerValidationClient({
                     </span>
                   </div>
 
-                  {Array.isArray(initialData?.report?.buktiPendukung) &&
-                  initialData.report.buktiPendukung.filter((b: any) => b.type === "dokumen_preliminary_review").length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                      {initialData.report.buktiPendukung
-                        .filter((b: any) => b.type === "dokumen_preliminary_review")
-                        .map((doc: any, idx: number) => (
+                  {(() => {
+                    const smeDocs = Array.isArray(initialData?.report?.catatanReviewSme)
+                      ? initialData.report.catatanReviewSme.filter((b: any) => b.type === "dokumen_preliminary_review")
+                      : Array.isArray(initialData?.report?.buktiPendukung)
+                      ? (initialData.report.buktiPendukung as any[]).filter((b: any) => b.type === "dokumen_preliminary_review")
+                      : [];
+
+                    return smeDocs.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {smeDocs.map((doc: any, idx: number) => (
                           <div
                             key={idx}
                             className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs hover:border-[#3E9463] transition-all"
@@ -2825,36 +2905,42 @@ export function CustomerValidationClient({
                             </a>
                           </div>
                         ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-gray-500 italic bg-white/70 p-2.5 rounded-xl border border-dashed border-gray-200">
-                      Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan CV&rdquo;.
-                    </p>
-                  )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-gray-500 italic bg-white/70 p-2.5 rounded-xl border border-dashed border-gray-200">
+                        Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan CV&rdquo;.
+                      </p>
+                    );
+                  })()}
                 </div>
 
-                {/* Bukti Pendukung / Catatan Review SME Lainnya */}
-                {Array.isArray(initialData?.report?.buktiPendukung) &&
-                  initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length > 0 && (
+                {/* Catatan Review SME Lainnya */}
+                {(() => {
+                  const smeNotes = Array.isArray(initialData?.report?.catatanReviewSme)
+                    ? initialData.report.catatanReviewSme.filter((b: any) => b.type !== "dokumen_preliminary_review")
+                    : Array.isArray(initialData?.report?.buktiPendukung)
+                    ? (initialData.report.buktiPendukung as any[]).filter((b: any) => b.type !== "dokumen_preliminary_review")
+                    : [];
+
+                  return smeNotes.length > 0 ? (
                     <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
                       <span className="text-xs font-bold text-gray-700 block">
-                        Catatan Review SME ({initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length} Catatan):
+                        Catatan Review SME ({smeNotes.length} Catatan):
                       </span>
                       <div className="space-y-1.5">
-                        {initialData.report.buktiPendukung
-                          .filter((b: any) => b.type !== "dokumen_preliminary_review")
-                          .map((b: any, idx: number) => (
-                            <div key={idx} className="p-2.5 bg-white rounded-lg border border-gray-200 text-xs">
-                              <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
-                                <span>Reviewer: {b.reviewer || b.smeNama || "SME / Coach"}</span>
-                                <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
-                              </div>
-                              <p className="text-gray-600 text-[11px] mt-1 whitespace-pre-wrap">{b.content || b.catatan || JSON.stringify(b)}</p>
+                        {smeNotes.map((b: any, idx: number) => (
+                          <div key={idx} className="p-2.5 bg-white rounded-lg border border-gray-200 text-xs">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                              <span>Reviewer: {b.reviewer || b.smeNama || "SME / Coach"}</span>
+                              <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
                             </div>
-                          ))}
+                            <p className="text-gray-600 text-[11px] mt-1 whitespace-pre-wrap">{b.content || b.catatan || JSON.stringify(b)}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
+                  ) : null;
+                })()}
               </CardContent>
             </Card>
 

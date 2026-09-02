@@ -122,12 +122,14 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
 
   console.log(`[saveImportedProposal] Processing Proposal ID: ${proposalId} - ${namaProyek}`);
 
-  const [existingTeam] = await db.select().from(timInovator).where(eq(timInovator.proposalIdAsli, proposalId)).limit(1);
-
-  if (existingTeam && !override) {
-    console.log(`[saveImportedProposal] Team ${proposalId} already exists, skipping.`);
-    return { success: true, message: 'Tim sudah ada (dilewati).', teamId: existingTeam.id, action: 'skipped', createdAccounts: [] };
-  }
+  // Medali Resmi Grand Final diutamakan:
+  // Hierarki: hasil_grand_final_resmi.klasifikasi_akhir > status_akhir.peringkat_medali > data_submisi.klasifikasi_inovasi > payload.klasifikasiInovasi > 'Platinum'
+  const effectiveKlasifikasi =
+    dossierData?.hasil_grand_final_resmi?.klasifikasi_akhir ||
+    dossierData?.status_akhir?.peringkat_medali ||
+    dossierData?.data_submisi?.klasifikasi_inovasi ||
+    klasifikasiInovasi ||
+    'Platinum';
 
   const mergedLampiranUrls: Record<string, string> = { ...(lampiranUrls || {}) };
   const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
@@ -143,18 +145,61 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     proposal_id: proposalId,
     season: season,
     lampiran_urls: mergedLampiranUrls,
+    status_akhir: {
+      ...(dossierData?.status_akhir || {}),
+      peringkat_medali: effectiveKlasifikasi,
+    },
   };
 
   let teamId: string;
   let action: 'created' | 'updated' = 'created';
 
-  if (existingTeam && override) {
+  const [existingTeam] = await db.select().from(timInovator).where(eq(timInovator.proposalIdAsli, proposalId)).limit(1);
+
+  if (existingTeam && !override) {
+    // Cek apakah dossier_pia_archive sudah ada untuk tim ini
+    const [existingDossier] = await db
+      .select({ id: dossierPiaArchive.id })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, existingTeam.id))
+      .limit(1);
+
+    if (existingDossier) {
+      console.log(`[saveImportedProposal] Team ${proposalId} already exists with dossier, skipping.`);
+      return { success: true, message: 'Tim sudah ada (dilewati).', teamId: existingTeam.id, action: 'skipped', createdAccounts: [] };
+    } else {
+      // Tim ada (dipertahankan saat reset data agar role aman), tetapi dossier ter-reset.
+      // Pulihkan dossier_pia_archive dan perbarui klasifikasi inovasi ke medali resmi Grand Final.
+      teamId = existingTeam.id;
+      action = 'updated';
+      await db.update(timInovator).set({
+        namaProyekInovasi: namaProyek,
+        kategoriPia: kategoriPia,
+        klasifikasiInovasi: effectiveKlasifikasi,
+        updatedAt: new Date(),
+      }).where(eq(timInovator.id, teamId));
+
+      await db.insert(dossierPiaArchive).values({
+        timInovatorId: teamId,
+        proposalIdAsli: proposalId,
+        seasonAsli: season,
+        snapshotData: finalSnapshot,
+        updatedAt: new Date(),
+      }).onConflictDoUpdate({
+        target: [dossierPiaArchive.timInovatorId],
+        set: {
+          snapshotData: finalSnapshot,
+          updatedAt: new Date(),
+        },
+      });
+    }
+  } else if (existingTeam && override) {
     teamId = existingTeam.id;
     action = 'updated';
     await db.update(timInovator).set({
       namaProyekInovasi: namaProyek,
       kategoriPia: kategoriPia,
-      klasifikasiInovasi: klasifikasiInovasi || 'Platinum',
+      klasifikasiInovasi: effectiveKlasifikasi,
       updatedAt: new Date(),
     }).where(eq(timInovator.id, teamId));
 
@@ -175,7 +220,7 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     const [newTeam] = await db.insert(timInovator).values({
       namaProyekInovasi: namaProyek,
       kategoriPia: kategoriPia,
-      klasifikasiInovasi: klasifikasiInovasi || 'Platinum',
+      klasifikasiInovasi: effectiveKlasifikasi,
       status: 'calon_peserta',
       durasiBulan: 3,
       proposalIdAsli: proposalId,
@@ -594,7 +639,11 @@ export async function confirmImportPeserta(
 
       const namaProyek = dossierData?.data_submisi?.judul || `Inovasi ${proposalId}`;
       const kategoriPia = dossierData?.data_submisi?.kategori_pia || 'PUSAT';
-      const klasifikasiInovasi = dossierData?.status_akhir?.peringkat_medali || 'Platinum';
+      const klasifikasiInovasi =
+        dossierData?.hasil_grand_final_resmi?.klasifikasi_akhir ||
+        dossierData?.status_akhir?.peringkat_medali ||
+        dossierData?.data_submisi?.klasifikasi_inovasi ||
+        'Platinum';
       const seasonAsli = dossierData?.season || 'Season 12 - 2026';
       const pengusul = dossierData?.data_submisi?.pengusul || {};
 

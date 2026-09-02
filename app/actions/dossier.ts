@@ -68,6 +68,7 @@ export async function getDossierList(search?: string, season?: string, kategori?
 
     const activeMedal =
       r.timKlasifikasi ||
+      snap.hasil_grand_final_resmi?.klasifikasi_akhir ||
       statusAkhir.peringkat_medali ||
       dataSubmisi.klasifikasi_inovasi ||
       'Platinum';
@@ -167,6 +168,7 @@ export async function getDossierDetail(proposalIdOrTimId: string) {
 
   const effectiveMedal =
     record.timKlasifikasi ||
+    rawSnap.hasil_grand_final_resmi?.klasifikasi_akhir ||
     rawSnap.status_akhir?.peringkat_medali ||
     rawSnap.data_submisi?.klasifikasi_inovasi ||
     'Platinum';

@@ -767,6 +767,7 @@ export function MarketValidationClient({
     rekomendasiIterasi: initialData?.report?.rekomendasiIterasi || "",
     rencanaMvpBerikutnya: initialData?.report?.rencanaMvpBerikutnya || "",
     rekomendasiPromotorSponsor: initialData?.report?.rekomendasiPromotorSponsor || "",
+    buktiPendukung: initialData?.report?.buktiPendukung || "",
   });
 
   const [reportTtdDisusun, setReportTtdDisusun] = useState<any | null>(
@@ -2760,6 +2761,33 @@ export function MarketValidationClient({
                     className="text-xs"
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 block">
+                      Bukti Pendukung
+                    </label>
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      Template 3.2 Juklak PIA
+                    </span>
+                  </div>
+                  <Textarea
+                    disabled={!canEdit}
+                    rows={3}
+                    placeholder="Link dashboard, raw data, foto/video, survey, laporan issue, notulensi review, RAB/LPJ."
+                    value={reportForm.buktiPendukung}
+                    onChange={(e) =>
+                      setReportForm({
+                        ...reportForm,
+                        buktiPendukung: e.target.value,
+                      })
+                    }
+                    className="text-xs"
+                  />
+                  <p className="text-[11px] text-gray-500 italic">
+                    Link dashboard, raw data, foto/video, survey, laporan issue, notulensi review, RAB/LPJ.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -2787,12 +2815,16 @@ export function MarketValidationClient({
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {/* Dokumen Files Uploaded */}
-                {Array.isArray(initialData?.report?.buktiPendukung) &&
-                initialData.report.buktiPendukung.filter((b: any) => b.type === "dokumen_preliminary_review").length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {initialData.report.buktiPendukung
-                      .filter((b: any) => b.type === "dokumen_preliminary_review")
-                      .map((doc: any, idx: number) => (
+                {(() => {
+                  const smeDocs = Array.isArray(initialData?.report?.catatanReviewSme)
+                    ? initialData.report.catatanReviewSme.filter((b: any) => b.type === "dokumen_preliminary_review")
+                    : Array.isArray(initialData?.report?.buktiPendukung)
+                    ? (initialData.report.buktiPendukung as any[]).filter((b: any) => b.type === "dokumen_preliminary_review")
+                    : [];
+
+                  return smeDocs.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {smeDocs.map((doc: any, idx: number) => (
                         <div
                           key={idx}
                           className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200/80 shadow-2xs hover:border-[#3E9463] transition-all"
@@ -2826,35 +2858,41 @@ export function MarketValidationClient({
                           </a>
                         </div>
                       ))}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-gray-500 italic bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200">
-                    Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan MV&rdquo;.
-                  </p>
-                )}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 italic bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200">
+                      Belum ada dokumen preliminary review yang diunggah. Unggah dokumen review melalui kartu Board Sprint &ldquo;Preliminary Review (SME)&rdquo; dan klik &ldquo;Simpan ke Laporan MV&rdquo;.
+                    </p>
+                  );
+                })()}
 
                 {/* Catatan Review SME Lainnya */}
-                {Array.isArray(initialData?.report?.buktiPendukung) &&
-                  initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length > 0 && (
+                {(() => {
+                  const smeNotes = Array.isArray(initialData?.report?.catatanReviewSme)
+                    ? initialData.report.catatanReviewSme.filter((b: any) => b.type !== "dokumen_preliminary_review")
+                    : Array.isArray(initialData?.report?.buktiPendukung)
+                    ? (initialData.report.buktiPendukung as any[]).filter((b: any) => b.type !== "dokumen_preliminary_review")
+                    : [];
+
+                  return smeNotes.length > 0 ? (
                     <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
                       <span className="text-xs font-bold text-gray-700 block">
-                        Catatan Review SME ({initialData.report.buktiPendukung.filter((b: any) => b.type !== "dokumen_preliminary_review").length} Catatan):
+                        Catatan Review SME ({smeNotes.length} Catatan):
                       </span>
                       <div className="space-y-1.5">
-                        {initialData.report.buktiPendukung
-                          .filter((b: any) => b.type !== "dokumen_preliminary_review")
-                          .map((b: any, idx: number) => (
-                            <div key={idx} className="p-2.5 bg-white rounded-lg border border-gray-200 text-xs">
-                              <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
-                                <span>Reviewer: {b.reviewer || "SME / Coach"}</span>
-                                <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
-                              </div>
-                              <p className="text-gray-600 text-[11px] mt-1 whitespace-pre-wrap">{b.content || b.catatan || ""}</p>
+                        {smeNotes.map((b: any, idx: number) => (
+                          <div key={idx} className="p-2.5 bg-white rounded-lg border border-gray-200 text-xs">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                              <span>Reviewer: {b.reviewer || "SME / Coach"}</span>
+                              <span className="text-gray-400 font-normal">{b.tanggal ? formatDateIndo(b.tanggal) : ""}</span>
                             </div>
-                          ))}
+                            <p className="text-gray-600 text-[11px] mt-1 whitespace-pre-wrap">{b.content || b.catatan || ""}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
+                  ) : null;
+                })()}
               </CardContent>
             </Card>
 
