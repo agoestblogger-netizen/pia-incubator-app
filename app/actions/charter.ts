@@ -164,6 +164,7 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
     const snap = dossier.snapshotData as any;
     const submisi = snap.data_submisi || snap;
     const formDetail = submisi.form_detail || {};
+    const hasilGrandFinal = snap.hasil_grand_final || submisi.hasil_grand_final || null;
 
     // 1. Check if AI charter has already been generated and cached in snapshotData
     let aiFields = snap.ai_generated_charter as any;
@@ -182,7 +183,9 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
             tema: submisi.tema,
             form_detail: formDetail,
             data_submisi: submisi,
+            hasil_grand_final: hasilGrandFinal,
           },
+          hasilGrandFinal,
         });
 
         if (generated) {
@@ -206,6 +209,7 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
 
     const mapping: Record<string, string> = {
       projectMission: cleanText(
+        hasilGrandFinal?.big_why_mission ||
         submisi.judul ||
         submisi.tema ||
         snap.judul_inovasi
@@ -213,12 +217,17 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       customerEarlyAdopters: cleanText(
         aiFields?.customerEarlyAdopters ||
         [
+          hasilGrandFinal?.customer_context?.target_pengguna,
+          hasilGrandFinal?.customer_context?.customer_insight ? `Insight Pelanggan:\n${hasilGrandFinal.customer_context.customer_insight}` : null,
+        ].filter(Boolean).join('\n\n') ||
+        [
           formDetail.kelompok_dibantu || formDetail.bi_sasaran_pengguna_inovasi || formDetail.bc_kelompok_dibantu || formDetail.sasaran_pengguna,
           formDetail.alasan_memilih_sasaran || formDetail.bi_alasan_memilih_sasaran || formDetail.bc_alasan_memilih_area_bantuan,
         ].filter(Boolean).join('\n\nAlasan Pemilihan:\n')
       ),
       contextAreaBantuan: cleanText(
         aiFields?.contextAreaBantuan ||
+        hasilGrandFinal?.customer_context?.context_chosen ||
         [
           formDetail.konteks_inovasi || formDetail.bi_konteks_inovasi,
           formDetail.alasan_konteks_inovasi || formDetail.bi_alasan_konteks_inovasi || formDetail.bc_alasan_memilih_area_bantuan,
@@ -226,6 +235,11 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       ),
       problemWorthSolving: cleanText(
         aiFields?.problemWorthSolving ||
+        [
+          hasilGrandFinal?.problem?.pernyataan_masalah,
+          hasilGrandFinal?.problem?.bukti_masalah ? `Bukti Masalah:\n${hasilGrandFinal.problem.bukti_masalah}` : null,
+          hasilGrandFinal?.problem?.kenapa_penting ? `Urgensi Penyelesaian:\n${hasilGrandFinal.problem.kenapa_penting}` : null,
+        ].filter(Boolean).join('\n\n') ||
         [
           formDetail.masalah_sasaran || formDetail.bi_masalah_diselesaikan || formDetail.bc_masalah_sasaran_inovasi,
           formDetail.masalah_penting_karena || formDetail.bi_masalah_penting_karena || formDetail.bc_alasan_penting_diselesaikan || formDetail.detil_permasalahan || formDetail.bc_detil_permasalahan,
@@ -240,12 +254,14 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       ),
       opportunityStatement: cleanText(
         aiFields?.opportunityStatement ||
+        hasilGrandFinal?.problem?.relevansi_bisnis ||
         formDetail.target_non_finansial ||
         formDetail.bi_target_non_finansial ||
         formDetail.bc_target_capaian_non_finansial
       ),
       businessOpportunity: cleanText(
         aiFields?.businessOpportunity ||
+        hasilGrandFinal?.business_impact ||
         [
           formDetail.target_finansial || formDetail.bi_target_finansial || formDetail.bc_target_capaian_finansial,
           formDetail.target_non_finansial || formDetail.bi_target_non_finansial || formDetail.bc_target_capaian_non_finansial,
@@ -253,6 +269,7 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       ),
       solusiAwal: cleanText(
         aiFields?.solusiAwal ||
+        hasilGrandFinal?.solution ||
         [
           formDetail.solusi_diusulkan || formDetail.bi_inovasi_diusulkan || formDetail.bc_eksplorasi_solusi || submisi.deskripsi_lengkap,
           formDetail.inovasi_dapat_menyelesaikan || formDetail.bi_inovasi_dapat_menyelesaikan,
@@ -260,6 +277,9 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       ),
       desirabilityHypothesis: cleanText(
         aiFields?.desirabilityHypothesis ||
+        (hasilGrandFinal?.customer_context?.target_pengguna && hasilGrandFinal?.solution
+          ? `Kami meyakini bahwa ${hasilGrandFinal.customer_context.target_pengguna} membutuhkan ${hasilGrandFinal.solution}`
+          : '') ||
         formDetail.target_non_finansial ||
         formDetail.bi_target_non_finansial ||
         formDetail.bc_target_capaian_non_finansial ||
@@ -268,6 +288,9 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       ),
       feasibilityHypothesis: cleanText(
         aiFields?.feasibilityHypothesis ||
+        (Array.isArray(hasilGrandFinal?.fitur_utama)
+          ? `Dapat diwujudkan melalui arsitektur fitur utama:\n- ${hasilGrandFinal.fitur_utama.join('\n- ')}`
+          : hasilGrandFinal?.fitur_utama) ||
         [
           formDetail.keunikan || formDetail.bi_keunikan_penyelesaian || formDetail.bc_inovasi_harus_memiliki_kebaruan,
           formDetail.detil_cara_kerja || formDetail.bi_diwujudkan_dengan_cara || formDetail.bi_dengan_cara || formDetail.bc_detil_cara_kerja,
@@ -275,12 +298,14 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
       ),
       viabilityHypothesis: cleanText(
         aiFields?.viabilityHypothesis ||
+        hasilGrandFinal?.business_impact ||
         formDetail.target_finansial ||
         formDetail.bi_target_finansial ||
         formDetail.bc_target_capaian_finansial
       ),
       kebutuhanDukungan: cleanText(
         aiFields?.kebutuhanDukungan ||
+        hasilGrandFinal?.support_needed ||
         formDetail.sumber_daya ||
         formDetail.bi_sumber_daya ||
         formDetail.bc_sumber_daya_diperlukan
@@ -1451,11 +1476,38 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
     const snap = teamDossier.snapshotData as any;
     const submisi = snap.data_submisi || snap.submisi_dossier || {};
     const formDetail = submisi.form_detail || snap.form_detail || {};
+    const hasilGrandFinal = snap.hasil_grand_final || submisi.hasil_grand_final || null;
     const proposalId = teamDossier.proposalIdAsli || snap.proposal_id || timId;
     const namaProyek = submisi.judul || snap.judul_inovasi || tim?.namaProyekInovasi || "Inovasi";
     const kategoriPia = tim?.kategoriPia || submisi.kategori_pia || snap.kategori_inovasi || "Umum";
 
-    const roadmapText = cleanText(
+    const grandFinalRoadmapBlocks: string[] = [];
+    if (hasilGrandFinal) {
+      if (hasilGrandFinal.solution) {
+        grandFinalRoadmapBlocks.push(`SOLUSI RESMI GRAND FINAL:\n${hasilGrandFinal.solution}`);
+      }
+      if (hasilGrandFinal.fitur_utama) {
+        const fiturStr = Array.isArray(hasilGrandFinal.fitur_utama)
+          ? hasilGrandFinal.fitur_utama.map((f: string, idx: number) => `${idx + 1}. ${f}`).join('\n')
+          : String(hasilGrandFinal.fitur_utama);
+        grandFinalRoadmapBlocks.push(`ARSITEKTUR & FITUR UTAMA SISTEM (GRAND FINAL):\n${fiturStr}`);
+      }
+      if (hasilGrandFinal.validasi) {
+        const ringkasan = hasilGrandFinal.validasi.ringkasan_validasi || '';
+        const pembelajaran = hasilGrandFinal.validasi.pembelajaran_validasi || '';
+        if (ringkasan || pembelajaran) {
+          grandFinalRoadmapBlocks.push(`HASIL VALIDASI AWAL & PEMBELAJARAN (GRAND FINAL):\nRingkasan: ${ringkasan}\nPembelajaran: ${pembelajaran}`.trim());
+        }
+      }
+      if (hasilGrandFinal.risk_mitigation) {
+        grandFinalRoadmapBlocks.push(`RENCANA MITIGASI RISIKO UTAMA:\n${hasilGrandFinal.risk_mitigation}`);
+      }
+      if (hasilGrandFinal.business_impact) {
+        grandFinalRoadmapBlocks.push(`TARGET DAMPAK BISNIS:\n${hasilGrandFinal.business_impact}`);
+      }
+    }
+
+    const earlyProposalText = cleanText(
       formDetail.detil_cara_kerja ||
       formDetail.bc_detil_cara_kerja ||
       formDetail.solusi_diusulkan ||
@@ -1468,6 +1520,13 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
       formDetail.keunikan ||
       snap.resubmit_document_text ||
       ""
+    );
+
+    const roadmapText = cleanText(
+      [
+        grandFinalRoadmapBlocks.join('\n\n'),
+        earlyProposalText ? `--- DOKUMEN PROPOSAL AWAL ---\n${earlyProposalText}` : ''
+      ].filter(Boolean).join('\n\n')
     );
 
     let aiTasks: AiBacklogTask[] | null = Array.isArray(snap.ai_generated_backlog) ? snap.ai_generated_backlog : null;
@@ -1484,6 +1543,7 @@ export async function seedInitialKanbanCardsForTeam(timId: string, customDossier
           rawProposalData: {
             judul: submisi.judul || snap.judul_inovasi,
             form_detail: formDetail,
+            hasil_grand_final: hasilGrandFinal,
           },
         });
 

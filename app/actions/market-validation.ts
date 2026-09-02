@@ -18,6 +18,7 @@ import {
   sprint,
   sprintReview,
   hasilValidasiMetrik,
+  dossierPiaArchive,
 } from "@/lib/db/schema";
 import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -1044,6 +1045,15 @@ export async function generateMvBacklogAction(timId: string) {
         )
       );
 
+    const [teamDossier] = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+
+    const snap = (teamDossier?.snapshotData as any) || {};
+    const hasilGrandFinal = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final || null;
+
     // Call AI / Fallback Generator
     const generatedTasks = await generateAiBacklogFromMvPlan({
       teamId: timId,
@@ -1078,6 +1088,13 @@ export async function generateMvBacklogAction(timId: string) {
           target: m.target || undefined,
         })),
       },
+      grandFinalContext: hasilGrandFinal
+        ? {
+            fitur_utama: hasilGrandFinal.fitur_utama,
+            business_impact: hasilGrandFinal.business_impact,
+            risk_mitigation: hasilGrandFinal.risk_mitigation,
+          }
+        : null,
     });
 
     if (!generatedTasks || generatedTasks.length === 0) {

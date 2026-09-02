@@ -15,6 +15,7 @@ import {
   sprint,
   timInovator,
   charter,
+  dossierPiaArchive,
   anggotaTim,
   userRoleTim,
   roles,
@@ -386,6 +387,15 @@ export async function generateCvBacklogAction(timId: string) {
     const teamSprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
     const totalSprints = Math.max(2, teamSprints.length || 4);
 
+    const [teamDossier] = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+
+    const snap = (teamDossier?.snapshotData as any) || {};
+    const hasilGrandFinal = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final || null;
+
     // Call AI / Fallback Generator
     const generatedTasks = await generateAiBacklogFromCvPlan({
       teamId: timId,
@@ -408,6 +418,12 @@ export async function generateCvBacklogAction(timId: string) {
         metodeRekrutmen: plan.metodeRekrutmen,
         etikaPersetujuanData: plan.etikaPersetujuanData,
       },
+      grandFinalContext: hasilGrandFinal
+        ? {
+            validasi: hasilGrandFinal.validasi,
+            fitur_utama: hasilGrandFinal.fitur_utama,
+          }
+        : null,
     });
 
     if (!generatedTasks || generatedTasks.length === 0) {

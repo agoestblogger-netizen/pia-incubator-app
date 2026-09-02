@@ -157,8 +157,12 @@ export async function generateAiBacklogFromCvPlan(params: {
   namaProyek: string;
   plan: CvPlanData;
   totalSprints?: number;
+  grandFinalContext?: {
+    validasi?: { ringkasan_validasi?: string; pembelajaran_validasi?: string } | null;
+    fitur_utama?: string[] | string | null;
+  } | null;
 }): Promise<AiBacklogTask[]> {
-  const { teamId, namaProyek, plan, totalSprints = 4 } = params;
+  const { teamId, namaProyek, plan, totalSprints = 4, grandFinalContext } = params;
   const maxAllowedCvSpan = Math.max(1, totalSprints - 1);
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -172,6 +176,9 @@ export async function generateAiBacklogFromCvPlan(params: {
 
     const systemPrompt = `Anda adalah Scrum Master & Innovation Lead senior PT Pegadaian (Persero).
 Tugas: Berdasarkan Dokumen Perencanaan Validasi Pelanggan (Customer Validation Plan) dan total kuota sprint tim (${totalSprints} sprint):
+
+CATATAN REFERENSI GRAND FINAL:
+Jika tersedia DATA VALIDASI & FITUR UTAMA GRAND FINAL, manfaatkan untuk membuat rumusan tugas pengujian dan prototype yang LEBIH SPESIFIK dan MENYASAR FITUR KUNCI tim tersebut. Jangan membuat task generik seolah tim mulai dari nol; fokuskan pada pengujian mendalam terhadap hipotesis yang diajukan di Grand Final.
 
 LANGKAH 1 — Tentukan "cv_sprint_span" (estimasi jumlah sprint yang realistis dibutuhkan fase Customer Validation):
 - Plafon maksimal: ${maxAllowedCvSpan} sprint (WAJIB menyisakan minimal 1 sprint untuk Market Validation).
@@ -220,9 +227,23 @@ Output HARUS JSON murni tanpa markdown:
   ]
 }`;
 
+    const grandFinalSnippetParts: string[] = [];
+    if (grandFinalContext?.fitur_utama) {
+      const fiturStr = Array.isArray(grandFinalContext.fitur_utama)
+        ? grandFinalContext.fitur_utama.join(', ')
+        : grandFinalContext.fitur_utama;
+      if (fiturStr) grandFinalSnippetParts.push(`Fitur Utama Grand Final: ${fiturStr}`);
+    }
+    if (grandFinalContext?.validasi) {
+      const val = grandFinalContext.validasi;
+      if (val.ringkasan_validasi) grandFinalSnippetParts.push(`Validasi Sebelumnya: ${val.ringkasan_validasi}`);
+      if (val.pembelajaran_validasi) grandFinalSnippetParts.push(`Pembelajaran: ${val.pembelajaran_validasi}`);
+    }
+
     const planSummary = `
 PROYEK: ${namaProyek}
 TOTAL KUOTA SPRINT TIM: ${totalSprints} (Plafon Maks CV: ${maxAllowedCvSpan} sprint)
+${grandFinalSnippetParts.length > 0 ? `\nKONTEKS GRAND FINAL (VALIDASI & FITUR):\n${grandFinalSnippetParts.join('\n')}\n` : ''}
 PROJECT MISSION: ${plan.projectMission || '-'}
 CUSTOMER & KONTEKS: ${plan.customerDanContext || '-'}
 HIPOTESIS MASALAH: ${plan.problemHypothesis || '-'}

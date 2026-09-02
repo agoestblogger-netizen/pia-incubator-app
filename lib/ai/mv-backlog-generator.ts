@@ -157,8 +157,13 @@ export async function generateAiBacklogFromMvPlan(params: {
   namaProyek: string;
   plan: MvPlanData;
   totalSprints?: number;
+  grandFinalContext?: {
+    fitur_utama?: string[] | string | null;
+    business_impact?: string | null;
+    risk_mitigation?: string | null;
+  } | null;
 }): Promise<AiBacklogTask[]> {
-  const { teamId, namaProyek, plan, totalSprints = 4 } = params;
+  const { teamId, namaProyek, plan, totalSprints = 4, grandFinalContext } = params;
 
   const cvSprintSpan = Math.max(1, Math.min(2, Math.floor(totalSprints / 2)));
   const mvMinSprint = Math.min(totalSprints, cvSprintSpan + 1);
@@ -174,7 +179,13 @@ export async function generateAiBacklogFromMvPlan(params: {
     const openai = new OpenAI({ apiKey, timeout: 25000 });
 
     const systemPrompt = `Anda adalah Scrum Master & Innovation Lead senior PT Pegadaian (Persero).
-Tugas: Berdasarkan Dokumen Perencanaan Rilis MVP (Market Validation Plan - Template 3.1), hasilkan 5-8 kartu Backlog Task konkret, operasional, dan terukur untuk tim inovator dalam merilis MVP, menguji pasar pilot, dan membuktikan Product-Market Fit (PMF).
+Tugas: Berdasarkan Dokumen Perencanaan Rilis MVP (Market Validation Plan - Template 3.1) dan data kurasi Grand Final PIA Season 12, hasilkan 5-8 kartu Backlog Task konkret, operasional, dan terukur untuk tim inovator dalam merilis MVP, menguji pasar pilot, dan membuktikan Product-Market Fit (PMF).
+
+CATATAN REFERENSI GRAND FINAL:
+Jika tersedia DATA GRAND FINAL (Fitur Utama, Business Impact, Risk Mitigation):
+- Prioritaskan kartu implementasi teknis & modul berdasarkan 'Fitur Utama' arsitektur sistem.
+- Sertakan kartu mitigasi risiko atau kesiapan kepatuhan/operasional berdasarkan 'Risk Mitigation'.
+- Arahkan metrik evaluasi agar menyentuh target 'Business Impact'.
 
 ATURAN STRUKTUR SETIAP TASK:
 1. JUDUL: Dimulai KATA KERJA AKTIF imperatif (contoh: "Setup...", "Kembangkan...", "Koordinasikan...", "Onboard...", "Pantau...", "Analisis...", "Susun...").
@@ -201,7 +212,22 @@ Output HARUS JSON murni:
   ]
 }`;
 
+    const grandFinalSnippetParts: string[] = [];
+    if (grandFinalContext?.fitur_utama) {
+      const fiturStr = Array.isArray(grandFinalContext.fitur_utama)
+        ? grandFinalContext.fitur_utama.join(', ')
+        : grandFinalContext.fitur_utama;
+      if (fiturStr) grandFinalSnippetParts.push(`Fitur Utama & Arsitektur Solusi: ${fiturStr}`);
+    }
+    if (grandFinalContext?.risk_mitigation) {
+      grandFinalSnippetParts.push(`Mitigasi Risiko: ${grandFinalContext.risk_mitigation}`);
+    }
+    if (grandFinalContext?.business_impact) {
+      grandFinalSnippetParts.push(`Target Dampak Bisnis: ${grandFinalContext.business_impact}`);
+    }
+
     const userPrompt = `PROYEK: ${namaProyek}
+${grandFinalSnippetParts.length > 0 ? `\nDATA RESMI GRAND FINAL (REFERENSI ARSITEKTUR, MITIGASI RISIKO, DAMPAK BISNIS):\n${grandFinalSnippetParts.join('\n')}\n` : ''}
 VERSI MVP: ${plan.mvpVersion || "v1.0-pilot"}
 CHANNEL RELEASE: ${plan.channelRelease || "-"}
 LOKASI PILOT: ${plan.lokasiPilot || "-"}
