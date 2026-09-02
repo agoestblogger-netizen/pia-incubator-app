@@ -683,6 +683,27 @@ export async function autoFillFullCvPlanAction(timId: string, testUser?: any) {
       };
     }
 
+    const [teamDossier] = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+
+    const snap = (teamDossier?.snapshotData as any) || {};
+    const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final || null;
+
+    const fiturUtama = gf?.fitur_utama || null;
+    const businessImpact = gf?.business_impact || null;
+    const riskMitigation = gf?.risk_mitigation || null;
+    const validationSummary = gf?.validasi
+      ? [gf.validasi.ringkasan_validasi, gf.validasi.pembelajaran_validasi].filter(Boolean).join('. ')
+      : null;
+    const customerContextDetail = gf?.customer_context
+      ? (typeof gf.customer_context === 'object'
+          ? [gf.customer_context.target_pengguna, gf.customer_context.customer_insight].filter(Boolean).join(' | ')
+          : String(gf.customer_context))
+      : null;
+
     const draft = await generateFullCvPlanDraft({
       namaProyekInovasi: timRow?.namaProyekInovasi,
       klasifikasiInovasi: timRow?.klasifikasiInovasi || timRow?.kategoriPia,
@@ -695,6 +716,11 @@ export async function autoFillFullCvPlanAction(timId: string, testUser?: any) {
       feasibilityHypothesis: activeCharter.feasibilityHypothesis,
       viabilityHypothesis: activeCharter.viabilityHypothesis,
       solusiAwal: activeCharter.solusiAwal,
+      fiturUtama,
+      businessImpact,
+      riskMitigation,
+      validationSummary,
+      customerContextDetail,
     });
 
     return {

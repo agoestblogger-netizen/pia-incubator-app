@@ -35,9 +35,17 @@ export interface FullCvPlanDraft {
     caraPengukuran: string;
     catatan: string;
   }>;
+  // Grounding Validation Metadata
+  groundingValidation?: {
+    matchedFeatures: string[];
+    missingFeatures: string[];
+    isGrounded: boolean;
+  };
 }
 
-export function getHeuristicCvPlanDraft(charterData: {
+export interface GenerateCvPlanContext {
+  namaProyekInovasi?: string | null;
+  klasifikasiInovasi?: string | null;
   projectMission?: string | null;
   customerEarlyAdopters?: string | null;
   contextAreaBantuan?: string | null;
@@ -47,8 +55,15 @@ export function getHeuristicCvPlanDraft(charterData: {
   feasibilityHypothesis?: string | null;
   viabilityHypothesis?: string | null;
   solusiAwal?: string | null;
-  klasifikasiInovasi?: string | null;
-}): FullCvPlanDraft {
+  // Konteks penguatan grounding dari Grand Final / internal proposal
+  fiturUtama?: string[] | string | null;
+  businessImpact?: string | null;
+  riskMitigation?: string | null;
+  validationSummary?: string | null;
+  customerContextDetail?: string | null;
+}
+
+export function getHeuristicCvPlanDraft(charterData: GenerateCvPlanContext): FullCvPlanDraft {
   const customer = (charterData.customerEarlyAdopters || "").trim();
   const context = (charterData.contextAreaBantuan || "").trim();
   let customerDanContext = "";
@@ -68,6 +83,10 @@ export function getHeuristicCvPlanDraft(charterData: {
     ? dfvParts.join(" | ")
     : (charterData.solusiAwal || "Solusi prototype dapat menyelesaikan kendala utama customer secara efektif.");
 
+  const fiturText = Array.isArray(charterData.fiturUtama)
+    ? `Pengujian fitur utama: ${charterData.fiturUtama.join(', ')}.`
+    : (charterData.fiturUtama ? `Pengujian fitur utama: ${charterData.fiturUtama}` : "Alur utama penggunaan solusi: mulai dari onboarding/pengenalan, eksekusi proses utama, hingga konfirmasi hasil akhir.");
+
   return {
     // Section A
     projectMission: (charterData.projectMission || "").trim(),
@@ -76,8 +95,8 @@ export function getHeuristicCvPlanDraft(charterData: {
     hmw: (charterData.hmw || "").trim(),
     solutionHypothesis,
     // Section B
-    prototypeType: "Figma / Clickable Prototype",
-    fiturAlurDiuji: "Alur utama penggunaan solusi: mulai dari onboarding/pengenalan, eksekusi proses utama, hingga konfirmasi hasil akhir.",
+    prototypeType: "Interactive Prototype / Dashboard",
+    fiturAlurDiuji: fiturText,
     skenarioUserTesting: "1. Pengguna membuka prototype dan mengeksplorasi navigasi.\n2. Pengguna menjalankan skenario penyelesaian masalah utama.\n3. Pengguna memberikan feedback terkait kemudahan, kejelasan, dan nilai manfaat.",
     instrumenValidasi: "Panduan wawancara mendalam (In-Depth Interview Guide), lembar observasi usability testing, dan kuesioner feedback 5 dimensi.",
     // Section C
@@ -101,19 +120,7 @@ export function getHeuristicCvPlanDraft(charterData: {
   };
 }
 
-export async function generateFullCvPlanDraft(charterData: {
-  namaProyekInovasi?: string | null;
-  klasifikasiInovasi?: string | null;
-  projectMission?: string | null;
-  customerEarlyAdopters?: string | null;
-  contextAreaBantuan?: string | null;
-  problemWorthSolving?: string | null;
-  hmw?: string | null;
-  desirabilityHypothesis?: string | null;
-  feasibilityHypothesis?: string | null;
-  viabilityHypothesis?: string | null;
-  solusiAwal?: string | null;
-}): Promise<FullCvPlanDraft> {
+export async function generateFullCvPlanDraft(charterData: GenerateCvPlanContext): Promise<FullCvPlanDraft> {
   const fallback = getHeuristicCvPlanDraft(charterData);
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -157,28 +164,57 @@ Output HARUS berupa JSON murni dengan format:
   ]
 }
 
-ATURAN PENTING:
-1. Section A (projectMission, customerDanContext, problemHypothesis, hmw, solutionHypothesis): Gunakan dan rapikan langsung dari data Charter yang diberikan.
-2. Section B (prototypeType, fiturAlurDiuji, skenarioUserTesting, instrumenValidasi): Susun metodologi testing yang konkret dan aplikatif sesuai tipe solusi.
-3. Section C (targetEarlyAdopters, kriteriaSeleksi, jumlahTargetResponden, lokasiChannelTesting, metodeRekrutmen, etikaPersetujuanData): Spesifikasikan profil responden, kriteria inklusi/eksklusi, default jumlah 10-12 orang, etika informed consent.
-4. Section D (dimensiRows): WAJIB berisi tepat 4 item array dengan dimensi persis: "Usability", "Functionality", "Solvability", "Payability". Sesuaikan fokus dan contoh pertanyaan dengan konteks inovasi ini.
-5. Section E (metrikRows): WAJIB berisi tepat 3 item array dengan validasi persis: "Desirability", "Feasibility On Paper", "Viability On Paper". Sesuaikan metrik, unit, kriteria, dan cara pengukuran berdasarkan inovasi charter.
-6. Gunakan bahasa Indonesia profesional dan standar perbankan / pegadaian.`;
+PRINSIP GROUNDING & ANTI-HALUSINASI KETAT (WAJIB DIIKUTI):
+1. Setiap elemen yang dihasilkan (metodologi prototype, skenario testing, kriteria responden, pertanyaan dimensi, metrik) HARUS merujuk dan konsisten dengan FITUR_UTAMA, CUSTOMER_CONTEXT, dan BUSINESS_IMPACT spesifik yang sudah diberikan. JANGAN membuat klaim, angka, atau detail teknis yang tidak berdasar dari konteks yang diberikan.
+2. JANGAN MENGARANG detail spesifik industri atau statistik eksternal yang tidak ada dasarnya di data ini. Jika memerlukan skala ukur, gunakan kerangka umum yang netral (misal: "skala Likert 1-5", "wawancara mendalam / In-Depth Interview", "observasi tugas langsung"), BUKAN angka/klaim seolah-olah hasil riset empiris yang belum pernah dilakukan.
+3. NAMA FITUR dan skenario testing yang disebutkan di Section B, D, dan E HARUS menggunakan istilah PERSIS dari FITUR_UTAMA yang sudah ada di data inovasi tim, BUKAN istilah baru atau nama modul fiktif yang tidak dikenali di proposal.
 
-    const userPrompt = `DATA INNOVATION CHARTER:
+ATURAN DETAIL PER BAGIAN:
+- Section A (projectMission, customerDanContext, problemHypothesis, hmw, solutionHypothesis): Gunakan dan rapikan langsung dari data Charter dan Grand Final yang diberikan tanpa mengubah substansi aslinya.
+- Section B (prototypeType, fiturAlurDiuji, skenarioUserTesting, instrumenValidasi):
+  * prototypeType: Tentukan tipe prototype yang realistis sesuai kategori inovasi (misal: Interactive Dashboard / AI Prototype, Clickable Figma Prototype, atau Dokumen SOP/Alur Layanan).
+  * fiturAlurDiuji: WAJIB menyebutkan eksplisit nama-nama fitur dari FITUR_UTAMA yang akan diuji dalam siklus alur prototype.
+  * skenarioUserTesting: Susun langkah pengujian bernomor (1, 2, 3...) yang memandu responden mencoba fitur-fitur utama tersebut secara runtut.
+  * instrumenValidasi: Sebutkan instrumen konkret (In-Depth Interview Guide, Lembar Observasi Usability Testing, Kuesioner Feedback 4 Dimensi).
+- Section C (targetEarlyAdopters, kriteriaSeleksi, jumlahTargetResponden, lokasiChannelTesting, metodeRekrutmen, etikaPersetujuanData):
+  * targetEarlyAdopters: Ambil dari persona Customer / Early Adopters spesifik tim.
+  * kriteriaSeleksi: Rumuskan kriteria inklusi dan eksklusi responden yang relevan dengan tugas pengguna terkait inovasi ini.
+  * jumlahTargetResponden: Rentang 8-15 orang (standar riset kualitatif CV), default 10 orang.
+  * lokasiChannelTesting & metodeRekrutmen: Sesuaikan dengan unit kerja atau kanal nasabah yang menjadi target inovasi.
+  * etikaPersetujuanData: Tegaskan klausul informed consent dan kerahasiaan data operasional PT Pegadaian.
+- Section D (dimensiRows):
+  * WAJIB berisi tepat 4 baris dimensi: "Usability", "Functionality", "Solvability", "Payability".
+  * Fokus validasi dan contoh pertanyaan wawancara HARUS secara spesifik menyebutkan nama fitur dari FITUR_UTAMA dan konteks masalah tim, BUKAN pertanyaan generik perangkat lunak!
+  * Payability: Jika solusi internal Pegadaian, fokuskan pada "kesediaan unit kerja mengadopsi / mengalokasikan waktu & komitmen sumber daya". Jika untuk nasabah eksternal, fokuskan pada "kesediaan nasabah bertransaksi / membayar biaya layanan".
+- Section E (metrikRows):
+  * WAJIB berisi tepat 3 baris: "Desirability", "Feasibility On Paper", "Viability On Paper".
+  * Metrik dan target threshold harus sejalan dengan target Business Impact yang tercantum di data tim.
+- Bahasa: Gunakan bahasa Indonesia baku dan istilah profesional korporat PT Pegadaian (Persero).`;
+
+    const fiturList = Array.isArray(charterData.fiturUtama)
+      ? charterData.fiturUtama.map((f, i) => `${i + 1}. ${f}`).join('\n')
+      : (charterData.fiturUtama || "-");
+
+    const userPrompt = `DATA INNOVATION CHARTER & MATERI GRAND FINAL:
 - Nama Proyek: ${charterData.namaProyekInovasi || "-"}
 - Klasifikasi: ${charterData.klasifikasiInovasi || "BREAKTHROUGH"}
 - Project Mission: ${charterData.projectMission || "-"}
 - Customer / Early Adopter: ${charterData.customerEarlyAdopters || "-"}
 - Konteks / Area Bantuan: ${charterData.contextAreaBantuan || "-"}
+- Detail Konteks Pelanggan: ${charterData.customerContextDetail || "-"}
 - Problem Worth Solving: ${charterData.problemWorthSolving || "-"}
 - How Might We (HMW): ${charterData.hmw || "-"}
-- Solusi Awal: ${charterData.solusiAwal || "-"}
+- Solusi Resmi: ${charterData.solusiAwal || "-"}
+- FITUR UTAMA SISTEM / ARSITEKTUR:
+${fiturList}
 - Desirability Hypothesis: ${charterData.desirabilityHypothesis || "-"}
 - Feasibility Hypothesis: ${charterData.feasibilityHypothesis || "-"}
 - Viability Hypothesis: ${charterData.viabilityHypothesis || "-"}
+- Target Dampak Bisnis (Business Impact): ${charterData.businessImpact || "-"}
+- Mitigasi Risiko Utama: ${charterData.riskMitigation || "-"}
+- Hasil & Pembelajaran Validasi Sebelumnya: ${charterData.validationSummary || "-"}
 
-Hasilkan draf Perencanaan Customer Validation lengkap dalam JSON:`;
+Hasilkan draf Perencanaan Customer Validation lengkap dalam format JSON yang sangat terikat (grounded) pada data di atas:`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -194,6 +230,41 @@ Hasilkan draf Perencanaan Customer Validation lengkap dalam JSON:`;
     if (!raw) return fallback;
 
     const parsed = JSON.parse(raw);
+
+    // ── Self-check validasi grounding pasca-generate ─────────────────────────
+    const rawFeatures: string[] = Array.isArray(charterData.fiturUtama)
+      ? charterData.fiturUtama
+      : charterData.fiturUtama
+      ? [charterData.fiturUtama]
+      : [];
+
+    const normalizedFeatureNames = rawFeatures.map((f) => {
+      // Ambil nama fitur utama sebelum tanda "—" atau ":" atau "-"
+      return f.split(/[—:\-]/)[0].trim().toLowerCase();
+    }).filter((name) => name.length >= 3);
+
+    const generatedText = `${parsed.fiturAlurDiuji || ''} ${parsed.skenarioUserTesting || ''} ${JSON.stringify(parsed.dimensiRows || [])}`.toLowerCase();
+
+    const matchedFeatures: string[] = [];
+    const missingFeatures: string[] = [];
+
+    for (const feat of normalizedFeatureNames) {
+      if (generatedText.includes(feat)) {
+        matchedFeatures.push(feat);
+      } else {
+        missingFeatures.push(feat);
+      }
+    }
+
+    if (normalizedFeatureNames.length > 0) {
+      if (matchedFeatures.length > 0) {
+        console.log(`[CV Plan Grounding Check] ✅ Grounded! Fitur cocok dalam rencana uji: "${matchedFeatures.join('", "')}"`);
+      }
+      if (missingFeatures.length > 0) {
+        console.warn(`[CV Plan Grounding Check] ⚠️ Warning: Sebagian fitur utama belum disebutkan eksplisit di Section B/D: "${missingFeatures.join('", "')}"`);
+      }
+    }
+
     return {
       projectMission: parsed.projectMission || fallback.projectMission,
       customerDanContext: parsed.customerDanContext || fallback.customerDanContext,
@@ -212,6 +283,11 @@ Hasilkan draf Perencanaan Customer Validation lengkap dalam JSON:`;
       etikaPersetujuanData: parsed.etikaPersetujuanData || fallback.etikaPersetujuanData,
       dimensiRows: parsed.dimensiRows || fallback.dimensiRows,
       metrikRows: parsed.metrikRows || fallback.metrikRows,
+      groundingValidation: {
+        matchedFeatures,
+        missingFeatures,
+        isGrounded: matchedFeatures.length > 0 || normalizedFeatureNames.length === 0,
+      },
     };
   } catch (err: any) {
     console.warn("[generateFullCvPlanDraft] AI generation error, using fallback:", err.message);

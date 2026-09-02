@@ -1089,6 +1089,33 @@ export function CustomerValidationClient({
               )
             )}
 
+            {/* ── BANNER PERINGATAN REVIEW MANUAL SETELAH AUTO-FILL ── */}
+            {autoFillSource && (
+              <div className="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50/95 p-4 text-amber-950 shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-amber-200/80 text-amber-800 shrink-0 mt-0.5">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1 flex-1 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                        <span>Draf Perencanaan CV Berhasil Disusun AI</span>
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                          {autoFillSource === 'grand_final' ? 'Sumber: Materi Grand Final' : 'Sumber: Innovation Charter'}
+                        </span>
+                      </strong>
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-white/80 px-2.5 py-0.5 rounded-lg border border-amber-200 text-[11px]">
+                        ⚠️ Wajib Ditinjau Manusia
+                      </span>
+                    </div>
+                    <p className="leading-relaxed text-slate-700 text-[11px]">
+                      Seluruh Bagian A s.d. E telah dirancang khusus berdasarkan arsitektur fitur dan target proyek inovasi tim. <strong>Mohon tinjau, sesuaikan skenario pengujian, kriteria responden, dan pertanyaan wawancara sesuai kebutuhan riil pengujian lapangan</strong>, lalu klik tombol <strong>"Simpan Rencana CV"</strong> di bagian bawah halaman.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── BAGIAN 1: Konteks & Hipotesis ────────────────────────────── */}
             <Card>
               <CardHeader>
