@@ -323,9 +323,10 @@ export function ImportClient() {
           console.warn(`${tag} ⚠ Dossier JSON tidak ditemukan di ZIP`);
         }
 
-        // ── Tahap 2: Upload lampiran (maks 20s per file) ────────────────────
-        console.log(`${tag} ▶ Tahap 2/4: Upload lampiran...`);
+        // ── Tahap 2: Upload lampiran langsung ke Supabase Storage (Direct Upload via Signed URL) ──
+        console.log(`${tag} ▶ Tahap 2/4: Upload lampiran (Direct to Supabase Storage)...`);
         const lampiranUrls: Record<string, string> = {};
+        const teamUploadErrors: string[] = [];
         const lampiranPrefix = `lampiran/${propId}/`;
 
         const attachmentEntries: { relPath: string; entry: JSZip.JSZipObject }[] = [];
@@ -336,39 +337,63 @@ export function ImportClient() {
         });
 
         if (attachmentEntries.length > 0) {
-          console.log(`${tag} Mengunggah ${attachmentEntries.length} lampiran...`);
+          console.log(`${tag} Mengunggah ${attachmentEntries.length} lampiran langsung ke Supabase Storage...`);
           await Promise.allSettled(
             attachmentEntries.map(async ({ relPath, entry }) => {
               const fileName = pathBasename(relPath);
               const controller = new AbortController();
-              const uploadTimeoutId = setTimeout(() => controller.abort(), 20_000);
+              // Timeout 120 detik per file untuk mengakomodasi file presentasi besar (hingga 30MB+)
+              const uploadTimeoutId = setTimeout(() => controller.abort(), 120_000);
               try {
                 const blob = await entry.async('blob');
-                const uploadFormData = new FormData();
-                uploadFormData.append('proposalId', propId);
-                uploadFormData.append('fileName', fileName);
-                uploadFormData.append('file', blob, fileName);
 
-                const uploadRes = await fetch('/api/admin/import/upload-file', {
+                // 1. Minta signed upload URL dari server (payload JSON sangat kecil, <1KB, aman dari limit Vercel 4.5MB)
+                const signedRes = await fetch('/api/admin/import/signed-url', {
                   method: 'POST',
-                  body: uploadFormData,
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ proposalId: propId, fileName }),
                   signal: controller.signal,
                 });
 
-                if (uploadRes.ok) {
-                  const uploadJson = await uploadRes.json();
-                  if (uploadJson.success && uploadJson.publicUrl) {
-                    lampiranUrls[fileName] = uploadJson.publicUrl;
-                  }
+                if (!signedRes.ok) {
+                  const errJson = await signedRes.json().catch(() => ({}));
+                  throw new Error(errJson.message || `Gagal membuat signed URL (HTTP ${signedRes.status})`);
                 }
+
+                const signedJson = await signedRes.json();
+                if (!signedJson.success || !signedJson.signedUrl) {
+                  throw new Error(signedJson.message || 'Signed URL tidak valid');
+                }
+
+                // 2. Direct upload (PUT) langsung dari browser ke Supabase Storage (BYPASS VERCEL SEPENUHNYA)
+                const contentType = fileName.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream';
+                const uploadRes = await fetch(signedJson.signedUrl, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': contentType },
+                  body: blob,
+                  signal: controller.signal,
+                });
+
+                if (!uploadRes.ok) {
+                  const errorText = await uploadRes.text().catch(() => '');
+                  throw new Error(`Upload Supabase Storage gagal (HTTP ${uploadRes.status}): ${errorText.slice(0, 100)}`);
+                }
+
+                // 3. Simpan URL publik yang sudah terverifikasi sukses
+                lampiranUrls[fileName] = signedJson.publicUrl;
               } catch (uErr: any) {
-                console.warn(`${tag} ⚠ Gagal upload lampiran ${fileName}: ${uErr.message}`);
+                const errMsg = `${fileName} (${uErr.message})`;
+                console.error(`${tag} ❌ Gagal upload lampiran ${errMsg}`);
+                teamUploadErrors.push(errMsg);
               } finally {
                 clearTimeout(uploadTimeoutId);
               }
             })
           );
-          console.log(`${tag} ✓ Lampiran selesai (${Object.keys(lampiranUrls).length}/${attachmentEntries.length} berhasil)`);
+          console.log(
+            `${tag} ✓ Lampiran selesai (${Object.keys(lampiranUrls).length}/${attachmentEntries.length} berhasil)` +
+            (teamUploadErrors.length > 0 ? ` ⚠ Gagal: ${teamUploadErrors.join(', ')}` : '')
+          );
         } else {
           console.log(`${tag} ℹ Tidak ada lampiran`);
         }
@@ -397,16 +422,17 @@ export function ImportClient() {
         });
 
         console.log(`${tag} ✅ Tahap 4/4: Selesai — action: ${saveRes.action}`);
-        return { propId, namaProyek: item.nama_proyek, saveRes };
+        return { propId, namaProyek: item.nama_proyek, saveRes, uploadErrors: teamUploadErrors };
       };
 
-      /** Bungkus processSingleTeam dengan timeout 60 detik per tim */
+      /** Bungkus processSingleTeam dengan timeout 180 detik per tim untuk menangani file deck besar */
       const processSingleTeamWithTimeout = (item: (typeof selectedList)[0]) =>
         Promise.race([
           processSingleTeam(item),
-          makeTimeout(60_000, `${item.nama_proyek} (${item.proposal_id})`),
+          makeTimeout(180_000, `${item.nama_proyek} (${item.proposal_id})`),
         ]);
 
+      const allAttachmentErrors: string[] = [];
 
       // Jalankan dalam gelombang (wave) batch paralel
       for (let wave = 0; wave < totalWaves; wave++) {
@@ -419,7 +445,7 @@ export function ImportClient() {
         setProgressText(`Memproses gelombang ${waveNum}/${totalWaves} (tim ${timRange} dari ${total})...`);
         setProgressPercent(Math.round((completedCount / total) * 100));
 
-        // Promise.allSettled + per-tim timeout 60s: gelombang TIDAK BISA hang selamanya
+        // Promise.allSettled + per-tim timeout 180s: gelombang TIDAK BISA hang selamanya
         const waveResults = await Promise.allSettled(
           waveItems.map((item) => processSingleTeamWithTimeout(item))
         );
@@ -428,7 +454,10 @@ export function ImportClient() {
         for (const result of waveResults) {
           completedCount++;
           if (result.status === 'fulfilled') {
-            const { propId, namaProyek, saveRes } = result.value;
+            const { propId, namaProyek, saveRes, uploadErrors } = result.value;
+            if (uploadErrors && uploadErrors.length > 0) {
+              allAttachmentErrors.push(...uploadErrors.map((e: string) => `${namaProyek}: ${e}`));
+            }
             if (saveRes.action === 'skipped') {
               skippedCount++;
             } else {
@@ -467,7 +496,20 @@ export function ImportClient() {
       setProgressPercent(100);
 
       const successText = `Proses import selesai: ${importedCount} tim berhasil diproses, ${skippedCount} di-skip.${failedTeams.length > 0 ? ` ⚠️ ${failedTeams.length} tim gagal: ${failedTeams.join(', ')}.` : ''}`;
-      toast.success(successText, 'Import Berhasil');
+      toast.success(successText, 'Import Selesai');
+      setSuccessMsg(successText);
+      setImportResult({ imported: importedCount, skipped: skippedCount });
+
+      if (failedTeams.length > 0) {
+        toast.error(`${failedTeams.length} tim gagal diproses: ${failedTeams.join(', ')}`, 'Peringatan Import Parsial');
+      }
+
+      if (allAttachmentErrors.length > 0) {
+        toast.error(
+          `Terdapat ${allAttachmentErrors.length} file lampiran gagal diunggah: ${allAttachmentErrors.slice(0, 3).join('; ')}${allAttachmentErrors.length > 3 ? '...' : ''}`,
+          'Peringatan Lampiran Gagal'
+        );
+      }
       setSuccessMsg(successText);
       setImportResult({ imported: importedCount, skipped: skippedCount });
 

@@ -131,14 +131,9 @@ export async function saveImportedProposal(payload: SaveProposalPayload): Promis
     klasifikasiInovasi ||
     'Platinum';
 
+  // Hanya simpan URL lampiran yang benar-benar berhasil diunggah.
+  // Jangan membuat URL fiktif untuk berkas yang gagal atau belum terunggah.
   const mergedLampiranUrls: Record<string, string> = { ...(lampiranUrls || {}) };
-  const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
-  const daftarLampiranArr: string[] = Array.isArray(dossierData?.daftar_lampiran) ? dossierData.daftar_lampiran : [];
-  for (const f of daftarLampiranArr) {
-    if (!mergedLampiranUrls[f]) {
-      mergedLampiranUrls[f] = `${supabaseBaseUrl}/storage/v1/object/public/dossier-lampiran/${proposalId}/${f}`;
-    }
-  }
 
   const finalSnapshot = {
     ...(dossierData || {}),

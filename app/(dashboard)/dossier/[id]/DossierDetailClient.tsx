@@ -464,7 +464,7 @@ export function DossierDetailClient({
   const proposalIdForStorage = snap.proposal_id || dossier.proposalIdAsli || '';
   const supabaseStorageUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ikjqozzsrnuemqgdujeg.supabase.co';
   const activeFileUrl = activeFileName
-    ? (lampiranUrls[activeFileName] || `${supabaseStorageUrl}/storage/v1/object/public/dossier-lampiran/${proposalIdForStorage}/${activeFileName}`)
+    ? (lampiranUrls[activeFileName] || null)
     : null;
 
   return (
