@@ -605,7 +605,7 @@ export function CharterFormClient({
       <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 bg-gradient-to-r from-emerald-50 via-white to-purple-50/20 rounded-2xl border border-emerald-200/80 shadow-2xs">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-wider text-[#0F5132] bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">
+            <span className="text-sm font-black uppercase tracking-wider text-[#0F5132] bg-emerald-100/70 px-2.5 py-0.5 rounded-md border border-emerald-200">
               Template 1 Juklak
             </span>
             <h1 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-1.5">
@@ -616,7 +616,7 @@ export function CharterFormClient({
               />
             </h1>
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-500">
             Penetapan mandat inisiatif, struktur peran tim, milestone sprint 12 minggu, dan otorisasi formal Promotor.
           </p>
         </div>
@@ -627,7 +627,7 @@ export function CharterFormClient({
             target="_blank"
             rel="noopener noreferrer"
             download={`Innovation-Charter-${timId}.pdf`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer hover:shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 shadow-2xs transition-all cursor-pointer hover:shadow-xs"
             title="Unduh dokumen resmi Template 1 Innovation Charter format PDF"
           >
             <Download className="h-4 w-4 text-emerald-600" />
@@ -638,7 +638,7 @@ export function CharterFormClient({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold px-4 h-9 rounded-xl shadow-2xs gap-1.5 cursor-pointer"
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold px-4 h-9 rounded-xl shadow-2xs gap-1.5 cursor-pointer"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               <span>Simpan Perubahan</span>
@@ -649,7 +649,7 @@ export function CharterFormClient({
 
       {/* Read-Only Notice Banner for Promotor / Viewer */}
       {isReadOnly && (
-        <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
+        <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-sm flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 text-blue-600 shrink-0" />
             <div>
@@ -661,7 +661,7 @@ export function CharterFormClient({
 
       {statusMsg && (
         <div
-          className={`p-4 rounded-xl text-xs font-semibold flex items-center gap-2.5 shadow-xs ${
+          className={`p-4 rounded-xl text-sm font-semibold flex items-center gap-2.5 shadow-xs ${
             statusMsg.type === "success"
               ? "bg-green-50 text-green-800 border border-green-200"
               : "bg-red-50 text-red-800 border border-red-200"
@@ -693,14 +693,14 @@ export function CharterFormClient({
                     text="Penugasan peran dan akuntabilitas resmi: Sponsor (Menetapkan arah, legitimasi, dan dukungan sumber daya), Promotor (Menjadi calon rumah inovasi, memberi perspektif bisnis, akses, dan dukungan operasional), Project Owner (Memimpin eksekusi harian tim, mengelola Board Sprint, dan pengajuan anggaran/LPJ), Inisiator (Penggagas ide awal proposal PIA dan menjaga visi solusi), Co-creator (Anggota inti pengembangan prototipe, customer testing, dan iterasi sprint), Innovation Coach (Membimbing metodologi design thinking/lean startup dan fasilitasi sprint review), dan Collaborator/SME (Memberikan keahlian domain spesifik)."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                <CardDescription className="text-sm text-gray-500 mt-0.5">
                   Pilih atau buat akun pengguna untuk setiap peran tim (Inisiator, Co-creators, SME, Promotor, PO, Coach, Sponsor).
                 </CardDescription>
               </div>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5142D6]/10 text-[#5142D6] text-xs font-bold border border-[#5142D6]/20">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#5142D6]/10 text-[#5142D6] text-sm font-bold border border-[#5142D6]/20">
                 <UserCheck className="h-3.5 w-3.5" />
                 <span>{roleAssignments.filter((r) => r.userId || r.userName).length} Akun Terdaftar</span>
               </span>
@@ -718,9 +718,9 @@ export function CharterFormClient({
         {expandedSections.roles && (
           <CardContent className="p-0 animate-in fade-in duration-150">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse">
+              <table className="w-full text-sm text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-600 font-bold">
+                  <tr className="border-b border-gray-200 bg-gray-50/80 text-gray-600 font-bold text-xs uppercase tracking-wider">
                     <th className="p-3.5 w-64">Peran & Akuntabilitas</th>
                     <th className="p-3.5 min-w-[280px]">Nama / Akun User (Searchable)</th>
                     <th className="p-3.5 min-w-[180px]">Jabatan Organisasi</th>
@@ -740,8 +740,8 @@ export function CharterFormClient({
                         <td className="p-3.5 align-top">
                           <div className="space-y-1.5">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-bold text-gray-900 text-xs">{config.title}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${config.badgeColor}`}>
+                              <span className="font-bold text-gray-900 text-sm">{config.title}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${config.badgeColor}`}>
                                 {config.badge}
                               </span>
                               {/* Inline Hint Badge & Tooltip */}
@@ -781,7 +781,7 @@ export function CharterFormClient({
                         <td colSpan={4} className="p-0 align-top">
                           <div className="divide-y divide-gray-100">
                             {roleItems.length === 0 ? (
-                              <div className="p-3.5 text-gray-400 italic text-xs flex items-center justify-between">
+                              <div className="p-3.5 text-gray-400 italic text-sm flex items-center justify-between">
                                 <span>Belum ada orang ditugaskan.</span>
                                 {!isRolesReadOnly && (
                                   <Button
@@ -789,7 +789,7 @@ export function CharterFormClient({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleAddPerson(config.roleCode)}
-                                    className="h-7 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1 cursor-pointer"
+                                    className="h-8 text-sm font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1 cursor-pointer"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                     <span>+ Tugaskan {config.title}</span>
@@ -840,7 +840,7 @@ export function CharterFormClient({
                                             e.target.value
                                           )
                                         }
-                                        className="disabled:bg-gray-50 text-xs h-9"
+                                        className="disabled:bg-gray-50 text-sm h-9"
                                       />
                                     </div>
 
@@ -857,7 +857,7 @@ export function CharterFormClient({
                                             e.target.value
                                           )
                                         }
-                                        className="disabled:bg-gray-50 text-xs h-9"
+                                        className="disabled:bg-gray-50 text-sm h-9"
                                       />
                                     </div>
 
@@ -887,7 +887,7 @@ export function CharterFormClient({
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleAddPerson(config.roleCode)}
-                                  className="h-8 text-xs font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5 cursor-pointer"
+                                  className="h-8 text-sm font-bold text-[#0F5132] border-dashed border-[#0F5132]/40 hover:bg-[#0F5132]/10 bg-white gap-1.5 cursor-pointer"
                                 >
                                   <Plus className="h-3.5 w-3.5" />
                                   <span>+ Tambah {config.title}</span>
@@ -927,7 +927,7 @@ export function CharterFormClient({
                     text="Perumusan 4 elemen fokus: Project Mission (tujuan akhir inisiatif inovasi), Customer & Context (pengguna sasaran awal dan konteks operasional penerapan solusi), Problem Worth Solving (akar masalah utama beserta dampaknya jika tidak diselesaikan), dan How Might We / HMW (pertanyaan peluang yang menghubungkan target pengguna, tujuan, dan kendala utama)."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                <CardDescription className="text-sm text-gray-500 mt-0.5">
                   Definisi misi proyek, target pengguna awal, dan masalah yang layak diselesaikan
                 </CardDescription>
               </div>
@@ -937,7 +937,7 @@ export function CharterFormClient({
               {autoFilledFields.some((f) =>
                 ["customerEarlyAdopters", "contextAreaBantuan", "problemWorthSolving"].includes(f)
               ) && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                   <Sparkles className="h-3 w-3 text-emerald-600" />
                   Terisi otomatis dari proposal
                 </span>
@@ -958,13 +958,13 @@ export function CharterFormClient({
             {/* ── Dropdown Klasifikasi Inovasi (Juklak Template 1) ── */}
             <div className="space-y-1.5 p-3 rounded-xl bg-purple-50/60 border border-purple-200/80">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                <label className="text-sm font-bold text-purple-950 flex items-center gap-1.5">
                   <span>Klasifikasi Inovasi (Juklak)</span>
-                  <span className="text-[10px] text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200 font-semibold">
+                  <span className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200 font-semibold">
                     Template 1 Juklak
                   </span>
                 </label>
-                <span className="text-[10px] text-purple-700 font-medium">
+                <span className="text-xs text-purple-700 font-medium">
                   BREAKTHROUGH / IMPROVEMENT / BEST PRACTICE
                 </span>
               </div>
@@ -972,20 +972,20 @@ export function CharterFormClient({
                 disabled={isReadOnly}
                 value={formData.klasifikasiStrategisInovasi || ""}
                 onChange={(e) => handleChange("klasifikasiStrategisInovasi", e.target.value)}
-                className="w-full h-9 rounded-xl border border-purple-200 bg-white px-3 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 disabled:bg-gray-50 cursor-pointer"
+                className="w-full h-9 rounded-xl border border-purple-200 bg-white px-3 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 disabled:bg-gray-50 cursor-pointer"
               >
                 <option value="">-- Pilih Klasifikasi Inovasi Resmi Juklak --</option>
                 <option value="BREAKTHROUGH">BREAKTHROUGH — Terobosan radikal, model bisnis baru atau penciptaan nilai baru</option>
                 <option value="IMPROVEMENT">IMPROVEMENT — Penyempurnaan proses bisnis, sistem eksisting, atau efisiensi operasional</option>
                 <option value="BEST PRACTICE">BEST PRACTICE — Replikasi atau standardisasi praktik unggulan di unit kerja</option>
               </select>
-              <p className="text-[10.5px] text-purple-800/80 leading-relaxed">
+              <p className="text-xs text-purple-800/80 leading-relaxed">
                 Klasifikasi strategis solusi sesuai Petunjuk Pelaksanaan Inovasi (berbeda dari taksonomi Medali Penjurian Grand Final).
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
+              <label className="text-sm font-semibold text-gray-700">
                 Project Mission (Misi Proyek)
               </label>
               <Textarea
@@ -994,18 +994,18 @@ export function CharterFormClient({
                 placeholder="Jelaskan tujuan akhir dari inisiatif inovasi ini..."
                 value={formData.projectMission}
                 onChange={(e) => handleChange("projectMission", e.target.value)}
-                className="disabled:bg-gray-50"
+                className="disabled:bg-gray-50 text-sm"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-sm font-semibold text-gray-700">
                     Customer & Early Adopters
                   </label>
                   {autoFilledFields.includes("customerEarlyAdopters") && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
                       Terisi otomatis dari proposal
                     </span>
@@ -1017,17 +1017,17 @@ export function CharterFormClient({
                   placeholder="Siapa pengguna sasaran awal yang paling merasakan masalah ini?"
                   value={formData.customerEarlyAdopters}
                   onChange={(e) => handleChange("customerEarlyAdopters", e.target.value)}
-                  className={`disabled:bg-gray-50 ${autoFilledFields.includes("customerEarlyAdopters") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                  className={`disabled:bg-gray-50 text-sm ${autoFilledFields.includes("customerEarlyAdopters") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-sm font-semibold text-gray-700">
                     Context & Area Bantuan
                   </label>
                   {autoFilledFields.includes("contextAreaBantuan") && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
                       Terisi otomatis dari proposal
                     </span>
@@ -1039,18 +1039,18 @@ export function CharterFormClient({
                   placeholder="Di mana dan dalam konteks operasional apa solusi ini diterapkan?"
                   value={formData.contextAreaBantuan}
                   onChange={(e) => handleChange("contextAreaBantuan", e.target.value)}
-                  className={`disabled:bg-gray-50 ${autoFilledFields.includes("contextAreaBantuan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                  className={`disabled:bg-gray-50 text-sm ${autoFilledFields.includes("contextAreaBantuan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Problem Worth Solving (Masalah yang Layak Diselesaikan)
                 </label>
                 {autoFilledFields.includes("problemWorthSolving") && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
                     Terisi otomatis dari proposal
                   </span>
@@ -1062,12 +1062,12 @@ export function CharterFormClient({
                 placeholder="Deskripsikan akar masalah utama beserta dampaknya jika tidak diselesaikan..."
                 value={formData.problemWorthSolving}
                 onChange={(e) => handleChange("problemWorthSolving", e.target.value)}
-                className={`disabled:bg-gray-50 ${autoFilledFields.includes("problemWorthSolving") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                className={`disabled:bg-gray-50 text-sm ${autoFilledFields.includes("problemWorthSolving") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
+              <label className="text-sm font-semibold text-gray-700">
                 How Might We (HMW Statement)
               </label>
               <Textarea
@@ -1076,7 +1076,7 @@ export function CharterFormClient({
                 placeholder="Bagaimana kita dapat membantu [target pengguna] untuk [mencapai tujuan] tanpa [kendala utama]?"
                 value={formData.hmw}
                 onChange={(e) => handleChange("hmw", e.target.value)}
-                className="disabled:bg-gray-50"
+                className="disabled:bg-gray-50 text-sm"
               />
             </div>
 
@@ -1084,10 +1084,10 @@ export function CharterFormClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-sm font-semibold text-gray-700">
                     Opportunity Statement (Peluang Strategis)
                   </label>
-                  <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                     Template 1 Juklak
                   </span>
                 </div>
@@ -1097,16 +1097,16 @@ export function CharterFormClient({
                   placeholder="Pernyataan peluang dan target non-finansial..."
                   value={formData.opportunityStatement}
                   onChange={(e) => handleChange("opportunityStatement", e.target.value)}
-                  className="disabled:bg-gray-50"
+                  className="disabled:bg-gray-50 text-sm"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-semibold text-gray-700">
+                  <label className="text-sm font-semibold text-gray-700">
                     Business Opportunity (Peluang Bisnis & Finansial)
                   </label>
-                  <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                     Template 1 Juklak
                   </span>
                 </div>
@@ -1116,7 +1116,7 @@ export function CharterFormClient({
                   placeholder="Peluang bisnis, proyeksi nilai ekonomi, efisiensi biaya..."
                   value={formData.businessOpportunity}
                   onChange={(e) => handleChange("businessOpportunity", e.target.value)}
-                  className="disabled:bg-gray-50"
+                  className="disabled:bg-gray-50 text-sm"
                 />
               </div>
             </div>
@@ -1145,7 +1145,7 @@ export function CharterFormClient({
                     text="Pendefinisian bentuk prototype/solusi minimum yang dibangun serta 3 hipotesis kritis: Desirability (Apakah pengguna benar-benar menginginkan dan membutuhkan solusi ini?), Feasibility (Apakah kita mampu membangun solusi ini secara teknis & operasional?), dan Viability (Apakah solusi ini memberikan dampak bisnis/efisiensi berkelanjutan?)."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                <CardDescription className="text-sm text-gray-500 mt-0.5">
                   Asumsi kritis yang harus diuji dan dibuktikan selama masa inkubasi
                 </CardDescription>
               </div>
@@ -1155,7 +1155,7 @@ export function CharterFormClient({
               {autoFilledFields.some((f) =>
                 ["solusiAwal", "desirabilityHypothesis", "feasibilityHypothesis", "viabilityHypothesis"].includes(f)
               ) && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                   <Sparkles className="h-3 w-3 text-emerald-600" />
                   Terisi otomatis dari proposal
                 </span>
@@ -1175,11 +1175,11 @@ export function CharterFormClient({
           <CardContent className="space-y-4 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Solusi Awal yang Diusulkan
                 </label>
                 {autoFilledFields.includes("solusiAwal") && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
                     Terisi otomatis dari proposal
                   </span>
@@ -1191,18 +1191,18 @@ export function CharterFormClient({
                 placeholder="Bentuk prototype atau solusi minimum yang akan dibangun..."
                 value={formData.solusiAwal}
                 onChange={(e) => handleChange("solusiAwal", e.target.value)}
-                className={`disabled:bg-gray-50 ${autoFilledFields.includes("solusiAwal") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                className={`disabled:bg-gray-50 text-sm ${autoFilledFields.includes("solusiAwal") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
                 <div className="flex items-center justify-between gap-1">
-                  <label className="text-xs font-bold text-blue-900 block">
+                  <label className="text-sm font-bold text-blue-900 block">
                     🎯 Desirability Hypothesis
                   </label>
                   {autoFilledFields.includes("desirabilityHypothesis") && (
-                    <span className="text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
+                    <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
                       Auto-fill
                     </span>
                   )}
@@ -1213,17 +1213,17 @@ export function CharterFormClient({
                   placeholder="Apakah pengguna benar-benar menginginkan dan membutuhkan solusi ini?"
                   value={formData.desirabilityHypothesis}
                   onChange={(e) => handleChange("desirabilityHypothesis", e.target.value)}
-                  className="disabled:bg-white"
+                  className="disabled:bg-white text-sm"
                 />
               </div>
 
               <div className="p-3.5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-1.5">
                 <div className="flex items-center justify-between gap-1">
-                  <label className="text-xs font-bold text-amber-900 block">
+                  <label className="text-sm font-bold text-amber-900 block">
                     ⚙️ Feasibility Hypothesis
                   </label>
                   {autoFilledFields.includes("feasibilityHypothesis") && (
-                    <span className="text-[9px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded">
+                    <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
                       Auto-fill
                     </span>
                   )}
@@ -1234,17 +1234,17 @@ export function CharterFormClient({
                   placeholder="Apakah kita mampu membangun solusi ini secara teknis & operasional?"
                   value={formData.feasibilityHypothesis}
                   onChange={(e) => handleChange("feasibilityHypothesis", e.target.value)}
-                  className="disabled:bg-white"
+                  className="disabled:bg-white text-sm"
                 />
               </div>
 
               <div className="p-3.5 bg-green-50/50 rounded-xl border border-green-100 space-y-1.5">
                 <div className="flex items-center justify-between gap-1">
-                  <label className="text-xs font-bold text-green-900 block">
+                  <label className="text-sm font-bold text-green-900 block">
                     💰 Viability Hypothesis
                   </label>
                   {autoFilledFields.includes("viabilityHypothesis") && (
-                    <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
                       Auto-fill
                     </span>
                   )}
@@ -1255,7 +1255,7 @@ export function CharterFormClient({
                   placeholder="Apakah solusi ini memberikan dampak bisnis/efisiensi berkelanjutan?"
                   value={formData.viabilityHypothesis}
                   onChange={(e) => handleChange("viabilityHypothesis", e.target.value)}
-                  className="disabled:bg-white"
+                  className="disabled:bg-white text-sm"
                 />
               </div>
             </div>
@@ -1263,10 +1263,10 @@ export function CharterFormClient({
             {/* ── Restored Field: Link Proposal / Pitch Deck / Prototype Awal ── */}
             <div className="space-y-1.5 pt-3 border-t border-gray-100">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Link Proposal / Pitch Deck / Prototype Awal
                 </label>
-                <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                   Template 1 Juklak
                 </span>
               </div>
@@ -1275,7 +1275,7 @@ export function CharterFormClient({
                 placeholder="https://... (Tautan file proposal, deck Grand Final, Figma prototype, atau repositori)"
                 value={formData.linkProposal}
                 onChange={(e) => handleChange("linkProposal", e.target.value)}
-                className="disabled:bg-gray-50 text-xs"
+                className="disabled:bg-gray-50 text-sm"
               />
             </div>
           </CardContent>
@@ -1303,14 +1303,14 @@ export function CharterFormClient({
                     text="Kesepakatan tata kelola pelaksanaan inovasi: Ritme Kerja & Standup (Cycle meeting, sprint planning, sprint review, retrospective, dan kanal komunikasi), Pacing Monitoring (Review kemajuan bersama Coach tiap 2 minggu), Rencana Milestone Sprint 12 Minggu, Kebutuhan Dukungan Lintas Divisi, serta Identifikasi Risiko Awal dan mitigasinya."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                <CardDescription className="text-sm text-gray-500 mt-0.5">
                   Pacing monitoring, jadwal rencana sprint, dan kebutuhan dukungan selama masa inkubasi
                 </CardDescription>
               </div>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0E6E7A]/10 text-[#0E6E7A] text-xs font-bold border border-[#0E6E7A]/20">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0E6E7A]/10 text-[#0E6E7A] text-sm font-bold border border-[#0E6E7A]/20">
                 <Calendar className="h-3.5 w-3.5" />
                 <span>{sprints.length} Milestone Sprint</span>
               </span>
@@ -1326,7 +1326,7 @@ export function CharterFormClient({
                     setSprintAlasan("");
                     setIsSprintModalOpen(true);
                   }}
-                  className="text-xs gap-1.5 font-semibold text-gray-700 hover:text-[#0F5132] h-8"
+                  className="text-sm gap-1.5 font-semibold text-gray-700 hover:text-[#0F5132] h-8"
                 >
                   <Settings2 className="h-3.5 w-3.5" />
                   <span>Ubah Jumlah Sprint ({sprints.length})</span>
@@ -1348,7 +1348,7 @@ export function CharterFormClient({
           <CardContent className="space-y-6 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Ritme Kerja & Standup
                 </label>
                 <Input
@@ -1356,12 +1356,12 @@ export function CharterFormClient({
                   placeholder="Contoh: Weekly Sprint & Standup 2x seminggu"
                   value={formData.ritmeKerja}
                   onChange={(e) => handleChange("ritmeKerja", e.target.value)}
-                  className="disabled:bg-gray-50"
+                  className="disabled:bg-gray-50 text-sm"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Pacing Monitoring Bersama Coach
                 </label>
                 <Input
@@ -1369,7 +1369,7 @@ export function CharterFormClient({
                   placeholder="Contoh: Review kemajuan bersama Coach tiap 2 minggu"
                   value={formData.pacingMonitoring}
                   onChange={(e) => handleChange("pacingMonitoring", e.target.value)}
-                  className="disabled:bg-gray-50"
+                  className="disabled:bg-gray-50 text-sm"
                 />
               </div>
             </div>
@@ -1378,20 +1378,20 @@ export function CharterFormClient({
             <div className="space-y-3 pt-2 border-t border-gray-100">
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div>
-                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
                     Rencana Milestone per Sprint
                   </h4>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-xs text-gray-500">
                     Target jadwal dan sasaran validasi setiap iterasi sprint (terhubung langsung ke Board Sprint).
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
+                  <span className="text-xs font-semibold text-[#0F5132] bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
                     {sprints.length} Iterasi Sprint
                   </span>
                   <Link
                     href={`/tim/${timId}/kanban`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5142D6]/10 text-[#5142D6] hover:bg-[#5142D6]/20 text-xs font-bold transition-all border border-[#5142D6]/20 shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5142D6]/10 text-[#5142D6] hover:bg-[#5142D6]/20 text-sm font-bold transition-all border border-[#5142D6]/20 shadow-2xs"
                     title="Buka Sprint Planning & Board Sprint"
                   >
                     <KanbanSquare className="h-3.5 w-3.5" />
@@ -1416,18 +1416,18 @@ export function CharterFormClient({
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <Badge
                           variant="default"
-                          className="text-xs bg-[#0F5132] text-white font-bold px-3 py-1 rounded-lg shadow-2xs inline-flex items-center gap-1.5"
+                          className="text-sm bg-[#0F5132] text-white font-bold px-3 py-1 rounded-lg shadow-2xs inline-flex items-center gap-1.5"
                         >
                           <span>Sprint {s.nomorSprint}: {cleanTitle}</span>
                         </Badge>
-                        <span className="text-[10px] text-gray-500 font-medium">
+                        <span className="text-xs text-gray-500 font-medium">
                           {s.status === 'aktif' ? '🟢 Sedang Aktif' : s.status === 'selesai' ? '🔵 Selesai' : '⚪ Belum Dimulai'}
                         </span>
                       </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                       <div className="md:col-span-3 space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 block">
+                        <label className="text-xs font-semibold text-gray-600 block">
                           Tanggal Mulai Rencana
                         </label>
                         <Input
@@ -1437,12 +1437,12 @@ export function CharterFormClient({
                           onChange={(e) =>
                             handleSprintChange(s.nomorSprint, "tanggalMulaiRencana", e.target.value)
                           }
-                          className="text-xs h-8 disabled:bg-white"
+                          className="text-sm h-9 disabled:bg-white"
                         />
                       </div>
 
                       <div className="md:col-span-3 space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 block">
+                        <label className="text-xs font-semibold text-gray-600 block">
                           Target Selesai Rencana
                         </label>
                         <Input
@@ -1452,12 +1452,12 @@ export function CharterFormClient({
                           onChange={(e) =>
                             handleSprintChange(s.nomorSprint, "tanggalSelesaiRencana", e.target.value)
                           }
-                          className="text-xs h-8 disabled:bg-white"
+                          className="text-sm h-9 disabled:bg-white"
                         />
                       </div>
 
                       <div className="md:col-span-6 space-y-1">
-                        <label className="text-[10px] font-semibold text-gray-600 block">
+                        <label className="text-xs font-semibold text-gray-600 block">
                           Tujuan / Sasaran Milestone Sprint
                         </label>
                         <Input
@@ -1467,7 +1467,7 @@ export function CharterFormClient({
                           onChange={(e) =>
                             handleSprintChange(s.nomorSprint, "tujuan", e.target.value)
                           }
-                          className="text-xs h-8 disabled:bg-white"
+                          className="text-sm h-9 disabled:bg-white"
                         />
                       </div>
                     </div>
@@ -1479,11 +1479,11 @@ export function CharterFormClient({
 
             <div className="space-y-1.5 pt-2 border-t border-gray-100">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Kebutuhan Dukungan (Data / SME / Akses Sistem)
                 </label>
                 {autoFilledFields.includes("kebutuhanDukungan") && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
                     Terisi otomatis dari proposal
                   </span>
@@ -1495,12 +1495,12 @@ export function CharterFormClient({
                 placeholder="Sebutkan dukungan divisi atau data yang dibutuhkan untuk validasi..."
                 value={formData.kebutuhanDukungan}
                 onChange={(e) => handleChange("kebutuhanDukungan", e.target.value)}
-                className={`disabled:bg-gray-50 ${autoFilledFields.includes("kebutuhanDukungan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
+                className={`disabled:bg-gray-50 text-sm ${autoFilledFields.includes("kebutuhanDukungan") ? "border-emerald-300 focus:border-emerald-500" : ""}`}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">
+              <label className="text-sm font-semibold text-gray-700">
                 Risiko Awal & Rencana Mitigasi
               </label>
               <Textarea
@@ -1509,7 +1509,7 @@ export function CharterFormClient({
                 placeholder="Potensi hambatan yang mungkin dihadapi dan solusinya..."
                 value={formData.risikoAwal}
                 onChange={(e) => handleChange("risikoAwal", e.target.value)}
-                className="disabled:bg-gray-50"
+                className="disabled:bg-gray-50 text-sm"
               />
             </div>
           </CardContent>
@@ -1561,29 +1561,29 @@ export function CharterFormClient({
             <div className={`p-4 rounded-xl border-2 transition-all space-y-3 ${isSigned ? `${c.border} ${c.bg}` : "border-dashed border-gray-200 bg-gray-50/70"}`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-gray-500">{label}</div>
-                  <div className="text-[10px] text-gray-400">{sublabel}</div>
+                  <div className="text-xs font-black uppercase tracking-wider text-gray-500">{label}</div>
+                  <div className="text-xs text-gray-400">{sublabel}</div>
                 </div>
                 {isSigned ? (
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${c.badge}`}>
-                    <CheckCircle className={`h-3 w-3 ${c.icon}`} />
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border ${c.badge}`}>
+                    <CheckCircle className={`h-3.5 w-3.5 ${c.icon}`} />
                     <span>Ditandatangani</span>
                   </span>
                 ) : (
-                  <span className="text-[10px] font-medium text-gray-400 italic">Belum Ditandatangani</span>
+                  <span className="text-xs font-medium text-gray-400 italic">Belum Ditandatangani</span>
                 )}
               </div>
 
-              <div className="text-xs">
+              <div className="text-sm">
                 {isSigned ? (
                   <>
                     <div className="font-bold text-gray-900">{assignedName || ttd.nama}</div>
-                    <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                      <Briefcase className="h-3 w-3 text-gray-400" />
+                    <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                      <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                       <span>{ttd.jabatan}</span>
                     </div>
-                    <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                      <Building2 className="h-3 w-3 text-gray-400" />
+                    <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                      <Building2 className="h-3.5 w-3.5 text-gray-400" />
                       <span>{ttd.unit || "PT Pegadaian (Persero)"}</span>
                     </div>
                     {ttd.signatureImage && (
@@ -1592,21 +1592,21 @@ export function CharterFormClient({
                       </div>
                     )}
                     {ttd.tanggal && (
-                      <div className="text-[10px] text-gray-400 mt-1 font-mono">{formatDateIndo(ttd.tanggal)}</div>
+                      <div className="text-xs text-gray-400 mt-1 font-mono">{formatDateIndo(ttd.tanggal)}</div>
                     )}
                   </>
                 ) : (
                   <>
                     <div className="font-bold text-gray-700">{assignedName || `Belum ada akun ${sublabel} terdaftar`}</div>
-                    <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Briefcase className="h-3 w-3 text-gray-400" />
+                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                       <span>{assignment?.jabatan || sublabel}</span>
                     </div>
-                    <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Building2 className="h-3 w-3 text-gray-400" />
+                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Building2 className="h-3.5 w-3.5 text-gray-400" />
                       <span>{assignment?.unitKerja || "PT Pegadaian (Persero)"}</span>
                     </div>
-                    <div className="text-[10px] text-gray-400 italic mt-1">
+                    <div className="text-xs text-gray-400 italic mt-1">
                       {assignedName ? "Nama terdaftar di Penugasan Role Tim" : `Belum ada akun ${sublabel} terdaftar di Charter`}
                     </div>
                   </>
@@ -1617,26 +1617,26 @@ export function CharterFormClient({
                 {canSign ? (
                   isSigned ? (
                     <Button type="button" variant="ghost" size="sm" disabled={approving} onClick={onRevoke}
-                      className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg cursor-pointer">
+                      className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg cursor-pointer">
                       {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RotateCcw className="h-3.5 w-3.5 mr-1" />}
                       <span>Batalkan Tanda Tangan</span>
                     </Button>
                   ) : (
                     <Button type="button" size="sm" disabled={approving} onClick={onSign}
-                      className={`w-full text-white text-xs font-bold h-8 rounded-lg shadow-2xs cursor-pointer ${c.btn}`}>
+                      className={`w-full text-white text-sm font-bold h-8 rounded-lg shadow-2xs cursor-pointer ${c.btn}`}>
                       <Stamp className="h-3.5 w-3.5 mr-1" />
                       <span>Tandatangani sbg {sublabel}</span>
                     </Button>
                   )
                 ) : (
                   isSigned ? (
-                    <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center`}>
-                      <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                    <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center`}>
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       <span>Telah ditandatangani</span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                      <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                    <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                      <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                       <span>Menunggu {assignedName || sublabel}</span>
                     </div>
                   )
@@ -1660,17 +1660,17 @@ export function CharterFormClient({
                         text="Otorisasi formal mandat eksekusi inovasi sesuai Template 1 Juklak: Disusun Oleh Project Owner, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Promotor. Tanda tangan Promotor menjadi syarat sah pembukaan gerbang Customer Validation."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    <CardDescription className="text-sm text-gray-500 mt-0.5">
                       Tanda tangan formal sesuai Template 1 Juklak. Gerbang fase hanya membutuhkan tanda tangan Promotor.
                     </CardDescription>
                   </div>
                   {ttdDisetujui?.status === "approved" ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-bold border border-emerald-200">
                       <FileCheck2 className="h-3.5 w-3.5 text-emerald-700" />
                       Disetujui Formal
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-bold border border-amber-200">
                       <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
                       Menunggu Persetujuan Promotor
                     </span>
@@ -1705,7 +1705,7 @@ export function CharterFormClient({
                     "emerald"
                   )}
                 </div>
-                <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
+                <p className="text-xs text-gray-400 mt-3 leading-relaxed">
                   <strong>Catatan:</strong> Tanda tangan PO dan Coach bersifat dokumentasi tambahan. Pembukaan gerbang Customer Validation tetap hanya membutuhkan tanda tangan Promotor.
                 </p>
               </CardContent>
@@ -1775,10 +1775,10 @@ export function CharterFormClient({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-xs">
+          <div className="space-y-4 py-2 text-sm">
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
               <p className="font-semibold">Perhatian Perubahan Jumlah Sprint</p>
-              <p className="text-[11px] text-amber-800 leading-relaxed">
+              <p className="text-xs text-amber-800 leading-relaxed">
                 Jumlah sprint default adalah 4. Perubahan jumlah sprint wajib disertai alasan resmi dan akan dicatat ke dalam <strong>sprint_log</strong> (audit trail).
               </p>
             </div>
@@ -1793,9 +1793,9 @@ export function CharterFormClient({
                 max={20}
                 value={targetSprintCount}
                 onChange={(e) => setTargetSprintCount(parseInt(e.target.value) || 1)}
-                className="text-xs font-bold"
+                className="text-sm font-bold"
               />
-              <span className="text-[10px] text-gray-400">
+              <span className="text-xs text-gray-400">
                 Jumlah sprint saat ini: {sprints.length} sprint
               </span>
             </div>
@@ -1809,7 +1809,7 @@ export function CharterFormClient({
                 placeholder="Contoh: Penambahan 2 sprint untuk fase pengujian pasar skala luas..."
                 value={sprintAlasan}
                 onChange={(e) => setSprintAlasan(e.target.value)}
-                className="text-xs"
+                className="text-sm"
                 required
               />
             </div>
@@ -1821,7 +1821,7 @@ export function CharterFormClient({
               variant="outline"
               size="sm"
               onClick={() => setIsSprintModalOpen(false)}
-              className="text-xs"
+              className="text-sm"
             >
               Batal
             </Button>
@@ -1830,7 +1830,7 @@ export function CharterFormClient({
               size="sm"
               disabled={savingSprintCount || !sprintAlasan.trim() || targetSprintCount === sprints.length}
               onClick={handleApplySprintCountChange}
-              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-semibold gap-1.5"
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-semibold gap-1.5"
             >
               {savingSprintCount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               <span>Simpan Perubahan Sprint</span>
@@ -1854,7 +1854,7 @@ export function CharterFormClient({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-xs">
+          <div className="space-y-4 py-2 text-sm">
             <p className="text-gray-700 leading-relaxed">
               Akun baru dibuat otomatis dari data proposal (password default: <code className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold font-mono">gadai123</code>, <strong>wajib diganti saat login pertama</strong>):
             </p>
@@ -1863,10 +1863,10 @@ export function CharterFormClient({
               {newlyCreatedAccounts?.map((acc, idx) => (
                 <div key={idx} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-white border border-emerald-100 shadow-2xs">
                   <div>
-                    <span className="font-bold text-gray-900 block">{acc.nama}</span>
-                    <span className="text-[11px] text-gray-500 font-mono">{acc.email}</span>
+                    <span className="font-bold text-gray-900 block text-sm">{acc.nama}</span>
+                    <span className="text-xs text-gray-500 font-mono">{acc.email}</span>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-bold border-emerald-300 text-emerald-800 shrink-0">
+                  <Badge variant="outline" className="text-xs font-bold border-emerald-300 text-emerald-800 shrink-0">
                     {acc.roleName}
                   </Badge>
                 </div>
@@ -1874,11 +1874,11 @@ export function CharterFormClient({
             </div>
 
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
-              <p className="font-bold flex items-center gap-1.5 text-xs">
+              <p className="font-bold flex items-center gap-1.5 text-sm">
                 <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
                 Informasikan ke Anggota Tim:
               </p>
-              <p className="text-[11px] text-amber-800 leading-relaxed">
+              <p className="text-xs text-amber-800 leading-relaxed">
                 Segera informasikan ke yang bersangkutan bahwa akun mereka sudah dibuat dan bisa login dengan password default di atas — sistem akan otomatis meminta mereka mengganti password saat login pertama kali.
               </p>
             </div>
@@ -1888,7 +1888,7 @@ export function CharterFormClient({
             <Button
               type="button"
               onClick={() => setNewlyCreatedAccounts(null)}
-              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold w-full sm:w-auto"
+              className="bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold w-full sm:w-auto"
             >
               Mengerti & Tutup
             </Button>

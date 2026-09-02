@@ -919,14 +919,14 @@ export function MarketValidationClient({
       {/* ══ BAGIAN A: Header Read-Only (Template 3.1 & 3.2) ══ */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-[10px] font-extrabold px-2.5 py-1 uppercase tracking-wider flex items-center gap-1.5">
+          <Badge className="bg-[#0B3D2E] text-[#F0C24B] border-none text-xs font-extrabold px-2.5 py-1 uppercase tracking-wider flex items-center gap-1.5">
             <span>FR-PIA-03.1 / 03.2 — Perencanaan Market Validation</span>
             <SectionInfo
               title="Template 3.1: Perencanaan Market Validation"
               text="Menyusun rencana MVP yang cukup minimum untuk dirilis, cukup aman untuk diuji, dan cukup bermakna untuk mengukur Desirability, Feasibility, dan Viability."
             />
           </Badge>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 font-medium">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 font-medium">
             <span>
               Klasifikasi Inovasi:{" "}
               <strong className="text-gray-800 font-bold">
@@ -947,7 +947,7 @@ export function MarketValidationClient({
             target="_blank"
             rel="noopener noreferrer"
             download={`Rencana-MarketValidation-${timId}.pdf`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100/60 text-xs font-bold text-emerald-800 shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100/60 text-sm font-bold text-emerald-800 shadow-2xs transition-colors"
             title="Unduh dokumen resmi Template 3.1 Perencanaan Market Validation format PDF"
           >
             <Download className="h-3.5 w-3.5 text-emerald-700" />
@@ -959,7 +959,7 @@ export function MarketValidationClient({
             target="_blank"
             rel="noopener noreferrer"
             download={`Laporan-MarketValidation-${timId}.pdf`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-sm font-bold text-gray-700 shadow-2xs transition-colors"
           >
             <Download className="h-3.5 w-3.5 text-[#0B3D2E]" />
             <span>📄 Unduh PDF Laporan MV</span>
@@ -973,7 +973,7 @@ export function MarketValidationClient({
               disabled={generatingBacklog || !isMvGateUnlocked}
               title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
               onClick={handleGenerateBacklog}
-              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-xs font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-sm font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generatingBacklog ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
@@ -996,8 +996,8 @@ export function MarketValidationClient({
       {!isMvGateUnlocked && (
         <div className="p-4 rounded-2xl bg-amber-50/85 border border-amber-200/90 text-amber-900 flex items-start gap-3 shadow-2xs">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="space-y-1 text-xs">
-            <p className="font-bold text-amber-950 text-sm">
+          <div className="space-y-1 text-sm">
+            <p className="font-bold text-amber-950 text-base">
               Mode Pratinjau Market Validation (Gerbang Fase Belum Dibuka)
             </p>
             <p className="text-amber-800 leading-relaxed">
@@ -1049,7 +1049,7 @@ export function MarketValidationClient({
               <CardHeader className="pb-3 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Layers className="h-4 w-4 text-[#3E9463]" />
                       <span>B. Ringkasan Rencana Rilis MVP Pilot</span>
                       <SectionInfo
@@ -1057,11 +1057,11 @@ export function MarketValidationClient({
                         text="Spesifikasi rilis percontohan: Ringkasan Hasil Customer Validation, Versi MVP (misal v1.0-pilot), Lingkungan Rilis (Internal Web App, Outlet Pilot, Mobile APK Staging), Periode Release (tanggal mulai s.d. selesai), Target Jumlah Pengguna/Adopsi, Target Lokasi/Cabang Pilot, Profil Target Early Adopters, dan Scope MVP (In Scope vs Out of Scope)."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    <CardDescription className="text-sm text-gray-500 mt-0.5">
                       Definisi lingkup MVP, channel, periode release, dan profil target early adopters.
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-bold text-gray-600 bg-gray-50">
+                  <Badge variant="outline" className="text-xs font-bold text-gray-600 bg-gray-50">
                     Template 3.1
                   </Badge>
                 </div>
@@ -1070,10 +1070,10 @@ export function MarketValidationClient({
                 {/* 1. Hasil Customer Validation */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-800 block">
+                    <label className="text-sm font-bold text-gray-800 block">
                       Hasil Customer Validation (Ringkasan Pembelajaran CV)
                     </label>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-xs text-gray-400 font-medium">
                       Auto-fill dari CV Report (dapat diedit)
                     </span>
                   </div>
@@ -1088,25 +1088,25 @@ export function MarketValidationClient({
                         hasilCustomerValidationRingkasan: e.target.value,
                       })
                     }
-                    className="text-xs leading-relaxed"
+                    className="text-sm leading-relaxed"
                   />
                 </div>
 
                 {/* 2. Versi MVP & Channel Release */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-800 block">Versi MVP</label>
+                    <label className="text-sm font-bold text-gray-800 block">Versi MVP</label>
                     <Input
                       disabled={!canEdit}
                       placeholder="Contoh: v1.0-pilot"
                       value={planForm.mvpVersion}
                       onChange={(e) => setPlanForm({ ...planForm, mvpVersion: e.target.value })}
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-800 block">Channel / Media Release</label>
+                    <label className="text-sm font-bold text-gray-800 block">Channel / Media Release</label>
                     <Input
                       disabled={!canEdit}
                       placeholder="Contoh: Internal Web App / Outlet Pilot / Mobile APK Staging"
@@ -1114,7 +1114,7 @@ export function MarketValidationClient({
                       onChange={(e) =>
                         setPlanForm({ ...planForm, channelRelease: e.target.value })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
                 </div>
@@ -1122,7 +1122,7 @@ export function MarketValidationClient({
                 {/* 3. Periode Release (Mulai & Selesai) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-800 block">
+                    <label className="text-sm font-bold text-gray-800 block">
                       Periode Release — Mulai
                     </label>
                     <Input
@@ -1132,12 +1132,12 @@ export function MarketValidationClient({
                       onChange={(e) =>
                         setPlanForm({ ...planForm, periodeReleaseMulai: e.target.value })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-800 block">
+                    <label className="text-sm font-bold text-gray-800 block">
                       Periode Release — Selesai
                     </label>
                     <Input
@@ -1147,26 +1147,26 @@ export function MarketValidationClient({
                       onChange={(e) =>
                         setPlanForm({ ...planForm, periodeReleaseSelesai: e.target.value })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
                 </div>
 
                 {/* 4. Deskripsi MVP & Deskripsi Proses MVP */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">Deskripsi Ringkas MVP</label>
+                  <label className="text-sm font-bold text-gray-800 block">Deskripsi Ringkas MVP</label>
                   <Textarea
                     disabled={!canEdit}
                     rows={2}
                     placeholder="Gambaran umum bentuk MVP yang dirilis dan nilai tambah langsung bagi pengguna..."
                     value={planForm.deskripsiMvp}
                     onChange={(e) => setPlanForm({ ...planForm, deskripsiMvp: e.target.value })}
-                    className="text-xs"
+                    className="text-sm"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">
+                  <label className="text-sm font-bold text-gray-800 block">
                     Deskripsi Proses MVP (Alur Operasional &amp; Interaksi Pengguna)
                   </label>
                   <Textarea
@@ -1177,13 +1177,13 @@ export function MarketValidationClient({
                     onChange={(e) =>
                       setPlanForm({ ...planForm, deskripsiProsesMvp: e.target.value })
                     }
-                    className="text-xs leading-relaxed"
+                    className="text-sm leading-relaxed"
                   />
                 </div>
 
                 {/* 5. Fitur MVP yang Dirilis */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-800 block">
+                  <label className="text-sm font-bold text-gray-800 block">
                     Fitur MVP yang Dirilis (Ringkasan Fungsional)
                   </label>
                   <Textarea
@@ -1194,14 +1194,14 @@ export function MarketValidationClient({
                     onChange={(e) =>
                       setPlanForm({ ...planForm, fiturMvpDirilis: e.target.value })
                     }
-                    className="text-xs"
+                    className="text-sm"
                   />
                 </div>
 
                 {/* 6. Target Early Adopters, Lokasi Pilot, Jumlah Target Pengguna */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700">Target Early Adopters</label>
+                    <label className="text-sm font-bold text-gray-700">Target Early Adopters</label>
                     <Input
                       disabled={!canEdit}
                       placeholder="Contoh: Nasabah Gadai Prioritas..."
@@ -1209,23 +1209,23 @@ export function MarketValidationClient({
                       onChange={(e) =>
                         setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700">Lokasi Pilot</label>
+                    <label className="text-sm font-bold text-gray-700">Lokasi Pilot</label>
                     <Input
                       disabled={!canEdit}
                       placeholder="Contoh: 3 Cabang Kanwil VIII..."
                       value={planForm.lokasiPilot}
                       onChange={(e) => setPlanForm({ ...planForm, lokasiPilot: e.target.value })}
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700">
+                    <label className="text-sm font-bold text-gray-700">
                       Jumlah Target Pengguna
                     </label>
                     <Input
@@ -1240,7 +1240,7 @@ export function MarketValidationClient({
                           jumlahTargetPengguna: Number(e.target.value),
                         })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
                 </div>
@@ -1248,7 +1248,7 @@ export function MarketValidationClient({
                 {/* 7. Daftar Early Adopters & Batasan Scope MVP */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-800 block">
+                    <label className="text-sm font-bold text-gray-800 block">
                       Daftar / Profil Spesifik Early Adopters
                     </label>
                     <Textarea
@@ -1259,12 +1259,12 @@ export function MarketValidationClient({
                       onChange={(e) =>
                         setPlanForm({ ...planForm, daftarEarlyAdopters: e.target.value })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-800 block">
+                    <label className="text-sm font-bold text-gray-800 block">
                       Batasan Scope MVP (Out of Scope)
                     </label>
                     <Textarea
@@ -1275,7 +1275,7 @@ export function MarketValidationClient({
                       onChange={(e) =>
                         setPlanForm({ ...planForm, batasanScopeMvp: e.target.value })
                       }
-                      className="text-xs"
+                      className="text-sm"
                     />
                   </div>
                 </div>
@@ -1283,11 +1283,11 @@ export function MarketValidationClient({
                 {/* 8. Data Dukung MVP (File Upload) */}
                 <div className="space-y-2 pt-2 border-t border-gray-100">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                    <label className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
                       <Paperclip className="h-3.5 w-3.5 text-[#3E9463]" />
                       <span>Data Dukung MVP (Lampiran Rencana)</span>
                     </label>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-xs text-gray-400 font-medium">
                       PDF, Word, Excel, Gambar (Maks 10MB)
                     </span>
                   </div>
@@ -1304,7 +1304,7 @@ export function MarketValidationClient({
                       />
                       <label
                         htmlFor="mvp-data-dukung-upload"
-                        className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-[#EBF5EE] hover:border-[#3E9463] transition-colors cursor-pointer text-xs font-semibold text-[#0B3D2E] ${
+                        className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 hover:bg-[#EBF5EE] hover:border-[#3E9463] transition-colors cursor-pointer text-sm font-semibold text-[#0B3D2E] ${
                           uploadingDoc ? "opacity-60 cursor-not-allowed" : ""
                         }`}
                       >
@@ -1337,12 +1337,12 @@ export function MarketValidationClient({
                                 href={file.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs font-bold text-gray-800 hover:text-[#0B3D2E] truncate block hover:underline"
+                                className="text-sm font-bold text-gray-800 hover:text-[#0B3D2E] truncate block hover:underline"
                               >
                                 {file.name}
                               </a>
                               {file.size && (
-                                <span className="text-[10px] text-gray-400">
+                                <span className="text-xs text-gray-400">
                                   {(file.size / 1024).toFixed(1)} KB
                                 </span>
                               )}
@@ -1374,7 +1374,7 @@ export function MarketValidationClient({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-gray-400 italic">
+                    <p className="text-xs text-gray-400 italic">
                       Belum ada file data dukung yang dilampirkan.
                     </p>
                   )}
@@ -1387,7 +1387,7 @@ export function MarketValidationClient({
               <CardHeader className="pb-3 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Table2 className="h-4 w-4 text-[#3E9463]" />
                       <span>C. Mapping Solusi, Fitur, Benefit, dan Fitur MVP</span>
                       <SectionInfo
@@ -1395,7 +1395,7 @@ export function MarketValidationClient({
                         text="Tabel pemetaan modul solusi: Solusi Tervalidasi di CV, Fitur Solusi, Benefit bagi User/Bisnis, Keputusan Masuk MVP (Rilis di MVP Pilot / Ditunda ke Fase Skala Penuh), dan Kriteria Penerimaan / Acceptance Criteria. Kolom: Solusi Terkait, Fitur Solusi, Benefit bagi User/Bisnis, Masuk MVP?, Kriteria Penerimaan / Bukti."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    <CardDescription className="text-sm text-gray-500 mt-0.5">
                       Pemetaan detail antara solusi yang tervalidasi di CV dengan fitur MVP yang dirilis atau ditunda.
                     </CardDescription>
                   </div>
@@ -1405,7 +1405,7 @@ export function MarketValidationClient({
                       variant="outline"
                       size="sm"
                       onClick={handleAddFiturRow}
-                      className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-bold rounded-xl gap-1.5 h-8"
+                      className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-sm font-bold rounded-xl gap-1.5 h-9"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       <span>Tambah Baris Fitur</span>
@@ -1415,15 +1415,15 @@ export function MarketValidationClient({
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-sm text-left">
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
                       <tr>
-                        <th className="p-3 w-[180px]">Solusi Tervalidasi</th>
-                        <th className="p-3 w-[180px]">Fitur Solusi *</th>
-                        <th className="p-3 w-[200px]">Benefit (Cust / Business)</th>
-                        <th className="p-3 w-[140px]">Fitur MVP</th>
-                        <th className="p-3">Acceptance Criteria / Evidence</th>
-                        {canEdit && <th className="p-3 w-[40px] text-center">Aksi</th>}
+                        <th className="p-3 w-[180px] text-xs uppercase tracking-wider">Solusi Tervalidasi</th>
+                        <th className="p-3 w-[180px] text-xs uppercase tracking-wider">Fitur Solusi *</th>
+                        <th className="p-3 w-[200px] text-xs uppercase tracking-wider">Benefit (Cust / Business)</th>
+                        <th className="p-3 w-[140px] text-xs uppercase tracking-wider">Fitur MVP</th>
+                        <th className="p-3 text-xs uppercase tracking-wider">Acceptance Criteria / Evidence</th>
+                        {canEdit && <th className="p-3 w-[40px] text-center text-xs uppercase tracking-wider">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -1437,7 +1437,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateFiturRow(idx, "solusiTervalidasi", e.target.value)
                               }
-                              className="text-xs h-8 bg-white"
+                              className="text-sm h-9 bg-white"
                             />
                           </td>
                           <td className="p-2 align-top">
@@ -1448,7 +1448,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateFiturRow(idx, "fiturSolusi", e.target.value)
                               }
-                              className="text-xs h-8 bg-white font-semibold"
+                              className="text-sm h-9 bg-white font-semibold"
                             />
                           </td>
                           <td className="p-2 align-top">
@@ -1459,7 +1459,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateFiturRow(idx, "benefit", e.target.value)
                               }
-                              className="text-xs h-8 bg-white"
+                              className="text-sm h-9 bg-white"
                             />
                           </td>
                           <td className="p-2 align-top">
@@ -1473,7 +1473,7 @@ export function MarketValidationClient({
                                   e.target.value as any
                                 )
                               }
-                              className={`w-full h-8 px-2 text-xs rounded-lg font-bold border ${
+                              className={`w-full h-9 px-2 text-xs rounded-lg font-bold border ${
                                 row.fiturMvpStatus === "dirilis"
                                   ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                                   : "bg-amber-50 text-amber-800 border-amber-300"
@@ -1495,7 +1495,7 @@ export function MarketValidationClient({
                                   e.target.value
                                 )
                               }
-                              className="text-xs h-8 bg-white"
+                              className="text-sm h-9 bg-white"
                             />
                           </td>
                           {canEdit && (
@@ -1524,7 +1524,7 @@ export function MarketValidationClient({
               <CardHeader className="pb-3 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <Users className="h-4 w-4 text-[#3E9463]" />
                       <span>D. Resources Needed (5 Kebutuhan Sumber Daya)</span>
                       <SectionInfo
@@ -1532,33 +1532,33 @@ export function MarketValidationClient({
                         text="Tabel 5 kategori sumber daya: 1. People/SME (Keahlian dan jumlah personel), 2. System/Technology (Aplikasi, environment, device, integration), 3. Data/Access (Dataset, akses, consent, security), 4. Budget/Procurement (RAB, vendor, lisensi, material), dan 5. Operational Support (Lokasi pilot, SOP, channel, early adopter). Kolom tabel: Kategori Sumber Daya, Kebutuhan Spesifik, Owner / Sumber, Status Ketersediaan, Gap dan Tindak Lanjut."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    <CardDescription className="text-sm text-gray-500 mt-0.5">
                       5 kategori sumber daya baku sesuai Template 3.1 untuk mendukung kesiapan eksekusi MVP.
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50">
+                  <Badge variant="outline" className="text-xs font-bold text-[#0B3D2E] bg-emerald-50">
                     5 Kategori Baku
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-sm text-left">
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
                       <tr>
-                        <th className="p-3 w-[180px]">Jenis Resource (Baku)</th>
-                        <th className="p-3 w-[220px]">Kebutuhan Spesifik</th>
-                        <th className="p-3 w-[160px]">Owner / Sumber</th>
-                        <th className="p-3 w-[130px]">Status Ketersediaan</th>
-                        <th className="p-3">Gap dan Tindak Lanjut</th>
+                        <th className="p-3 w-[180px] text-xs uppercase tracking-wider">Jenis Resource (Baku)</th>
+                        <th className="p-3 w-[220px] text-xs uppercase tracking-wider">Kebutuhan Spesifik</th>
+                        <th className="p-3 w-[160px] text-xs uppercase tracking-wider">Owner / Sumber</th>
+                        <th className="p-3 w-[130px] text-xs uppercase tracking-wider">Status Ketersediaan</th>
+                        <th className="p-3 text-xs uppercase tracking-wider">Gap dan Tindak Lanjut</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {resourcesList.map((res, idx) => (
                         <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
                           <td className="p-3 align-top bg-gray-50/50">
-                            <span className="font-bold text-gray-900 block">{res.label}</span>
-                            <span className="text-[10px] text-gray-500 block mt-0.5 leading-tight">
+                            <span className="font-bold text-gray-900 block text-sm">{res.label}</span>
+                            <span className="text-xs text-gray-500 block mt-0.5 leading-tight">
                               {res.deskripsi}
                             </span>
                           </td>
@@ -1571,7 +1571,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateResource(idx, "kebutuhanSpesifik", e.target.value)
                               }
-                              className="text-xs bg-white"
+                              className="text-sm bg-white"
                             />
                           </td>
                           <td className="p-2 align-top">
@@ -1582,7 +1582,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateResource(idx, "ownerSumber", e.target.value)
                               }
-                              className="text-xs h-8 bg-white"
+                              className="text-sm h-9 bg-white"
                             />
                           </td>
                           <td className="p-2 align-top">
@@ -1592,7 +1592,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateResource(idx, "statusKetersediaan", e.target.value)
                               }
-                              className={`w-full h-8 px-2 text-xs rounded-lg font-bold border ${
+                              className={`w-full h-9 px-2 text-xs rounded-lg font-bold border ${
                                 res.statusKetersediaan === "Tersedia"
                                   ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                                   : res.statusKetersediaan === "Parsial"
@@ -1614,7 +1614,7 @@ export function MarketValidationClient({
                               onChange={(e) =>
                                 handleUpdateResource(idx, "gapTindakLanjut", e.target.value)
                               }
-                              className="text-xs bg-white"
+                              className="text-sm bg-white"
                             />
                           </td>
                         </tr>
@@ -1630,7 +1630,7 @@ export function MarketValidationClient({
               <CardHeader className="pb-3 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-[#3E9463]" />
                       <span>E. Metrik, Threshold, dan Cara Pengukuran DFV (9 Parameter)</span>
                       <SectionInfo
@@ -1638,29 +1638,29 @@ export function MarketValidationClient({
                         text="Tabel 9 parameter baku DFV: Desirability (Kepuasan Pengguna MVP, Adopsi / Penggunaan Berulang, Rekomendasi / Referral / Komitmen Lanjut), Feasibility (Ketersediaan Sistem / Proses, Waktu Proses / Response Time, Error / Issue Rate), dan Viability (Revenue / Potensi Pendapatan, Efisiensi Biaya / Produktivitas, ROI / Cost-Benefit Awal). Kolom tabel: Kategori Validasi, Metrik Pengukuran, Satuan / Unit, Baseline, Target Pilot, Threshold (70%), Cara Pengukuran, PIC Pengukur, Evidence. Catatan: Baseline, Target, dan Threshold ditentukan sendiri oleh tim; gunakan 70% sebagai threshold default bila belum ada kesepakatan khusus."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    <CardDescription className="text-sm text-gray-500 mt-0.5">
                       Target terukur Desirability, Feasibility, dan Viability untuk validasi Product-Market Fit.
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-bold text-[#0B3D2E] bg-emerald-50">
+                  <Badge variant="outline" className="text-xs font-bold text-[#0B3D2E] bg-emerald-50">
                     9 Parameter Baku
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-sm text-left">
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
                       <tr>
-                        <th className="p-2.5 w-[100px]">Validasi</th>
-                        <th className="p-2.5 w-[180px]">Metrik (Baku)</th>
-                        <th className="p-2.5 w-[130px]">Unit Ukuran</th>
-                        <th className="p-2.5 w-[110px]">Baseline</th>
-                        <th className="p-2.5 w-[120px]">Target</th>
-                        <th className="p-2.5 w-[110px]">Threshold</th>
-                        <th className="p-2.5 w-[160px]">Cara Pengukuran</th>
-                        <th className="p-2.5 w-[120px]">PIC</th>
-                        <th className="p-2.5 w-[140px]">Evidence</th>
+                        <th className="p-2.5 w-[100px] text-xs uppercase tracking-wider">Validasi</th>
+                        <th className="p-2.5 w-[180px] text-xs uppercase tracking-wider">Metrik (Baku)</th>
+                        <th className="p-2.5 w-[130px] text-xs uppercase tracking-wider">Unit Ukuran</th>
+                        <th className="p-2.5 w-[110px] text-xs uppercase tracking-wider">Baseline</th>
+                        <th className="p-2.5 w-[120px] text-xs uppercase tracking-wider">Target</th>
+                        <th className="p-2.5 w-[110px] text-xs uppercase tracking-wider">Threshold</th>
+                        <th className="p-2.5 w-[160px] text-xs uppercase tracking-wider">Cara Pengukuran</th>
+                        <th className="p-2.5 w-[120px] text-xs uppercase tracking-wider">PIC</th>
+                        <th className="p-2.5 w-[140px] text-xs uppercase tracking-wider">Evidence</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -1670,7 +1670,7 @@ export function MarketValidationClient({
                           <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
                             <td className="p-2.5 align-top bg-gray-50/50">
                               <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                                className={`inline-block px-1.5 py-0.5 rounded text-xs font-extrabold ${
                                   m.validasi === "Desirability"
                                     ? "bg-amber-100 text-amber-900"
                                     : m.validasi === "Feasibility"
@@ -1681,7 +1681,7 @@ export function MarketValidationClient({
                                 {m.validasi}
                               </span>
                             </td>
-                            <td className="p-2.5 align-top font-bold text-gray-800 text-[11px]">
+                            <td className="p-2.5 align-top font-bold text-gray-800 text-sm">
                               {m.metrik}
                             </td>
                             <td className="p-2 align-top">
@@ -1692,7 +1692,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "unitUkuran", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white"
+                                className="text-sm h-9 bg-white"
                               />
                             </td>
                             <td className="p-2 align-top">
@@ -1703,7 +1703,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "baseline", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white"
+                                className="text-sm h-9 bg-white"
                               />
                             </td>
                             <td className="p-2 align-top">
@@ -1714,7 +1714,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "target", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white font-semibold"
+                                className="text-sm h-9 bg-white font-semibold"
                               />
                             </td>
                             <td className="p-2 align-top">
@@ -1725,7 +1725,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "threshold", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white"
+                                className="text-sm h-9 bg-white"
                               />
                             </td>
                             <td className="p-2 align-top">
@@ -1736,7 +1736,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "caraPengukuran", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white text-[11px]"
+                                className="text-sm h-9 bg-white"
                               />
                             </td>
                             <td className="p-2 align-top">
@@ -1747,7 +1747,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "pic", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white"
+                                className="text-sm h-9 bg-white"
                               />
                             </td>
                             <td className="p-2 align-top">
@@ -1758,7 +1758,7 @@ export function MarketValidationClient({
                                 onChange={(e) =>
                                   handleUpdateMetrik(idx, "evidence", e.target.value)
                                 }
-                                className="text-xs h-8 bg-white text-[11px]"
+                                className="text-sm h-9 bg-white"
                               />
                             </td>
                           </tr>
@@ -1773,7 +1773,7 @@ export function MarketValidationClient({
             {/* ══ BAGIAN F: Lembar Pengesahan 3 Pihak (PO, Coach, Promotor) ══ */}
             <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
               <CardHeader className="pb-3 border-b border-gray-100">
-                <CardTitle className="text-sm font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
                   <Stamp className="h-4 w-4 text-[#3E9463]" />
                   <span>F. Lembar Pengesahan MVP Release Plan</span>
                   <SectionInfo
@@ -1781,7 +1781,7 @@ export function MarketValidationClient({
                     text="Tanda tangan digital 3 pihak: Disusun Oleh Project Owner, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Promotor Inovasi."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                <CardDescription className="text-sm text-gray-500 mt-0.5">
                   Tanda tangan digital 3 pihak: Disusun oleh Project Owner, diperiksa oleh Coach, dan disetujui oleh Promotor Inovasi.
                 </CardDescription>
               </CardHeader>
@@ -1790,31 +1790,31 @@ export function MarketValidationClient({
                   {/* 1. Project Owner */}
                   <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
                     <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                      <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                      <span className="text-xs font-black text-gray-600 uppercase tracking-wider">
                         Disusun Oleh
                       </span>
                       {ttdDisusun?.status === "signed" ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                           <span>Ditandatangani</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
+                        <span className="text-xs font-medium text-gray-400 italic">
                           Belum Ditandatangani
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs">
+                    <div className="text-sm">
                       {ttdDisusun?.status === "signed" ? (
                         <>
                           <div className="font-bold text-gray-900">{poCharterName || ttdDisusun.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisusun.jabatan || "Project Owner"}</span>
                           </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisusun.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisusun.signatureImage && (
@@ -1827,7 +1827,7 @@ export function MarketValidationClient({
                             </div>
                           )}
                           {ttdDisusun.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                            <div className="text-xs text-gray-400 mt-1 font-mono">
                               {formatDateIndo(ttdDisusun.tanggal)}
                             </div>
                           )}
@@ -1837,15 +1837,15 @@ export function MarketValidationClient({
                           <div className="font-bold text-gray-700">
                             {poCharterName || "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>Project Owner</span>
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>PT Pegadaian (Persero)</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
+                          <div className="text-xs text-gray-400 italic mt-1">
                             {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                         </>
@@ -1861,14 +1861,14 @@ export function MarketValidationClient({
                             size="sm"
                             disabled={signingRole === "po"}
                             onClick={() => handleRevokeSign("po")}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                            className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             <span>Batalkan Tanda Tangan</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Telah ditandatangani PO</span>
                           </div>
                         )
@@ -1879,14 +1879,14 @@ export function MarketValidationClient({
                             size="sm"
                             disabled={signingRole === "po"}
                             onClick={() => openSignModal("po")}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold h-8 rounded-lg shadow-2xs"
                           >
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg PO</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                            <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span>Menunggu tanda tangan dari {poCharterName || "Project Owner"}</span>
                           </div>
                         )
@@ -1897,31 +1897,31 @@ export function MarketValidationClient({
                   {/* 2. Innovation Coach */}
                   <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
                     <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                      <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                      <span className="text-xs font-black text-gray-600 uppercase tracking-wider">
                         Diperiksa Oleh (Coach)
                       </span>
                       {ttdDiperiksa?.status === "signed" ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                           <span>Ditandatangani</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
+                        <span className="text-xs font-medium text-gray-400 italic">
                           Belum Ditandatangani
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs">
+                    <div className="text-sm">
                       {ttdDiperiksa?.status === "signed" ? (
                         <>
                           <div className="font-bold text-gray-900">{coachCharterName || ttdDiperiksa.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDiperiksa.jabatan || "Innovation Coach"}</span>
                           </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDiperiksa.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDiperiksa.signatureImage && (
@@ -1934,7 +1934,7 @@ export function MarketValidationClient({
                             </div>
                           )}
                           {ttdDiperiksa.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                            <div className="text-xs text-gray-400 mt-1 font-mono">
                               {formatDateIndo(ttdDiperiksa.tanggal)}
                             </div>
                           )}
@@ -1944,15 +1944,15 @@ export function MarketValidationClient({
                           <div className="font-bold text-gray-700">
                             {coachCharterName || "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>Innovation Coach</span>
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>PT Pegadaian (Persero)</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
+                          <div className="text-xs text-gray-400 italic mt-1">
                             {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                         </>
@@ -1968,14 +1968,14 @@ export function MarketValidationClient({
                             size="sm"
                             disabled={signingRole === "coach"}
                             onClick={() => handleRevokeSign("coach")}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                            className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             <span>Batalkan Tanda Tangan</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Telah ditandatangani Coach</span>
                           </div>
                         )
@@ -1986,14 +1986,14 @@ export function MarketValidationClient({
                             size="sm"
                             disabled={signingRole === "coach"}
                             onClick={() => openSignModal("coach")}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold h-8 rounded-lg shadow-2xs"
                           >
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg Coach</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                            <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span>Menunggu tanda tangan dari {coachCharterName || "Innovation Coach"}</span>
                           </div>
                         )
@@ -2004,31 +2004,31 @@ export function MarketValidationClient({
                   {/* 3. Promotor Inovasi */}
                   <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
                     <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                      <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                      <span className="text-xs font-black text-gray-600 uppercase tracking-wider">
                         Disetujui Oleh (Promotor)
                       </span>
                       {ttdDisetujui?.status === "signed" ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                           <span>Ditandatangani</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
+                        <span className="text-xs font-medium text-gray-400 italic">
                           Belum Ditandatangani
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs">
+                    <div className="text-sm">
                       {ttdDisetujui?.status === "signed" ? (
                         <>
                           <div className="font-bold text-gray-900">{promotorCharterName || ttdDisetujui.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisetujui.jabatan || "Promotor Inovasi"}</span>
                           </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisetujui.signatureImage && (
@@ -2041,7 +2041,7 @@ export function MarketValidationClient({
                             </div>
                           )}
                           {ttdDisetujui.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                            <div className="text-xs text-gray-400 mt-1 font-mono">
                               {formatDateIndo(ttdDisetujui.tanggal)}
                             </div>
                           )}
@@ -2051,15 +2051,15 @@ export function MarketValidationClient({
                           <div className="font-bold text-gray-700">
                             {promotorCharterName || "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>Promotor Inovasi</span>
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>PT Pegadaian (Persero)</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
+                          <div className="text-xs text-gray-400 italic mt-1">
                             {promotorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Promotor terdaftar di Charter"}
                           </div>
                         </>
@@ -2075,14 +2075,14 @@ export function MarketValidationClient({
                             size="sm"
                             disabled={signingRole === "promotor"}
                             onClick={() => handleRevokeSign("promotor")}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                            className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             <span>Batalkan Tanda Tangan</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Telah ditandatangani Promotor</span>
                           </div>
                         )
@@ -2093,14 +2093,14 @@ export function MarketValidationClient({
                             size="sm"
                             disabled={signingRole === "promotor"}
                             onClick={() => openSignModal("promotor")}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold h-8 rounded-lg shadow-2xs"
                           >
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg Promotor</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                            <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span>Menunggu tanda tangan dari {promotorCharterName || "Promotor Inovasi"}</span>
                           </div>
                         )
@@ -2118,7 +2118,7 @@ export function MarketValidationClient({
                   type="submit"
                   disabled={saving || !isMvGateUnlocked}
                   title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
-                  className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs transition-all ${
+                  className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-sm transition-all ${
                     !isMvGateUnlocked
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
                       : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"

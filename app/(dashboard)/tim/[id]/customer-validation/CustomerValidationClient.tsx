@@ -1159,7 +1159,7 @@ export function CustomerValidationClient({
                         text="Perumusan 5 elemen fondasi validasi: Project Mission (rumusan aspiratif, kuantitatif, dan time-bound), Customer & Context (customer prioritas dan area bantuan/job-to-be-done), Problem Hypothesis (asumsi masalah beserta bukti awal), How Might We (pertanyaan peluang customer, problem, outcome), dan Solution Hypothesis (asumsi solusi/prototype beserta manfaat utamanya)."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
+                    <CardDescription className="text-sm mt-0.5">
                       Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
                     </CardDescription>
                   </div>
@@ -1170,7 +1170,7 @@ export function CustomerValidationClient({
                       size="sm"
                       onClick={handleAutoFillFull}
                       disabled={autoFillingFromCharter}
-                      className="h-8 text-[11px] font-semibold gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-900 rounded-xl shadow-2xs shrink-0 cursor-pointer"
+                      className="h-8 text-xs font-semibold gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-900 rounded-xl shadow-2xs shrink-0 cursor-pointer"
                     >
                       {autoFillingFromCharter ? (
                         <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -1188,7 +1188,7 @@ export function CustomerValidationClient({
                   )}
                 </div>
                 {autoFillSource === 'grand_final' && (
-                  <div className="mt-2.5 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/90 border border-amber-200/80 text-[11px] font-medium text-amber-800 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="mt-2.5 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/90 border border-amber-200/80 text-xs font-medium text-amber-800 animate-in fade-in slide-in-from-top-1 duration-200">
                     <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                     <span>
                       Diisi dari data Grand Final (Innovation Charter belum tersimpan). Disarankan untuk tetap membuka dan menyimpan Charter untuk konsistensi data jangka panjang.
@@ -1198,7 +1198,7 @@ export function CustomerValidationClient({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Project Mission
                   </label>
                   {isSectionAbcLocked ? (
@@ -1212,12 +1212,13 @@ export function CustomerValidationClient({
                       value={planForm.projectMission}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, projectMission: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Customer &amp; Context
                   </label>
                   {isSectionAbcLocked ? (
@@ -1231,12 +1232,13 @@ export function CustomerValidationClient({
                       value={planForm.customerDanContext}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, customerDanContext: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Problem Hypothesis
                   </label>
                   {isSectionAbcLocked ? (
@@ -1250,12 +1252,13 @@ export function CustomerValidationClient({
                       value={planForm.problemHypothesis}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, problemHypothesis: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     How Might We (HMW)
                   </label>
                   {isSectionAbcLocked ? (
@@ -1269,12 +1272,13 @@ export function CustomerValidationClient({
                       value={planForm.hmw}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, hmw: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Solution Hypothesis
                   </label>
                   {isSectionAbcLocked ? (
@@ -1288,6 +1292,7 @@ export function CustomerValidationClient({
                       value={planForm.solutionHypothesis}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, solutionHypothesis: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
@@ -1304,13 +1309,13 @@ export function CustomerValidationClient({
                     text="Spesifikasi instrumen uji: Tipe Prototype (Figma/Clickable Prototype, Wireframe, dll.), Fitur/Alur yang Diuji (alur verifikasi, kalkulasi otomatis, dll.), Skenario User Testing (instruksi tugas yang diberikan kepada responden), Instrumen Validasi (daftar pertanyaan, survey, form observasi, panduan wawancara), dan Data Dukung/Lampiran."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-sm">
                   Prototype, skenario tugas, dan alat ukur yang digunakan saat user testing
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Tipe Prototype yang Diuji
                   </label>
                   {isSectionAbcLocked ? (
@@ -1323,12 +1328,13 @@ export function CustomerValidationClient({
                       value={planForm.prototypeType}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, prototypeType: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Fitur / Alur yang Diuji
                   </label>
                   {isSectionAbcLocked ? (
@@ -1342,12 +1348,13 @@ export function CustomerValidationClient({
                       value={planForm.fiturAlurDiuji}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, fiturAlurDiuji: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Skenario User Testing
                   </label>
                   {isSectionAbcLocked ? (
@@ -1361,12 +1368,13 @@ export function CustomerValidationClient({
                       value={planForm.skenarioUserTesting}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, skenarioUserTesting: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Instrumen Validasi
                   </label>
                   {isSectionAbcLocked ? (
@@ -1380,13 +1388,14 @@ export function CustomerValidationClient({
                       value={planForm.instrumenValidasi}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, instrumenValidasi: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 {/* Data Dukung (File Upload) */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     Data Dukung &amp; Lampiran
                   </label>
 
@@ -1395,7 +1404,7 @@ export function CustomerValidationClient({
                       {planForm.dataDukung.map((url) => (
                         <div
                           key={url}
-                          className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs group"
+                          className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm group"
                         >
                           {fileIcon(url)}
                           <a
@@ -1423,14 +1432,14 @@ export function CustomerValidationClient({
                       ))}
                     </div>
                   ) : isSectionAbcLocked ? (
-                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 text-xs text-slate-400 italic">
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-400 italic">
                       Tidak ada berkas data dukung / lampiran yang diunggah.
                     </div>
                   ) : null}
 
                   {!isSectionAbcLocked && (
                     <>
-                      <label className="inline-flex items-center gap-2 cursor-pointer px-3.5 py-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-semibold text-gray-600 transition-colors">
+                      <label className="inline-flex items-center gap-2 cursor-pointer px-3.5 py-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 text-sm font-semibold text-gray-600 transition-colors">
                         {uploading ? (
                           <span className="animate-spin h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent rounded-full inline-block" />
                         ) : (
@@ -1445,7 +1454,7 @@ export function CustomerValidationClient({
                           onChange={handleUploadFile}
                         />
                       </label>
-                      <p className="text-[10px] text-gray-400">
+                      <p className="text-xs text-gray-400">
                         File disimpan ke kolom <code>data_dukung</code> (jsonb[]) di database.
                       </p>
                     </>
@@ -1464,13 +1473,13 @@ export function CustomerValidationClient({
                     text="Perencanaan rekrutmen responden: Target Early Adopters (profil pengguna sasaran awal berskala kecil), Kriteria Seleksi (inklusi dan eksklusi: segmen, lokasi, perilaku), Jumlah Target Responden (ditentukan sendiri oleh tim), Lokasi/Channel Testing (cabang/outlet percontohan atau daring), Metode Rekrutmen, dan Etika & Persetujuan Data (kerahasiaan dan perlindungan responden)."
                   />
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-sm">
                   Siapa yang diuji, di mana, dan bagaimana cara mendapatkan mereka
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     1. Target Early Adopters
                   </label>
                   {isSectionAbcLocked ? (
@@ -1484,12 +1493,13 @@ export function CustomerValidationClient({
                       value={planForm.targetEarlyAdopters}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, targetEarlyAdopters: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     2. Kriteria Seleksi
                   </label>
                   {isSectionAbcLocked ? (
@@ -1503,13 +1513,14 @@ export function CustomerValidationClient({
                       value={planForm.kriteriaSeleksi}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, kriteriaSeleksi: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700">
+                    <label className="text-sm font-bold text-gray-700">
                       3. Target Jumlah Responden
                     </label>
                     {isSectionAbcLocked ? (
@@ -1524,12 +1535,13 @@ export function CustomerValidationClient({
                         value={planForm.jumlahTargetResponden}
                         disabled={!canEditCv}
                         onChange={(e) => setPlanForm({ ...planForm, jumlahTargetResponden: e.target.value ? Number(e.target.value) : ("" as any) })}
+                        className="text-sm"
                       />
                     )}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700">
+                    <label className="text-sm font-bold text-gray-700">
                       4. Lokasi / Channel Testing
                     </label>
                     {isSectionAbcLocked ? (
@@ -1542,13 +1554,14 @@ export function CustomerValidationClient({
                         value={planForm.lokasiChannelTesting}
                         disabled={!canEditCv}
                         onChange={(e) => setPlanForm({ ...planForm, lokasiChannelTesting: e.target.value })}
+                        className="text-sm"
                       />
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     5. Metode Rekrutmen
                   </label>
                   {isSectionAbcLocked ? (
@@ -1562,12 +1575,13 @@ export function CustomerValidationClient({
                       value={planForm.metodeRekrutmen}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, metodeRekrutmen: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700">
+                  <label className="text-sm font-bold text-gray-700">
                     6. Etika dan Persetujuan Data
                   </label>
                   {isSectionAbcLocked ? (
@@ -1581,6 +1595,7 @@ export function CustomerValidationClient({
                       value={planForm.etikaPersetujuanData}
                       disabled={!canEditCv}
                       onChange={(e) => setPlanForm({ ...planForm, etikaPersetujuanData: e.target.value })}
+                      className="text-sm"
                     />
                   )}
                 </div>
@@ -1600,7 +1615,7 @@ export function CustomerValidationClient({
                         text="Tabel pengujian feedback 5 dimensi baku: Usability (Kemudahan, kejelasan, dan interaksi prototype), Functionality (Kesesuaian fungsi/fitur dengan kebutuhan), Solvability (Kemampuan menyelesaikan problem worth solving), Payability (Kesediaan membayar, menggunakan, atau menanggung effort/perubahan perilaku), dan Others (Masukan tambahan, risiko, dan ide baru). Kolom tabel: Dimensi, Fokus Validasi, Contoh Pertanyaan/Observasi, Evidence yang Dikumpulkan."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
+                    <CardDescription className="text-sm mt-0.5">
                       5 dimensi baku Juklak — isi kolom &quot;Evidence yang Dikumpulkan&quot; setelah testing
                     </CardDescription>
                   </div>
@@ -1608,13 +1623,13 @@ export function CustomerValidationClient({
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 w-28">Dimensi</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[200px]">Fokus Validasi</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[200px]">Contoh Pertanyaan / Observasi</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[220px]">Evidence yang Dikumpulkan</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 w-28 text-xs uppercase tracking-wider">Dimensi</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[200px] text-xs uppercase tracking-wider">Fokus Validasi</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[200px] text-xs uppercase tracking-wider">Contoh Pertanyaan / Observasi</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[220px] text-xs uppercase tracking-wider">Evidence yang Dikumpulkan</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1628,11 +1643,11 @@ export function CustomerValidationClient({
                                 <tr key={d.id} className="hover:bg-gray-50/60 transition-colors">
                                   <td className="px-4 py-3 align-top">
                                     {localIdx === 0 ? (
-                                      <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wide">
+                                      <Badge variant="secondary" className="text-xs font-bold uppercase tracking-wide">
                                         {d.dimensi}
                                       </Badge>
                                     ) : (
-                                      <span className="text-xs font-semibold text-transparent select-none">{d.dimensi}</span>
+                                      <span className="text-sm font-semibold text-transparent select-none">{d.dimensi}</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-3 align-top">
@@ -1646,7 +1661,7 @@ export function CustomerValidationClient({
                                         setDimensiRows(newRows);
                                       }}
                                       placeholder={DIMENSI_ROWS.find(dr => dr.label.toLowerCase() === (d.dimensi || "").toLowerCase())?.fokus || "Fokus Validasi"}
-                                      className="text-xs resize-none min-h-[32px] overflow-hidden"
+                                      className="text-sm resize-none min-h-[36px] overflow-hidden"
                                       rows={1}
                                     />
                                   </td>
@@ -1661,7 +1676,7 @@ export function CustomerValidationClient({
                                         setDimensiRows(newRows);
                                       }}
                                       placeholder={DIMENSI_ROWS.find(dr => dr.label.toLowerCase() === (d.dimensi || "").toLowerCase())?.contoh || "Contoh Pertanyaan"}
-                                      className="text-xs resize-none min-h-[32px] overflow-hidden"
+                                      className="text-sm resize-none min-h-[36px] overflow-hidden"
                                       rows={1}
                                     />
                                   </td>
@@ -1677,7 +1692,7 @@ export function CustomerValidationClient({
                                           setDimensiRows(newRows);
                                         }}
                                         placeholder={localIdx === 0 ? (DIMENSI_ROWS.find(dr => dr.label.toLowerCase() === (d.dimensi || "").toLowerCase())?.evidencePlaceholder || "Evidence/Catatan") : "Evidence/Catatan"}
-                                        className="text-xs resize-none min-h-[32px] overflow-hidden flex-1"
+                                        className="text-sm resize-none min-h-[36px] overflow-hidden flex-1"
                                         rows={1}
                                       />
                                       <Button
@@ -1703,7 +1718,7 @@ export function CustomerValidationClient({
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="text-[10px] h-6 px-2 text-[#0F5132]"
+                                  className="text-xs h-7 px-2.5 font-semibold text-[#0F5132]"
                                   onClick={() => {
                                     setDimensiRows([
                                       ...dimensiRows,
@@ -1717,7 +1732,7 @@ export function CustomerValidationClient({
                                     ]);
                                   }}
                                 >
-                                  <Plus className="h-3 w-3 mr-1" /> Tambah Baris {dimensiGroup.label}
+                                  <Plus className="h-3.5 w-3.5 mr-1" /> Tambah Baris {dimensiGroup.label}
                                 </Button>
                               </td>
                             </tr>
@@ -1743,7 +1758,7 @@ export function CustomerValidationClient({
                         text="Tabel 7 metrik baku pengukuran Problem-Solution Fit (PSF): Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan dan Kemudahan Penggunaan, Kesediaan Membayar / Menggunakan), Feasibility On Paper (Kelayakan teknis/operasional awal), dan Viability On Paper (Potensi dampak bisnis/ekonomi awal). Kolom tabel: Validasi, Metrik, Unit Ukur, Kriteria Kesuksesan, Cara Pengukuran, Catatan Tim. Catatan: Unit ukur, kriteria kesuksesan, dan cara pengukuran ditentukan sendiri oleh tim sesuai konteks inovasi."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
+                    <CardDescription className="text-sm mt-0.5">
                       7 metrik baku Juklak — isi kolom &quot;Catatan&quot; sesuai kondisi tim
                     </CardDescription>
                   </div>
@@ -1751,15 +1766,15 @@ export function CustomerValidationClient({
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[190px]">Validasi</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[160px]">Metrik</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[140px]">Unit Ukur</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[180px]">Kriteria Kesuksesan</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[160px]">Cara Pengukuran</th>
-                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[180px]">Catatan Tim</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[190px] text-xs uppercase tracking-wider">Validasi</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[160px] text-xs uppercase tracking-wider">Metrik</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[140px] text-xs uppercase tracking-wider">Unit Ukur</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[180px] text-xs uppercase tracking-wider">Kriteria Kesuksesan</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[160px] text-xs uppercase tracking-wider">Cara Pengukuran</th>
+                        <th className="px-4 py-3 text-left font-bold text-gray-700 min-w-[180px] text-xs uppercase tracking-wider">Catatan Tim</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1779,7 +1794,7 @@ export function CustomerValidationClient({
                                 newRows[index].validasi = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="w-full text-[11px] font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border"
+                              className="w-full text-xs font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border"
                               style={
                                 r.validasi?.trim() === "Desirability"
                                   ? { backgroundColor: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }
@@ -1805,7 +1820,7 @@ export function CustomerValidationClient({
                                 newRows[index].metrik = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[36px] overflow-hidden font-semibold"
+                              className="text-sm resize-none min-h-[38px] overflow-hidden font-semibold"
                               placeholder={defaultMeta?.metrik || "Metrik"}
                               rows={1}
                             />
@@ -1820,7 +1835,7 @@ export function CustomerValidationClient({
                                 newRows[index].unitUkuran = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[36px] overflow-hidden"
+                              className="text-sm resize-none min-h-[38px] overflow-hidden"
                               placeholder={defaultMeta?.unit || "Unit Ukur"}
                               rows={1}
                             />
@@ -1835,7 +1850,7 @@ export function CustomerValidationClient({
                                 newRows[index].kriteriaKesuksesan = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[36px] overflow-hidden"
+                              className="text-sm resize-none min-h-[38px] overflow-hidden"
                               placeholder={defaultMeta?.kriteria || "Kriteria Kesuksesan"}
                               rows={1}
                             />
@@ -1850,7 +1865,7 @@ export function CustomerValidationClient({
                                 newRows[index].caraPengukuran = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-xs resize-none min-h-[36px] overflow-hidden"
+                              className="text-sm resize-none min-h-[38px] overflow-hidden"
                               placeholder={defaultMeta?.cara || "Cara Pengukuran"}
                               rows={1}
                             />
@@ -1860,7 +1875,7 @@ export function CustomerValidationClient({
                               <Textarea
                                 rows={1}
                                 placeholder={defaultMeta?.catatan || "Catatan & hasil aktual tim..."}
-                                className="text-xs resize-none min-h-[36px] overflow-hidden flex-1"
+                                className="text-sm resize-none min-h-[38px] overflow-hidden flex-1"
                                 value={r.catatan || ""}
                                 onChange={(e) => {
                                   e.target.style.height = 'auto';
@@ -1872,7 +1887,7 @@ export function CustomerValidationClient({
                               />
                               {r.isStandard ? (
                                 <span
-                                  className="mt-1 shrink-0 px-2 py-1 rounded text-[10px] font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
+                                  className="mt-1 shrink-0 px-2 py-1 rounded text-xs font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
                                   title="Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"
                                 >
                                   Baku Juklak
@@ -1903,7 +1918,7 @@ export function CustomerValidationClient({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="text-xs border-dashed gap-1 h-8 text-[#0F5132] border-[#0F5132] hover:bg-emerald-50"
+                      className="text-sm border-dashed gap-1.5 h-9 font-bold text-[#0F5132] border-[#0F5132] hover:bg-emerald-50"
                       onClick={() => {
                         setMetrikRows([...metrikRows, {
                           id: Math.random().toString(36).substring(7),
@@ -1956,7 +1971,7 @@ export function CustomerValidationClient({
                   type="submit"
                   disabled={saving || !isCvGateUnlocked}
                   title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
-                  className={`gap-2 h-10 px-6 rounded-xl shadow-xs transition-all ${
+                  className={`gap-2 h-10 px-6 rounded-xl shadow-xs transition-all text-sm font-semibold ${
                     !isCvGateUnlocked
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
                       : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
@@ -1985,7 +2000,7 @@ export function CustomerValidationClient({
                         text="Persetujuan formal perencanaan pengujian pelanggan: Disusun Oleh Inisiator Inovasi, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Project Owner."
                       />
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 mt-0.5">
+                    <CardDescription className="text-sm text-gray-500 mt-0.5">
                       Dokumentasi persetujuan dari Inisiator Inovasi, Innovation Coach, dan Project Owner (independen).
                     </CardDescription>
                   </div>
@@ -2002,31 +2017,31 @@ export function CustomerValidationClient({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                      <span className="text-xs font-black uppercase tracking-wider text-gray-500">
                         Disusun Oleh
                       </span>
                       {isSigned(ttdDisusun) ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                           <span>Ditandatangani</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
+                        <span className="text-xs font-medium text-gray-400 italic">
                           Belum Ditandatangani
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs">
+                    <div className="text-sm">
                       {isSigned(ttdDisusun) ? (
                         <>
                           <div className="font-bold text-gray-900">{inisiatorCharterName || ttdDisusun.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisusun.jabatan || "Inisiator Inovasi"}</span>
                           </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisusun.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisusun.signatureImage && (
@@ -2039,7 +2054,7 @@ export function CustomerValidationClient({
                             </div>
                           )}
                           {ttdDisusun.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                            <div className="text-xs text-gray-400 mt-1 font-mono">
                               {formatDateIndo(ttdDisusun.tanggal)}
                             </div>
                           )}
@@ -2049,15 +2064,15 @@ export function CustomerValidationClient({
                           <div className="font-bold text-gray-700">
                             {inisiatorCharterName || "Belum ada akun Inisiator terdaftar di Charter"}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>Inisiator Inovasi</span>
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>PT Pegadaian (Persero)</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
+                          <div className="text-xs text-gray-400 italic mt-1">
                             {inisiatorCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Inisiator terdaftar di Charter"}
                           </div>
                         </>
@@ -2073,14 +2088,14 @@ export function CustomerValidationClient({
                             size="sm"
                             disabled={signingRole === 'inisiator'}
                             onClick={() => handleRevokeSign('inisiator')}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                            className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             <span>Batalkan Tanda Tangan</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Telah ditandatangani Inisiator</span>
                           </div>
                         )
@@ -2091,14 +2106,14 @@ export function CustomerValidationClient({
                             size="sm"
                             disabled={signingRole === 'inisiator'}
                             onClick={() => openSignModal('inisiator')}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold h-8 rounded-lg shadow-2xs"
                           >
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg Inisiator</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                            <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span>Menunggu tanda tangan dari {inisiatorCharterName || "Inisiator"}</span>
                           </div>
                         )
@@ -2115,31 +2130,31 @@ export function CustomerValidationClient({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                      <span className="text-xs font-black uppercase tracking-wider text-gray-500">
                         Diperiksa Oleh
                       </span>
                       {isSigned(ttdDiperiksa) ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                           <span>Ditandatangani</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
+                        <span className="text-xs font-medium text-gray-400 italic">
                           Belum Ditandatangani
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs">
+                    <div className="text-sm">
                       {isSigned(ttdDiperiksa) ? (
                         <>
                           <div className="font-bold text-gray-900">{coachCharterName || ttdDiperiksa.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDiperiksa.jabatan || "Innovation Coach"}</span>
                           </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDiperiksa.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDiperiksa.signatureImage && (
@@ -2152,7 +2167,7 @@ export function CustomerValidationClient({
                             </div>
                           )}
                           {ttdDiperiksa.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                            <div className="text-xs text-gray-400 mt-1 font-mono">
                               {formatDateIndo(ttdDiperiksa.tanggal)}
                             </div>
                           )}
@@ -2162,15 +2177,15 @@ export function CustomerValidationClient({
                           <div className="font-bold text-gray-700">
                             {coachCharterName || "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>Innovation Coach</span>
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>PT Pegadaian (Persero)</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
+                          <div className="text-xs text-gray-400 italic mt-1">
                             {coachCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Innovation Coach terdaftar di Charter"}
                           </div>
                         </>
@@ -2186,14 +2201,14 @@ export function CustomerValidationClient({
                             size="sm"
                             disabled={signingRole === 'coach'}
                             onClick={() => handleRevokeSign('coach')}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                            className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             <span>Batalkan Tanda Tangan</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Telah ditandatangani Coach</span>
                           </div>
                         )
@@ -2204,14 +2219,14 @@ export function CustomerValidationClient({
                             size="sm"
                             disabled={signingRole === 'coach'}
                             onClick={() => openSignModal('coach')}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold h-8 rounded-lg shadow-2xs"
                           >
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg Coach</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                            <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span>Menunggu tanda tangan dari {coachCharterName || "Innovation Coach"}</span>
                           </div>
                         )
@@ -2228,31 +2243,31 @@ export function CustomerValidationClient({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                      <span className="text-xs font-black uppercase tracking-wider text-gray-500">
                         Disetujui Oleh
                       </span>
                       {isSigned(ttdDisetujui) ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                           <span>Ditandatangani</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-gray-400 italic">
+                        <span className="text-xs font-medium text-gray-400 italic">
                           Belum Ditandatangani
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs">
+                    <div className="text-sm">
                       {isSigned(ttdDisetujui) ? (
                         <>
                           <div className="font-bold text-gray-900">{poCharterName || ttdDisetujui.nama}</div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisetujui.jabatan || "Project Owner"}</span>
                           </div>
-                          <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>{ttdDisetujui.unit || "PT Pegadaian (Persero)"}</span>
                           </div>
                           {ttdDisetujui.signatureImage && (
@@ -2265,7 +2280,7 @@ export function CustomerValidationClient({
                             </div>
                           )}
                           {ttdDisetujui.tanggal && (
-                            <div className="text-[10px] text-gray-400 mt-1 font-mono">
+                            <div className="text-xs text-gray-400 mt-1 font-mono">
                               {formatDateIndo(ttdDisetujui.tanggal)}
                             </div>
                           )}
@@ -2275,15 +2290,15 @@ export function CustomerValidationClient({
                           <div className="font-bold text-gray-700">
                             {poCharterName || "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Briefcase className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
                             <span>Project Owner</span>
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 text-gray-400" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3.5 w-3.5 text-gray-400" />
                             <span>PT Pegadaian (Persero)</span>
                           </div>
-                          <div className="text-[10px] text-gray-400 italic mt-1">
+                          <div className="text-xs text-gray-400 italic mt-1">
                             {poCharterName ? "Nama terdaftar di Innovation Charter" : "Belum ada akun Project Owner terdaftar di Charter"}
                           </div>
                         </>
@@ -2299,14 +2314,14 @@ export function CustomerValidationClient({
                             size="sm"
                             disabled={signingRole === 'po'}
                             onClick={() => handleRevokeSign('po')}
-                            className="w-full text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
+                            className="w-full text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 rounded-lg"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             <span>Batalkan Tanda Tangan</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-[11px] text-emerald-700 font-medium text-center">
-                            <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200/60 text-xs text-emerald-700 font-medium text-center">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Telah ditandatangani PO</span>
                           </div>
                         )
@@ -2317,14 +2332,14 @@ export function CustomerValidationClient({
                             size="sm"
                             disabled={signingRole === 'po'}
                             onClick={() => openSignModal('po')}
-                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs font-bold h-8 rounded-lg shadow-2xs"
+                            className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-sm font-bold h-8 rounded-lg shadow-2xs"
                           >
                             <Stamp className="h-3.5 w-3.5 mr-1" />
                             <span>Tandatangani sbg PO</span>
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-[11px] text-gray-500 font-medium text-center">
-                            <Lock className="h-3 w-3 text-gray-400 shrink-0" />
+                          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-gray-50 border border-gray-200/80 text-xs text-gray-500 font-medium text-center">
+                            <Lock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                             <span>Menunggu tanda tangan dari {poCharterName || "Project Owner"}</span>
                           </div>
                         )
