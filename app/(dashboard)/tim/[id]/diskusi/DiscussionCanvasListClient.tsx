@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Loader2,
   AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ interface DiscussionCanvasListClientProps {
   canvases: DiscussionCanvasListItem[];
   currentUserId: string | null;
   canManageAny: boolean;
+  canCreateCanvas?: boolean;
 }
 
 export function DiscussionCanvasListClient({
@@ -58,6 +60,7 @@ export function DiscussionCanvasListClient({
   canvases: initialCanvases,
   currentUserId,
   canManageAny,
+  canCreateCanvas = true,
 }: DiscussionCanvasListClientProps) {
   const router = useRouter();
   const [canvases, setCanvases] = useState<DiscussionCanvasListItem[]>(initialCanvases);
@@ -80,6 +83,10 @@ export function DiscussionCanvasListClient({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreateCanvas) {
+      toast.error('Anda tidak memiliki izin (diskusi.create_canvas) untuk membuat kanvas baru.');
+      return;
+    }
     if (!newTitle.trim()) {
       toast.error('Judul diskusi harus diisi.');
       return;
@@ -196,16 +203,27 @@ export function DiscussionCanvasListClient({
 
         {/* Action Button: Create New Canvas */}
         <div className="flex items-center gap-2.5 shrink-0">
-          <Button
-            onClick={() => {
-              setNewTitle('');
-              setCreateModalOpen(true);
-            }}
-            className="bg-[#0F5132] hover:bg-[#146C43] text-white font-extrabold text-xs px-4 h-10 rounded-xl shadow-xs gap-2 cursor-pointer transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            <span>+ Buat Kanvas Baru</span>
-          </Button>
+          {canCreateCanvas ? (
+            <Button
+              onClick={() => {
+                setNewTitle('');
+                setCreateModalOpen(true);
+              }}
+              className="bg-[#0F5132] hover:bg-[#146C43] text-white font-extrabold text-xs px-4 h-10 rounded-xl shadow-xs gap-2 cursor-pointer transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              <span>+ Buat Kanvas Baru</span>
+            </Button>
+          ) : (
+            <Button
+              disabled
+              title="Anda tidak memiliki izin (diskusi.create_canvas) untuk membuat kanvas baru"
+              className="bg-gray-200 text-gray-400 font-extrabold text-xs px-4 h-10 rounded-xl gap-2 cursor-not-allowed"
+            >
+              <Lock className="h-4 w-4 text-gray-400" />
+              <span>+ Buat Kanvas Baru</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -221,16 +239,18 @@ export function DiscussionCanvasListClient({
               Mulai brainstorming ide, kelompokkan catatan ideasi, dan sematkan kartu backlog referensi dengan membuat kanvas pertama Anda.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setNewTitle('');
-              setCreateModalOpen(true);
-            }}
-            className="bg-[#0F5132] hover:bg-[#146C43] text-white font-extrabold text-xs px-5 h-9 rounded-xl shadow-xs gap-2 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Buat Kanvas Pertama</span>
-          </Button>
+          {canCreateCanvas && (
+            <Button
+              onClick={() => {
+                setNewTitle('');
+                setCreateModalOpen(true);
+              }}
+              className="bg-[#0F5132] hover:bg-[#146C43] text-white font-extrabold text-xs px-5 h-9 rounded-xl shadow-xs gap-2 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Buat Kanvas Pertama</span>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">

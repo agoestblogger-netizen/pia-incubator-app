@@ -14,7 +14,7 @@ import {
   users,
 } from '@/lib/db/schema';
 import { eq, and, sql, desc, inArray, asc } from 'drizzle-orm';
-import { getCurrentUser } from '@/lib/auth/rbac';
+import { getCurrentUser, hasPermission } from '@/lib/auth/rbac';
 import { revalidatePath } from 'next/cache';
 import { compileStickyNotesToBacklog, type CompiledBacklogDraft } from '@/lib/ai/diskusi-compiler';
 
@@ -62,6 +62,13 @@ export async function getDiscussionCanvasListAction(timId: string) {
     if (!isUuid) return { success: false, error: 'ID Tim tidak valid' };
 
     const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canView = await hasPermission(user, 'diskusi.view', timId);
+    if (!canView) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk melihat Ruang Diskusi pada tim ini.' };
+    }
+
     const canManageAny = isUserAdminOrCoach(user, timId);
 
     // Ensure board exists for auto-seeding documents
@@ -159,6 +166,12 @@ export async function createDiscussionCanvasAction({
     }
 
     const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canCreate = await hasPermission(user, 'diskusi.create_canvas', timId);
+    if (!canCreate) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk membuat kanvas diskusi baru.' };
+    }
 
     // Ensure board exists
     await getOrCreateDiskusiBoard(timId);
@@ -390,6 +403,14 @@ export async function getDiskusiCanvasData({
     const isCanvasUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(canvasId);
     if (!isUuid || !isCanvasUuid) return { success: false, error: 'ID Tim atau ID Kanvas tidak valid' };
 
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canView = await hasPermission(user, 'diskusi.view', timId);
+    if (!canView) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk melihat kanvas diskusi ini.' };
+    }
+
     // Fetch Canvas Info
     const [canvas] = await db
       .select({
@@ -533,6 +554,13 @@ export async function createDiskusiStickyNoteAction({
 }) {
   try {
     const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canAdd = await hasPermission(user, 'diskusi.add_sticky', timId);
+    if (!canAdd) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk menambah sticky note.' };
+    }
+
     const stickyColor = color || getRandomPastelColor();
 
     const [newNote] = await db
@@ -581,6 +609,12 @@ export async function createDiskusiPinAction({
 }) {
   try {
     const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canPin = await hasPermission(user, 'diskusi.pin_backlog', timId);
+    if (!canPin) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk menyematkan kartu backlog ke kanvas.' };
+    }
 
     // Check if card is already pinned in this canvas
     const condition = canvasId
@@ -626,6 +660,14 @@ export async function createDiskusiPinAction({
 
 export async function updateDiskusiNoteContentAction(noteId: string, content: string, timId: string) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canEdit = await hasPermission(user, 'diskusi.edit_sticky', timId);
+    if (!canEdit) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk mengedit isi sticky note.' };
+    }
+
     const [updated] = await db
       .update(diskusiNote)
       .set({ content, updatedAt: new Date() })
@@ -643,13 +685,25 @@ export async function updateDiskusiNotePositionAction({
   posX,
   posY,
   frameId = null,
+  timId,
 }: {
   noteId: string;
   posX: number;
   posY: number;
   frameId?: string | null;
+  timId?: string;
 }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    if (timId) {
+      const canEdit = await hasPermission(user, 'diskusi.edit_sticky', timId);
+      if (!canEdit) {
+        return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk memindahkan posisi sticky note.' };
+      }
+    }
+
     const [updated] = await db
       .update(diskusiNote)
       .set({ posX, posY, frameId, updatedAt: new Date() })
@@ -664,6 +718,18 @@ export async function updateDiskusiNotePositionAction({
 
 export async function deleteDiskusiNoteAction(noteId: string, timId: string) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const [note] = await db.select().from(diskusiNote).where(eq(diskusiNote.id, noteId)).limit(1);
+    if (!note) return { success: true };
+
+    const requiredPerm = note.type === 'pin' ? 'diskusi.pin_backlog' : 'diskusi.delete_sticky';
+    const canDelete = await hasPermission(user, requiredPerm, timId);
+    if (!canDelete) {
+      return { success: false, error: `Akses ditolak: Anda tidak memiliki izin (${requiredPerm}) untuk menghapus item ini.` };
+    }
+
     await db.delete(diskusiNote).where(eq(diskusiNote.id, noteId));
     revalidatePath(`/tim/${timId}/diskusi`);
     return { success: true };
@@ -780,6 +846,12 @@ export async function assignStickyToCardSubtaskAction({
 }) {
   try {
     const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canAssign = await hasPermission(user, 'diskusi.assign_backlog', timId);
+    if (!canAssign) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk menugaskan sticky note sebagai subtask backlog.' };
+    }
 
     // 1. Get note & validate content
     const [note] = await db.select().from(diskusiNote).where(eq(diskusiNote.id, noteId)).limit(1);
@@ -854,6 +926,14 @@ export async function compileFrameNotesAction({
   timId: string;
 }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canCompile = await hasPermission(user, 'diskusi.compile_ai', timId);
+    if (!canCompile) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk menjalankan Kompilasi AI.' };
+    }
+
     // 1. Get frame
     const [frame] = await db.select().from(diskusiFrame).where(eq(diskusiFrame.id, frameId)).limit(1);
     if (!frame) {
@@ -937,6 +1017,14 @@ export async function markNotesConvertedToCardAction({
   timId: string;
 }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Sesi Anda telah berakhir.' };
+
+    const canAssign = await hasPermission(user, 'diskusi.assign_backlog', timId);
+    if (!canAssign) {
+      return { success: false, error: 'Akses ditolak: Anda tidak memiliki izin untuk mengonversi catatan ke kartu backlog.' };
+    }
+
     if (noteIds.length > 0) {
       await db
         .update(diskusiNote)

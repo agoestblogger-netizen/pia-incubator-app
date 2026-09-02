@@ -203,6 +203,17 @@ function getRandomPastelColor(): string {
   return PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
 }
 
+export type DiskusiPermissions = {
+  canView?: boolean;
+  canCreateCanvas?: boolean;
+  canAddSticky?: boolean;
+  canEditSticky?: boolean;
+  canDeleteSticky?: boolean;
+  canPinBacklog?: boolean;
+  canCompileAi?: boolean;
+  canAssignBacklog?: boolean;
+};
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 export function DiskusiCanvasClient({
   timId,
@@ -214,6 +225,16 @@ export function DiskusiCanvasClient({
   isCvUnlocked = false,
   isMvUnlocked = false,
   totalSprints = 6,
+  permissions = {
+    canView: true,
+    canCreateCanvas: true,
+    canAddSticky: true,
+    canEditSticky: true,
+    canDeleteSticky: true,
+    canPinBacklog: true,
+    canCompileAi: true,
+    canAssignBacklog: true,
+  },
 }: {
   timId: string;
   canvasId?: string;
@@ -231,7 +252,15 @@ export function DiskusiCanvasClient({
   isCvUnlocked?: boolean;
   isMvUnlocked?: boolean;
   totalSprints?: number;
+  permissions?: DiskusiPermissions;
 }) {
+  const canAddSticky = permissions.canAddSticky ?? true;
+  const canEditSticky = permissions.canEditSticky ?? true;
+  const canDeleteSticky = permissions.canDeleteSticky ?? true;
+  const canPinBacklog = permissions.canPinBacklog ?? true;
+  const canCompileAi = permissions.canCompileAi ?? true;
+  const canAssignBacklog = permissions.canAssignBacklog ?? true;
+
   // Helper: check if a card's phase is locked
   const isPhaseLocked = (card: KanbanCardItem): boolean => {
     if (card.tahap === 'customer_validation' && !isCvUnlocked) return true;
@@ -506,6 +535,11 @@ export function DiskusiCanvasClient({
 
   // ─── Actions: Add Sticky Note ──────────────────────────────────────────────
   const handleAddSticky = async (e?: React.MouseEvent) => {
+    if (!canAddSticky) {
+      toast.error('Anda tidak memiliki izin (diskusi.add_sticky) untuk menambah sticky note.');
+      return;
+    }
+
     let posX = 120 + Math.random() * 80;
     let posY = 100 + Math.random() * 60;
 
@@ -567,6 +601,11 @@ export function DiskusiCanvasClient({
 
   // ─── Actions: Pin Card from Reference List ──────────────────────────────────
   const handlePinCardToCanvas = async (cardId: string, posX = 200, posY = 150) => {
+    if (!canPinBacklog) {
+      toast.error('Anda tidak memiliki izin (diskusi.pin_backlog) untuk menyematkan kartu backlog ke kanvas.');
+      return;
+    }
+
     const card = cards.find((c) => c.id === cardId);
     if (!card) return;
 
@@ -602,6 +641,9 @@ export function DiskusiCanvasClient({
 
   // ─── Drag-and-Drop Collision: Sticky to Pin ────────────────────────────────
   const checkStickyToPinCollision = async (movedSticky: DiskusiNoteItem, targetX: number, targetY: number) => {
+    if (movedSticky.type !== 'sticky') return;
+    if (!canAssignBacklog) return;
+
     const stickyW = 192; // 48 tailwind
     const stickyH = 130;
 
@@ -652,6 +694,11 @@ export function DiskusiCanvasClient({
 
   // ─── Mechanism 2: Convert via Button -> Pick Card ──────────────────────────
   const handleConvertStickyToSubtask = async (noteId: string, targetCardId: string) => {
+    if (!canAssignBacklog) {
+      toast.error('Anda tidak memiliki izin (diskusi.assign_backlog) untuk menugaskan sticky note sebagai subtask.');
+      return;
+    }
+
     const note = notes.find((n) => n.id === noteId);
     const PLACEHOLDERS = ['Catatan ide baru...', 'Ide / catatan baru...', 'Ketik di sini...', 'Kosong', ''];
     const trimmed = note?.content?.trim() || '';
@@ -681,6 +728,11 @@ export function DiskusiCanvasClient({
 
   // ─── Mechanism 3: AI Compilation from Frame ────────────────────────────────
   const handleCompileFrame = async (frameId: string) => {
+    if (!canCompileAi) {
+      toast.error('Anda tidak memiliki izin (diskusi.compile_ai) untuk menjalankan Kompilasi AI.');
+      return;
+    }
+
     setCompilingFrameId(frameId);
     try {
       const res = await compileFrameNotesAction({ frameId, timId });
@@ -699,6 +751,10 @@ export function DiskusiCanvasClient({
   };
 
   const handleSaveCompiledCard = async (targetSprintNumber: number | null = null) => {
+    if (!canAssignBacklog) {
+      toast.error('Anda tidak memiliki izin (diskusi.assign_backlog) untuk menyimpan atau meng-assign kartu backlog.');
+      return;
+    }
     if (!compiledDraft || !compiledDraft.judul.trim()) return;
     const totalMinutes = compiledDraft.subtasks.reduce(
       (sum, st) => sum + (st.estimatedMinutes || (st as any).estimatedHours || 60),
@@ -1030,14 +1086,26 @@ export function DiskusiCanvasClient({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              onClick={() => handleAddSticky()}
-              className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 h-8 px-3 rounded-lg shadow-2xs cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>+ Tambah Sticky</span>
-            </Button>
+            {canAddSticky ? (
+              <Button
+                size="sm"
+                onClick={() => handleAddSticky()}
+                className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 h-8 px-3 rounded-lg shadow-2xs cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>+ Tambah Sticky</span>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                disabled
+                title="Anda tidak memiliki izin (diskusi.add_sticky) untuk menambah sticky note"
+                className="bg-gray-200 text-gray-400 text-xs font-bold gap-1.5 h-8 px-3 rounded-lg cursor-not-allowed"
+              >
+                <Lock className="h-3.5 w-3.5 text-gray-400" />
+                <span>+ Tambah Sticky</span>
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -1111,6 +1179,7 @@ export function DiskusiCanvasClient({
         <div
           ref={canvasRef}
           onDoubleClick={(e) => {
+            if (!canAddSticky) return;
             if (
               e.target === e.currentTarget ||
               (e.target as HTMLElement).classList.contains('canvas-surface') ||
@@ -1192,6 +1261,7 @@ export function DiskusiCanvasClient({
                     toast.success('Kelompok ide dihapus');
                   }}
                   onCompile={() => handleCompileFrame(frame.id)}
+                  canCompile={canCompileAi}
                 />
               );
             })}
@@ -1207,11 +1277,13 @@ export function DiskusiCanvasClient({
                     note={note}
                     zoom={zoom}
                     isLocked={pinIsLocked}
+                    canUnpin={canPinBacklog}
+                    canMove={canPinBacklog || canEditSticky}
                     presenceUsers={onlineUsers}
                     currentClientId={clientId}
                     onUpdatePosition={async (id, x, y) => {
                       setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, posX: x, posY: y } : n)));
-                      await updateDiskusiNotePositionAction({ noteId: id, posX: x, posY: y });
+                      await updateDiskusiNotePositionAction({ noteId: id, posX: x, posY: y, timId });
                     }}
                     onDelete={async (id) => {
                       await deleteDiskusiNoteAction(id, timId);
@@ -1233,6 +1305,9 @@ export function DiskusiCanvasClient({
                   key={note.id}
                   note={note}
                   zoom={zoom}
+                  canEdit={canEditSticky}
+                  canDelete={canDeleteSticky}
+                  canAssign={canAssignBacklog}
                   pinnedCards={pinnedCards}
                   presenceUsers={onlineUsers}
                   currentClientId={clientId}
@@ -1263,6 +1338,7 @@ export function DiskusiCanvasClient({
                       posX: x,
                       posY: y,
                       frameId: newFrameId,
+                      timId,
                     });
                     // Check collision with Pin
                     await checkStickyToPinCollision(note, x, y);
@@ -1495,7 +1571,7 @@ export function DiskusiCanvasClient({
                                   </span>
                                   {isPinned ? (
                                     <span className="text-[9px] font-bold text-gray-400">Tersemat</span>
-                                  ) : (
+                                  ) : canPinBacklog ? (
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -1510,6 +1586,8 @@ export function DiskusiCanvasClient({
                                       <Pin className="h-3 w-3" />
                                       <span>+ Pin</span>
                                     </Button>
+                                  ) : (
+                                    <span className="text-[9px] text-gray-400 font-medium italic">Read-only</span>
                                   )}
                                 </div>
                               </div>
@@ -1796,9 +1874,10 @@ export function DiskusiCanvasClient({
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
-                    disabled={savingCompiledCard || !compiledDraft.judul.trim()}
+                    disabled={savingCompiledCard || !compiledDraft.judul.trim() || !canAssignBacklog}
+                    title={!canAssignBacklog ? 'Anda tidak memiliki izin (diskusi.assign_backlog) untuk menyimpan kartu ke backlog' : undefined}
                     onClick={() => handleSaveCompiledCard(null)}
-                    className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 cursor-pointer shadow-xs rounded-xl"
+                    className="bg-[#0F5132] hover:bg-[#146C43] text-white text-xs font-bold gap-1.5 cursor-pointer shadow-xs rounded-xl disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     {savingCompiledCard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                     <span>Simpan ke Backlog</span>
@@ -1809,8 +1888,9 @@ export function DiskusiCanvasClient({
                     <PopoverTrigger asChild>
                       <Button
                         size="sm"
-                        disabled={savingCompiledCard || !compiledDraft.judul.trim()}
-                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 shadow-xs cursor-pointer rounded-xl"
+                        disabled={savingCompiledCard || !compiledDraft.judul.trim() || !canAssignBacklog}
+                        title={!canAssignBacklog ? 'Anda tidak memiliki izin (diskusi.assign_backlog) untuk assign ke sprint' : undefined}
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 shadow-xs cursor-pointer rounded-xl disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                       >
                         <Zap className="h-3.5 w-3.5 fill-white" />
                         <span>Assign ke Sprint ⚡</span>
@@ -2152,6 +2232,7 @@ function FrameCard({
   noteCount,
   validNotesCount,
   isCompiling,
+  canCompile = true,
   onUpdate,
   onDelete,
   onCompile,
@@ -2161,6 +2242,7 @@ function FrameCard({
   noteCount: number;
   validNotesCount: number;
   isCompiling: boolean;
+  canCompile?: boolean;
   onUpdate: (id: string, label: string, x: number, y: number, w: number, h: number) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onCompile: () => void;
@@ -2254,18 +2336,20 @@ function FrameCard({
         </div>
 
         <div className="flex items-center gap-1">
-          {/* AI Compile Button: disabled if validNotesCount < 2 */}
+          {/* AI Compile Button: disabled if validNotesCount < 2 or !canCompile */}
           <Button
             size="sm"
-            disabled={isCompiling || validNotesCount < 2}
+            disabled={isCompiling || validNotesCount < 2 || !canCompile}
             onClick={onCompile}
             className={`h-6 px-2 text-[10px] font-extrabold text-white gap-1 shadow-2xs transition-all ${
-              validNotesCount < 2
+              validNotesCount < 2 || !canCompile
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-[#0F5132] hover:bg-[#146C43] cursor-pointer'
             }`}
             title={
-              validNotesCount < 2
+              !canCompile
+                ? 'Anda tidak memiliki izin (diskusi.compile_ai) untuk menjalankan Kompilasi AI'
+                : validNotesCount < 2
                 ? 'Isi minimal 2 sticky note dengan teks (bukan default) sebelum kompilasi AI'
                 : 'Kompilasi ide-ide di dalam kelompok ini jadi kartu Backlog dengan AI'
             }
@@ -2273,7 +2357,7 @@ function FrameCard({
             {isCompiling ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <Sparkles className={`h-3 w-3 ${validNotesCount < 2 ? 'text-gray-400' : 'text-[#FFD700]'}`} />
+              <Sparkles className={`h-3 w-3 ${validNotesCount < 2 || !canCompile ? 'text-gray-400' : 'text-[#FFD700]'}`} />
             )}
             <span>Kompilasi AI</span>
           </Button>
@@ -2296,6 +2380,8 @@ function PinCard({
   note,
   zoom = 100,
   isLocked = false,
+  canUnpin = true,
+  canMove = true,
   presenceUsers,
   currentClientId,
   onUpdatePosition,
@@ -2307,6 +2393,8 @@ function PinCard({
   note: DiskusiNoteItem;
   zoom?: number;
   isLocked?: boolean;
+  canUnpin?: boolean;
+  canMove?: boolean;
   presenceUsers: Record<string, PresenceUser>;
   currentClientId: string;
   onUpdatePosition: (id: string, x: number, y: number) => Promise<void>;
@@ -2329,6 +2417,7 @@ function PinCard({
   const focusedBorderColor = otherFocused[0]?.color;
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (!canMove) return;
     dragging.current = true;
     const scale = (zoom || 100) / 100;
     dragOffset.current = { x: e.clientX / scale - pos.x, y: e.clientY / scale - pos.y };
@@ -2371,7 +2460,9 @@ function PinCard({
       )}
 
       <div
-        className={`w-56 bg-white rounded-xl shadow-md transition-all p-2.5 space-y-1.5 group cursor-grab active:cursor-grabbing relative ${
+        className={`w-56 bg-white rounded-xl shadow-md transition-all p-2.5 space-y-1.5 group relative ${
+          canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+        } ${
           isLocked
             ? 'border-2 border-amber-300 hover:border-amber-500'
             : 'border-2 border-[#C9E4D0] hover:border-[#0F5132]'
@@ -2399,16 +2490,18 @@ function PinCard({
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
               {note.cardStoryPoint || 3} SP
             </span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(note.id);
-              }}
-              className="text-gray-400 hover:text-red-500 text-xs px-0.5"
-              title="Lepas pin"
-            >
-              ✕
-            </button>
+            {canUnpin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(note.id);
+                }}
+                className="text-gray-400 hover:text-red-500 text-xs px-0.5 cursor-pointer"
+                title="Lepas pin"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
@@ -2442,6 +2535,9 @@ function PinCard({
 function StickyNoteCard({
   note,
   zoom = 100,
+  canEdit = true,
+  canDelete = true,
+  canAssign = true,
   pinnedCards = [],
   presenceUsers,
   currentClientId,
@@ -2454,6 +2550,9 @@ function StickyNoteCard({
 }: {
   note: DiskusiNoteItem;
   zoom?: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canAssign?: boolean;
   pinnedCards: Array<{ id: string; judul: string; storyPoint: number; label: string }>;
   presenceUsers: Record<string, PresenceUser>;
   currentClientId: string;
@@ -2488,7 +2587,7 @@ function StickyNoteCard({
   const isConverted = Boolean(note.convertedToSubtaskId || note.convertedToCardId);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (editing) return;
+    if (editing || !canEdit) return;
     dragging.current = true;
     const scale = (zoom || 100) / 100;
     dragOffset.current = { x: e.clientX / scale - pos.x, y: e.clientY / scale - pos.y };
@@ -2544,7 +2643,9 @@ function StickyNoteCard({
       >
         {/* Header Drag Handle */}
         <div
-          className="flex items-center justify-between px-2.5 py-1.5 cursor-grab active:cursor-grabbing border-b border-black/5"
+          className={`flex items-center justify-between px-2.5 py-1.5 border-b border-black/5 ${
+            canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+          }`}
           style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
           onMouseDown={handleMouseDown}
         >
@@ -2554,68 +2655,72 @@ function StickyNoteCard({
 
           <div className="flex items-center gap-1">
             {/* Popover: Jadikan Subtask */}
-            <Popover open={convertPopoverOpen} onOpenChange={setConvertPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  className="text-gray-500 hover:text-[#0F5132] p-0.5 rounded hover:bg-black/10"
-                  title="Jadikan subtask dari kartu yang di-pin di kanvas ini"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-2.5 bg-white text-xs shadow-xl rounded-xl border border-[#C9E4D0]" align="end">
-                <span className="font-bold text-[#0B3D2E] text-[11px] block mb-1.5 flex items-center gap-1.5">
-                  <Pin className="h-3 w-3 text-[#3E9463] rotate-45" />
-                  <span>Pilih Kartu Target Subtask:</span>
-                </span>
+            {canAssign && (
+              <Popover open={convertPopoverOpen} onOpenChange={setConvertPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className="text-gray-500 hover:text-[#0F5132] p-0.5 rounded hover:bg-black/10 cursor-pointer"
+                    title="Jadikan subtask dari kartu yang di-pin di kanvas ini"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-2.5 bg-white text-xs shadow-xl rounded-xl border border-[#C9E4D0]" align="end">
+                  <span className="font-bold text-[#0B3D2E] text-[11px] block mb-1.5 flex items-center gap-1.5">
+                    <Pin className="h-3 w-3 text-[#3E9463] rotate-45" />
+                    <span>Pilih Kartu Target Subtask:</span>
+                  </span>
 
-                {pinnedCards.length === 0 ? (
-                  <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-lg text-center space-y-1">
-                    <p className="text-[11px] font-bold text-amber-900 leading-tight">
-                      Belum ada kartu yang di-pin ke kanvas ini.
-                    </p>
-                    <p className="text-[10px] text-amber-700 leading-normal">
-                      Sematkan (Pin) kartu dari panel <strong>Backlog Referensi</strong> terlebih dahulu.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
-                    {pinnedCards.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          onConvertToSubtask(c.id);
-                          setConvertPopoverOpen(false);
-                        }}
-                        className="w-full text-left p-2 rounded-lg hover:bg-[#F0F7F1] border border-gray-100 hover:border-[#C9E4D0] transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-[9px] font-bold text-[#0F5132] bg-[#E3F0E6] px-1.5 py-0.2 rounded">
-                            📌 Pin Kanvas
-                          </span>
-                          <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                            {c.storyPoint} SP
-                          </span>
-                        </div>
-                        <p className="text-xs font-semibold text-gray-800 truncate group-hover:text-[#0B3D2E]" title={c.judul}>
-                          {c.judul}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
+                  {pinnedCards.length === 0 ? (
+                    <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-lg text-center space-y-1">
+                      <p className="text-[11px] font-bold text-amber-900 leading-tight">
+                        Belum ada kartu yang di-pin ke kanvas ini.
+                      </p>
+                      <p className="text-[10px] text-amber-700 leading-normal">
+                        Sematkan (Pin) kartu dari panel <strong>Backlog Referensi</strong> terlebih dahulu.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+                      {pinnedCards.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            onConvertToSubtask(c.id);
+                            setConvertPopoverOpen(false);
+                          }}
+                          className="w-full text-left p-2 rounded-lg hover:bg-[#F0F7F1] border border-gray-100 hover:border-[#C9E4D0] transition-colors cursor-pointer group"
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-[9px] font-bold text-[#0F5132] bg-[#E3F0E6] px-1.5 py-0.2 rounded">
+                              📌 Pin Kanvas
+                            </span>
+                            <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                              {c.storyPoint} SP
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-gray-800 truncate group-hover:text-[#0B3D2E]" title={c.judul}>
+                            {c.judul}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
 
-            <button
-              onClick={() => onDelete(note.id)}
-              className="text-gray-400 hover:text-red-500 text-xs p-0.5 rounded hover:bg-black/10"
-              title="Hapus sticky"
-            >
-              <X className="h-3 w-3" />
-            </button>
+            {canDelete && (
+              <button
+                onClick={() => onDelete(note.id)}
+                className="text-gray-400 hover:text-red-500 text-xs p-0.5 rounded hover:bg-black/10 cursor-pointer"
+                title="Hapus sticky"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -2632,8 +2737,11 @@ function StickyNoteCard({
           />
         ) : (
           <div
-            className="p-2.5 text-xs text-gray-900 min-h-[75px] cursor-text whitespace-pre-wrap break-words font-medium leading-relaxed"
+            className={`p-2.5 text-xs text-gray-900 min-h-[75px] whitespace-pre-wrap break-words font-medium leading-relaxed ${
+              canEdit ? 'cursor-text' : 'cursor-default'
+            }`}
             onDoubleClick={(e) => {
+              if (!canEdit) return;
               e.stopPropagation();
               setEditing(true);
               setTimeout(() => textareaRef.current?.focus(), 0);
@@ -2651,7 +2759,9 @@ function StickyNoteCard({
               <span>✓ Jadi subtask</span>
             </span>
           ) : (
-            <span className="text-gray-400 text-[8px]">Double click to edit</span>
+            <span className="text-gray-400 text-[8px]">
+              {canEdit ? 'Double click to edit' : 'Read-only'}
+            </span>
           )}
 
           {otherFocused.length > 0 && (

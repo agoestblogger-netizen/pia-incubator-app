@@ -804,7 +804,7 @@ export function RolesClient({ initialData }: { initialData: any }) {
                     <tr key={modul} className="group">
                       <td colSpan={rolesList.length + 1} className="p-0">
                         <div className="bg-gray-100/70 font-bold text-gray-800 px-3.5 py-1.5 uppercase text-[10px] tracking-wider">
-                          Modul: {modul === "kanban" ? "BOARD SPRINT" : modul.replace("_", " ")}
+                          Modul: {modul === "kanban" ? "BOARD SPRINT" : modul === "diskusi" ? "RUANG DISKUSI" : modul.replace("_", " ")}
                         </div>
                         <table className="w-full border-collapse">
                           <tbody>

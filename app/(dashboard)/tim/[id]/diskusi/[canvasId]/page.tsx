@@ -1,9 +1,10 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getDiskusiCanvasData } from "@/app/actions/diskusi";
 import { getSprintsByTimId } from "@/app/actions/sprint";
-import { getCurrentUser } from "@/lib/auth/rbac";
+import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { notFound } from "next/navigation";
 import { DiskusiCanvasClient } from "../DiskusiCanvasClient";
+import { Lock } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,41 @@ export default async function SingleCanvasPage({
   if (!tim) return notFound();
 
   const user = await getCurrentUser();
+
+  const [
+    canView,
+    canCreateCanvas,
+    canAddSticky,
+    canEditSticky,
+    canDeleteSticky,
+    canPinBacklog,
+    canCompileAi,
+    canAssignBacklog,
+  ] = await Promise.all([
+    user ? hasPermission(user, 'diskusi.view', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.create_canvas', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.add_sticky', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.edit_sticky', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.delete_sticky', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.pin_backlog', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.compile_ai', tim.id) : Promise.resolve(false),
+    user ? hasPermission(user, 'diskusi.assign_backlog', tim.id) : Promise.resolve(false),
+  ]);
+
+  if (!canView) {
+    return (
+      <div className="max-w-2xl mx-auto my-12 p-8 bg-white rounded-2xl border border-gray-200/80 shadow-2xs text-center space-y-3">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+          <Lock className="h-6 w-6 text-amber-600" />
+        </div>
+        <h2 className="text-lg font-extrabold text-[#0B3D2E]">Akses Kanvas Diskusi Dibatasi</h2>
+        <p className="text-sm text-gray-600 leading-relaxed max-w-md mx-auto">
+          Akun Anda tidak memiliki izin (<code className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">diskusi.view</code>) untuk mengakses kanvas diskusi pada tim <strong>{tim.namaProyekInovasi}</strong>.
+        </p>
+      </div>
+    );
+  }
+
   const [canvasDataRes, sprints] = await Promise.all([
     getDiskusiCanvasData({ timId: tim.id, canvasId }),
     getSprintsByTimId(tim.id),
@@ -40,6 +76,17 @@ export default async function SingleCanvasPage({
     avatarUrl: user?.avatarUrl ?? null,
   };
 
+  const permissions = {
+    canView,
+    canCreateCanvas,
+    canAddSticky,
+    canEditSticky,
+    canDeleteSticky,
+    canPinBacklog,
+    canCompileAi,
+    canAssignBacklog,
+  };
+
   return (
     <div className="w-full">
       <DiskusiCanvasClient
@@ -52,6 +99,7 @@ export default async function SingleCanvasPage({
         isCvUnlocked={true}
         isMvUnlocked={true}
         totalSprints={totalSprints}
+        permissions={permissions}
       />
     </div>
   );

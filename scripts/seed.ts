@@ -138,6 +138,26 @@ const DEFAULT_PERMISSIONS = [
   { kodePermission: 'charter.sign_po', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Dokumen Innovation Charter (Project Owner - Disusun Oleh)' },
   { kodePermission: 'charter.sign_coach', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Dokumen Innovation Charter (Innovation Coach - Diperiksa Oleh)' },
   { kodePermission: 'charter.sign_promotor', modul: 'tanda_tangan_dokumen', deskripsi: 'Menandatangani Persetujuan Formal Innovation Charter (Promotor)' },
+  // Ruang Diskusi
+  { kodePermission: 'diskusi.view', modul: 'diskusi', deskripsi: 'Melihat kanvas diskusi (read-only)' },
+  { kodePermission: 'diskusi.create_canvas', modul: 'diskusi', deskripsi: 'Membuat kanvas baru' },
+  { kodePermission: 'diskusi.add_sticky', modul: 'diskusi', deskripsi: 'Menambah sticky note' },
+  { kodePermission: 'diskusi.edit_sticky', modul: 'diskusi', deskripsi: 'Mengedit/memindahkan sticky note' },
+  { kodePermission: 'diskusi.delete_sticky', modul: 'diskusi', deskripsi: 'Menghapus sticky note' },
+  { kodePermission: 'diskusi.pin_backlog', modul: 'diskusi', deskripsi: 'Pin referensi kartu backlog ke kanvas' },
+  { kodePermission: 'diskusi.compile_ai', modul: 'diskusi', deskripsi: 'Menjalankan Kompilasi AI' },
+  { kodePermission: 'diskusi.assign_backlog', modul: 'diskusi', deskripsi: 'Simpan hasil kompilasi/sticky ke Backlog & assign ke Sprint' },
+];
+
+const ALL_DISKUSI_PERMS = [
+  'diskusi.view',
+  'diskusi.create_canvas',
+  'diskusi.add_sticky',
+  'diskusi.edit_sticky',
+  'diskusi.delete_sticky',
+  'diskusi.pin_backlog',
+  'diskusi.compile_ai',
+  'diskusi.assign_backlog',
 ];
 
 const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
@@ -157,7 +177,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'cv_report.sign_inisiator', 'cv_report.sign_coach', 'cv_report.sign_po',
     'mv_plan.sign_po', 'mv_plan.sign_coach', 'mv_plan.sign_promotor',
     'mv_report.sign_po', 'mv_report.sign_coach', 'mv_report.sign_promotor',
-    'charter.sign_po', 'charter.sign_coach', 'charter.sign_promotor'
+    'charter.sign_po', 'charter.sign_coach', 'charter.sign_promotor',
+    ...ALL_DISKUSI_PERMS,
   ],
   divisi_ic: [
     'tim.view',
@@ -167,18 +188,21 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'market_val.manage', 'market_val.view',
     'anggaran.manage', 'anggaran.view',
     'fmi.manage', 'fmi.view',
-    'dossier.view'
+    'dossier.view',
+    ...ALL_DISKUSI_PERMS,
   ],
   sponsor: [
     'tim.view', 'charter.view', 'kanban.view',
     'cust_val.view', 'market_val.view',
-    'fmi.view', 'dossier.view'
+    'fmi.view', 'dossier.view',
+    ...ALL_DISKUSI_PERMS,
   ],
   promotor: [
     'tim.view', 'charter.view', 'kanban.view',
     'cust_val.view', 'market_val.edit', 'market_val.view',
     'anggaran.view', 'fmi.view', 'dossier.view',
-    'charter.sign_promotor', 'mv_plan.sign_promotor', 'mv_report.sign_promotor'
+    'charter.sign_promotor', 'mv_plan.sign_promotor', 'mv_report.sign_promotor',
+    ...ALL_DISKUSI_PERMS,
   ],
   project_owner: [
     'tim.edit', 'tim.view',
@@ -189,7 +213,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'anggaran.submit', 'anggaran.view',
     'fmi.view', 'dossier.view',
     'cv_plan.sign_po', 'cv_report.sign_po', 'mv_plan.sign_po', 'mv_report.sign_po',
-    'charter.sign_po'
+    'charter.sign_po',
+    ...ALL_DISKUSI_PERMS,
   ],
   inisiator: [
     'tim.view',
@@ -198,7 +223,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'cust_val.manage', 'cust_val.edit', 'cust_val.view',
     'market_val.edit', 'market_val.view',
     'fmi.view', 'dossier.view',
-    'cv_plan.sign_inisiator', 'cv_report.sign_inisiator'
+    'cv_plan.sign_inisiator', 'cv_report.sign_inisiator',
+    ...ALL_DISKUSI_PERMS,
   ],
   co_creator: [
     'tim.view',
@@ -206,7 +232,8 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'kanban.edit', 'kanban.view',
     'cust_val.edit', 'cust_val.view',
     'market_val.edit', 'market_val.view',
-    'fmi.view', 'dossier.view'
+    'fmi.view', 'dossier.view',
+    ...ALL_DISKUSI_PERMS,
   ],
   coach: [
     'user.create', 'user.edit_name',
@@ -217,14 +244,19 @@ const ROLE_PERMISSION_MATRIX: Record<string, string[]> = {
     'market_val.edit', 'market_val.view',
     'anggaran.view', 'fmi.view', 'dossier.view',
     'cv_plan.sign_coach', 'cv_report.sign_coach', 'mv_plan.sign_coach', 'mv_report.sign_coach',
-    'charter.sign_coach'
+    'charter.sign_coach',
+    ...ALL_DISKUSI_PERMS,
   ],
   sme: [
     'tim.view',
     'charter.view',
     'kanban.comment', 'kanban.view',
     'cust_val.view', 'market_val.view',
-    'fmi.view', 'dossier.view'
+    'fmi.view', 'dossier.view',
+    ...ALL_DISKUSI_PERMS,
+  ],
+  guest: [
+    'diskusi.view',
   ],
 };
 
