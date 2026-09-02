@@ -746,16 +746,47 @@ export function CustomerValidationClient({
           })));
         }
 
-        // Update Section E with stable IDs while preserving custom rows
+        // Update Section E: PRESERVE the 7 standard rows.
+        // Never replace their validasi or metrik labels. Only populate target, kriteriaKesuksesan, caraPengukuran, catatan from AI!
         if (aiMetrikRows && aiMetrikRows.length > 0) {
           setMetrikRows((prev) => {
             const userCustomRows = prev.filter((r) => !r.isStandard);
-            const mappedAiRows = aiMetrikRows.map((r: any, i: number) => ({
-              ...r,
-              id: `fill_m${i}`,
-              isStandard: i < 7,
-            }));
-            return [...mappedAiRows, ...userCustomRows];
+
+            const updatedStandardRows = METRIK_ROWS.map((base, idx) => {
+              // Find matching AI row by exact metric name
+              let aiMatch = aiMetrikRows.find(
+                (r: any) => (r.metrik || '').toLowerCase().trim() === base.metrik.toLowerCase().trim()
+              );
+
+              if (!aiMatch) {
+                // Fallback matching by validation group
+                const sameValidationAi = aiMetrikRows.filter(
+                  (r: any) => normalizeValidasi(r.validasi) === base.validasi
+                );
+                if (base.validasi === 'Feasibility On Paper') {
+                  aiMatch = sameValidationAi[0];
+                } else if (base.validasi === 'Viability On Paper') {
+                  aiMatch = sameValidationAi[0];
+                } else if (sameValidationAi.length > idx) {
+                  aiMatch = sameValidationAi[idx];
+                } else if (sameValidationAi.length === 1 && idx === 0) {
+                  aiMatch = sameValidationAi[0];
+                }
+              }
+
+              return {
+                id: `std_m${idx}`,
+                validasi: base.validasi,
+                metrik: base.metrik, // FIXED & UNTOUCHED!
+                unitUkuran: aiMatch?.unitUkuran || base.unit || '',
+                kriteriaKesuksesan: aiMatch?.kriteriaKesuksesan || base.kriteria || '',
+                caraPengukuran: aiMatch?.caraPengukuran || base.cara || '',
+                catatan: aiMatch?.catatan || (base.catatan === 'Diisi' ? '' : base.catatan) || '',
+                isStandard: true,
+              };
+            });
+
+            return [...updatedStandardRows, ...userCustomRows];
           });
         }
 

@@ -183,7 +183,7 @@ export async function GET(
     const pdfData: CharterPdfData = {
       namaProyekInovasi: tim.namaProyekInovasi || 'Proyek Inovasi',
       kategoriPia: tim.kategoriPia || tim.seasonAsli || 'Season 12',
-      klasifikasiInovasi: tim.klasifikasiInovasi || 'BREAKTHROUGH',
+      klasifikasiInovasi: c.klasifikasiStrategisInovasi || 'BREAKTHROUGH',
       projectMission: c.projectMission,
       customerEarlyAdopters: c.customerEarlyAdopters,
       contextAreaBantuan: c.contextAreaBantuan,

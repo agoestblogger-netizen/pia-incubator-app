@@ -113,9 +113,13 @@ export function getHeuristicCvPlanDraft(charterData: GenerateCvPlanContext): Ful
       { dimensi: "Payability", fokusValidasi: "Kesediaan pengguna untuk membayar atas nilai tambah yang diberikan.", contohPertanyaan: "Jika solusi ini berbayar, apakah Anda bersedia berlangganan?", evidenceYangDikumpulkan: "" }
     ],
     metrikRows: [
-      { validasi: "Desirability", metrik: "Tingkat ketertarikan target pengguna awal untuk mencoba solusi", unitUkuran: "%", kriteriaKesuksesan: "> 70%", caraPengukuran: "Survei Minat", catatan: "" },
-      { validasi: "Feasibility On Paper", metrik: "Kesesuaian solusi dengan arsitektur teknis atau regulasi yang ada", unitUkuran: "Ya/Tidak", kriteriaKesuksesan: "Ya", caraPengukuran: "Expert Review / Assessment Internal", catatan: "" },
-      { validasi: "Viability On Paper", metrik: "Perkiraan rasio potensi keuntungan atau efisiensi biaya terhadap biaya operasional", unitUkuran: "ROI", kriteriaKesuksesan: "> 1", caraPengukuran: "Simulasi Finansial Sederhana", catatan: "" }
+      { validasi: "Desirability", metrik: "Kepuasan Pengguna", unitUkuran: "Skala 1-5", kriteriaKesuksesan: "Rata-rata ≥ 4 atau target lain yang disepakati", caraPengukuran: "Survey pasca-testing dan alasan verbal di balik skor", catatan: "Diisi" },
+      { validasi: "Desirability", metrik: "Ketertarikan Penggunaan Berulang", unitUkuran: "Sering sekali/Sering/Kadang/Jarang/Tidak pernah", kriteriaKesuksesan: 'Mayoritas minimal "Sering" atau target lain yang disepakati', caraPengukuran: "Survey / wawancara", catatan: "Diisi" },
+      { validasi: "Desirability", metrik: "Rekomendasi kepada Orang Lain", unitUkuran: "Ya pasti/Mungkin/Tidak yakin/Mungkin tidak/Pasti tidak", kriteriaKesuksesan: 'Mayoritas minimal "Mungkin"', caraPengukuran: "Survey / wawancara", catatan: "Diisi" },
+      { validasi: "Desirability", metrik: "Kejelasan dan Kemudahan Penggunaan", unitUkuran: "Skala 1-5 atau Mudah sekali s.d. Sangat sulit", kriteriaKesuksesan: 'Rata-rata ≥ 4 atau mayoritas "Mudah"', caraPengukuran: "Observasi dan survey", catatan: "Diisi" },
+      { validasi: "Desirability", metrik: "Kesediaan Membayar/Menggunakan", unitUkuran: "Skala kesediaan", kriteriaKesuksesan: "Mayoritas bersedia membayar/menggunakan sesuai konteks inovasi", caraPengukuran: "Survey harga/value atau komitmen penggunaan", catatan: "Diisi" },
+      { validasi: "Feasibility On Paper", metrik: "Kelayakan teknis/operasional awal", unitUkuran: "Skala 1-5 / catatan SME", kriteriaKesuksesan: "Tidak ada blocker kritis sebelum MVP", caraPengukuran: "Review awal IT/Operasional/SME", catatan: "Diisi bila relevan" },
+      { validasi: "Viability On Paper", metrik: "Potensi dampak bisnis/ekonomi awal", unitUkuran: "Estimasi Rp/%/skala 1-5", kriteriaKesuksesan: "Terdapat potensi manfaat dan asumsi yang dapat diuji saat MVP", caraPengukuran: "Estimasi dampak, cost-benefit awal, input Renstra/Finance", catatan: "Diisi bila relevan" }
     ]
   };
 }
@@ -132,7 +136,7 @@ export async function generateFullCvPlanDraft(charterData: GenerateCvPlanContext
     const openai = new OpenAI({ apiKey, timeout: 20000 });
 
     const systemPrompt = `Anda adalah Innovation Coach dan Lead Product Researcher senior PT Pegadaian (Persero).
-Tugas Anda adalah menyusun draf dokumen Perencanaan Customer Validation (Template Juklak 2.1) secara komprehensif, operasional, dan tajam berdasarkan Innovation Charter tim inovator.
+Tugas Anda adalah menyusun draf dokumen Perencanaan Customer Validation (Template Juklak 2.1) yang sangat operasional, tajam, dan 100% TERIKAT (GROUNDED) pada data proposal dan materi Grand Final tim inovator yang diberikan.
 
 Output HARUS berupa JSON murni dengan format:
 {
@@ -158,9 +162,13 @@ Output HARUS berupa JSON murni dengan format:
     { "dimensi": "Payability", "fokusValidasi": "...", "contohPertanyaan": "...", "evidenceYangDikumpulkan": "" }
   ],
   "metrikRows": [
-    { "validasi": "Desirability", "metrik": "...", "unitUkuran": "...", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "" },
-    { "validasi": "Feasibility On Paper", "metrik": "...", "unitUkuran": "...", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "" },
-    { "validasi": "Viability On Paper", "metrik": "...", "unitUkuran": "...", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "" }
+    { "validasi": "Desirability", "metrik": "Kepuasan Pengguna", "unitUkuran": "Skala 1-5", "kriteriaKesuksesan": "Rata-rata ≥ 4...", "caraPengukuran": "...", "catatan": "..." },
+    { "validasi": "Desirability", "metrik": "Ketertarikan Penggunaan Berulang", "unitUkuran": "Sering sekali/Sering/Kadang/Jarang/Tidak pernah", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "..." },
+    { "validasi": "Desirability", "metrik": "Rekomendasi kepada Orang Lain", "unitUkuran": "Ya pasti/Mungkin/Tidak yakin/Mungkin tidak/Pasti tidak", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "..." },
+    { "validasi": "Desirability", "metrik": "Kejelasan dan Kemudahan Penggunaan", "unitUkuran": "Skala 1-5 atau Mudah s.d. Sulit", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "..." },
+    { "validasi": "Desirability", "metrik": "Kesediaan Membayar/Menggunakan", "unitUkuran": "Skala kesediaan", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "..." },
+    { "validasi": "Feasibility On Paper", "metrik": "Kelayakan teknis/operasional awal", "unitUkuran": "Skala 1-5 / catatan SME", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "..." },
+    { "validasi": "Viability On Paper", "metrik": "Potensi dampak bisnis/ekonomi awal", "unitUkuran": "Estimasi Rp/%/skala 1-5", "kriteriaKesuksesan": "...", "caraPengukuran": "...", "catatan": "..." }
   ]
 }
 
@@ -187,8 +195,15 @@ ATURAN DETAIL PER BAGIAN:
   * Fokus validasi dan contoh pertanyaan wawancara HARUS secara spesifik menyebutkan nama fitur dari FITUR_UTAMA dan konteks masalah tim, BUKAN pertanyaan generik perangkat lunak!
   * Payability: Jika solusi internal Pegadaian, fokuskan pada "kesediaan unit kerja mengadopsi / mengalokasikan waktu & komitmen sumber daya". Jika untuk nasabah eksternal, fokuskan pada "kesediaan nasabah bertransaksi / membayar biaya layanan".
 - Section E (metrikRows):
-  * WAJIB berisi tepat 3 baris: "Desirability", "Feasibility On Paper", "Viability On Paper".
-  * Metrik dan target threshold harus sejalan dengan target Business Impact yang tercantum di data tim.
+  * WAJIB berisi tepat 7 baris baku standar Juklak Lampiran V dengan urutan dan nama metrik PERSIS:
+    1. "Kepuasan Pengguna" (Desirability)
+    2. "Ketertarikan Penggunaan Berulang" (Desirability)
+    3. "Rekomendasi kepada Orang Lain" (Desirability)
+    4. "Kejelasan dan Kemudahan Penggunaan" (Desirability)
+    5. "Kesediaan Membayar/Menggunakan" (Desirability)
+    6. "Kelayakan teknis/operasional awal" (Feasibility On Paper)
+    7. "Potensi dampak bisnis/ekonomi awal" (Viability On Paper)
+  * JANGAN mengubah nama metrik atau validasi pada ke-7 baris ini. AI hanya merumuskan unitUkuran, kriteriaKesuksesan, caraPengukuran, dan catatan yang spesifik dan tajam sesuai target Business Impact dan solusi inovasi tim!
 - Bahasa: Gunakan bahasa Indonesia baku dan istilah profesional korporat PT Pegadaian (Persero).`;
 
     const fiturList = Array.isArray(charterData.fiturUtama)

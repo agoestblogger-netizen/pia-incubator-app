@@ -157,6 +157,7 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
     pacingMonitoring: "Review kemajuan bersama Coach tiap 2 minggu",
     kebutuhanDukungan: "",
     risikoAwal: "",
+    klasifikasiStrategisInovasi: "",
     ttdDisetujui: null,
   };
 

@@ -90,6 +90,7 @@ export const charter = pgTable('charter', {
   pacingMonitoring: text('pacing_monitoring'),
   kebutuhanDukungan: text('kebutuhan_dukungan'),
   risikoAwal: text('risiko_awal'),
+  klasifikasiStrategisInovasi: text('klasifikasi_strategis_inovasi'), // 'BREAKTHROUGH' | 'IMPROVEMENT' | 'BEST PRACTICE'
   ttdDisusun: jsonb('ttd_disusun'), // { nama, jabatan, unit, tanggal }
   ttdDiperiksa: jsonb('ttd_diperiksa'),
   ttdDisetujui: jsonb('ttd_disetujui'),

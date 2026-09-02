@@ -943,6 +943,18 @@ export function MarketValidationClient({
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <a
+            href={`/api/pdf/mv-planning/${timId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={`Rencana-MarketValidation-${timId}.pdf`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100/60 text-xs font-bold text-emerald-800 shadow-2xs transition-colors"
+            title="Unduh dokumen resmi Template 3.1 Perencanaan Market Validation format PDF"
+          >
+            <Download className="h-3.5 w-3.5 text-emerald-700" />
+            <span>📄 Unduh PDF Rencana MV (Template 3.1)</span>
+          </a>
+
+          <a
             href={`/api/pdf/mv-report/${timId}`}
             target="_blank"
             rel="noopener noreferrer"

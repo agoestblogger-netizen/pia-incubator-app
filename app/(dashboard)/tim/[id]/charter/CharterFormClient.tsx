@@ -173,6 +173,7 @@ export function CharterFormClient({
   currentUser?: any;
 }) {
   const [formData, setFormData] = useState({
+    klasifikasiStrategisInovasi: initialData?.klasifikasiStrategisInovasi || "",
     projectMission: initialData?.projectMission || "",
     customerEarlyAdopters: initialData?.customerEarlyAdopters || "",
     contextAreaBantuan: initialData?.contextAreaBantuan || "",
@@ -954,6 +955,35 @@ export function CharterFormClient({
 
         {expandedSections.problem && (
           <CardContent className="space-y-4 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
+            {/* ── Dropdown Klasifikasi Inovasi (Juklak Template 1) ── */}
+            <div className="space-y-1.5 p-3 rounded-xl bg-purple-50/60 border border-purple-200/80">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                  <span>Klasifikasi Inovasi (Juklak)</span>
+                  <span className="text-[10px] text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200 font-semibold">
+                    Template 1 Juklak
+                  </span>
+                </label>
+                <span className="text-[10px] text-purple-700 font-medium">
+                  BREAKTHROUGH / IMPROVEMENT / BEST PRACTICE
+                </span>
+              </div>
+              <select
+                disabled={isReadOnly}
+                value={formData.klasifikasiStrategisInovasi || ""}
+                onChange={(e) => handleChange("klasifikasiStrategisInovasi", e.target.value)}
+                className="w-full h-9 rounded-xl border border-purple-200 bg-white px-3 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 disabled:bg-gray-50 cursor-pointer"
+              >
+                <option value="">-- Pilih Klasifikasi Inovasi Resmi Juklak --</option>
+                <option value="BREAKTHROUGH">BREAKTHROUGH — Terobosan radikal, model bisnis baru atau penciptaan nilai baru</option>
+                <option value="IMPROVEMENT">IMPROVEMENT — Penyempurnaan proses bisnis, sistem eksisting, atau efisiensi operasional</option>
+                <option value="BEST PRACTICE">BEST PRACTICE — Replikasi atau standardisasi praktik unggulan di unit kerja</option>
+              </select>
+              <p className="text-[10.5px] text-purple-800/80 leading-relaxed">
+                Klasifikasi strategis solusi sesuai Petunjuk Pelaksanaan Inovasi (berbeda dari taksonomi Medali Penjurian Grand Final).
+              </p>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-700">
                 Project Mission (Misi Proyek)
@@ -1048,6 +1078,47 @@ export function CharterFormClient({
                 onChange={(e) => handleChange("hmw", e.target.value)}
                 className="disabled:bg-gray-50"
               />
+            </div>
+
+            {/* ── Restored Fields: Opportunity Statement & Business Opportunity ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Opportunity Statement (Peluang Strategis)
+                  </label>
+                  <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                    Template 1 Juklak
+                  </span>
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={2}
+                  placeholder="Pernyataan peluang dan target non-finansial..."
+                  value={formData.opportunityStatement}
+                  onChange={(e) => handleChange("opportunityStatement", e.target.value)}
+                  className="disabled:bg-gray-50"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Business Opportunity (Peluang Bisnis & Finansial)
+                  </label>
+                  <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                    Template 1 Juklak
+                  </span>
+                </div>
+                <Textarea
+                  disabled={isReadOnly}
+                  rows={2}
+                  placeholder="Peluang bisnis, proyeksi nilai ekonomi, efisiensi biaya..."
+                  value={formData.businessOpportunity}
+                  onChange={(e) => handleChange("businessOpportunity", e.target.value)}
+                  className="disabled:bg-gray-50"
+                />
+              </div>
             </div>
           </CardContent>
         )}
@@ -1187,6 +1258,25 @@ export function CharterFormClient({
                   className="disabled:bg-white"
                 />
               </div>
+            </div>
+
+            {/* ── Restored Field: Link Proposal / Pitch Deck / Prototype Awal ── */}
+            <div className="space-y-1.5 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Link Proposal / Pitch Deck / Prototype Awal
+                </label>
+                <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                  Template 1 Juklak
+                </span>
+              </div>
+              <Input
+                disabled={isReadOnly}
+                placeholder="https://... (Tautan file proposal, deck Grand Final, Figma prototype, atau repositori)"
+                value={formData.linkProposal}
+                onChange={(e) => handleChange("linkProposal", e.target.value)}
+                className="disabled:bg-gray-50 text-xs"
+              />
             </div>
           </CardContent>
         )}

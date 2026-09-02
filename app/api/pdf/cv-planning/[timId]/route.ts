@@ -5,6 +5,7 @@ import {
   customerValidationPlan,
   customerValidationDimensiFeedback,
   rencanaValidasiMetrik,
+  charter,
 } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { renderToBuffer } from '@react-pdf/renderer';
@@ -30,6 +31,12 @@ export async function GET(
       return new NextResponse('Tim inovator tidak ditemukan.', { status: 404 });
     }
 
+    const [charterRow] = await db
+      .select({ klasifikasiStrategisInovasi: charter.klasifikasiStrategisInovasi })
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1);
+
     const [plan] = await db
       .select()
       .from(customerValidationPlan)
@@ -53,7 +60,7 @@ export async function GET(
 
     const pdfData: CvPlanningPdfData = {
       namaProyekInovasi: tim.namaProyekInovasi || '-',
-      klasifikasiInovasi: tim.klasifikasiInovasi || tim.kategoriPia || 'BREAKTHROUGH',
+      klasifikasiInovasi: charterRow?.klasifikasiStrategisInovasi || 'BREAKTHROUGH',
       // Section A
       projectMission: plan?.projectMission,
       customerDanContext: plan?.customerDanContext,
