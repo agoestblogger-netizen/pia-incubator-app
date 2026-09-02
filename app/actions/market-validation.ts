@@ -47,6 +47,25 @@ export async function getMarketValidationData(timId: string) {
     }
   }
 
+  // Fallback ke data Grand Final jika CV Report belum ada
+  if (!cvReport) {
+    const [dossier] = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+    const snap = (dossier?.snapshotData as any) || {};
+    const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
+    if (gf) {
+      cvReport = {
+        validatedSolution: gf.solution || "",
+        kesimpulan: gf.validasi ? `${gf.validasi.ringkasan_validasi || ''}\n${gf.validasi.pembelajaran_validasi || ''}`.trim() : "",
+        valueProposition: gf.business_impact || "",
+        isFallbackFromDossier: true,
+      };
+    }
+  }
+
   let report = null;
   let fiturMapping: any[] = [];
   let resources: any[] = [];
@@ -991,10 +1010,30 @@ export async function generateMvBacklogAction(timId: string) {
       .where(eq(marketValidationPlan.timInovatorId, timId))
       .limit(1);
 
-    if (!plan) {
+    let activePlan: any = plan;
+
+    if (!activePlan) {
+      const [dossier] = await db
+        .select({ snapshotData: dossierPiaArchive.snapshotData })
+        .from(dossierPiaArchive)
+        .where(eq(dossierPiaArchive.timInovatorId, timId))
+        .limit(1);
+      const snap = (dossier?.snapshotData as any) || {};
+      const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
+      if (gf) {
+        activePlan = {
+          mvpVersion: "v1.0-pilot",
+          channelRelease: "Internal / Pilot Channel",
+          deskripsiMvp: gf.solution || "",
+          fiturMvpDirilis: Array.isArray(gf.fitur_utama) ? gf.fitur_utama.join(', ') : String(gf.fitur_utama || ""),
+        };
+      }
+    }
+
+    if (!activePlan) {
       return {
         success: false,
-        error: "Form MVP Release Plan belum disimpan. Simpan form rencana rilis MVP terlebih dahulu.",
+        error: "Form MVP Release Plan belum disimpan dan data Grand Final tidak ditemukan.",
       };
     }
 
@@ -1027,15 +1066,15 @@ export async function generateMvBacklogAction(timId: string) {
     const teamSprints = await db.select().from(sprint).where(eq(sprint.timInovatorId, timId));
     const totalSprints = Math.max(2, teamSprints.length || 4);
 
-    const mappingFitur = await db
+    const mappingFitur = plan ? await db
       .select()
       .from(mvpMappingFitur)
-      .where(eq(mvpMappingFitur.planId, plan.id));
-    const resources = await db
+      .where(eq(mvpMappingFitur.planId, plan.id)) : [];
+    const resources = plan ? await db
       .select()
       .from(mvpResourcesNeeded)
-      .where(eq(mvpResourcesNeeded.planId, plan.id));
-    const metrik = await db
+      .where(eq(mvpResourcesNeeded.planId, plan.id)) : [];
+    const metrik = plan ? await db
       .select()
       .from(rencanaValidasiMetrik)
       .where(
@@ -1043,7 +1082,7 @@ export async function generateMvBacklogAction(timId: string) {
           eq(rencanaValidasiMetrik.planId, plan.id),
           eq(rencanaValidasiMetrik.fase, "market_validation")
         )
-      );
+      ) : [];
 
     const [teamDossier] = await db
       .select({ snapshotData: dossierPiaArchive.snapshotData })
@@ -1060,18 +1099,18 @@ export async function generateMvBacklogAction(timId: string) {
       namaProyek,
       totalSprints,
       plan: {
-        mvpVersion: plan.mvpVersion,
-        channelRelease: plan.channelRelease,
-        periodeReleaseMulai: plan.periodeReleaseMulai ? plan.periodeReleaseMulai.toISOString() : null,
-        periodeReleaseSelesai: plan.periodeReleaseSelesai ? plan.periodeReleaseSelesai.toISOString() : null,
-        deskripsiMvp: plan.deskripsiMvp,
-        deskripsiProsesMvp: plan.deskripsiProsesMvp,
-        fiturMvpDirilis: plan.fiturMvpDirilis,
-        targetEarlyAdopters: plan.targetEarlyAdopters,
-        lokasiPilot: plan.lokasiPilot,
-        jumlahTargetPengguna: plan.jumlahTargetPengguna,
-        daftarEarlyAdopters: plan.daftarEarlyAdopters,
-        batasanScopeMvp: plan.batasanScopeMvp,
+        mvpVersion: activePlan.mvpVersion,
+        channelRelease: activePlan.channelRelease,
+        periodeReleaseMulai: activePlan.periodeReleaseMulai ? (activePlan.periodeReleaseMulai instanceof Date ? activePlan.periodeReleaseMulai.toISOString() : String(activePlan.periodeReleaseMulai)) : null,
+        periodeReleaseSelesai: activePlan.periodeReleaseSelesai ? (activePlan.periodeReleaseSelesai instanceof Date ? activePlan.periodeReleaseSelesai.toISOString() : String(activePlan.periodeReleaseSelesai)) : null,
+        deskripsiMvp: activePlan.deskripsiMvp,
+        deskripsiProsesMvp: activePlan.deskripsiProsesMvp,
+        fiturMvpDirilis: activePlan.fiturMvpDirilis,
+        targetEarlyAdopters: activePlan.targetEarlyAdopters,
+        lokasiPilot: activePlan.lokasiPilot,
+        jumlahTargetPengguna: activePlan.jumlahTargetPengguna,
+        daftarEarlyAdopters: activePlan.daftarEarlyAdopters,
+        batasanScopeMvp: activePlan.batasanScopeMvp,
         mappingFitur: mappingFitur.map((f) => ({
           fiturSolusi: f.fiturSolusi,
           fiturMvpStatus: f.fiturMvpStatus,

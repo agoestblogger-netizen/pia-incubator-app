@@ -606,6 +606,7 @@ export function CustomerValidationClient({
   const [uploading, setUploading] = useState(false);
   const [generatingBacklog, setGeneratingBacklog] = useState(false);
   const [autoFillingFromCharter, setAutoFillingFromCharter] = useState(false);
+  const [autoFillSource, setAutoFillSource] = useState<'charter' | 'grand_final' | null>(null);
   // Custom confirmation modal state (replaces window.confirm which gets dismissed by Next.js router)
   const [showAutoFillConfirm, setShowAutoFillConfirm] = useState(false);
 
@@ -758,11 +759,21 @@ export function CustomerValidationClient({
           });
         }
 
-        toast.success(
-          "Form Perencanaan CV berhasil diisi otomatis dari Innovation Charter & AI. Tinjau dan simpan jika sudah sesuai.",
-          "Auto-Fill Berhasil",
-          6000
-        );
+        if ((res as any).isFallbackFromDossier) {
+          setAutoFillSource('grand_final');
+          toast.info(
+            "Diisi dari data Grand Final (Innovation Charter belum tersimpan). Disarankan untuk meninjau dan menyimpan Charter juga demi konsistensi data.",
+            "Sumber: Materi Grand Final",
+            8000
+          );
+        } else {
+          setAutoFillSource('charter');
+          toast.success(
+            "Form Perencanaan CV berhasil diisi otomatis dari Innovation Charter & AI. Tinjau dan simpan jika sudah sesuai.",
+            "Auto-Fill Berhasil",
+            6000
+          );
+        }
       } else {
         toast.error(res.error || "Gagal mengambil data draf otomatis.", "Auto-Fill Gagal", 6000);
       }
@@ -1118,6 +1129,14 @@ export function CustomerValidationClient({
                     </Button>
                   )}
                 </div>
+                {autoFillSource === 'grand_final' && (
+                  <div className="mt-2.5 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/90 border border-amber-200/80 text-[11px] font-medium text-amber-800 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <span>
+                      Diisi dari data Grand Final (Innovation Charter belum tersimpan). Disarankan untuk tetap membuka dan menyimpan Charter untuk konsistensi data jangka panjang.
+                    </span>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">

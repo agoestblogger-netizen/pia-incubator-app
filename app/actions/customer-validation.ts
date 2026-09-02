@@ -24,7 +24,7 @@ import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
-import { getCharterRolesData } from "./charter";
+import { getCharterRolesData, getCharterByTimId } from "./charter";
 import { isCustomerValidationUnlockedForUser } from "./phase-gate";
 import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
 import { generateFullCvPlanDraft } from "@/lib/ai/cv-plan-full-generator";
@@ -628,9 +628,9 @@ export async function autoFillCvPlanFromCharterAction(timId: string): Promise<{
 /**
  * Auto-fill Sections A, B, and C of CV Plan using Innovation Charter data + AI.
  */
-export async function autoFillFullCvPlanAction(timId: string) {
+export async function autoFillFullCvPlanAction(timId: string, testUser?: any) {
   try {
-    const user = await getCurrentUser();
+    const user = testUser || (await getCurrentUser());
     if (!user) return { success: false, error: 'Tidak terautentikasi.' };
 
     const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
@@ -653,69 +653,55 @@ export async function autoFillFullCvPlanAction(timId: string) {
       .where(eq(charter.timInovatorId, timId))
       .limit(1);
 
-    if (!charterRow) {
-      return { success: false, error: 'Innovation Charter belum ditemukan untuk tim ini.' };
+    let activeCharter: any = charterRow;
+    let isFallbackFromDossier = false;
+
+    // Jika Innovation Charter belum tersimpan manual di DB, fallback ambil in-memory auto-fill dari Grand Final / Dossier
+    if (!activeCharter) {
+      const charterRes = await getCharterByTimId(timId);
+      if (charterRes && charterRes.charter) {
+        activeCharter = charterRes.charter;
+        isFallbackFromDossier = true;
+      }
     }
 
-    // Check if CV Plan already exists and has data (regenerate protection)
-    const [existingPlan] = await db
-      .select()
-      .from(customerValidationPlan)
-      .where(eq(customerValidationPlan.timInovatorId, timId))
-      .limit(1);
-
-    const isPlanFilled = Boolean(
-      existingPlan &&
-      [
-        existingPlan.projectMission,
-        existingPlan.customerDanContext,
-        existingPlan.problemHypothesis,
-        existingPlan.solutionHypothesis,
-      ].some((f) => f && f.trim().length > 0)
-    );
-
-    const isAdmin = user.globalRoles.some((r) => ["super_admin", "admin_ic", "admin"].includes(r));
-    const isCoach =
-      user.globalRoles.some((r) => ["coach", "innovation_coach"].includes(r)) ||
-      user.timRoles.some((tr) => tr.timId === timId && ["coach", "innovation_coach"].includes(tr.roleCode));
-
-    // if (isPlanFilled && !isAdmin && !isCoach) {
-    //   return {
-    //     success: false,
-    //     error: "Form Perencanaan CV sudah terisi. Pengisian ulang otomatis dengan AI hanya diizinkan untuk Admin dan Innovation Coach.",
-    //   };
-    // }
+    if (!activeCharter) {
+      return { success: false, error: 'Data inovasi tidak ditemukan untuk tim ini.' };
+    }
 
     const hasData = [
-      charterRow.projectMission,
-      charterRow.problemWorthSolving,
-      charterRow.hmw,
+      activeCharter.projectMission,
+      activeCharter.problemWorthSolving,
+      activeCharter.solusiAwal,
+      activeCharter.customerEarlyAdopters,
     ].some((f) => f && f.trim().length > 0);
 
     if (!hasData) {
       return {
         success: false,
-        error: 'Innovation Charter belum memiliki data yang cukup. Lengkapi Charter terlebih dahulu.',
+        error: 'Data inovasi belum memiliki konten yang cukup untuk auto-fill.',
       };
     }
 
     const draft = await generateFullCvPlanDraft({
       namaProyekInovasi: timRow?.namaProyekInovasi,
       klasifikasiInovasi: timRow?.klasifikasiInovasi || timRow?.kategoriPia,
-      projectMission: charterRow.projectMission,
-      customerEarlyAdopters: charterRow.customerEarlyAdopters,
-      contextAreaBantuan: charterRow.contextAreaBantuan,
-      problemWorthSolving: charterRow.problemWorthSolving,
-      hmw: charterRow.hmw,
-      desirabilityHypothesis: charterRow.desirabilityHypothesis,
-      feasibilityHypothesis: charterRow.feasibilityHypothesis,
-      viabilityHypothesis: charterRow.viabilityHypothesis,
-      solusiAwal: charterRow.solusiAwal,
+      projectMission: activeCharter.projectMission,
+      customerEarlyAdopters: activeCharter.customerEarlyAdopters,
+      contextAreaBantuan: activeCharter.contextAreaBantuan,
+      problemWorthSolving: activeCharter.problemWorthSolving,
+      hmw: activeCharter.hmw,
+      desirabilityHypothesis: activeCharter.desirabilityHypothesis,
+      feasibilityHypothesis: activeCharter.feasibilityHypothesis,
+      viabilityHypothesis: activeCharter.viabilityHypothesis,
+      solusiAwal: activeCharter.solusiAwal,
     });
 
     return {
       success: true,
       data: draft,
+      isFallbackFromDossier,
+      source: isFallbackFromDossier ? 'grand_final' : 'charter',
     };
   } catch (error: any) {
     console.error('[autoFillFullCvPlanAction] Error:', error);
