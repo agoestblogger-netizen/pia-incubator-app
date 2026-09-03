@@ -435,7 +435,7 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
 
 export async function getCharterRolesData(timId: string) {
   try {
-    const [allRoles, existingAssignmentsRaw, existingAnggota, teamDossierRes] = await Promise.all([
+    const [allRoles, existingAssignmentsRaw, existingAnggota] = await Promise.all([
       db.select().from(roles),
       db
         .select({
@@ -455,11 +455,6 @@ export async function getCharterRolesData(timId: string) {
         .select()
         .from(anggotaTim)
         .where(eq(anggotaTim.timInovatorId, timId)),
-      db
-        .select()
-        .from(dossierPiaArchive)
-        .where(eq(dossierPiaArchive.timInovatorId, timId))
-        .limit(1),
     ]);
 
     const existingAssignments: Array<{
@@ -472,7 +467,18 @@ export async function getCharterRolesData(timId: string) {
       userEmail: string;
     }> = existingAssignmentsRaw as any;
 
-    const teamDossier = teamDossierRes[0];
+    const hasInisiator = existingAssignments.some((a) => a.roleCode === "inisiator");
+    const hasCoCreator = existingAssignments.some((a) => a.roleCode === "co_creator");
+
+    let teamDossier: any = null;
+    if (!hasInisiator || !hasCoCreator) {
+      const dossierRes = await db
+        .select({ id: dossierPiaArchive.id, snapshotData: dossierPiaArchive.snapshotData })
+        .from(dossierPiaArchive)
+        .where(eq(dossierPiaArchive.timInovatorId, timId))
+        .limit(1);
+      teamDossier = dossierRes[0];
+    }
 
     if (teamDossier && teamDossier.snapshotData) {
       const snap = teamDossier.snapshotData as any;
