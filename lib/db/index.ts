@@ -21,7 +21,7 @@ const client =
   postgres(connectionString || '', {
     prepare: false,
     ssl: 'require',
-    max: 3,
+    max: 8,
     idle_timeout: 20,
     connect_timeout: 15,
   });
