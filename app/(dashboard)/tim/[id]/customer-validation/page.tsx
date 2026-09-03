@@ -67,7 +67,7 @@ export default async function CustomerValidationPage({
     userPerms,
   ] = await Promise.all([
     getCustomerValidationData(timId),
-    getCharterRolesData(timId, tim.anggota),
+    getCharterRolesData(timId, tim.anggota, true),
     getTeamPermissionsSet(user, timId),
   ]);
 

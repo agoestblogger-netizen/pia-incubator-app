@@ -433,7 +433,7 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
   };
 }
 
-export async function getCharterRolesData(timId: string, passedAnggota?: any[]) {
+export async function getCharterRolesData(timId: string, passedAnggota?: any[], skipDossier: boolean = false) {
   try {
     const [allRoles, existingAssignmentsRaw, existingAnggotaRaw] = await Promise.all([
       db.select().from(roles),
@@ -475,7 +475,7 @@ export async function getCharterRolesData(timId: string, passedAnggota?: any[]) 
     const hasCoCreator = existingAssignments.some((a) => a.roleCode === "co_creator");
 
     let teamDossier: any = null;
-    if (!hasInisiator || !hasCoCreator) {
+    if (!skipDossier && (!hasInisiator || !hasCoCreator)) {
       const dossierRes = await db
         .select({ id: dossierPiaArchive.id, snapshotData: dossierPiaArchive.snapshotData })
         .from(dossierPiaArchive)

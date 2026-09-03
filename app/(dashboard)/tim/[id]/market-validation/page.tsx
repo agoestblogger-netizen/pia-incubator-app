@@ -71,7 +71,7 @@ export default async function MarketValidationPage({
   ] = await Promise.all([
     getMarketValidationData(timId, tim),
     getTeamPhaseGateStatus(timId, tim, user),
-    getCharterRolesData(timId, tim.anggota),
+    getCharterRolesData(timId, tim.anggota, true),
     user ? getUserTeamUnitKerja(user.id, timId) : Promise.resolve(""),
     getTeamPermissionsSet(user, timId),
   ]);

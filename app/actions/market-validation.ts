@@ -187,7 +187,7 @@ export async function getMarketValidationData(timId: string, existingTim?: any, 
       : Promise.resolve([]),
   ]);
 
-  // Bangun cvReport
+  // Bangun cvReport (HANYA dari customer_validation_report resmi, query dossier berat dihapus total dari initial load)
   let cvReport: any = null;
   if (cvReportRaw) {
     cvReport = {
@@ -195,24 +195,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any, 
       kesimpulan: cvReportRaw.kesimpulan || "",
       valueProposition: cvReportRaw.valueProposition || "",
     };
-  } else {
-    const dossierRes = await db
-      .select({ snapshotData: dossierPiaArchive.snapshotData })
-      .from(dossierPiaArchive)
-      .where(eq(dossierPiaArchive.timInovatorId, timId))
-      .limit(1);
-    if (dossierRes[0]) {
-      const snap = (dossierRes[0].snapshotData as any) || {};
-      const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
-      if (gf) {
-        cvReport = {
-          validatedSolution: gf.solution || "",
-          kesimpulan: gf.validasi ? `${gf.validasi.ringkasan_validasi || ''}\n${gf.validasi.pembelajaran_validasi || ''}`.trim() : "",
-          valueProposition: gf.business_impact || "",
-          isFallbackFromDossier: true,
-        };
-      }
-    }
   }
 
   return {
@@ -232,6 +214,44 @@ export async function getMarketValidationData(timId: string, existingTim?: any, 
     hasApprovedLpj: Boolean(approvedLpjRes[0]),
     hasMvRecCards: mvCards.some((c: any) => c.label === "Rekomendasi MV"),
   };
+}
+
+/**
+ * Server Action on-demand untuk mengambil data auto-fill dari arsip dossier Grand Final (bila dibutuhkan manual oleh user)
+ * TIDAK PERNAH dijalankan di initial load untuk mencegah connection pool starvation.
+ */
+export async function getDossierAutoFillForMarketValidation(timId: string) {
+  try {
+    const dossierRes = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+
+    if (!dossierRes[0]?.snapshotData) {
+      return { success: false, error: "Data arsip dossier tidak ditemukan" };
+    }
+
+    const snap = (dossierRes[0].snapshotData as any) || {};
+    const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
+    if (!gf) {
+      return { success: false, error: "Data Grand Final tidak ditemukan di arsip" };
+    }
+
+    return {
+      success: true,
+      data: {
+        validatedSolution: gf.solution || "",
+        kesimpulan: gf.validasi
+          ? `${gf.validasi.ringkasan_validasi || ""}\n${gf.validasi.pembelajaran_validasi || ""}`.trim()
+          : "",
+        valueProposition: gf.business_impact || "",
+      },
+    };
+  } catch (err: any) {
+    console.error("Error fetching dossier auto-fill:", err);
+    return { success: false, error: err.message || "Gagal mengambil data dossier" };
+  }
 }
 
 export async function saveMarketValidationPlanFullAction(
