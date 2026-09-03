@@ -38,13 +38,44 @@ export function NavigationTransitionProvider({
   const [isPending, startTransition] = useTransition();
   const [showLoader, setShowLoader] = useState(false);
 
+  // State untuk overlay visual debugger (?navdebug=1)
+  const [isNavDebug, setIsNavDebug] = useState<boolean>(false);
+  const [, setDebugTick] = useState<number>(0);
+
   // Ref untuk melacak status navigasi & jaring pengaman 2 lapis
   const pendingTargetRef = useRef<string | null>(null);
   const lastAttemptedHrefRef = useRef<string | null>(null);
   const hardFailSafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerStartedAtRef = useRef<number | null>(null);
+  const timerFiredRef = useRef<boolean>(false);
   const prevIsPendingRef = useRef<boolean>(false);
   const isRecoveringRef = useRef<boolean>(false);
   const hasShownPendingToastRef = useRef<boolean>(false);
+
+  // Deteksi query param ?navdebug=1 (tersimpan di sessionStorage agar persist saat navigasi)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("navdebug") === "1") {
+        sessionStorage.setItem("navdebug", "1");
+        setIsNavDebug(true);
+      } else if (params.get("navdebug") === "0") {
+        sessionStorage.removeItem("navdebug");
+        setIsNavDebug(false);
+      } else if (sessionStorage.getItem("navdebug") === "1") {
+        setIsNavDebug(true);
+      }
+    }
+  }, [pathname]);
+
+  // Interval refresh 200ms saat mode debug aktif agar status timer real-time terlihat
+  useEffect(() => {
+    if (!isNavDebug) return;
+    const interval = setInterval(() => {
+      setDebugTick((t) => (t + 1) % 10000);
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isNavDebug]);
 
   // Bersihkan hard fail-safe timer (Lapis 2)
   const clearHardFailSafe = useCallback(() => {
@@ -53,6 +84,8 @@ export function NavigationTransitionProvider({
       clearTimeout(hardFailSafeTimerRef.current);
       hardFailSafeTimerRef.current = null;
     }
+    timerStartedAtRef.current = null;
+    timerFiredRef.current = false;
   }, []);
 
   // Eksekutor pemulihan otomatis terkoordinasi (dengan multi-level defensif try-catch)
@@ -167,7 +200,10 @@ export function NavigationTransitionProvider({
       // LAPIS 2: Pasang Hard Fail-Safe Timer 4 detik (HANYA SEKALI per target baru, kebal klik berulang)
       clearHardFailSafe();
       console.log(`[NAV_DEBUG LAPIS_2_TIMER_SET ${now}] Target="${href}", delay=4000ms`);
+      timerStartedAtRef.current = now;
+      timerFiredRef.current = false;
       hardFailSafeTimerRef.current = setTimeout(() => {
+        timerFiredRef.current = true;
         const fireTime = Date.now();
         const currentPath =
           typeof window !== "undefined" ? window.location.pathname : pathname;
@@ -315,10 +351,94 @@ export function NavigationTransitionProvider({
     [navigate, isPending]
   );
 
+  // Hitung status Hard Fail-Safe Timer untuk tampilan visual
+  let timerStatusText = "belum dipasang";
+  let timerStatusColor = "#94a3b8";
+  if (timerFiredRef.current) {
+    timerStatusText = "sudah fire";
+    timerStatusColor = "#f87171";
+  } else if (hardFailSafeTimerRef.current && timerStartedAtRef.current) {
+    const elapsed = Date.now() - timerStartedAtRef.current;
+    const remaining = Math.max(0, (4000 - elapsed) / 1000).toFixed(1);
+    timerStatusText = `berjalan (sisa ${remaining}s)`;
+    timerStatusColor = "#38bdf8";
+  }
+
   return (
     <NavigationContext.Provider value={contextValue}>
       {showLoader && <CenteredPageLoader text="Sedang proses....." />}
       {children}
+
+      {/* Visual Debug Overlay (Hanya muncul jika URL memiliki ?navdebug=1 atau sessionStorage navdebug=1) */}
+      {isNavDebug && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "16px",
+            right: "16px",
+            zIndex: 999999,
+            backgroundColor: "rgba(0, 0, 0, 0.92)",
+            color: "#ffffff",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            fontSize: "11px",
+            lineHeight: "1.55",
+            maxWidth: "380px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.25)",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: "bold",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.2)",
+              paddingBottom: "4px",
+              marginBottom: "6px",
+              color: "#4ade80",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>⚡ NAV DEBUGGER</span>
+            <span style={{ color: "#94a3b8", fontWeight: "normal" }}>?navdebug=1</span>
+          </div>
+          <div>
+            <span style={{ color: "#94a3b8" }}>pathname:</span>{" "}
+            <strong>{pathname}</strong>
+          </div>
+          <div>
+            <span style={{ color: "#94a3b8" }}>target:</span>{" "}
+            <strong>{lastAttemptedHrefRef.current || "(none)"}</strong>
+          </div>
+          <div>
+            <span style={{ color: "#94a3b8" }}>isPending:</span>{" "}
+            <strong style={{ color: isPending ? "#facc15" : "#94a3b8" }}>
+              {String(isPending)}
+            </strong>
+          </div>
+          <div>
+            <span style={{ color: "#94a3b8" }}>showLoader:</span>{" "}
+            <strong style={{ color: showLoader ? "#f87171" : "#94a3b8" }}>
+              {String(showLoader)}
+            </strong>
+          </div>
+          <div>
+            <span style={{ color: "#94a3b8" }}>hardFailSafeTimer:</span>{" "}
+            <strong style={{ color: timerStatusColor }}>
+              {timerStatusText}
+            </strong>
+          </div>
+          <div>
+            <span style={{ color: "#94a3b8" }}>isRecovering:</span>{" "}
+            <strong style={{ color: isRecoveringRef.current ? "#f87171" : "#94a3b8" }}>
+              {String(isRecoveringRef.current)}
+            </strong>
+          </div>
+        </div>
+      )}
     </NavigationContext.Provider>
   );
 }
