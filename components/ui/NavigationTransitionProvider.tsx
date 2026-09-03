@@ -54,23 +54,49 @@ export function NavigationTransitionProvider({
     }
   }, []);
 
-  // Eksekutor pemulihan otomatis terkoordinasi (mencegah eksekusi ganda antar lapis)
+  // Eksekutor pemulihan otomatis terkoordinasi (dengan multi-level defensif try-catch)
   const triggerRecovery = useCallback(
     (targetHref: string | null) => {
-      if (isRecoveringRef.current) return;
-      isRecoveringRef.current = true;
-      clearHardFailSafe();
-      setShowLoader(false);
+      try {
+        if (isRecoveringRef.current) return;
+        isRecoveringRef.current = true;
 
-      toast.error(
-        "Navigasi terhenti, memuat ulang halaman...",
-        "Gagal Berpindah Halaman"
-      );
+        try {
+          clearHardFailSafe();
+        } catch {
+          // Abaikan error timer cleanup
+        }
 
-      if (targetHref) {
-        window.location.assign(targetHref);
-      } else {
-        window.location.reload();
+        try {
+          setShowLoader(false);
+        } catch {
+          // Abaikan error UI loader
+        }
+
+        // Tampilkan toast secara aman tanpa memblokir aksi redirect
+        try {
+          toast.error(
+            "Navigasi terhenti, memuat ulang halaman...",
+            "Gagal Berpindah Halaman"
+          );
+        } catch (toastErr) {
+          console.warn("[NavigationRecovery] Gagal menampilkan toast error:", toastErr);
+        }
+
+        // Eksekusi penyelamat utama (hard redirect ke target atau reload)
+        if (targetHref) {
+          window.location.assign(targetHref);
+        } else {
+          window.location.reload();
+        }
+      } catch (outerErr) {
+        console.error("[NavigationRecovery] Terjadi exception di level luar, fallback ke reload:", outerErr);
+        // Jaring pengaman terakhir mutlak: hard reload darurat
+        try {
+          window.location.reload();
+        } catch {
+          window.location.href = window.location.href;
+        }
       }
     },
     [clearHardFailSafe]
