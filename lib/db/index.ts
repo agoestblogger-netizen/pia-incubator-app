@@ -21,9 +21,11 @@ const client =
   postgres(connectionString || '', {
     prepare: false,
     ssl: 'require',
-    max: isServerless ? 5 : 15,
-    idle_timeout: isServerless ? 5 : 20,
+    max: isServerless ? 2 : 10,
+    idle_timeout: isServerless ? 3 : 20,
+    max_lifetime: isServerless ? 60 : 3600,
     connect_timeout: 10,
+    fetch_types: false,
   });
 
 globalForDb.conn = client;

@@ -87,7 +87,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any, 
     sprintReviewsRes,
     mvCardsRes,
     teamMembersRes,
-    dossierRes,
     approvedLpjRows,
   ] = await Promise.all([
     existingTim ? Promise.resolve([existingTim]) : db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1),
@@ -124,7 +123,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any, 
       .from(kanbanCard)
       .where(and(eq(kanbanCard.timInovatorId, timId), eq(kanbanCard.tahap, "market_validation"))),
     existingTim?.anggota ? Promise.resolve(existingTim.anggota) : db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, timId)),
-    db.select({ snapshotData: dossierPiaArchive.snapshotData }).from(dossierPiaArchive).where(eq(dossierPiaArchive.timInovatorId, timId)).limit(1),
     db
       .select({ id: lpj.id })
       .from(lpj)
@@ -197,16 +195,23 @@ export async function getMarketValidationData(timId: string, existingTim?: any, 
       kesimpulan: cvReportRaw.kesimpulan || "",
       valueProposition: cvReportRaw.valueProposition || "",
     };
-  } else if (dossierRes[0]) {
-    const snap = (dossierRes[0].snapshotData as any) || {};
-    const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
-    if (gf) {
-      cvReport = {
-        validatedSolution: gf.solution || "",
-        kesimpulan: gf.validasi ? `${gf.validasi.ringkasan_validasi || ''}\n${gf.validasi.pembelajaran_validasi || ''}`.trim() : "",
-        valueProposition: gf.business_impact || "",
-        isFallbackFromDossier: true,
-      };
+  } else {
+    const dossierRes = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+    if (dossierRes[0]) {
+      const snap = (dossierRes[0].snapshotData as any) || {};
+      const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
+      if (gf) {
+        cvReport = {
+          validatedSolution: gf.solution || "",
+          kesimpulan: gf.validasi ? `${gf.validasi.ringkasan_validasi || ''}\n${gf.validasi.pembelajaran_validasi || ''}`.trim() : "",
+          valueProposition: gf.business_impact || "",
+          isFallbackFromDossier: true,
+        };
+      }
     }
   }
 
