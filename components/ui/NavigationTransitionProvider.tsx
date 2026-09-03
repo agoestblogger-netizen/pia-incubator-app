@@ -40,7 +40,9 @@ export function NavigationTransitionProvider({
 
   // Ref untuk melacak URL target navigasi yang sedang berlangsung
   const pendingTargetRef = useRef<string | null>(null);
+  const lastAttemptedHrefRef = useRef<string | null>(null);
   const failSafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasShownPendingToastRef = useRef<boolean>(false);
 
   // Bersihkan fail-safe timer
@@ -55,6 +57,7 @@ export function NavigationTransitionProvider({
   useEffect(() => {
     clearFailSafe();
     pendingTargetRef.current = null;
+    lastAttemptedHrefRef.current = null;
     hasShownPendingToastRef.current = false;
     setShowLoader(false);
   }, [pathname, clearFailSafe]);
@@ -62,6 +65,9 @@ export function NavigationTransitionProvider({
   // Eksekutor navigasi terkelola
   const executeNavigation = useCallback(
     (href: string) => {
+      // 0. Simpan target terakhir yang dicoba (kebal reset, sebelum guard apa pun)
+      lastAttemptedHrefRef.current = href;
+
       // 1. Abaikan jika sudah berada di rute ini
       if (pathname === href || pathname === href.split("?")[0]) {
         return;
@@ -187,6 +193,38 @@ export function NavigationTransitionProvider({
     }
     return () => {
       clearTimeout(timer);
+    };
+  }, [isPending]);
+
+  // Watchdog independen: kebal terhadap klik berulang, hanya bergantung pada isPending
+  useEffect(() => {
+    if (isPending) {
+      if (!watchdogTimerRef.current) {
+        watchdogTimerRef.current = setTimeout(() => {
+          toast.error(
+            "Navigasi terhambat terlalu lama. Memuat ulang halaman...",
+            "Koneksi Bermasalah"
+          );
+          const target = lastAttemptedHrefRef.current;
+          if (target) {
+            window.location.assign(target);
+          } else {
+            window.location.reload();
+          }
+        }, 5000); // 5 detik, lebih lama dari fail-safe per-klik (3 detik) supaya tidak tabrakan
+      }
+    } else {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
     };
   }, [isPending]);
 
