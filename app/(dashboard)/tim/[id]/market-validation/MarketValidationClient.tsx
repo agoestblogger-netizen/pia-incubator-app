@@ -1759,20 +1759,32 @@ export function MarketValidationClient({
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full min-w-[1550px] text-sm text-left">
+                <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <table className="w-full text-xs text-left table-fixed">
+                    <colgroup>
+                      <col className="w-[10%]" />
+                      <col className="w-[16%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[5%]" />
+                    </colgroup>
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
                       <tr>
-                        <th className="p-2.5 w-[130px] min-w-[130px] text-xs uppercase tracking-wider">Validasi</th>
-                        <th className="p-2.5 w-[240px] min-w-[240px] text-xs uppercase tracking-wider">Metrik</th>
-                        <th className="p-2.5 w-[170px] min-w-[170px] text-xs uppercase tracking-wider">Unit Ukuran</th>
-                        <th className="p-2.5 w-[130px] min-w-[130px] text-xs uppercase tracking-wider">Baseline</th>
-                        <th className="p-2.5 w-[140px] min-w-[140px] text-xs uppercase tracking-wider">Target</th>
-                        <th className="p-2.5 w-[130px] min-w-[130px] text-xs uppercase tracking-wider">Threshold</th>
-                        <th className="p-2.5 w-[230px] min-w-[230px] text-xs uppercase tracking-wider">Cara Pengukuran</th>
-                        <th className="p-2.5 w-[140px] min-w-[140px] text-xs uppercase tracking-wider">PIC</th>
-                        <th className="p-2.5 w-[180px] min-w-[180px] text-xs uppercase tracking-wider">Evidence</th>
-                        <th className="p-2.5 w-[120px] min-w-[120px] text-xs uppercase tracking-wider">Aksi</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Validasi</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Metrik</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Unit Ukuran</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Baseline</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Target</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Threshold</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Cara Pengukuran</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">PIC</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider">Evidence</th>
+                        <th className="p-2 text-[11px] uppercase tracking-wider text-center">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -1782,14 +1794,14 @@ export function MarketValidationClient({
                         );
                         return (
                           <tr key={m.id || idx} className="hover:bg-gray-50/70 transition-colors">
-                            <td className="p-2.5 align-top bg-gray-50/50 min-w-[130px]">
+                            <td className="p-1.5 align-top bg-gray-50/50">
                               <select
                                 value={m.validasi}
                                 disabled={!canEdit || (m.isStandard && !isAdminOrCoach)}
                                 title={m.isStandard && !isAdminOrCoach ? "Kategori validasi metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
                                 onChange={(e) => handleUpdateMetrik(idx, "validasi", e.target.value)}
-                                className={`w-full text-xs font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
-                                  m.isStandard && !isAdminOrCoach ? "cursor-not-allowed opacity-80" : "cursor-pointer"
+                                className={`w-full text-[11px] font-bold rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
+                                  m.isStandard && !isAdminOrCoach ? "cursor-not-allowed opacity-85" : "cursor-pointer"
                                 }`}
                                 style={
                                   m.validasi?.trim() === "Desirability"
@@ -1806,114 +1818,138 @@ export function MarketValidationClient({
                                 <option value="Viability">Viability</option>
                               </select>
                             </td>
-                            <td className="p-2 align-top min-w-[240px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={m.defaultMetrik || rowMeta?.metrik || "Nama Metrik..."}
                                 value={m.metrik}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "metrik", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "metrik", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white font-semibold"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[170px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.unitUkuran || "Unit..."}
                                 value={m.unitUkuran}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "unitUkuran", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "unitUkuran", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[130px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.baseline || "Baseline..."}
                                 value={m.baseline}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "baseline", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "baseline", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[140px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.target || "Target..."}
                                 value={m.target}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "target", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white font-semibold"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "target", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white font-semibold"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[130px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.threshold || "Threshold..."}
                                 value={m.threshold}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "threshold", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "threshold", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[230px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.caraPengukuran || "Cara pengukuran..."}
                                 value={m.caraPengukuran}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "caraPengukuran", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "caraPengukuran", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[140px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.pic || "PIC..."}
                                 value={m.pic}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "pic", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "pic", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top min-w-[180px]">
-                              <Input
+                            <td className="p-1.5 align-top">
+                              <Textarea
+                                rows={2}
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.evidence || "Evidence..."}
                                 value={m.evidence}
-                                onChange={(e) =>
-                                  handleUpdateMetrik(idx, "evidence", e.target.value)
-                                }
-                                className="text-sm h-9 bg-white"
+                                onChange={(e) => {
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.max(52, e.target.scrollHeight)}px`;
+                                  handleUpdateMetrik(idx, "evidence", e.target.value);
+                                }}
+                                className="w-full text-xs p-1.5 rounded-md border border-gray-200 resize-none min-h-[52px] leading-snug bg-white"
                               />
                             </td>
-                            <td className="p-2.5 align-top min-w-[120px]">
-                              <div className="flex items-center gap-1 mt-0.5 shrink-0">
+                            <td className="p-1.5 align-top">
+                              <div className="flex flex-col items-center justify-center gap-1 pt-1">
                                 {m.isStandard ? (
                                   <>
                                     <span
-                                      className="px-2 py-1 rounded text-xs font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
+                                      className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-[#0F5132] border border-emerald-200 text-center leading-tight whitespace-nowrap"
                                       title={isAdminOrCoach ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
                                     >
-                                      Baku Juklak
+                                      Baku
                                     </span>
                                     {isAdminOrCoach && canEdit && (
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
+                                        className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
                                         onClick={() => handleDeleteMetrikRow(idx)}
                                         title="Hapus baris metrik baku (Wewenang Coach / Admin)"
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-3.5 w-3.5" />
                                       </Button>
                                     )}
                                   </>
@@ -1923,11 +1959,11 @@ export function MarketValidationClient({
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
+                                      className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
                                       onClick={() => handleDeleteMetrikRow(idx)}
                                       title="Hapus baris metrik custom"
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )
                                 )}
