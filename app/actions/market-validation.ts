@@ -76,32 +76,85 @@ function isCanonicalMvMetricMatch(m1: string, m2: string): boolean {
   return false;
 }
 
-export async function getMarketValidationData(timId: string) {
-  const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
-  const [plan] = await db.select().from(marketValidationPlan).where(eq(marketValidationPlan.timInovatorId, timId)).limit(1);
-  
-  // Ambil CV Report untuk auto-fill hasil Customer Validation jika MV Plan belum terisi
-  let cvReport = null;
-  const [cvPlan] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
-  if (cvPlan) {
-    const [foundCvReport] = await db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, cvPlan.id)).limit(1);
-    if (foundCvReport) {
-      cvReport = {
-        validatedSolution: foundCvReport.validatedSolution || "",
-        kesimpulan: foundCvReport.kesimpulan || "",
-        valueProposition: foundCvReport.valueProposition || "",
-      };
-    }
-  }
+export async function getMarketValidationData(timId: string, existingTim?: any) {
+  // Batch 1: Query tim, plan, cvPlan, sprintReview, allTeamCards, teamMembers, dan dossier secara paralel
+  const [
+    timRes,
+    planRes,
+    cvPlanRes,
+    sprintReviewsRes,
+    allTeamCards,
+    teamMembersRes,
+    dossierRes,
+  ] = await Promise.all([
+    existingTim ? Promise.resolve([existingTim]) : db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1),
+    db.select().from(marketValidationPlan).where(eq(marketValidationPlan.timInovatorId, timId)).limit(1),
+    db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1),
+    db.select().from(sprintReview).where(eq(sprintReview.timInovatorId, timId)).orderBy(asc(sprintReview.sprintNumber)),
+    db.select().from(kanbanCard).where(eq(kanbanCard.timInovatorId, timId)).orderBy(asc(kanbanCard.urutan)),
+    existingTim?.anggota ? Promise.resolve(existingTim.anggota) : db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, timId)),
+    db.select({ snapshotData: dossierPiaArchive.snapshotData }).from(dossierPiaArchive).where(eq(dossierPiaArchive.timInovatorId, timId)).limit(1),
+  ]);
 
-  // Fallback ke data Grand Final jika CV Report belum ada
-  if (!cvReport) {
-    const [dossier] = await db
-      .select({ snapshotData: dossierPiaArchive.snapshotData })
-      .from(dossierPiaArchive)
-      .where(eq(dossierPiaArchive.timInovatorId, timId))
-      .limit(1);
-    const snap = (dossier?.snapshotData as any) || {};
+  const tim = timRes[0] || null;
+  const plan = planRes[0] || null;
+  const cvPlan = cvPlanRes[0] || null;
+  const teamMembers = teamMembersRes || [];
+
+  // Hitung mvSprintNumbers langsung dari allTeamCards tanpa query ulang ke kanbanCard
+  const mvCards = allTeamCards.filter((c) => c.tahap === "market_validation");
+  const mvSprintNumbers = Array.from(
+    new Set(mvCards.map((c) => c.sprintNumber).filter((s): s is number => s !== null && s !== undefined))
+  );
+  const filteredSprintReviews =
+    mvSprintNumbers.length > 0
+      ? sprintReviewsRes.filter((sr) => mvSprintNumbers.includes(sr.sprintNumber))
+      : sprintReviewsRes;
+
+  // Batch 2: Query CV report & data terkait plan secara paralel
+  const [
+    foundCvReportRes,
+    reportRes,
+    fiturMapping,
+    resources,
+    metrikRencana,
+  ] = await Promise.all([
+    cvPlan
+      ? db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, cvPlan.id)).limit(1)
+      : Promise.resolve([]),
+    plan
+      ? db.select().from(marketValidationReport).where(eq(marketValidationReport.planId, plan.id)).limit(1)
+      : Promise.resolve([]),
+    plan
+      ? db.select().from(mvpMappingFitur).where(eq(mvpMappingFitur.planId, plan.id))
+      : Promise.resolve([]),
+    plan
+      ? db.select().from(mvpResourcesNeeded).where(eq(mvpResourcesNeeded.planId, plan.id))
+      : Promise.resolve([]),
+    plan
+      ? db
+          .select()
+          .from(rencanaValidasiMetrik)
+          .where(
+            and(
+              eq(rencanaValidasiMetrik.planId, plan.id),
+              eq(rencanaValidasiMetrik.fase, "market_validation")
+            )
+          )
+      : Promise.resolve([]),
+  ]);
+
+  // Bangun cvReport
+  let cvReport: any = null;
+  const foundCvReport = foundCvReportRes[0];
+  if (foundCvReport) {
+    cvReport = {
+      validatedSolution: foundCvReport.validatedSolution || "",
+      kesimpulan: foundCvReport.kesimpulan || "",
+      valueProposition: foundCvReport.valueProposition || "",
+    };
+  } else if (dossierRes[0]) {
+    const snap = (dossierRes[0].snapshotData as any) || {};
     const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
     if (gf) {
       cvReport = {
@@ -113,78 +166,31 @@ export async function getMarketValidationData(timId: string) {
     }
   }
 
-  let report = null;
-  let fiturMapping: any[] = [];
-  let resources: any[] = [];
-  let metrikRencana: any[] = [];
+  const report = reportRes[0] || null;
+
+  // Batch 3: Query releaseLogs, dfv, hasilMetrik secara paralel jika report ada
   let releaseLogs: any[] = [];
   let dfv: any[] = [];
   let hasilMetrik: any[] = [];
 
-  if (plan) {
-    [report] = await db.select().from(marketValidationReport).where(eq(marketValidationReport.planId, plan.id)).limit(1);
-    fiturMapping = await db.select().from(mvpMappingFitur).where(eq(mvpMappingFitur.planId, plan.id));
-    resources = await db.select().from(mvpResourcesNeeded).where(eq(mvpResourcesNeeded.planId, plan.id));
-    metrikRencana = await db
-      .select()
-      .from(rencanaValidasiMetrik)
-      .where(
-        and(
-          eq(rencanaValidasiMetrik.planId, plan.id),
-          eq(rencanaValidasiMetrik.fase, "market_validation")
-        )
-      );
-  }
-
   if (report) {
-    releaseLogs = await db.select().from(mvReleaseLog).where(eq(mvReleaseLog.reportId, report.id)).orderBy(asc(mvReleaseLog.tanggal));
-    dfv = await db.select().from(dfvRekapitulasi).where(eq(dfvRekapitulasi.reportId, report.id));
-    hasilMetrik = await db
-      .select()
-      .from(hasilValidasiMetrik)
-      .where(
-        and(
-          eq(hasilValidasiMetrik.reportId, report.id),
-          eq(hasilValidasiMetrik.fase, "market_validation")
-        )
-      );
+    const [rlRes, dfvRes, hmRes] = await Promise.all([
+      db.select().from(mvReleaseLog).where(eq(mvReleaseLog.reportId, report.id)).orderBy(asc(mvReleaseLog.tanggal)),
+      db.select().from(dfvRekapitulasi).where(eq(dfvRekapitulasi.reportId, report.id)),
+      db
+        .select()
+        .from(hasilValidasiMetrik)
+        .where(
+          and(
+            eq(hasilValidasiMetrik.reportId, report.id),
+            eq(hasilValidasiMetrik.fase, "market_validation")
+          )
+        ),
+    ]);
+    releaseLogs = rlRes;
+    dfv = dfvRes;
+    hasilMetrik = hmRes;
   }
-
-  const teamMembers = await db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, timId));
-
-  // Ambil sprint review untuk sprint-sprint yang memiliki kartu ber-tag market_validation
-  const mvCards = await db
-    .select({ sprintNumber: kanbanCard.sprintNumber })
-    .from(kanbanCard)
-    .where(
-      and(
-        eq(kanbanCard.timInovatorId, timId),
-        eq(kanbanCard.tahap, "market_validation")
-      )
-    );
-
-  const mvSprintNumbers = Array.from(
-    new Set(mvCards.map((c) => c.sprintNumber).filter((s): s is number => s !== null && s !== undefined))
-  );
-
-  const sprintReviews = await db
-    .select()
-    .from(sprintReview)
-    .where(eq(sprintReview.timInovatorId, timId))
-    .orderBy(asc(sprintReview.sprintNumber));
-
-  // Filter atau sertakan semua sprint review (jika mvSprintNumbers kosong, ambil semua)
-  const filteredSprintReviews =
-    mvSprintNumbers.length > 0
-      ? sprintReviews.filter((sr) => mvSprintNumbers.includes(sr.sprintNumber))
-      : sprintReviews;
-
-  // Ambil kartu per sprint untuk Sprint Review - Backlog
-  const allTeamCards = await db
-    .select()
-    .from(kanbanCard)
-    .where(eq(kanbanCard.timInovatorId, timId))
-    .orderBy(asc(kanbanCard.urutan));
 
   return {
     tim,

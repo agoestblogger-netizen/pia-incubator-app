@@ -18,10 +18,14 @@ export default async function MarketValidationPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const tim = await getTimInovatorById(resolvedParams.id);
+  const [tim, user, approvers] = await Promise.all([
+    getTimInovatorById(resolvedParams.id),
+    getCurrentUser(),
+    getAnggaranApprovers(),
+  ]);
+
   if (!tim) return notFound();
 
-  const user = await getCurrentUser();
   const [
     data,
     phaseGateStatus,
@@ -35,9 +39,14 @@ export default async function MarketValidationPage({
     canSubmitAnggaran,
     canManageAnggaran,
     userUnitKerja,
-    approvers,
+    canSignMvPlanPo,
+    canSignMvPlanCoach,
+    canSignMvPlanPromotor,
+    canSignMvReportPo,
+    canSignMvReportCoach,
+    canSignMvReportPromotor,
   ] = await Promise.all([
-    getMarketValidationData(tim.id),
+    getMarketValidationData(tim.id, tim),
     getTeamPhaseGateStatus(tim.id),
     getKanbanData(tim.id),
     getSprintsByTimId(tim.id),
@@ -49,23 +58,12 @@ export default async function MarketValidationPage({
     user ? hasPermission(user, 'anggaran.submit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
     user ? getUserTeamUnitKerja(user.id, tim.id) : Promise.resolve(""),
-    getAnggaranApprovers(),
-  ]);
-
-  const [
-    canSignMvPlanPo,
-    canSignMvPlanCoach,
-    canSignMvPlanPromotor,
-    canSignMvReportPo,
-    canSignMvReportCoach,
-    canSignMvReportPromotor,
-  ] = await Promise.all([
     user ? hasPermission(user, 'mv_plan.sign_po', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'mv_plan.sign_coach', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'mv_plan.sign_promotor', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'mv_report.sign_po', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'mv_report.sign_coach', tim.id) : Promise.resolve(false),
-    user ? (hasPermission(user, 'mv_report.sign_promotor', tim.id).then(p => p || canApprove)) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_report.sign_promotor', tim.id) : Promise.resolve(false),
   ]);
 
   const signPermissions = {
