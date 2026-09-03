@@ -1,7 +1,5 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getCustomerValidationData } from "@/app/actions/customer-validation";
-import { getKanbanData } from "@/app/actions/kanban";
-import { getSprintsByTimId } from "@/app/actions/sprint";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCharterRolesData } from "@/app/actions/charter";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
@@ -24,8 +22,6 @@ export default async function CustomerValidationPage({
     tim,
     data,
     phaseGateStatus,
-    kanbanData,
-    sprints,
     rolesData,
     canEditCv,
     canEditKanban,
@@ -39,8 +35,6 @@ export default async function CustomerValidationPage({
     getTimInovatorById(timId),
     getCustomerValidationData(timId),
     getTeamPhaseGateStatus(timId, undefined, user),
-    getKanbanData(timId),
-    getSprintsByTimId(timId),
     getCharterRolesData(timId),
     user ? hasPermission(user, 'cust_val.edit', timId) : Promise.resolve(false),
     user ? hasPermission(user, 'kanban.edit', timId) : Promise.resolve(false),
@@ -79,9 +73,6 @@ export default async function CustomerValidationPage({
         }}
         roleAssignments={rolesData?.assignments || []}
         initialData={data}
-        initialColumns={kanbanData.columns}
-        initialCards={kanbanData.cards}
-        initialSprints={sprints}
         anggotaTim={tim.anggota}
         canEditCv={canEditCv}
         canEditKanban={canEditKanban}

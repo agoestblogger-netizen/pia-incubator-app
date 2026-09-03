@@ -25,7 +25,7 @@ import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
   Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck,
-  Plus, Trash2, AlertTriangle, History, ChevronDown, ChevronRight
+  Plus, Trash2, AlertTriangle, History, ChevronDown, ChevronRight, Loader2
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import {
@@ -36,7 +36,23 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { KanbanClient } from "../kanban/KanbanClient";
+import dynamic from "next/dynamic";
+import { getKanbanData } from "@/app/actions/kanban";
+import { getSprintsByTimId } from "@/app/actions/sprint";
+
+const KanbanClient = dynamic(
+  () => import("../kanban/KanbanClient").then((m) => m.KanbanClient),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl border border-gray-200/80 p-8 text-center shadow-xs">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0B3D2E] mb-3" />
+        <p className="text-sm font-semibold text-gray-700">Memuat Board Kanban & Sprint...</p>
+        <p className="text-xs text-gray-500 mt-1">Menyiapkan kartu validasi dan data sprint...</p>
+      </div>
+    ),
+  }
+);
 import { SectionInfo } from "@/components/ui/SectionInfo";
 
 // ── Konstanta tetap ─────────────────────────────────────────────────────────
@@ -283,7 +299,9 @@ export function CustomerValidationClient({
     ].some((f) => f && f.trim().length > 0)
   );
 
-  const hasCvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi CV");
+  const hasCvRecCards =
+    initialData?.hasCvRecCards ??
+    (initialCards || []).some((c: any) => c.label === "Rekomendasi CV");
 
   // ── Accordion state untuk Tab 1 Perencanaan (Default: Hanya Section A yang terbuka) ──
   const [openCvSections, setOpenCvSections] = useState<Record<string, boolean>>({
@@ -422,6 +440,35 @@ export function CustomerValidationClient({
       setActiveTab(tabParam);
     }
   }, [tabParam]);
+
+  // ── On-demand Kanban & Sprint state (Loaded only when Tab Backlog is clicked) ──
+  const [kanbanColumns, setKanbanColumns] = useState<any[]>(initialColumns || []);
+  const [kanbanCards, setKanbanCards] = useState<any[]>(initialCards || []);
+  const [kanbanSprints, setKanbanSprints] = useState<any[]>(initialSprints || []);
+  const [loadingKanbanData, setLoadingKanbanData] = useState(false);
+  const kanbanLoadedRef = useRef(Boolean(initialColumns && initialColumns.length > 0));
+
+  useEffect(() => {
+    if (activeTab === "backlog" && !kanbanLoadedRef.current) {
+      kanbanLoadedRef.current = true;
+      setLoadingKanbanData(true);
+      Promise.all([
+        getKanbanData(timId),
+        getSprintsByTimId(timId),
+      ])
+        .then(([kb, sp]) => {
+          setKanbanColumns(kb.columns || []);
+          setKanbanCards(kb.cards || []);
+          setKanbanSprints(sp || []);
+        })
+        .catch((err) => {
+          console.error("Gagal memuat data Kanban on-demand:", err);
+        })
+        .finally(() => {
+          setLoadingKanbanData(false);
+        });
+    }
+  }, [activeTab, timId]);
 
   // ── Plan Signatures state ──────────────────────────────────────────────────
   const [ttdDisusun, setTtdDisusun] = useState<any>(initialData?.plan?.ttdDisusun || null);
@@ -2532,17 +2579,25 @@ export function CustomerValidationClient({
             )}
           </div>
 
-          <KanbanClient
-            timId={timId}
-            initialColumns={initialColumns}
-            initialCards={initialCards}
-            initialSprints={initialSprints}
-            anggotaTim={anggotaTim}
-            canEdit={canEditKanban && isCvGateUnlocked}
-            currentUser={currentUser}
-            phaseGateStatus={phaseGateStatus}
-            tahapScope="customer_validation"
-          />
+          {loadingKanbanData ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl border border-gray-200/80 p-8 text-center shadow-xs">
+              <Loader2 className="h-8 w-8 animate-spin text-[#0B3D2E] mb-3" />
+              <p className="text-sm font-semibold text-gray-700">Memuat Board Kanban & Sprint...</p>
+              <p className="text-xs text-gray-500 mt-1">Menyiapkan kartu validasi dan data sprint...</p>
+            </div>
+          ) : (
+            <KanbanClient
+              timId={timId}
+              initialColumns={kanbanColumns}
+              initialCards={kanbanCards}
+              initialSprints={kanbanSprints}
+              anggotaTim={anggotaTim}
+              canEdit={canEditKanban && isCvGateUnlocked}
+              currentUser={currentUser}
+              phaseGateStatus={phaseGateStatus}
+              tahapScope="customer_validation"
+            />
+          )}
         </TabsContent>
 
         {/* ═══ TAB 3: REPORT ════════════════════════════════════════════════ */}

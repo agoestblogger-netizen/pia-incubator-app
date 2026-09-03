@@ -50,22 +50,28 @@ const TRACKED_CV_PLAN_FIELDS: Record<string, string> = {
 };
 
 export async function getCustomerValidationData(timId: string) {
-  // Batch 1: Query plan & cvAdoptedCards secara paralel
-  const [planRes, cvAdoptedCards] = await Promise.all([
+  // Batch 1: Query plan & cvCards secara paralel
+  const [planRes, cvCards] = await Promise.all([
     db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1),
     db
-      .select({ id: kanbanCard.id, statusKolom: kanbanCard.statusKolom })
+      .select({
+        id: kanbanCard.id,
+        statusKolom: kanbanCard.statusKolom,
+        label: kanbanCard.label,
+        reviewStatus: kanbanCard.reviewStatus,
+      })
       .from(kanbanCard)
       .where(
         and(
           eq(kanbanCard.timInovatorId, timId),
-          eq(kanbanCard.tahap, 'customer_validation'),
-          eq(kanbanCard.reviewStatus, 'adopted')
+          eq(kanbanCard.tahap, 'customer_validation')
         )
       ),
   ]);
 
   const plan = planRes[0] || null;
+  const hasCvRecCards = cvCards.some((c) => c.label === 'Rekomendasi CV');
+  const cvAdoptedCards = cvCards.filter((c) => c.reviewStatus === 'adopted');
 
   // Batch 2: Jika plan ada, query report, metrikRencana, dan dimensiFeedback secara paralel
   let report: any = null;
@@ -114,6 +120,7 @@ export async function getCustomerValidationData(timId: string) {
     dimensiFeedback,
     temuanKualitatif,
     feedbackResponden,
+    hasCvRecCards,
     allCvBacklogDone,
   };
 }

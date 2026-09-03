@@ -13,15 +13,17 @@ const globalForDb = globalThis as unknown as {
   conn: postgres.Sql | undefined;
 };
 
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
 // Lesson learned: prepare: false is mandatory for Supabase Transaction Pooler (Port 6543)
 const client =
   globalForDb.conn ??
   postgres(connectionString || '', {
     prepare: false,
     ssl: 'require',
-    max: 15,
-    idle_timeout: 20,
-    connect_timeout: 15,
+    max: isServerless ? 5 : 15,
+    idle_timeout: isServerless ? 5 : 20,
+    connect_timeout: 10,
   });
 
 globalForDb.conn = client;
