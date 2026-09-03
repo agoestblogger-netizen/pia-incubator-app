@@ -58,21 +58,20 @@ export default async function CustomerValidationPage({
   const timId = resolvedParams.id;
   const user = await getCurrentUser();
 
+  const tim = await getTimInovatorById(timId);
+  if (!tim) return notFound();
+
   const [
-    tim,
     data,
-    phaseGateStatus,
     rolesData,
     userPerms,
   ] = await Promise.all([
-    getTimInovatorById(timId),
     getCustomerValidationData(timId),
-    getTeamPhaseGateStatus(timId, undefined, user),
-    getCharterRolesData(timId),
+    getCharterRolesData(timId, tim.anggota),
     getTeamPermissionsSet(user, timId),
   ]);
 
-  if (!tim) return notFound();
+  const phaseGateStatus = await getTeamPhaseGateStatus(timId, tim, user, data.plan);
 
   const canEditCv = userPerms.has('cust_val.edit');
   const canEditKanban = userPerms.has('kanban.edit');

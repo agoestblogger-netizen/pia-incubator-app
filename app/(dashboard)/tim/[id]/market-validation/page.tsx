@@ -59,23 +59,22 @@ export default async function MarketValidationPage({
   const timId = resolvedParams.id;
   const user = await getCurrentUser();
 
+  const tim = await getTimInovatorById(timId);
+  if (!tim) return notFound();
+
   const [
-    tim,
     data,
     phaseGateStatus,
     rolesData,
     userUnitKerja,
     userPerms,
   ] = await Promise.all([
-    getTimInovatorById(timId),
-    getMarketValidationData(timId),
-    getTeamPhaseGateStatus(timId, undefined, user),
-    getCharterRolesData(timId),
+    getMarketValidationData(timId, tim),
+    getTeamPhaseGateStatus(timId, tim, user),
+    getCharterRolesData(timId, tim.anggota),
     user ? getUserTeamUnitKerja(user.id, timId) : Promise.resolve(""),
     getTeamPermissionsSet(user, timId),
   ]);
-
-  if (!tim) return notFound();
 
   const canEdit = userPerms.has('market_val.edit');
   const canApprove = userPerms.has('market_val.approve');
