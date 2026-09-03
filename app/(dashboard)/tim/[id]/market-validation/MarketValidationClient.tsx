@@ -284,7 +284,8 @@ export function MarketValidationClient({
   const isCoach = Boolean(
     userRole === 'coach' ||
     userRole === 'innovation_coach' ||
-    currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r))
+    currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r)) ||
+    currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
   );
   const isAdminOrCoach = isAdmin || isCoach;
   const hasMvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
@@ -414,9 +415,12 @@ export function MarketValidationClient({
     );
   };
 
-  // ── Bagian E: Metrik DFV State (9 Baris Tetap) ──────────────────────────────
+  // ── Bagian E: Metrik DFV State (9 Baris Baku + Baris Custom) ──────────────────────────────
   const [metrikList, setMetrikList] = useState<
     Array<{
+      id?: string;
+      isStandard?: boolean;
+      defaultMetrik?: string;
       validasi: string;
       metrik: string;
       unitUkuran: string;
@@ -428,28 +432,79 @@ export function MarketValidationClient({
       evidence: string;
     }>
   >(() => {
-    return MV_METRIK_ROWS.map((row) => {
-      const found = (initialData?.metrikRencana || []).find(
-        (m: any) => m.metrik === row.metrik
-      );
-      return {
-        validasi: row.validasi,
-        metrik: row.metrik,
-        unitUkuran: found?.unitUkuran || "",
-        baseline: found?.baseline || "",
-        target: found?.target || "",
-        threshold: found?.threshold || "",
-        caraPengukuran: found?.caraPengukuran || "",
-        pic: found?.pic || "",
-        evidence: found?.evidence || "",
-      };
-    });
+    const rawRencana = initialData?.metrikRencana || [];
+    if (rawRencana.length > 0) {
+      // Baca langsung baris dari DB agar tidak membangkitkan baris yang sudah dihapus Coach
+      return rawRencana.map((m: any, idx: number) => {
+        const stdMatch = MV_METRIK_ROWS.find(
+          (base) => base.metrik.toLowerCase().trim() === (m.metrik || "").toLowerCase().trim()
+        );
+        const isStandard = Boolean(stdMatch);
+        const defaultMetrik = stdMatch ? stdMatch.metrik : "";
+        // Jika nilai di DB persis sama dengan nama baku asli, biarkan string kosong "" agar menampilkan placeholder
+        // Jika user mengetik nama custom, tampilkan isian user
+        const userTypedMetrik = isStandard && (m.metrik || "").trim() === defaultMetrik ? "" : (m.metrik || "");
+
+        return {
+          id: m.id || `m_${idx}`,
+          isStandard,
+          defaultMetrik,
+          validasi: m.validasi || stdMatch?.validasi || "Desirability",
+          metrik: userTypedMetrik,
+          unitUkuran: m.unitUkuran || "",
+          baseline: m.baseline || "",
+          target: m.target || "",
+          threshold: m.threshold || "70%",
+          caraPengukuran: m.caraPengukuran || "",
+          pic: m.pic || "",
+          evidence: m.evidence || "",
+        };
+      });
+    }
+
+    // Default jika DB belum memiliki data rencana: 9 baris baku dengan metrik kosong (placeholder)
+    return MV_METRIK_ROWS.map((row, idx) => ({
+      id: `std_m${idx}`,
+      isStandard: true,
+      defaultMetrik: row.metrik,
+      validasi: row.validasi,
+      metrik: "", // KOSONG secara default, menampilkan placeholder abu-abu
+      unitUkuran: "",
+      baseline: "",
+      target: "",
+      threshold: row.threshold || "70%",
+      caraPengukuran: "",
+      pic: "",
+      evidence: "",
+    }));
   });
 
   const handleUpdateMetrik = (idx: number, field: string, val: string) => {
     setMetrikList((prev) =>
       prev.map((row, i) => (i === idx ? { ...row, [field]: val } : row))
     );
+  };
+
+  const handleAddMetrikRow = () => {
+    const newRow = {
+      id: `custom_m_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      isStandard: false,
+      defaultMetrik: "",
+      validasi: "Desirability",
+      metrik: "",
+      unitUkuran: "",
+      baseline: "",
+      target: "",
+      threshold: "70%",
+      caraPengukuran: "",
+      pic: "",
+      evidence: "",
+    };
+    setMetrikList((prev) => [...prev, newRow]);
+  };
+
+  const handleDeleteMetrikRow = (idx: number) => {
+    setMetrikList((prev) => prev.filter((_, i) => i !== idx));
   };
 
   // ── File Upload State for Data Dukung MVP ───────────────────────────────────
@@ -733,12 +788,17 @@ export function MarketValidationClient({
       dataDukungMvp: planForm.dataDukungMvp,
     };
 
+    const sanitizedMetrikList = metrikList.map((m) => ({
+      ...m,
+      metrik: m.metrik?.trim() || m.defaultMetrik || "Metrik",
+    }));
+
     const res = await saveMarketValidationPlanFullAction(
       timId,
       payloadPlan,
       mappingFiturList,
       resourcesList,
-      metrikList
+      sanitizedMetrikList
     );
 
     if (res.success) {
@@ -1700,42 +1760,64 @@ export function MarketValidationClient({
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-sm text-left">
+                  <table className="w-full min-w-[1550px] text-sm text-left">
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
                       <tr>
-                        <th className="p-2.5 w-[100px] text-xs uppercase tracking-wider">Validasi</th>
-                        <th className="p-2.5 w-[180px] text-xs uppercase tracking-wider">Metrik (Baku)</th>
-                        <th className="p-2.5 w-[130px] text-xs uppercase tracking-wider">Unit Ukuran</th>
-                        <th className="p-2.5 w-[110px] text-xs uppercase tracking-wider">Baseline</th>
-                        <th className="p-2.5 w-[120px] text-xs uppercase tracking-wider">Target</th>
-                        <th className="p-2.5 w-[110px] text-xs uppercase tracking-wider">Threshold</th>
-                        <th className="p-2.5 w-[160px] text-xs uppercase tracking-wider">Cara Pengukuran</th>
-                        <th className="p-2.5 w-[120px] text-xs uppercase tracking-wider">PIC</th>
-                        <th className="p-2.5 w-[140px] text-xs uppercase tracking-wider">Evidence</th>
+                        <th className="p-2.5 w-[130px] min-w-[130px] text-xs uppercase tracking-wider">Validasi</th>
+                        <th className="p-2.5 w-[240px] min-w-[240px] text-xs uppercase tracking-wider">Metrik</th>
+                        <th className="p-2.5 w-[170px] min-w-[170px] text-xs uppercase tracking-wider">Unit Ukuran</th>
+                        <th className="p-2.5 w-[130px] min-w-[130px] text-xs uppercase tracking-wider">Baseline</th>
+                        <th className="p-2.5 w-[140px] min-w-[140px] text-xs uppercase tracking-wider">Target</th>
+                        <th className="p-2.5 w-[130px] min-w-[130px] text-xs uppercase tracking-wider">Threshold</th>
+                        <th className="p-2.5 w-[230px] min-w-[230px] text-xs uppercase tracking-wider">Cara Pengukuran</th>
+                        <th className="p-2.5 w-[140px] min-w-[140px] text-xs uppercase tracking-wider">PIC</th>
+                        <th className="p-2.5 w-[180px] min-w-[180px] text-xs uppercase tracking-wider">Evidence</th>
+                        <th className="p-2.5 w-[120px] min-w-[120px] text-xs uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {metrikList.map((m, idx) => {
-                        const rowMeta = MV_METRIK_ROWS.find((r) => r.metrik === m.metrik);
+                        const rowMeta = MV_METRIK_ROWS.find(
+                          (r) => r.metrik === m.defaultMetrik || r.metrik === m.metrik
+                        );
                         return (
-                          <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
-                            <td className="p-2.5 align-top bg-gray-50/50">
-                              <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-xs font-extrabold ${
-                                  m.validasi === "Desirability"
-                                    ? "bg-amber-100 text-amber-900"
-                                    : m.validasi === "Feasibility"
-                                    ? "bg-blue-100 text-blue-900"
-                                    : "bg-purple-100 text-purple-900"
+                          <tr key={m.id || idx} className="hover:bg-gray-50/70 transition-colors">
+                            <td className="p-2.5 align-top bg-gray-50/50 min-w-[130px]">
+                              <select
+                                value={m.validasi}
+                                disabled={!canEdit || (m.isStandard && !isAdminOrCoach)}
+                                title={m.isStandard && !isAdminOrCoach ? "Kategori validasi metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
+                                onChange={(e) => handleUpdateMetrik(idx, "validasi", e.target.value)}
+                                className={`w-full text-xs font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
+                                  m.isStandard && !isAdminOrCoach ? "cursor-not-allowed opacity-80" : "cursor-pointer"
                                 }`}
+                                style={
+                                  m.validasi?.trim() === "Desirability"
+                                    ? { backgroundColor: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }
+                                    : m.validasi?.trim() === "Feasibility"
+                                    ? { backgroundColor: "#fffbeb", color: "#b45309", borderColor: "#fde68a" }
+                                    : m.validasi?.trim() === "Viability"
+                                    ? { backgroundColor: "#faf5ff", color: "#7e22ce", borderColor: "#e9d5ff" }
+                                    : { backgroundColor: "#ffffff", color: "#374151", borderColor: "#d1d5db" }
+                                }
                               >
-                                {m.validasi}
-                              </span>
+                                <option value="Desirability">Desirability</option>
+                                <option value="Feasibility">Feasibility</option>
+                                <option value="Viability">Viability</option>
+                              </select>
                             </td>
-                            <td className="p-2.5 align-top font-bold text-gray-800 text-sm">
-                              {m.metrik}
+                            <td className="p-2 align-top min-w-[240px]">
+                              <Input
+                                disabled={!canEdit}
+                                placeholder={m.defaultMetrik || rowMeta?.metrik || "Nama Metrik..."}
+                                value={m.metrik}
+                                onChange={(e) =>
+                                  handleUpdateMetrik(idx, "metrik", e.target.value)
+                                }
+                                className="text-sm h-9 bg-white"
+                              />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[170px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.unitUkuran || "Unit..."}
@@ -1746,7 +1828,7 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[130px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.baseline || "Baseline..."}
@@ -1757,7 +1839,7 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[140px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.target || "Target..."}
@@ -1768,7 +1850,7 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white font-semibold"
                               />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[130px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.threshold || "Threshold..."}
@@ -1779,7 +1861,7 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[230px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.caraPengukuran || "Cara pengukuran..."}
@@ -1790,7 +1872,7 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[140px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.pic || "PIC..."}
@@ -1801,7 +1883,7 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white"
                               />
                             </td>
-                            <td className="p-2 align-top">
+                            <td className="p-2 align-top min-w-[180px]">
                               <Input
                                 disabled={!canEdit}
                                 placeholder={rowMeta?.evidence || "Evidence..."}
@@ -1812,12 +1894,69 @@ export function MarketValidationClient({
                                 className="text-sm h-9 bg-white"
                               />
                             </td>
+                            <td className="p-2.5 align-top min-w-[120px]">
+                              <div className="flex items-center gap-1 mt-0.5 shrink-0">
+                                {m.isStandard ? (
+                                  <>
+                                    <span
+                                      className="px-2 py-1 rounded text-xs font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
+                                      title={isAdminOrCoach ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
+                                    >
+                                      Baku Juklak
+                                    </span>
+                                    {isAdminOrCoach && canEdit && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
+                                        onClick={() => handleDeleteMetrikRow(idx)}
+                                        title="Hapus baris metrik baku (Wewenang Coach / Admin)"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </>
+                                ) : (
+                                  canEdit && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
+                                      onClick={() => handleDeleteMetrikRow(idx)}
+                                      title="Hapus baris metrik custom"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
+
+                {canEdit && (
+                  <div className="mt-3 flex items-center justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddMetrikRow}
+                      className="text-xs font-bold text-[#0F5132] border-[#0F5132]/30 hover:bg-[#EBF5EE] cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Tambah Baris Metrik
+                    </Button>
+                    <span className="text-xs text-gray-400">
+                      * Baris Baku Juklak hanya dapat dihapus oleh Innovation Coach atau Administrator
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -2618,55 +2757,106 @@ export function MarketValidationClient({
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                {hasilMetrik.length > 0 ? (
-                  <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
-                        <tr>
-                          <th className="p-2.5 w-[110px]">Validasi</th>
-                          <th className="p-2.5 w-[180px]">Metrik</th>
-                          <th className="p-2.5 w-[110px]">Target</th>
-                          <th className="p-2.5 w-[110px]">Hasil Aktual</th>
-                          <th className="p-2.5 w-[90px] text-center">% Capai</th>
-                          <th className="p-2.5 w-[90px] text-center">Status</th>
-                          <th className="p-2.5">Learning / Enhancement</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {hasilMetrik.map((m: any, idx: number) => {
-                          const isLolos = m.status === "lolos" || (m.persenTercapai && m.persenTercapai >= 70);
-                          return (
-                            <tr key={idx} className="hover:bg-gray-50/70">
-                              <td className="p-2.5 font-bold text-gray-700">{m.validasi}</td>
-                              <td className="p-2.5 font-semibold text-gray-900">{m.metrik}</td>
-                              <td className="p-2.5 text-gray-600">{m.target || "-"}</td>
-                              <td className="p-2.5 font-bold text-gray-900">{m.hasilAktual || "-"}</td>
-                              <td className="p-2.5 text-center font-bold">
-                                {m.persenTercapai !== null ? `${m.persenTercapai}%` : "-"}
-                              </td>
-                              <td className="p-2.5 text-center">
-                                <Badge
-                                  className={
-                                    isLolos
-                                      ? "bg-emerald-100 text-emerald-800 border-none text-[10px]"
-                                      : "bg-amber-100 text-amber-800 border-none text-[10px]"
-                                  }
-                                >
-                                  {isLolos ? "Lolos" : "Belum"}
-                                </Badge>
-                              </td>
-                              <td className="p-2.5 text-gray-600 text-[11px]">{m.learning || m.enhancement || "-"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
-                    Hasil pengukuran DFV belum diisi dari kartu Board Sprint "Market Testing (ukur metrik DFV)".
-                  </div>
-                )}
+                {(() => {
+                  const activePlanMetrik = initialData?.metrikRencana || [];
+                  const excludedStandardRows = activePlanMetrik.length > 0
+                    ? MV_METRIK_ROWS.filter(
+                        (base) => !activePlanMetrik.some((p: any) => (p.metrik || '').toLowerCase().trim() === base.metrik.toLowerCase().trim())
+                      )
+                    : [];
+
+                  const displayHasilMetrik = [
+                    ...hasilMetrik,
+                    ...excludedStandardRows
+                      .filter((ex) => !hasilMetrik.some((h: any) => (h.metrik || '').toLowerCase().trim() === ex.metrik.toLowerCase().trim()))
+                      .map((ex) => ({
+                        validasi: ex.validasi,
+                        metrik: ex.metrik,
+                        target: "Tidak digunakan tim ini",
+                        hasilAktual: "-",
+                        persenTercapai: null,
+                        status: "dikecualikan",
+                        learning: "Dikecualikan oleh Coach",
+                        enhancement: "-",
+                        isExcluded: true,
+                      })),
+                  ];
+
+                  if (displayHasilMetrik.length === 0) {
+                    return (
+                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center text-xs text-gray-400 italic">
+                        Hasil pengukuran DFV belum diisi dari kartu Board Sprint "Market Testing (ukur metrik DFV)".
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto rounded-xl border border-gray-200">
+                      <table className="w-full min-w-[950px] text-xs text-left">
+                        <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
+                          <tr>
+                            <th className="p-2.5 w-[110px] min-w-[110px]">Validasi</th>
+                            <th className="p-2.5 w-[200px] min-w-[200px]">Metrik</th>
+                            <th className="p-2.5 w-[120px] min-w-[120px]">Target</th>
+                            <th className="p-2.5 w-[120px] min-w-[120px]">Hasil Aktual</th>
+                            <th className="p-2.5 w-[90px] min-w-[90px] text-center">% Capai</th>
+                            <th className="p-2.5 w-[90px] min-w-[90px] text-center">Status</th>
+                            <th className="p-2.5 min-w-[200px]">Learning / Enhancement</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {displayHasilMetrik.map((m: any, idx: number) => {
+                            const isLolos = m.status === "lolos" || (m.persenTercapai && m.persenTercapai >= 70);
+                            const isExcluded = m.isExcluded || m.status === "dikecualikan";
+                            return (
+                              <tr
+                                key={idx}
+                                className={`transition-colors ${
+                                  isExcluded ? "bg-slate-50/80 opacity-70" : "hover:bg-gray-50/70"
+                                }`}
+                              >
+                                <td className="p-2.5 font-bold text-gray-700">{m.validasi}</td>
+                                <td className="p-2.5 font-semibold text-gray-900">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className={isExcluded ? "line-through text-gray-400" : ""}>{m.metrik}</span>
+                                    {isExcluded && (
+                                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-200 text-gray-600 self-start">
+                                        Tidak digunakan tim ini (Dikecualikan Coach)
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-2.5 text-gray-600">{m.target || "-"}</td>
+                                <td className="p-2.5 font-bold text-gray-900">{m.hasilAktual || "-"}</td>
+                                <td className="p-2.5 text-center font-bold">
+                                  {m.persenTercapai !== null && m.persenTercapai !== undefined ? `${m.persenTercapai}%` : "-"}
+                                </td>
+                                <td className="p-2.5 text-center">
+                                  {isExcluded ? (
+                                    <Badge className="bg-gray-100 text-gray-600 border-none text-[10px]">
+                                      Dikecualikan
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      className={
+                                        isLolos
+                                          ? "bg-emerald-100 text-emerald-800 border-none text-[10px]"
+                                          : "bg-amber-100 text-amber-800 border-none text-[10px]"
+                                      }
+                                    >
+                                      {isLolos ? "Lolos" : "Belum"}
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="p-2.5 text-gray-600 text-[11px]">{m.learning || m.enhancement || "-"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 

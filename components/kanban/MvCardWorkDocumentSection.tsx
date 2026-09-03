@@ -175,7 +175,7 @@ export function MvCardWorkDocumentSection({
   };
 
   // ── Card 2: Metrik Results (Market Testing) ──────────────────────────────
-  const metrikResults: any[] = Array.isArray(docData.metrikResults) && docData.metrikResults.length === 9
+  const metrikResults: any[] = Array.isArray(docData.metrikResults) && docData.metrikResults.length > 0
     ? docData.metrikResults
     : MV_METRIK_ROWS.map((row) => {
         const found = (docData.metrikResults || []).find(
@@ -637,91 +637,112 @@ export function MvCardWorkDocumentSection({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {metrikResults.map((m, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="p-2 align-top bg-gray-50/50">
-                      <span
-                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
-                          m.validasi === "Desirability"
-                            ? "bg-amber-100 text-amber-900"
-                            : m.validasi === "Feasibility"
-                            ? "bg-blue-100 text-blue-900"
-                            : "bg-purple-100 text-purple-900"
-                        }`}
-                      >
-                        {m.validasi}
-                      </span>
-                    </td>
-                    <td className="p-2 align-top font-bold text-gray-800 text-[11px]">
-                      {m.metrik}
-                    </td>
-                    <td className="p-2 align-top text-gray-600 font-medium">
-                      {m.target || "-"}
-                    </td>
-                    <td className="p-1.5 align-top">
-                      <Input
-                        disabled={!canEdit}
-                        placeholder="Realisasi..."
-                        value={m.hasilAktual}
-                        onChange={(e) =>
-                          handleUpdateMetrikResult(idx, "hasilAktual", e.target.value)
-                        }
-                        className="text-xs h-7 bg-white font-semibold"
-                      />
-                    </td>
-                    <td className="p-1.5 align-top">
-                      <Input
-                        type="number"
-                        disabled={!canEdit}
-                        placeholder="%"
-                        value={m.persenTercapai}
-                        onChange={(e) =>
-                          handleUpdateMetrikResult(idx, "persenTercapai", e.target.value)
-                        }
-                        className="text-xs h-7 bg-white text-center font-bold"
-                      />
-                    </td>
-                    <td className="p-1.5 align-top">
-                      <select
-                        disabled={!canEdit}
-                        value={m.status}
-                        onChange={(e) =>
-                          handleUpdateMetrikResult(idx, "status", e.target.value)
-                        }
-                        className={`w-full h-7 px-1 text-[11px] rounded font-bold border ${
-                          m.status === "lolos"
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                            : "bg-amber-50 text-amber-800 border-amber-300"
-                        }`}
-                      >
-                        <option value="lolos">🟢 Lolos</option>
-                        <option value="belum">🟡 Belum</option>
-                      </select>
-                    </td>
-                    <td className="p-1.5 align-top">
-                      <Input
-                        disabled={!canEdit}
-                        placeholder="Pembelajaran..."
-                        value={m.learning}
-                        onChange={(e) =>
-                          handleUpdateMetrikResult(idx, "learning", e.target.value)
-                        }
-                        className="text-xs h-7 bg-white text-[11px]"
-                      />
-                    </td>
-                    <td className="p-1.5 align-top">
-                      <Input
-                        disabled={!canEdit}
-                        placeholder="Langkah perbaikan..."
-                        value={m.enhancement}
-                        onChange={(e) =>
-                          handleUpdateMetrikResult(idx, "enhancement", e.target.value)
-                        }
-                        className="text-xs h-7 bg-white text-[11px]"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {metrikResults.map((m, idx) => {
+                  const isExcluded = Boolean(m.isExcluded || m.status === "dikecualikan");
+                  return (
+                    <tr
+                      key={idx}
+                      className={`transition-colors ${
+                        isExcluded ? "bg-slate-50 opacity-70" : "hover:bg-gray-50/70"
+                      }`}
+                    >
+                      <td className="p-2 align-top bg-gray-50/50">
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
+                            m.validasi === "Desirability"
+                              ? "bg-amber-100 text-amber-900"
+                              : m.validasi === "Feasibility"
+                              ? "bg-blue-100 text-blue-900"
+                              : "bg-purple-100 text-purple-900"
+                          }`}
+                        >
+                          {m.validasi}
+                        </span>
+                      </td>
+                      <td className="p-2 align-top font-bold text-gray-800 text-[11px]">
+                        <div className="flex flex-col gap-0.5">
+                          <span className={isExcluded ? "line-through text-gray-400" : ""}>{m.metrik}</span>
+                          {isExcluded && (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-200 text-gray-600 self-start">
+                              Tidak digunakan tim ini (Dikecualikan Coach)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2 align-top text-gray-600 font-medium">
+                        {isExcluded ? <span className="italic text-gray-400">Tidak digunakan tim ini</span> : (m.target || "-")}
+                      </td>
+                      <td className="p-1.5 align-top">
+                        <Input
+                          disabled={!canEdit || isExcluded}
+                          placeholder={isExcluded ? "Tidak digunakan tim ini" : "Realisasi..."}
+                          value={isExcluded ? "Tidak digunakan tim ini" : m.hasilAktual}
+                          onChange={(e) =>
+                            handleUpdateMetrikResult(idx, "hasilAktual", e.target.value)
+                          }
+                          className={`text-xs h-7 font-semibold ${isExcluded ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white"}`}
+                        />
+                      </td>
+                      <td className="p-1.5 align-top">
+                        <Input
+                          type={isExcluded ? "text" : "number"}
+                          disabled={!canEdit || isExcluded}
+                          placeholder={isExcluded ? "-" : "%"}
+                          value={isExcluded ? "-" : m.persenTercapai}
+                          onChange={(e) =>
+                            handleUpdateMetrikResult(idx, "persenTercapai", e.target.value)
+                          }
+                          className={`text-xs h-7 text-center font-bold ${isExcluded ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white"}`}
+                        />
+                      </td>
+                      <td className="p-1.5 align-top">
+                        {isExcluded ? (
+                          <div className="w-full h-7 px-1 flex items-center justify-center text-[10px] font-bold rounded bg-gray-100 text-gray-500 border border-gray-200">
+                            Dikecualikan
+                          </div>
+                        ) : (
+                          <select
+                            disabled={!canEdit}
+                            value={m.status}
+                            onChange={(e) =>
+                              handleUpdateMetrikResult(idx, "status", e.target.value)
+                            }
+                            className={`w-full h-7 px-1 text-[11px] rounded font-bold border ${
+                              m.status === "lolos"
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                : "bg-amber-50 text-amber-800 border-amber-300"
+                            }`}
+                          >
+                            <option value="lolos">🟢 Lolos</option>
+                            <option value="belum">🟡 Belum</option>
+                          </select>
+                        )}
+                      </td>
+                      <td className="p-1.5 align-top">
+                        <Input
+                          disabled={!canEdit || isExcluded}
+                          placeholder={isExcluded ? "-" : "Pembelajaran..."}
+                          value={isExcluded ? "-" : m.learning}
+                          onChange={(e) =>
+                            handleUpdateMetrikResult(idx, "learning", e.target.value)
+                          }
+                          className={`text-xs h-7 text-[11px] ${isExcluded ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white"}`}
+                        />
+                      </td>
+                      <td className="p-1.5 align-top">
+                        <Input
+                          disabled={!canEdit || isExcluded}
+                          placeholder={isExcluded ? "-" : "Langkah perbaikan..."}
+                          value={isExcluded ? "-" : m.enhancement}
+                          onChange={(e) =>
+                            handleUpdateMetrikResult(idx, "enhancement", e.target.value)
+                          }
+                          className={`text-xs h-7 text-[11px] ${isExcluded ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white"}`}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

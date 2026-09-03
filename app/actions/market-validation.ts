@@ -45,7 +45,36 @@ const TRACKED_MV_PLAN_FIELDS: Record<string, string> = {
   jumlahTargetPengguna: 'Jumlah Target Pengguna',
   batasanScopeMvp: 'Batasan Scope MVP',
   dataDukungMvp: 'Data Dukung MVP',
+  successCriteriaMvp: 'Kriteria Sukses MVP',
 };
+
+const MV_METRIK_ROWS_STATIC = [
+  { validasi: 'desirability', metrik: 'Kepuasan Pengguna MVP' },
+  { validasi: 'desirability', metrik: 'Adopsi / Penggunaan Berulang' },
+  { validasi: 'desirability', metrik: 'Rekomendasi / Referral (NPS)' },
+  { validasi: 'feasibility', metrik: 'Ketersediaan Sistem & Kelancaran Proses' },
+  { validasi: 'feasibility', metrik: 'Waktu Proses / Response Time Solusi' },
+  { validasi: 'feasibility', metrik: 'Error / Issue Rate (Tingkat Kegagalan Transaksi)' },
+  { validasi: 'viability', metrik: 'Realisasi Potensi Revenue / Transaksi Finansial' },
+  { validasi: 'viability', metrik: 'Efisiensi Biaya Operasional / Penghematan Waktu' },
+  { validasi: 'viability', metrik: 'Proyeksi ROI / Cost-Benefit Tahap Pilot' },
+];
+
+function isCanonicalMvMetricMatch(m1: string, m2: string): boolean {
+  const n1 = (m1 || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const n2 = (m2 || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (n1 === n2) return true;
+  if ((n1.includes('kepuasan') && n2.includes('kepuasan')) || (n1.includes('csat') && n2.includes('csat'))) return true;
+  if ((n1.includes('adopsi') || n1.includes('berulang')) && (n2.includes('adopsi') || n2.includes('berulang'))) return true;
+  if ((n1.includes('rekomendasi') || n1.includes('referral') || n1.includes('nps')) && (n2.includes('rekomendasi') || n2.includes('referral') || n2.includes('nps'))) return true;
+  if ((n1.includes('ketersediaan') || n1.includes('uptime')) && (n2.includes('ketersediaan') || n2.includes('uptime'))) return true;
+  if ((n1.includes('waktu proses') || n1.includes('response time')) && (n2.includes('waktu proses') || n2.includes('response time'))) return true;
+  if ((n1.includes('error') || n1.includes('kegagalan')) && (n2.includes('error') || n2.includes('kegagalan'))) return true;
+  if ((n1.includes('revenue') || n1.includes('pendapatan') || n1.includes('finansial')) && (n2.includes('revenue') || n2.includes('pendapatan') || n2.includes('finansial'))) return true;
+  if ((n1.includes('efisiensi') || n1.includes('penghematan')) && (n2.includes('efisiensi') || n2.includes('penghematan'))) return true;
+  if ((n1.includes('roi') || n1.includes('cost-benefit')) && (n2.includes('roi') || n2.includes('cost-benefit'))) return true;
+  return false;
+}
 
 export async function getMarketValidationData(timId: string) {
   const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
@@ -194,6 +223,8 @@ export async function saveMarketValidationPlanFullAction(
   metrikList: Array<{
     validasi: string;
     metrik: string;
+    isStandard?: boolean;
+    defaultMetrik?: string;
     unitUkuran?: string;
     baseline?: string;
     target?: string;
@@ -310,6 +341,65 @@ export async function saveMarketValidationPlanFullAction(
     }
 
     // 4. Sync rencanaValidasiMetrik (fase = 'market_validation')
+    const userRole = ((user as any)?.role || "").toLowerCase();
+    const isAdmin = Boolean(
+      user.globalRoles?.some((r: string) => ['super_admin', 'admin_ic', 'admin'].includes(r)) ||
+      ['super_admin', 'admin_ic', 'admin'].includes(userRole)
+    );
+    const isCoach = Boolean(
+      userRole === 'coach' ||
+      userRole === 'innovation_coach' ||
+      user.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r)) ||
+      user.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
+    );
+    const isCoachOrAdmin = isAdmin || isCoach;
+
+    // Ambil baris metrik rencana yang saat ini ada di DB sebelum di-delete
+    const currentDbMetrikRows = planId
+      ? await db
+          .select()
+          .from(rencanaValidasiMetrik)
+          .where(
+            and(
+              eq(rencanaValidasiMetrik.planId, planId),
+              eq(rencanaValidasiMetrik.fase, "market_validation")
+            )
+          )
+      : [];
+
+    // Jika BUKAN Coach/Admin, lakukan validasi proteksi baris baku Section E:
+    if (!isCoachOrAdmin && metrikList) {
+      const expectedStandardRows = currentDbMetrikRows.length > 0
+        ? currentDbMetrikRows.filter((dbM) =>
+            MV_METRIK_ROWS_STATIC.some((s) => isCanonicalMvMetricMatch(s.metrik, dbM.metrik))
+          )
+        : MV_METRIK_ROWS_STATIC;
+
+      for (const stdRow of expectedStandardRows) {
+        const matchInPayload = metrikList.find((m: any) =>
+          (m.isStandard && isCanonicalMvMetricMatch(m.defaultMetrik || m.metrik, stdRow.metrik)) ||
+          isCanonicalMvMetricMatch(m.metrik, stdRow.metrik)
+        );
+
+        if (!matchInPayload) {
+          return {
+            success: false,
+            error: `Forbidden: Hanya Innovation Coach atau Administrator yang berwenang untuk menghapus parameter Metrik Baku Juklak ("${stdRow.metrik}").`,
+          };
+        }
+
+        const baseStatic = MV_METRIK_ROWS_STATIC.find((s) => isCanonicalMvMetricMatch(s.metrik, stdRow.metrik));
+        const originalValidasi = (baseStatic?.validasi || stdRow.validasi || '').toLowerCase().replace(/\s+/g, '');
+        const payloadValidasi = (matchInPayload.validasi || '').toLowerCase().replace(/\s+/g, '');
+        if (originalValidasi && payloadValidasi && originalValidasi !== payloadValidasi) {
+          return {
+            success: false,
+            error: `Forbidden: Hanya Innovation Coach atau Administrator yang berwenang untuk mengubah kategori validasi Metrik Baku Juklak ("${stdRow.metrik}").`,
+          };
+        }
+      }
+    }
+
     await db
       .delete(rencanaValidasiMetrik)
       .where(
@@ -320,11 +410,11 @@ export async function saveMarketValidationPlanFullAction(
       );
 
     if (metrikList && metrikList.length > 0) {
-      const validMetrik = metrikList.map((m) => ({
+      const validMetrik = metrikList.map((m: any) => ({
         planId: planId!,
         fase: "market_validation",
         validasi: m.validasi,
-        metrik: m.metrik,
+        metrik: m.metrik?.trim() || m.defaultMetrik || "Metrik",
         unitUkuran: m.unitUkuran || null,
         baseline: m.baseline || null,
         target: m.target || null,
