@@ -81,14 +81,21 @@ export function NavigationTransitionProvider({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
+    let maxTimer: NodeJS.Timeout;
     if (isPending) {
       timer = setTimeout(() => {
         setShowLoader(true);
       }, 150);
+      maxTimer = setTimeout(() => {
+        setShowLoader(false);
+      }, 5000);
     } else {
       setShowLoader(false);
     }
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(maxTimer);
+    };
   }, [isPending]);
 
   return (
