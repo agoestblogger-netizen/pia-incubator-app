@@ -19,8 +19,9 @@ import {
   anggotaTim,
   userRoleTim,
   roles,
+  auditLogs,
 } from "@/lib/db/schema";
-import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
+import { eq, and, ne, inArray, desc, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -28,6 +29,25 @@ import { getCharterRolesData, getCharterByTimId } from "./charter";
 import { isCustomerValidationUnlockedForUser } from "./phase-gate";
 import { generateAiBacklogFromCvPlan } from "@/lib/ai/cv-backlog-generator";
 import { generateFullCvPlanDraft } from "@/lib/ai/cv-plan-full-generator";
+
+const TRACKED_CV_PLAN_FIELDS: Record<string, string> = {
+  projectMission: 'Misi Proyek',
+  customerDanContext: 'Customer & Konteks',
+  problemHypothesis: 'Hipotesis Masalah',
+  hmw: 'How Might We (HMW)',
+  solutionHypothesis: 'Hipotesis Solusi',
+  prototypeType: 'Tipe Prototipe',
+  fiturAlurDiuji: 'Fitur & Alur Diuji',
+  skenarioUserTesting: 'Skenario User Testing',
+  instrumenValidasi: 'Instrumen Validasi',
+  targetEarlyAdopters: 'Target Early Adopters',
+  kriteriaSeleksi: 'Kriteria Seleksi',
+  jumlahTargetResponden: 'Jumlah Target Responden',
+  lokasiChannelTesting: 'Lokasi & Channel Testing',
+  metodeRekrutmen: 'Metode Rekrutmen',
+  etikaPersetujuanData: 'Etika & Persetujuan Data',
+  dataDukung: 'Data Dukung',
+};
 
 export async function getCustomerValidationData(timId: string) {
   const [plan] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
@@ -97,22 +117,38 @@ export async function saveCustomerValidationPlanAction(timId: string, values: Pa
       };
     }
 
-    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
-    if (!isCvUnlocked) {
-      return {
-        success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
-      };
-    }
-
     const [existing] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
     let planId = existing?.id;
 
+    // Cek apakah plan sudah pernah ditandatangani
+    const hadSignatures = Boolean(existing?.ttdDisusun || existing?.ttdDiperiksa || existing?.ttdDisetujui);
+    let signatureRevoked = false;
+    let changedFields: string[] = [];
+
+    const updatePayload: any = {
+      ...values,
+      updatedAt: new Date(),
+    };
+
+    if (existing && hadSignatures) {
+      for (const [k, label] of Object.entries(TRACKED_CV_PLAN_FIELDS)) {
+        const oldVal = (existing as any)[k];
+        const newVal = (values as any)[k];
+        if (newVal !== undefined && JSON.stringify(oldVal ?? null) !== JSON.stringify(newVal ?? null)) {
+          changedFields.push(label);
+        }
+      }
+
+      if (changedFields.length > 0) {
+        signatureRevoked = true;
+        updatePayload.ttdDisusun = null;
+        updatePayload.ttdDiperiksa = null;
+        updatePayload.ttdDisetujui = null;
+      }
+    }
+
     if (existing) {
-      await db.update(customerValidationPlan).set({
-        ...values,
-        updatedAt: new Date(),
-      }).where(eq(customerValidationPlan.id, existing.id));
+      await db.update(customerValidationPlan).set(updatePayload).where(eq(customerValidationPlan.id, existing.id));
     } else {
       const [inserted] = await db.insert(customerValidationPlan).values({
         timInovatorId: timId,
@@ -121,17 +157,37 @@ export async function saveCustomerValidationPlanAction(timId: string, values: Pa
       planId = inserted.id;
     }
 
-    await logAudit({
-      userId: user.id,
-      userName: user.nama,
-      action: 'CUST_VAL_PLAN_SAVE',
-      entity: 'customer_validation_plan',
-      entityId: planId,
-      details: { timId, prototypeType: values.prototypeType },
-    });
+    if (signatureRevoked) {
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: 'CV_PLAN_EDITED_AFTER_SIGN',
+        entity: 'customer_validation_plan',
+        entityId: planId,
+        details: {
+          timId,
+          changedFields,
+          revokedSignatures: [
+            existing?.ttdDisusun ? 'Inisiator' : null,
+            existing?.ttdDiperiksa ? 'Coach' : null,
+            existing?.ttdDisetujui ? 'Project Owner' : null,
+          ].filter(Boolean),
+          note: 'Tanda tangan dibatalkan otomatis karena rencana diubah setelah penandatanganan.',
+        },
+      });
+    } else {
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: 'CUST_VAL_PLAN_SAVE',
+        entity: 'customer_validation_plan',
+        entityId: planId,
+        details: { timId, prototypeType: values.prototypeType },
+      });
+    }
 
     revalidatePath(`/tim/${timId}/customer-validation`);
-    return { success: true };
+    return { success: true, planId, signatureRevoked };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menyimpan rencana validasi pelanggan.' };
   }
@@ -156,7 +212,7 @@ export async function saveCustomerValidationReportAction(planId: string, timId: 
     if (!isCvUnlocked) {
       return {
         success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).',
       };
     }
 
@@ -202,6 +258,14 @@ const METRIK_ROWS_STATIC = [
   { validasi: 'viability', metrik: 'Potensi dampak bisnis/ekonomi awal', unitUkuran: 'Estimasi Rp/%/skala 1-5', kriteriaKesuksesan: 'Terdapat potensi manfaat dan asumsi yang dapat diuji saat MVP', caraPengukuran: 'Estimasi dampak, cost-benefit awal, input Renstra/Finance' },
 ];
 
+function isCanonicalCvMetricMatch(m1: string, m2: string): boolean {
+  const n1 = (m1 || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const n2 = (m2 || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (n1 === n2) return true;
+  if (n1.startsWith('kesediaan membayar') && n2.startsWith('kesediaan membayar')) return true;
+  return false;
+}
+
 export async function saveCustomerValidationPlanFullAction(
   timId: string,
   planValues: Partial<typeof customerValidationPlan.$inferInsert>,
@@ -227,20 +291,82 @@ export async function saveCustomerValidationPlanFullAction(
     const allowed = await hasPermission(user, 'cust_val.edit', timId);
     if (!allowed) return { success: false, error: 'Forbidden: Anda tidak memiliki izin.' };
 
-    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
-    if (!isCvUnlocked) {
-      return {
-        success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
-      };
-    }
+    // ── Otorisasi Section E Metrik Baku Juklak ─────────────────────────────
+    const userRole = ((user as any)?.role || '').toLowerCase();
+    const isAdmin = Boolean(
+      user?.globalRoles?.some((r: string) => ['super_admin', 'admin_ic', 'admin'].includes(r)) ||
+      ['super_admin', 'admin_ic', 'admin'].includes(userRole)
+    );
+    const isCoach = Boolean(
+      userRole === 'coach' ||
+      userRole === 'innovation_coach' ||
+      user?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r)) ||
+      user?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
+    );
+    const isCoachOrAdmin = isAdmin || isCoach;
 
-    // Upsert main plan
     const [existing] = await db.select().from(customerValidationPlan)
       .where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
     let planId = existing?.id;
 
-    const sanitizedPlanValues = {
+    // Khusus role non-Coach/Admin: dilarang menghapus atau mengubah nama/kategori validasi baris baku
+    if (!isCoachOrAdmin && planId && metrikRows) {
+      const existingDbMetrik = await db
+        .select()
+        .from(rencanaValidasiMetrik)
+        .where(
+          and(
+            eq(rencanaValidasiMetrik.planId, planId),
+            eq(rencanaValidasiMetrik.fase, 'customer_validation')
+          )
+        );
+
+      const standardMetrikInDb = existingDbMetrik.length > 0
+        ? existingDbMetrik.filter((dbM) =>
+            METRIK_ROWS_STATIC.some((s) => isCanonicalCvMetricMatch(s.metrik, dbM.metrik))
+          )
+        : METRIK_ROWS_STATIC;
+
+      for (const stdRow of standardMetrikInDb) {
+        const incomingMatch = metrikRows.find((m) =>
+          isCanonicalCvMetricMatch(m.metrik, stdRow.metrik)
+        );
+
+        if (!incomingMatch) {
+          return {
+            success: false,
+            error: `Forbidden: Hanya Innovation Coach atau Administrator yang berwenang untuk menghapus parameter Metrik Baku Juklak ("${stdRow.metrik}").`,
+          };
+        }
+
+        const stdValidasi = (stdRow.validasi || '').toLowerCase().trim();
+        const incValidasi = (incomingMatch.validasi || '').toLowerCase().trim();
+        const stdNorm = stdValidasi.startsWith('feasibility')
+          ? 'feasibility'
+          : stdValidasi.startsWith('viability')
+          ? 'viability'
+          : 'desirability';
+        const incNorm = incValidasi.startsWith('feasibility')
+          ? 'feasibility'
+          : incValidasi.startsWith('viability')
+          ? 'viability'
+          : 'desirability';
+
+        if (stdNorm !== incNorm) {
+          return {
+            success: false,
+            error: `Forbidden: Hanya Innovation Coach atau Administrator yang berwenang untuk mengubah kategori validasi Metrik Baku Juklak ("${stdRow.metrik}").`,
+          };
+        }
+      }
+    }
+
+    // Cek apakah plan sudah pernah ditandatangani
+    const hadSignatures = Boolean(existing?.ttdDisusun || existing?.ttdDiperiksa || existing?.ttdDisetujui);
+    let signatureRevoked = false;
+    let changedFields: string[] = [];
+
+    const sanitizedPlanValues: any = {
       ...planValues,
       ...(planValues.jumlahTargetResponden !== undefined && {
         jumlahTargetResponden:
@@ -249,6 +375,24 @@ export async function saveCustomerValidationPlanFullAction(
             : Number(planValues.jumlahTargetResponden) || null,
       }),
     };
+
+    if (existing && hadSignatures) {
+      for (const [k, label] of Object.entries(TRACKED_CV_PLAN_FIELDS)) {
+        const oldVal = (existing as any)[k];
+        const newVal = sanitizedPlanValues[k];
+        if (newVal !== undefined && JSON.stringify(oldVal ?? null) !== JSON.stringify(newVal ?? null)) {
+          changedFields.push(label);
+        }
+      }
+
+      // Jika ada perubahan field, atau dimensi/metrik diupdate saat sudah bertanda tangan
+      if (changedFields.length > 0 || (dimensiRows && dimensiRows.length > 0) || (metrikRows && metrikRows.length > 0)) {
+        signatureRevoked = true;
+        sanitizedPlanValues.ttdDisusun = null;
+        sanitizedPlanValues.ttdDiperiksa = null;
+        sanitizedPlanValues.ttdDisetujui = null;
+      }
+    }
 
     if (existing) {
       await db.update(customerValidationPlan)
@@ -300,6 +444,35 @@ export async function saveCustomerValidationPlanFullAction(
       );
     }
 
+    if (signatureRevoked) {
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: 'CV_PLAN_EDITED_AFTER_SIGN',
+        entity: 'customer_validation_plan',
+        entityId: planId,
+        details: {
+          timId,
+          changedFields: changedFields.length > 0 ? changedFields : ['Pembaruan Dimensi / Metrik'],
+          revokedSignatures: [
+            existing?.ttdDisusun ? 'Inisiator' : null,
+            existing?.ttdDiperiksa ? 'Coach' : null,
+            existing?.ttdDisetujui ? 'Project Owner' : null,
+          ].filter(Boolean),
+          note: 'Tanda tangan dibatalkan otomatis karena rencana diubah setelah penandatanganan.',
+        },
+      });
+    } else {
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: 'CV_PLAN_SAVE_FULL',
+        entity: 'customer_validation_plan',
+        entityId: planId,
+        details: { timId, totalDimensi: dimensiRows?.length || 0, totalMetrik: metrikRows?.length || 0 },
+      });
+    }
+
     // Auto-generate AI backlog only if this is the first time (no Rekomendasi CV cards exist yet)
     const existingRekomendasi = await db
       .select({ id: kanbanCard.id })
@@ -326,7 +499,7 @@ export async function saveCustomerValidationPlanFullAction(
 
     revalidatePath(`/tim/${timId}/customer-validation`);
     revalidatePath(`/tim/${timId}/kanban`);
-    return { success: true, planId, backlogGenerated, backlogCount };
+    return { success: true, planId, backlogGenerated, backlogCount, signatureRevoked };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal menyimpan rencana validasi pelanggan.' };
   }
@@ -339,14 +512,6 @@ export async function generateCvBacklogAction(timId: string) {
 
     const allowed = await hasPermission(user, 'cust_val.edit', timId);
     if (!allowed) return { success: false, error: 'Forbidden: Anda tidak memiliki izin mengedit tim ini.' };
-
-    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
-    if (!isCvUnlocked) {
-      return {
-        success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
-      };
-    }
 
     const [plan] = await db.select().from(customerValidationPlan)
       .where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
@@ -633,12 +798,9 @@ export async function autoFillFullCvPlanAction(timId: string, testUser?: any) {
     const user = testUser || (await getCurrentUser());
     if (!user) return { success: false, error: 'Tidak terautentikasi.' };
 
-    const isCvUnlocked = await isCustomerValidationUnlockedForUser(user, timId);
-    if (!isCvUnlocked) {
-      return {
-        success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
-      };
+    const allowed = await hasPermission(user, 'cust_val.edit', timId);
+    if (!allowed) {
+      return { success: false, error: 'Forbidden: Anda tidak memiliki izin mengedit Customer Validation Plan tim ini.' };
     }
 
     const [timRow] = await db
@@ -798,7 +960,7 @@ export async function signCvPlanAction(
     if (!isCvUnlocked) {
       return {
         success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).',
       };
     }
 
@@ -925,7 +1087,7 @@ export async function revokeCvPlanSignatureAction(
     if (!isCvUnlocked) {
       return {
         success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).',
       };
     }
 
@@ -1029,7 +1191,7 @@ export async function saveCustomerValidationReportFullAction(
     if (!isCvUnlocked) {
       return {
         success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).',
       };
     }
 
@@ -1163,7 +1325,7 @@ export async function signCvReportAction(
     if (!isCvUnlocked) {
       return {
         success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).',
       };
     }
 
@@ -1291,7 +1453,7 @@ export async function revokeCvReportSignatureAction(
     if (!isCvUnlocked) {
       return {
         success: false,
-        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).',
+        error: 'Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).',
       };
     }
 
@@ -1364,3 +1526,41 @@ export async function revokeCvReportSignatureAction(
     return { success: false, error: error.message || 'Gagal membatalkan tanda tangan laporan.' };
   }
 }
+
+/**
+ * Mengambil riwayat perubahan Customer Validation Plan yang tercatat di audit_logs,
+ * khususnya yang memicu pembatalan tanda tangan otomatis maupun penyimpanan data.
+ */
+export async function getCvPlanAuditHistoryAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized: Harap login terlebih dahulu.' };
+
+    const logs = await db
+      .select({
+        id: auditLogs.id,
+        userId: auditLogs.userId,
+        userName: auditLogs.userName,
+        action: auditLogs.action,
+        entity: auditLogs.entity,
+        entityId: auditLogs.entityId,
+        details: auditLogs.details,
+        createdAt: auditLogs.createdAt,
+      })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.entity, 'customer_validation_plan'),
+          sql`${auditLogs.details}->>'timId' = ${timId}`
+        )
+      )
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(50);
+
+    return { success: true, logs };
+  } catch (error: any) {
+    console.error('[getCvPlanAuditHistoryAction] Error:', error);
+    return { success: false, error: error.message || 'Gagal mengambil riwayat perubahan.' };
+  }
+}
+

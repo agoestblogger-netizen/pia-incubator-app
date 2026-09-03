@@ -9,6 +9,7 @@ import {
   saveMarketValidationReportAction,
   signMvReportAction,
   revokeMvReportSignatureAction,
+  getMvPlanAuditHistoryAction,
 } from "@/app/actions/market-validation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -16,6 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Save,
   CheckCircle,
@@ -518,6 +527,26 @@ export function MarketValidationClient({
 
   const [signingRole, setSigningRole] = useState<string | null>(null);
 
+  // ── Modal Riwayat Perubahan Rencana (Audit Trail) ─────────────────────────
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const openHistoryModal = async () => {
+    setShowHistoryModal(true);
+    setLoadingHistory(true);
+    try {
+      const res = await getMvPlanAuditHistoryAction(timId);
+      if (res.success && res.logs) {
+        setHistoryLogs(res.logs);
+      }
+    } catch (err) {
+      console.error("Gagal memuat riwayat audit:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const teamMembers = initialData?.teamMembers || anggotaTim || [];
   const poCharterName =
     roleAssignments?.find((a: any) => a.roleCode === "project_owner")?.userName ||
@@ -681,13 +710,6 @@ export function MarketValidationClient({
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
-    if (!isMvGateUnlocked) {
-      toast.error(
-        "Akses ditolak: Gerbang fase Market Validation belum terbuka (menunggu keputusan 'Lanjut ke Market Validation' pada Laporan Customer Validation atau izin bypass Admin).",
-        "Gerbang Fase Terkunci"
-      );
-      return;
-    }
     setSaving(true);
 
     const payloadPlan = {
@@ -720,7 +742,18 @@ export function MarketValidationClient({
     );
 
     if (res.success) {
-      toast.success("MVP Release Plan berhasil disimpan lengkap!", "Plan Tersimpan");
+      if ((res as any).signatureRevoked) {
+        setTtdDisusun(null);
+        setTtdDiperiksa(null);
+        setTtdDisetujui(null);
+        toast.warning(
+          "Perubahan disimpan. Karena rencana ini sudah ditandatangani sebelumnya, tanda tangan yang ada telah dibatalkan otomatis — mohon minta tanda tangan ulang.",
+          "Tanda Tangan Dibatalkan Otomatis",
+          7000
+        );
+      } else {
+        toast.success("MVP Release Plan berhasil disimpan lengkap!", "Plan Tersimpan");
+      }
     } else {
       toast.error(res.error || "Gagal menyimpan MVP Plan.", "Gagal Menyimpan");
     }
@@ -731,13 +764,6 @@ export function MarketValidationClient({
   const [generatingBacklog, setGeneratingBacklog] = useState(false);
 
   const handleGenerateBacklog = async () => {
-    if (!isMvGateUnlocked) {
-      toast.error(
-        "Akses ditolak: Tidak dapat membuat rekomendasi backlog karena gerbang fase Market Validation belum terbuka.",
-        "Gerbang Fase Terkunci"
-      );
-      return;
-    }
     setGeneratingBacklog(true);
     try {
       const res = await generateMvBacklogAction(timId);
@@ -941,7 +967,18 @@ export function MarketValidationClient({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={openHistoryModal}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-sm font-bold text-slate-700 shadow-2xs transition-colors h-auto cursor-pointer"
+          >
+            <History className="h-3.5 w-3.5 text-slate-600" />
+            <span>Riwayat Perubahan</span>
+          </Button>
+
           <a
             href={`/api/pdf/mv-planning/${timId}`}
             target="_blank"
@@ -970,10 +1007,9 @@ export function MarketValidationClient({
               type="button"
               variant="outline"
               size="sm"
-              disabled={generatingBacklog || !isMvGateUnlocked}
-              title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
+              disabled={generatingBacklog}
               onClick={handleGenerateBacklog}
-              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-sm font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border-[#0B3D2E] text-[#0B3D2E] hover:bg-emerald-50 text-sm font-bold rounded-xl gap-2 h-9 px-4 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {generatingBacklog ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
@@ -992,8 +1028,8 @@ export function MarketValidationClient({
         </div>
       </div>
 
-      {/* Banner Notifikasi Mode Pratinjau bila Gerbang Fase CV -> MV belum terbuka */}
-      {!isMvGateUnlocked && (
+      {/* Banner Notifikasi Mode Pratinjau bila Gerbang Fase CV -> MV belum terbuka (Hanya di tab selain Plan) */}
+      {!isMvGateUnlocked && activeTab !== "plan" && (
         <div className="p-4 rounded-2xl bg-amber-50/85 border border-amber-200/90 text-amber-900 flex items-start gap-3 shadow-2xs">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-1 text-sm">
@@ -1044,6 +1080,21 @@ export function MarketValidationClient({
         {/* ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="plan" className="space-y-5 mt-4">
           <form onSubmit={handleSavePlan} className="space-y-5">
+            {/* ── BANNER STATUS RENCANA & AUTO-REVOKE NOTICE ─────────────────── */}
+            {Boolean(ttdDisusun || ttdDiperiksa || ttdDisetujui) && (
+              <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-900 flex items-start gap-3 shadow-2xs">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <div className="font-bold text-amber-950 text-sm">
+                    Rencana Rilis MVP Telah Ditandatangani (Mode Fleksibel Aktif)
+                  </div>
+                  <p className="text-amber-800 leading-relaxed">
+                    Sesuai prinsip Agile, perencanaan rilis MVP tetap dapat diperbarui kapan saja tanpa terkunci gerbang formal. <strong>Perhatian:</strong> Menyimpan perubahan pada form ini akan <strong>secara otomatis membatalkan tanda tangan yang sudah ada</strong> dan memerlukan tanda tangan ulang.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* ══ BAGIAN B: Field Ringkasan MVP ══ */}
             <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
               <CardHeader className="pb-3 border-b border-gray-100">
@@ -2116,18 +2167,13 @@ export function MarketValidationClient({
               <div className="flex justify-end gap-3 pt-2">
                 <Button
                   type="submit"
-                  disabled={saving || !isMvGateUnlocked}
-                  title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
-                  className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-sm transition-all ${
-                    !isMvGateUnlocked
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
-                      : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
-                  }`}
+                  disabled={saving}
+                  className="font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-sm transition-all bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                   ) : (
-                    <Save className={`h-4 w-4 ${!isMvGateUnlocked ? "text-gray-400" : "text-[#F0C24B]"}`} />
+                    <Save className="h-4 w-4 text-[#F0C24B]" />
                   )}
                   <span>{saving ? "Menyimpan Plan..." : "Simpan MVP Release Plan"}</span>
                 </Button>
@@ -2160,10 +2206,9 @@ export function MarketValidationClient({
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={generatingBacklog || !isMvGateUnlocked}
-                title={!isMvGateUnlocked ? "Menunggu keputusan lanjut dari Customer Validation (atau izin bypass Admin)" : undefined}
+                disabled={generatingBacklog}
                 onClick={handleGenerateBacklog}
-                className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-bold rounded-xl gap-2 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-xs font-bold rounded-xl gap-2 h-8 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {generatingBacklog ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3E9463]" />
@@ -3327,6 +3372,128 @@ export function MarketValidationClient({
         roleName={reportSigModal.roleName}
         userName={reportSigModal.userName}
       />
+
+      {/* ── Dialog Riwayat Perubahan Rencana MV (Audit Trail) ──────────────── */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-gray-100 bg-slate-50/70">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
+              <History className="h-5 w-5 text-emerald-700" />
+              Riwayat Perubahan Perencanaan MV (MVP Release Plan)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-600 mt-1">
+              Jejak audit perubahan form MVP Release Plan, termasuk riwayat pembatalan tanda tangan otomatis saat form diedit.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
+            {loadingHistory ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2.5 text-slate-400">
+                <RefreshCw className="h-6 w-6 animate-spin text-emerald-600" />
+                <span className="text-xs font-medium">Memuat riwayat perubahan...</span>
+              </div>
+            ) : historyLogs.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 space-y-1">
+                <History className="h-8 w-8 mx-auto text-slate-300 stroke-1" />
+                <p className="text-xs font-medium text-slate-600">Belum ada riwayat perubahan yang tercatat.</p>
+                <p className="text-[11px] text-slate-400">Riwayat akan otomatis terekam setiap kali rencana rilis MVP disimpan atau tanda tangan dibatalkan.</p>
+              </div>
+            ) : (
+              historyLogs.map((log: any) => {
+                const isAutoRevoke = log.action === "MV_PLAN_EDITED_AFTER_SIGN";
+                const dateStr = log.createdAt
+                  ? new Date(log.createdAt).toLocaleString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "-";
+                const changedFields = log.details?.changedFields || [];
+                const revokedSigs = log.details?.revokedSignatures || [];
+
+                return (
+                  <div
+                    key={log.id}
+                    className={`p-4 rounded-xl border transition-all text-xs space-y-2 ${
+                      isAutoRevoke
+                        ? "bg-amber-50/50 border-amber-200"
+                        : "bg-white border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{log.userName || "Pengguna"}</span>
+                        {isAutoRevoke ? (
+                          <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-bold">
+                            ⚠️ TTD Dibatalkan Otomatis
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[10px]">
+                            Simpan MVP Plan
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-mono">{dateStr}</span>
+                    </div>
+
+                    {log.details?.note && (
+                      <p className="text-slate-700 leading-relaxed text-[11px] bg-white/70 p-2 rounded-lg border border-slate-100">
+                        {log.details.note}
+                      </p>
+                    )}
+
+                    {changedFields.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Field yang diubah:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {changedFields.map((f: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="inline-block px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] text-slate-700 font-medium"
+                            >
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {revokedSigs.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Tanda tangan yang direset:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {revokedSigs.map((sig: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="inline-block px-2 py-0.5 rounded-md bg-red-100/80 border border-red-200 text-[10px] text-red-800 font-bold"
+                            >
+                              ✕ {sig}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <DialogFooter className="p-3.5 border-t border-gray-100 bg-slate-50/50">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistoryModal(false)}
+              className="text-xs"
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -649,7 +649,12 @@ export function MandatorySubtaskModal({
                           const isDesirability = catName === "desirability";
                           const isFeasibility = catName === "feasibility";
                           return (
-                            <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                            <tr
+                              key={idx}
+                              className={`transition-colors ${
+                                row.isExcluded ? "bg-gray-100/70 opacity-75" : "hover:bg-gray-50/80"
+                              }`}
+                            >
                               <td className="p-2.5 font-bold text-gray-500 text-center border-r border-gray-100 align-top pt-3">
                                 {idx + 1}
                               </td>
@@ -667,52 +672,77 @@ export function MandatorySubtaskModal({
                                 </span>
                               </td>
                               <td className="p-2.5 border-r border-gray-100 align-top font-bold text-gray-800 text-[11px]">
-                                {row.metrik}
+                                <div className="flex flex-col gap-0.5">
+                                  <span className={row.isExcluded ? "line-through text-gray-400" : ""}>{row.metrik}</span>
+                                  {row.isExcluded && (
+                                    <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-200 text-gray-600 self-start">
+                                      Tidak digunakan tim ini (Dikecualikan Coach)
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2.5 border-r border-gray-100 align-top text-[10.5px] text-gray-600 bg-gray-50/50 leading-relaxed font-medium">
-                                {row.target || "-"}
+                                {row.isExcluded ? (
+                                  <span className="italic text-gray-400">Tidak digunakan tim ini</span>
+                                ) : (
+                                  row.target || "-"
+                                )}
                               </td>
                               <td className="p-2 border-r border-gray-100 align-top bg-emerald-50/20">
                                 <Input
-                                  required
-                                  placeholder="Hasil pengujian..."
-                                  value={row.hasilAktual || ""}
+                                  required={!row.isExcluded}
+                                  disabled={row.isExcluded}
+                                  placeholder={row.isExcluded ? "Tidak digunakan tim ini" : "Hasil pengujian..."}
+                                  value={row.isExcluded ? "Tidak digunakan tim ini" : (row.hasilAktual || "")}
                                   onChange={(e) =>
                                     handleUpdatePsfMeasurementRow(idx, "hasilAktual", e.target.value)
                                   }
-                                  className="h-8 text-[11px] bg-white border-emerald-300 focus:border-emerald-600 font-semibold"
+                                  className={`h-8 text-[11px] font-semibold ${
+                                    row.isExcluded
+                                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                      : "bg-white border-emerald-300 focus:border-emerald-600"
+                                  }`}
                                 />
                               </td>
                               <td className="p-2 border-r border-gray-100 align-top">
                                 <Input
-                                  placeholder="Contoh: 85% / Sesuai..."
-                                  value={row.interpretasi || ""}
+                                  disabled={row.isExcluded}
+                                  placeholder={row.isExcluded ? "Dikecualikan oleh Coach" : "Contoh: 85% / Sesuai..."}
+                                  value={row.isExcluded ? "Dikecualikan oleh Coach" : (row.interpretasi || "")}
                                   onChange={(e) =>
                                     handleUpdatePsfMeasurementRow(idx, "interpretasi", e.target.value)
                                   }
-                                  className="h-8 text-[11px] bg-white border-gray-300"
+                                  className={`h-8 text-[11px] ${
+                                    row.isExcluded ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-white border-gray-300"
+                                  }`}
                                 />
                               </td>
                               <td className="p-2 border-r border-gray-100 align-top">
                                 <Textarea
                                   rows={2}
-                                  placeholder="Learning utama..."
-                                  value={row.learning || ""}
+                                  disabled={row.isExcluded}
+                                  placeholder={row.isExcluded ? "-" : "Learning utama..."}
+                                  value={row.isExcluded ? "-" : (row.learning || "")}
                                   onChange={(e) =>
                                     handleUpdatePsfMeasurementRow(idx, "learning", e.target.value)
                                   }
-                                  className="text-[10.5px] bg-white border-gray-300 min-h-[34px] leading-tight"
+                                  className={`text-[10.5px] min-h-[34px] leading-tight ${
+                                    row.isExcluded ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-white border-gray-300"
+                                  }`}
                                 />
                               </td>
                               <td className="p-2 align-top">
                                 <Textarea
                                   rows={2}
-                                  placeholder="Tindak lanjut penyempurnaan..."
-                                  value={row.enhancement || ""}
+                                  disabled={row.isExcluded}
+                                  placeholder={row.isExcluded ? "-" : "Tindak lanjut penyempurnaan..."}
+                                  value={row.isExcluded ? "-" : (row.enhancement || "")}
                                   onChange={(e) =>
                                     handleUpdatePsfMeasurementRow(idx, "enhancement", e.target.value)
                                   }
-                                  className="text-[10.5px] bg-white border-gray-300 min-h-[34px] leading-tight"
+                                  className={`text-[10.5px] min-h-[34px] leading-tight ${
+                                    row.isExcluded ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-white border-gray-300"
+                                  }`}
                                 />
                               </td>
                             </tr>

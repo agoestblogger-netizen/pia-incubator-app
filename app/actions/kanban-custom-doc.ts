@@ -932,16 +932,28 @@ export async function getMandatorySubtaskDataAction(
         }
 
         const rows = METRIK_ROWS.map((row) => {
-          const rencana = planMetrikRows.find((r) => r.metrik === row.metrik);
-          const found = existingResults.find((m) => m.metrik === row.metrik);
+          const rencana = planMetrikRows.find((r) => {
+            const rMetrik = (r.metrik || "").toLowerCase().trim();
+            const rowMetrik = row.metrik.toLowerCase().trim();
+            return rMetrik === rowMetrik || (rowMetrik.startsWith("kesediaan membayar") && rMetrik.startsWith("kesediaan membayar"));
+          });
+          const found = existingResults.find((m) => {
+            const mMetrik = (m.metrik || "").toLowerCase().trim();
+            const rowMetrik = row.metrik.toLowerCase().trim();
+            return mMetrik === rowMetrik || (rowMetrik.startsWith("kesediaan membayar") && mMetrik.startsWith("kesediaan membayar"));
+          });
+
+          const isExcluded = Boolean(plan && planMetrikRows.length > 0 && !rencana);
+
           return {
             validasi: row.validasi,
             metrik: row.metrik,
-            target: rencana?.kriteriaKesuksesan || row.kriteria || found?.target || "-",
-            hasilAktual: found?.hasilAktual || "",
-            interpretasi: found?.interpretasi || "",
-            learning: found?.learning || "",
-            enhancement: found?.enhancement || "",
+            target: isExcluded ? "Tidak digunakan tim ini" : (rencana?.kriteriaKesuksesan || row.kriteria || found?.target || "-"),
+            hasilAktual: isExcluded ? "Tidak digunakan tim ini" : (found?.hasilAktual || ""),
+            interpretasi: isExcluded ? "Dikecualikan oleh Coach" : (found?.interpretasi || ""),
+            learning: isExcluded ? "-" : (found?.learning || ""),
+            enhancement: isExcluded ? "-" : (found?.enhancement || ""),
+            isExcluded,
           };
         });
 

@@ -62,7 +62,8 @@ export type PhaseGateStatus = {
 
 /**
  * Memeriksa apakah gerbang fase Customer Validation terbuka untuk user dan tim tertentu,
- * baik karena Innovation Charter sudah disetujui Promotor, atau user adalah Admin IC.
+ * cukup salah satu dari PO (Disusun Oleh) atau Coach (Diperiksa Oleh) yang sudah menandatangani Charter,
+ * atau tanda tangan Promotor (Disetujui Oleh), atau user adalah Admin IC.
  */
 export async function isCustomerValidationUnlockedForUser(
   user: any | null,
@@ -76,17 +77,41 @@ export async function isCustomerValidationUnlockedForUser(
   );
   if (isAdmin) return true;
 
-  // 2. Cek apakah Innovation Charter tim ini sudah disetujui Promotor
+  // 2. Cek apakah Innovation Charter tim ini sudah ditandatangani PO atau Coach (salah satu cukup)
   const [charterRow] = await db
-    .select({ ttdDisetujui: charter.ttdDisetujui })
+    .select({
+      ttdDisusun: charter.ttdDisusun,
+      ttdDiperiksa: charter.ttdDiperiksa,
+      ttdDisetujui: charter.ttdDisetujui,
+    })
     .from(charter)
     .where(eq(charter.timInovatorId, timId))
     .limit(1);
 
-  const charterApproval = charterRow?.ttdDisetujui as any;
-  return Boolean(
-    charterApproval && (charterApproval.disetujui === true || charterApproval.status === 'approved')
+  if (!charterRow) return false;
+
+  const isPoSigned = Boolean(
+    charterRow.ttdDisusun &&
+      ((charterRow.ttdDisusun as any).disetujui === true ||
+        (charterRow.ttdDisusun as any).status === "approved" ||
+        (charterRow.ttdDisusun as any).status === "signed")
   );
+
+  const isCoachSigned = Boolean(
+    charterRow.ttdDiperiksa &&
+      ((charterRow.ttdDiperiksa as any).disetujui === true ||
+        (charterRow.ttdDiperiksa as any).status === "approved" ||
+        (charterRow.ttdDiperiksa as any).status === "signed")
+  );
+
+  const isPromotorSigned = Boolean(
+    charterRow.ttdDisetujui &&
+      ((charterRow.ttdDisetujui as any).disetujui === true ||
+        (charterRow.ttdDisetujui as any).status === "approved" ||
+        (charterRow.ttdDisetujui as any).status === "signed")
+  );
+
+  return isPoSigned || isCoachSigned || isPromotorSigned;
 }
 
 /**
@@ -212,7 +237,7 @@ export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateSt
         href: `/tim/${timId}/customer-validation`,
         reason: isCustomerValidationUnlocked
           ? undefined
-          : "Innovation Charter belum disetujui oleh Promotor Inovasi. Minta Promotor untuk memberikan persetujuan formal di halaman Innovation Charter.",
+          : "Innovation Charter belum ditandatangani oleh Project Owner atau Innovation Coach. Menunggu tanda tangan PO atau Coach untuk membuka gerbang Customer Validation.",
       },
       marketValidation: {
         unlocked: isMarketValidationUnlocked,

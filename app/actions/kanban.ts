@@ -625,7 +625,7 @@ export async function adoptAiCardAction(
       if (!isCvUnlocked) {
         return {
           success: false,
-          error: "Forbidden: Gerbang fase Customer Validation belum terbuka untuk mengadopsi kartu backlog ke sprint.",
+          error: "Forbidden: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter).",
         };
       }
     }

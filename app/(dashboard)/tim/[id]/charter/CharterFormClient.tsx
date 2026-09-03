@@ -1657,22 +1657,27 @@ export function CharterFormClient({
                       <span>Persetujuan Formal &amp; Otorisasi Innovation Charter</span>
                       <SectionInfo
                         title="Template 1 — Bagian 4: Lembar Pengesahan Otorisasi"
-                        text="Otorisasi formal mandat eksekusi inovasi sesuai Template 1 Juklak: Disusun Oleh Project Owner, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Promotor. Tanda tangan Promotor menjadi syarat sah pembukaan gerbang Customer Validation."
+                        text="Otorisasi formal mandat eksekusi inovasi sesuai Template 1 Juklak: Disusun Oleh Project Owner, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Promotor. Cukup salah satu dari PO atau Coach yang menandatangani untuk membuka gerbang Customer Validation (Promotor bersifat opsional)."
                       />
                     </CardTitle>
                     <CardDescription className="text-sm text-gray-500 mt-0.5">
-                      Tanda tangan formal sesuai Template 1 Juklak. Gerbang fase hanya membutuhkan tanda tangan Promotor.
+                      Tanda tangan formal sesuai Template 1 Juklak. Cukup tanda tangan PO atau Coach untuk membuka gerbang Customer Validation.
                     </CardDescription>
                   </div>
                   {ttdDisetujui?.status === "approved" ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-bold border border-emerald-200">
                       <FileCheck2 className="h-3.5 w-3.5 text-emerald-700" />
-                      Disetujui Formal
+                      Disetujui Formal (Promotor)
+                    </span>
+                  ) : (ttdDisusun?.status === "approved" || ttdDiperiksa?.status === "approved") ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-bold border border-emerald-200">
+                      <FileCheck2 className="h-3.5 w-3.5 text-emerald-700" />
+                      Gerbang CV Terbuka ({ttdDisusun?.status === "approved" && ttdDiperiksa?.status === "approved" ? "PO & Coach" : ttdDisusun?.status === "approved" ? "PO" : "Coach"})
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-bold border border-amber-200">
                       <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
-                      Menunggu Persetujuan Promotor
+                      Menunggu Tanda Tangan PO atau Coach
                     </span>
                   )}
                 </div>
@@ -1706,7 +1711,7 @@ export function CharterFormClient({
                   )}
                 </div>
                 <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-                  <strong>Catatan:</strong> Tanda tangan PO dan Coach bersifat dokumentasi tambahan. Pembukaan gerbang Customer Validation tetap hanya membutuhkan tanda tangan Promotor.
+                  <strong>Catatan:</strong> Cukup salah satu dari Project Owner (PO) atau Innovation Coach yang menandatangani Innovation Charter untuk membuka gerbang Customer Validation. Tanda tangan Promotor bersifat opsional.
                 </p>
               </CardContent>
             </Card>

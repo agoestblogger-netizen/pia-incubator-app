@@ -13,6 +13,7 @@ import {
   revokeCvPlanSignatureAction,
   signCvReportAction,
   revokeCvReportSignatureAction,
+  getCvPlanAuditHistoryAction,
 } from "@/app/actions/customer-validation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
   Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck,
-  Plus, Trash2, AlertTriangle
+  Plus, Trash2, AlertTriangle, History
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import {
@@ -263,7 +264,8 @@ export function CustomerValidationClient({
   const isCoach = Boolean(
     userRole === 'coach' ||
     userRole === 'innovation_coach' ||
-    currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r))
+    currentUser?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r)) ||
+    currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
   );
   const isAdminOrCoach = isAdmin || isCoach;
   const isGlobalUser = Boolean(
@@ -411,7 +413,8 @@ export function CustomerValidationClient({
   const [ttdDisetujui, setTtdDisetujui] = useState<any>(initialData?.plan?.ttdDisetujui || null);
 
   const isPlanSigned = Boolean(ttdDisusun || ttdDiperiksa || ttdDisetujui);
-  const isSectionAbcLocked = isPlanSigned && !isAdmin;
+  // Sesuai arahan Agile: CV Plan selalu terbuka untuk diedit & disimpan tanpa terkunci read-only
+  const isSectionAbcLocked = false;
 
   // ── Report Signatures state ────────────────────────────────────────────────
   const [reportTtdDisusun, setReportTtdDisusun] = useState<any>(initialData?.report?.ttdDisusun || null);
@@ -479,43 +482,9 @@ export function CustomerValidationClient({
   const initMetrik = () => {
     const rawRencana = initialData?.metrikRencana || [];
 
-    // Track which DB rows get mapped to the 7 standard rows
-    const matchedDbIndices = new Set<number>();
-
-    // 1. Build the 7 standard rows (always guaranteed to exist as base)
-    const standardRows = METRIK_ROWS.map((mRow, i) => {
-      // Find matching row in DB by canonical metric name first
-      let foundIdx = rawRencana.findIndex((r: any, idx: number) => {
-        if (matchedDbIndices.has(idx)) return false;
-        const rMetrik = (r.metrik || "").toLowerCase().trim();
-        const mMetrik = mRow.metrik.toLowerCase().trim();
-        return rMetrik === mMetrik || (mMetrik.startsWith("kesediaan membayar") && rMetrik.startsWith("kesediaan membayar"));
-      });
-
-      // If not found by name, fallback for legacy rows: match by validasi if DB row is not already a known canonical metric
-      if (foundIdx === -1) {
-        foundIdx = rawRencana.findIndex((r: any, idx: number) => {
-          if (matchedDbIndices.has(idx)) return false;
-          return normalizeValidasi(r.validasi) === mRow.validasi && !isCanonicalStandardMetric(r.metrik);
-        });
-      }
-
-      if (foundIdx !== -1) {
-        matchedDbIndices.add(foundIdx);
-        const r = rawRencana[foundIdx];
-        return {
-          id: r.id || `default_m${i}`,
-          validasi: mRow.validasi,
-          metrik: r.metrik || mRow.metrik,
-          unitUkuran: r.unitUkuran || "",
-          kriteriaKesuksesan: r.kriteriaKesuksesan || "",
-          caraPengukuran: r.caraPengukuran || "",
-          catatan: r.catatan || "",
-          isStandard: true,
-        };
-      }
-
-      return {
+    // 1. Jika tim belum memiliki data metrik di DB, inisialisasi 7 baris baku
+    if (!initialData?.plan?.id || rawRencana.length === 0) {
+      return METRIK_ROWS.map((mRow, i) => ({
         id: `default_m${i}`,
         validasi: mRow.validasi,
         metrik: mRow.metrik,
@@ -524,24 +493,21 @@ export function CustomerValidationClient({
         caraPengukuran: "",
         catatan: "",
         isStandard: true,
-      };
-    });
-
-    // 2. Any other rows stored in DB that did not match the 7 standard rows are CUSTOM rows
-    const customRows = rawRencana
-      .filter((_: any, idx: number) => !matchedDbIndices.has(idx))
-      .map((r: any, idx: number) => ({
-        id: r.id || `custom_m${idx}`,
-        validasi: normalizeValidasi(r.validasi),
-        metrik: r.metrik || "",
-        unitUkuran: r.unitUkuran || "",
-        kriteriaKesuksesan: r.kriteriaKesuksesan || "",
-        caraPengukuran: r.caraPengukuran || "",
-        catatan: r.catatan || "",
-        isStandard: false,
       }));
+    }
 
-    return [...standardRows, ...customRows];
+    // 2. Jika tim sudah memiliki data di DB: baca langsung data dari DB
+    // Menghormati keputusan Coach jika ada baris baku yang telah dihapus
+    return rawRencana.map((r: any, idx: number) => ({
+      id: r.id || `m_${idx}`,
+      validasi: normalizeValidasi(r.validasi),
+      metrik: r.metrik || "",
+      unitUkuran: r.unitUkuran || "",
+      kriteriaKesuksesan: r.kriteriaKesuksesan || "",
+      caraPengukuran: r.caraPengukuran || "",
+      catatan: r.catatan || "",
+      isStandard: isCanonicalStandardMetric(r.metrik),
+    }));
   };
   const [metrikRows, setMetrikRows] = useState<any[]>(initMetrik);
 
@@ -582,23 +548,65 @@ export function CustomerValidationClient({
 
   // ── Tabel 2: Hasil Validasi Metrik state (7 baris tetap ditarik dari Tab 1) ───
   const initMetrikHasil = () => {
-    return METRIK_ROWS.map((row) => {
-      const rencana = (initialData?.metrikRencana || []).find(
-        (r: any) => r.metrik === row.metrik
-      );
-      const found = (initialData?.metrikHasil || []).find(
-        (m: any) => m.metrik === row.metrik
-      );
+    const rawRencana = initialData?.metrikRencana || [];
+    const rawHasil = initialData?.metrikHasil || [];
+
+    const standardRows = METRIK_ROWS.map((row) => {
+      const rencana = rawRencana.find((r: any) => {
+        const rMetrik = (r.metrik || "").toLowerCase().trim();
+        const rowMetrik = row.metrik.toLowerCase().trim();
+        return (
+          rMetrik === rowMetrik ||
+          (rowMetrik.startsWith("kesediaan membayar") && rMetrik.startsWith("kesediaan membayar"))
+        );
+      });
+      const found = rawHasil.find((m: any) => {
+        const mMetrik = (m.metrik || "").toLowerCase().trim();
+        const rowMetrik = row.metrik.toLowerCase().trim();
+        return (
+          mMetrik === rowMetrik ||
+          (rowMetrik.startsWith("kesediaan membayar") && mMetrik.startsWith("kesediaan membayar"))
+        );
+      });
+
+      const isExcluded = Boolean(rawRencana.length > 0 && !rencana);
+
       return {
         validasi: row.validasi,
         metrik: row.metrik,
-        target: rencana?.kriteriaKesuksesan || row.kriteria || found?.target || "-",
+        target: isExcluded
+          ? "Tidak digunakan tim ini"
+          : rencana?.kriteriaKesuksesan || row.kriteria || found?.target || "-",
+        hasilAktual: isExcluded
+          ? "Tidak digunakan tim ini"
+          : found?.hasilAktual || "",
+        interpretasi: isExcluded
+          ? "Dikecualikan oleh Coach"
+          : found?.interpretasi || "",
+        learning: isExcluded ? "-" : found?.learning || "",
+        enhancement: isExcluded ? "-" : found?.enhancement || "",
+        isExcluded,
+      };
+    });
+
+    const customRencana = rawRencana.filter((r: any) => !isCanonicalStandardMetric(r.metrik));
+    const customRows = customRencana.map((r: any) => {
+      const found = rawHasil.find(
+        (m: any) => m.metrik?.toLowerCase().trim() === r.metrik?.toLowerCase().trim()
+      );
+      return {
+        validasi: normalizeValidasi(r.validasi),
+        metrik: r.metrik,
+        target: r.kriteriaKesuksesan || "-",
         hasilAktual: found?.hasilAktual || "",
         interpretasi: found?.interpretasi || "",
         learning: found?.learning || "",
         enhancement: found?.enhancement || "",
+        isExcluded: false,
       };
     });
+
+    return [...standardRows, ...customRows];
   };
   const [metrikHasilList, setMetrikHasilList] = useState(initMetrikHasil);
 
@@ -609,6 +617,26 @@ export function CustomerValidationClient({
   const [autoFillSource, setAutoFillSource] = useState<'charter' | 'grand_final' | null>(null);
   // Custom confirmation modal state (replaces window.confirm which gets dismissed by Next.js router)
   const [showAutoFillConfirm, setShowAutoFillConfirm] = useState(false);
+
+  // ── Modal Riwayat Perubahan Rencana (Audit Trail) ─────────────────────────
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const openHistoryModal = async () => {
+    setShowHistoryModal(true);
+    setLoadingHistory(true);
+    try {
+      const res = await getCvPlanAuditHistoryAction(timId);
+      if (res.success && res.logs) {
+        setHistoryLogs(res.logs);
+      }
+    } catch (err) {
+      console.error("Gagal memuat riwayat audit:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   // ── Auto-resize all Textareas in Section D & E on initial render / data change ──
   useEffect(() => {
@@ -691,13 +719,6 @@ export function CustomerValidationClient({
 
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isCvGateUnlocked) {
-      toast.error(
-        "Akses ditolak: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).",
-        "Gerbang Fase Terkunci"
-      );
-      return;
-    }
     setSaving(true);
     const { dataDukung, ...planValues } = planForm;
     const res = await saveCustomerValidationPlanFullAction(
@@ -707,7 +728,16 @@ export function CustomerValidationClient({
       metrikRows,
     );
     if (res.success) {
-      if ((res as any).backlogGenerated) {
+      if ((res as any).signatureRevoked) {
+        setTtdDisusun(null);
+        setTtdDiperiksa(null);
+        setTtdDisetujui(null);
+        toast.warning(
+          "Perubahan disimpan. Karena rencana ini sudah ditandatangani sebelumnya, tanda tangan yang ada telah dibatalkan otomatis — mohon minta tanda tangan ulang.",
+          "Tanda Tangan Dibatalkan Otomatis",
+          7000
+        );
+      } else if ((res as any).backlogGenerated) {
         toast.success(
           `Validation Plan tersimpan. ${(res as any).backlogCount} kartu rekomendasi backlog berhasil dibuat — cek Tab Backlog & Sprint.`,
           "Plan & Backlog Tersimpan"
@@ -751,8 +781,19 @@ export function CustomerValidationClient({
         if (aiMetrikRows && aiMetrikRows.length > 0) {
           setMetrikRows((prev) => {
             const userCustomRows = prev.filter((r) => !r.isStandard);
+            const activeStandardRows = prev.filter((r) => r.isStandard);
+            const baseStandardList = activeStandardRows.length > 0 ? activeStandardRows : METRIK_ROWS.map((m, i) => ({
+              id: `std_m${i}`,
+              validasi: m.validasi,
+              metrik: m.metrik,
+              unitUkuran: m.unit || '',
+              kriteriaKesuksesan: m.kriteria || '',
+              caraPengukuran: m.cara || '',
+              catatan: '',
+              isStandard: true,
+            }));
 
-            const updatedStandardRows = METRIK_ROWS.map((base, idx) => {
+            const updatedStandardRows = baseStandardList.map((base: any, idx: number) => {
               // Find matching AI row by exact metric name
               let aiMatch = aiMetrikRows.find(
                 (r: any) => (r.metrik || '').toLowerCase().trim() === base.metrik.toLowerCase().trim()
@@ -775,12 +816,12 @@ export function CustomerValidationClient({
               }
 
               return {
-                id: `std_m${idx}`,
+                id: base.id || `std_m${idx}`,
                 validasi: base.validasi,
-                metrik: base.metrik, // FIXED & UNTOUCHED!
-                unitUkuran: aiMatch?.unitUkuran || base.unit || '',
-                kriteriaKesuksesan: aiMatch?.kriteriaKesuksesan || base.kriteria || '',
-                caraPengukuran: aiMatch?.caraPengukuran || base.cara || '',
+                metrik: base.metrik,
+                unitUkuran: aiMatch?.unitUkuran || base.unitUkuran || '',
+                kriteriaKesuksesan: aiMatch?.kriteriaKesuksesan || base.kriteriaKesuksesan || '',
+                caraPengukuran: aiMatch?.caraPengukuran || base.caraPengukuran || '',
                 catatan: aiMatch?.catatan || (base.catatan === 'Diisi' ? '' : base.catatan) || '',
                 isStandard: true,
               };
@@ -941,13 +982,6 @@ export function CustomerValidationClient({
   };
 
   const handleGenerateBacklog = async () => {
-    if (!isCvGateUnlocked) {
-      toast.error(
-        "Akses ditolak: Gerbang fase Customer Validation belum terbuka untuk generate rekomendasi backlog.",
-        "Gerbang Fase Terkunci"
-      );
-      return;
-    }
     if (!initialData?.plan?.id) {
       toast.error("Harap simpan Form Perencanaan CV terlebih dahulu sebelum generate rekomendasi backlog.", "Rencana Belum Disimpan");
       return;
@@ -971,7 +1005,7 @@ export function CustomerValidationClient({
     e.preventDefault();
     if (!isCvGateUnlocked) {
       toast.error(
-        "Akses ditolak: Gerbang fase Customer Validation belum terbuka (menunggu persetujuan Innovation Charter dari Promotor Inovasi atau izin Admin).",
+        "Akses ditolak: Gerbang fase Customer Validation belum terbuka (menunggu tanda tangan PO atau Coach pada Innovation Charter atau izin Admin).",
         "Gerbang Fase Terkunci"
       );
       return;
@@ -1027,8 +1061,8 @@ export function CustomerValidationClient({
 
   return (
     <div className="space-y-4">
-      {/* Banner Notifikasi Mode Pratinjau bila Gerbang Fase Setup -> CV belum terbuka */}
-      {!isCvGateUnlocked && (
+      {/* Banner Notifikasi Mode Pratinjau bila Gerbang Fase Setup -> CV belum terbuka (Hanya untuk Tab Backlog dan Report) */}
+      {!isCvGateUnlocked && activeTab !== "plan" && (
         <div className="p-4 rounded-2xl bg-amber-50/85 border border-amber-200/90 text-amber-900 flex items-start gap-3 shadow-2xs">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-1 text-xs">
@@ -1036,7 +1070,7 @@ export function CustomerValidationClient({
               Mode Pratinjau Customer Validation (Gerbang Fase Belum Dibuka)
             </p>
             <p className="text-amber-800 leading-relaxed">
-              Seluruh konten, tab, dan instrumen Customer Validation (Validation Plan, Backlog &amp; Sprint, dan Validation Report) dapat dilihat secara lengkap. Namun, aksi perubahan seperti penyimpanan form, tanda tangan dokumen, pembuatan rekomendasi backlog, dan adopsi kartu ke sprint masih dibatasi hingga dokumen Innovation Charter disetujui secara formal oleh Promotor Inovasi di halaman <strong>Innovation Charter</strong> (atau Anda memiliki peran Administrator Utama).
+              Seluruh konten, tab, dan instrumen Customer Validation (Validation Plan, Backlog &amp; Sprint, dan Validation Report) dapat dilihat secara lengkap. Namun, aksi perubahan seperti penyimpanan form, tanda tangan dokumen, pembuatan rekomendasi backlog, dan adopsi kartu ke sprint masih dibatasi hingga dokumen Innovation Charter ditandatangani oleh Project Owner atau Innovation Coach di halaman <strong>Innovation Charter</strong> (atau Anda memiliki peran Administrator Utama).
             </p>
           </div>
         </div>
@@ -1081,7 +1115,17 @@ export function CustomerValidationClient({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={openHistoryModal}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 shadow-2xs transition-all cursor-pointer h-auto"
+                  >
+                    <History className="h-4 w-4 text-slate-600" />
+                    <span>Riwayat Perubahan</span>
+                  </Button>
                   <a
                     href={`/api/pdf/cv-planning/${timId}`}
                     target="_blank"
@@ -1096,28 +1140,19 @@ export function CustomerValidationClient({
               </div>
             </div>
 
-            {/* ── BANNER STATUS KUNCI TANDA TANGAN ────────────────────────── */}
+            {/* ── BANNER STATUS RENCANA & AUTO-REVOKE NOTICE ─────────────────── */}
             {isPlanSigned && (
-              isSectionAbcLocked ? (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start sm:items-center gap-3 shadow-2xs">
-                  <Lock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
-                  <div className="text-xs">
-                    <strong className="font-bold">🔒 Perencanaan Dikunci:</strong> Perencanaan ini sudah ditandatangani sebagian/seluruhnya dan dikunci. Hubungi Admin untuk melakukan perubahan.
+              <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-900 flex items-start gap-3 shadow-2xs">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <div className="font-bold text-amber-950 text-sm">
+                    Rencana Telah Ditandatangani (Mode Fleksibel Aktif)
                   </div>
+                  <p className="text-amber-800 leading-relaxed">
+                    Sesuai prinsip Agile, perencanaan validasi pelanggan tetap dapat diperbarui kapan saja tanpa terkunci gerbang formal. <strong>Perhatian:</strong> Menyimpan perubahan pada form ini akan <strong>secara otomatis membatalkan tanda tangan yang sudah ada</strong> dan memerlukan tanda tangan ulang.
+                  </p>
                 </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-purple-50 border border-purple-300 text-purple-900 flex items-start sm:items-center justify-between gap-3 shadow-2xs">
-                  <div className="flex items-center gap-3 text-xs">
-                    <ShieldCheck className="h-5 w-5 text-purple-600 shrink-0" />
-                    <div>
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-200 text-purple-900 border border-purple-300 mr-2">
-                        Mode Admin — Kunci dilewati
-                      </span>
-                      <span>Perencanaan telah ditandatangani, namun Anda memiliki hak akses Admin untuk mengubah form kapan saja.</span>
-                    </div>
-                  </div>
-                </div>
-              )
+              </div>
             )}
 
             {/* ── BANNER PERINGATAN REVIEW MANUAL SETELAH AUTO-FILL ── */}
@@ -1789,12 +1824,16 @@ export function CustomerValidationClient({
                           <td className="px-4 py-3 align-top">
                             <select
                               value={r.validasi}
+                              disabled={r.isStandard && !isAdminOrCoach}
+                              title={r.isStandard && !isAdminOrCoach ? "Kategori validasi metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
                               onChange={(e) => {
                                 const newRows = [...metrikRows];
                                 newRows[index].validasi = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="w-full text-xs font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border"
+                              className={`w-full text-xs font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
+                                r.isStandard && !isAdminOrCoach ? "cursor-not-allowed opacity-80" : "cursor-pointer"
+                              }`}
                               style={
                                 r.validasi?.trim() === "Desirability"
                                   ? { backgroundColor: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }
@@ -1813,6 +1852,8 @@ export function CustomerValidationClient({
                           <td className="px-4 py-3 align-top">
                             <Textarea
                               value={r.metrik}
+                              disabled={r.isStandard && !isAdminOrCoach}
+                              title={r.isStandard && !isAdminOrCoach ? "Nama metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
                               onChange={(e) => {
                                 e.target.style.height = 'auto';
                                 e.target.style.height = `${e.target.scrollHeight}px`;
@@ -1820,7 +1861,9 @@ export function CustomerValidationClient({
                                 newRows[index].metrik = e.target.value;
                                 setMetrikRows(newRows);
                               }}
-                              className="text-sm resize-none min-h-[38px] overflow-hidden font-semibold"
+                              className={`text-sm resize-none min-h-[38px] overflow-hidden font-semibold ${
+                                r.isStandard && !isAdminOrCoach ? "cursor-not-allowed bg-gray-50 text-gray-700" : ""
+                              }`}
                               placeholder={defaultMeta?.metrik || "Metrik"}
                               rows={1}
                             />
@@ -1886,18 +1929,34 @@ export function CustomerValidationClient({
                                 }}
                               />
                               {r.isStandard ? (
-                                <span
-                                  className="mt-1 shrink-0 px-2 py-1 rounded text-xs font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
-                                  title="Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"
-                                >
-                                  Baku Juklak
-                                </span>
+                                <div className="flex items-center gap-1 mt-1 shrink-0">
+                                  <span
+                                    className="px-2 py-1 rounded text-xs font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
+                                    title={isAdminOrCoach ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
+                                  >
+                                    Baku Juklak
+                                  </span>
+                                  {isAdminOrCoach && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
+                                      onClick={() => {
+                                        setMetrikRows(metrikRows.filter((_, i) => i !== index));
+                                      }}
+                                      title="Hapus baris metrik baku (Wewenang Coach / Admin)"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
                               ) : (
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 mt-1 shrink-0"
+                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 mt-1 shrink-0 cursor-pointer"
                                   onClick={() => {
                                     setMetrikRows(metrikRows.filter((_, i) => i !== index));
                                   }}
@@ -1946,8 +2005,7 @@ export function CustomerValidationClient({
                   <Button
                     type="button"
                     onClick={handleGenerateBacklog}
-                    disabled={generatingBacklog || saving || !isCvGateUnlocked}
-                    title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                    disabled={generatingBacklog || saving}
                     className="bg-purple-700 hover:bg-purple-800 text-white gap-2 h-10 px-5 rounded-xl shadow-xs cursor-pointer text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {generatingBacklog ? (
@@ -1969,18 +2027,13 @@ export function CustomerValidationClient({
               {canEditCv && (
                 <Button
                   type="submit"
-                  disabled={saving || !isCvGateUnlocked}
-                  title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
-                  className={`gap-2 h-10 px-6 rounded-xl shadow-xs transition-all text-sm font-semibold ${
-                    !isCvGateUnlocked
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
-                      : "bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98"
-                  }`}
+                  disabled={saving}
+                  className="gap-2 h-10 px-6 rounded-xl shadow-xs transition-all text-sm font-semibold bg-[#0F5132] hover:bg-[#1B7A4D] text-white cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block" />
                   ) : (
-                    <Save className={`h-4 w-4 ${!isCvGateUnlocked ? "text-gray-400" : "text-white"}`} />
+                    <Save className="h-4 w-4 text-white" />
                   )}
                   <span>{saving ? "Menyimpan..." : "Simpan Validation Plan"}</span>
                 </Button>
@@ -2365,9 +2418,7 @@ export function CustomerValidationClient({
               <Button
                 type="button"
                 size="sm"
-                onClick={handleGenerateBacklog}
-                disabled={generatingBacklog || !isCvGateUnlocked}
-                title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                disabled={generatingBacklog}
                 className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingBacklog ? (
@@ -2734,7 +2785,7 @@ export function CustomerValidationClient({
               </CardContent>
             </Card>
 
-            {/* ══ SECTION D: TABEL 2 — Hasil Pengukuran Customer Validation (7 Baris Tetap) ══ */}
+            {/* ══ SECTION D: TABEL 2 — Hasil Pengukuran Customer Validation (7 Baris Baku) ══ */}
             <Card className="border-gray-200/80 shadow-2xs">
               <CardHeader className="pb-3 border-b border-gray-100">
                 <div className="flex items-center justify-between">
@@ -2772,12 +2823,17 @@ export function CustomerValidationClient({
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {metrikHasilList.map((m, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50/70 transition-colors">
+                        <tr
+                          key={idx}
+                          className={`transition-colors ${
+                            m.isExcluded ? "bg-slate-50/80 opacity-75" : "hover:bg-gray-50/70"
+                          }`}
+                        >
                           <td className="p-2.5 font-bold text-gray-900 align-top bg-gray-50/50">
                             <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold ${
                               m.validasi === 'Desirability'
                                 ? 'bg-amber-100 text-amber-900'
-                                : m.validasi === 'Feasibility'
+                                : m.validasi === 'Feasibility' || m.validasi === 'Feasibility On Paper'
                                 ? 'bg-blue-100 text-blue-900'
                                 : 'bg-purple-100 text-purple-900'
                             }`}>
@@ -2785,15 +2841,27 @@ export function CustomerValidationClient({
                             </span>
                           </td>
                           <td className="p-2.5 font-semibold text-gray-800 align-top text-[11px]">
-                            {m.metrik}
+                            <div className="flex flex-col gap-0.5">
+                              <span className={m.isExcluded ? "line-through text-gray-400" : ""}>{m.metrik}</span>
+                              {m.isExcluded && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-200 text-gray-600 self-start">
+                                  Tidak digunakan tim ini (Dikecualikan Coach)
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-2.5 text-gray-600 align-top text-[11px]">
-                            {m.target || "-"}
+                            {m.isExcluded ? (
+                              <span className="italic text-gray-400">Tidak digunakan tim ini</span>
+                            ) : (
+                              m.target || "-"
+                            )}
                           </td>
                           <td className="p-2 align-top">
                             <Input
-                              placeholder="Hasil Aktual"
-                              value={m.hasilAktual || ""}
+                              placeholder={m.isExcluded ? "Tidak digunakan tim ini" : "Hasil Aktual"}
+                              disabled={m.isExcluded}
+                              value={m.isExcluded ? "Tidak digunakan tim ini" : (m.hasilAktual || "")}
                               onChange={(e) => {
                                 const val = e.target.value;
                                 setMetrikHasilList((prev) =>
@@ -3382,7 +3450,7 @@ export function CustomerValidationClient({
               <Button
                 type="submit"
                 disabled={saving || !isCvGateUnlocked}
-                title={!isCvGateUnlocked ? "Menunggu persetujuan Innovation Charter dari Promotor Inovasi (atau izin Admin)" : undefined}
+                title={!isCvGateUnlocked ? "Menunggu tanda tangan PO atau Coach pada Innovation Charter (atau izin Admin)" : undefined}
                 className={`font-bold gap-2 h-11 px-8 rounded-xl shadow-sm text-xs transition-all ${
                   !isCvGateUnlocked
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
@@ -3444,6 +3512,128 @@ export function CustomerValidationClient({
             >
               <Sparkles className="h-4 w-4 mr-1.5" />
               Ya, Isi Ulang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog Riwayat Perubahan Rencana (Audit Trail) ─────────────────── */}
+      <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-gray-100 bg-slate-50/70">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
+              <History className="h-5 w-5 text-emerald-700" />
+              Riwayat Perubahan Perencanaan CV
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-600 mt-1">
+              Jejak audit perubahan form perencanaan, termasuk riwayat pembatalan tanda tangan otomatis saat form diedit.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
+            {loadingHistory ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2.5 text-slate-400">
+                <RefreshCw className="h-6 w-6 animate-spin text-emerald-600" />
+                <span className="text-xs font-medium">Memuat riwayat perubahan...</span>
+              </div>
+            ) : historyLogs.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 space-y-1">
+                <History className="h-8 w-8 mx-auto text-slate-300 stroke-1" />
+                <p className="text-xs font-medium text-slate-600">Belum ada riwayat perubahan yang tercatat.</p>
+                <p className="text-[11px] text-slate-400">Riwayat akan otomatis terekam setiap kali rencana disimpan atau tanda tangan dibatalkan.</p>
+              </div>
+            ) : (
+              historyLogs.map((log: any) => {
+                const isAutoRevoke = log.action === 'CV_PLAN_EDITED_AFTER_SIGN';
+                const dateStr = log.createdAt
+                  ? new Date(log.createdAt).toLocaleString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "-";
+                const changedFields = log.details?.changedFields || [];
+                const revokedSigs = log.details?.revokedSignatures || [];
+
+                return (
+                  <div
+                    key={log.id}
+                    className={`p-4 rounded-xl border transition-all text-xs space-y-2 ${
+                      isAutoRevoke
+                        ? "bg-amber-50/50 border-amber-200"
+                        : "bg-white border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{log.userName || "Pengguna"}</span>
+                        {isAutoRevoke ? (
+                          <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-bold">
+                            ⚠️ TTD Dibatalkan Otomatis
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[10px]">
+                            Simpan Perencanaan
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-mono">{dateStr}</span>
+                    </div>
+
+                    {log.details?.note && (
+                      <p className="text-slate-700 leading-relaxed text-[11px] bg-white/70 p-2 rounded-lg border border-slate-100">
+                        {log.details.note}
+                      </p>
+                    )}
+
+                    {changedFields.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Field yang diubah:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {changedFields.map((f: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="inline-block px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] text-slate-700 font-medium"
+                            >
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {revokedSigs.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Tanda tangan yang direset:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {revokedSigs.map((sig: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="inline-block px-2 py-0.5 rounded-md bg-red-100/80 border border-red-200 text-[10px] text-red-800 font-bold"
+                            >
+                              ✕ {sig}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <DialogFooter className="p-3.5 border-t border-gray-100 bg-slate-50/50">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistoryModal(false)}
+              className="text-xs"
+            >
+              Tutup
             </Button>
           </DialogFooter>
         </DialogContent>

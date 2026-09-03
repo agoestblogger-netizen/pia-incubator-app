@@ -19,8 +19,9 @@ import {
   sprintReview,
   hasilValidasiMetrik,
   dossierPiaArchive,
+  auditLogs,
 } from "@/lib/db/schema";
-import { eq, and, ne, inArray, desc, asc } from "drizzle-orm";
+import { eq, and, ne, inArray, desc, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -28,6 +29,23 @@ import { getCharterRolesData } from "./charter";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateAiBacklogFromMvPlan } from "@/lib/ai/mv-backlog-generator";
 import { isMarketValidationUnlockedForUser } from "./phase-gate";
+
+const TRACKED_MV_PLAN_FIELDS: Record<string, string> = {
+  hasilCustomerValidationRingkasan: 'Hasil CV Ringkasan',
+  deskripsiMvp: 'Deskripsi MVP',
+  mvpVersion: 'Versi MVP',
+  fiturMvpDirilis: 'Fitur MVP Dirilis',
+  channelRelease: 'Channel Release',
+  periodeReleaseMulai: 'Periode Release Mulai',
+  periodeReleaseSelesai: 'Periode Release Selesai',
+  deskripsiProsesMvp: 'Deskripsi Proses MVP',
+  targetEarlyAdopters: 'Target Early Adopters',
+  lokasiPilot: 'Lokasi Pilot',
+  daftarEarlyAdopters: 'Daftar Early Adopters',
+  jumlahTargetPengguna: 'Jumlah Target Pengguna',
+  batasanScopeMvp: 'Batasan Scope MVP',
+  dataDukungMvp: 'Data Dukung MVP',
+};
 
 export async function getMarketValidationData(timId: string) {
   const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
@@ -199,14 +217,6 @@ export async function saveMarketValidationPlanFullAction(
       };
     }
 
-    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
-    if (!isMvUnlocked) {
-      return {
-        success: false,
-        error: "Forbidden: Gerbang fase Market Validation belum terbuka (menunggu keputusan 'Lanjut ke Market Validation' pada Laporan Customer Validation atau izin bypass Admin).",
-      };
-    }
-
     // 1. Upsert marketValidationPlan
     const [existing] = await db
       .select()
@@ -216,13 +226,37 @@ export async function saveMarketValidationPlanFullAction(
 
     let planId = existing?.id;
 
+    // Cek apakah plan sudah pernah ditandatangani
+    const hadSignatures = Boolean(existing?.ttdDisusun || existing?.ttdDiperiksa || existing?.ttdDisetujui);
+    let signatureRevoked = false;
+    let changedFields: string[] = [];
+
+    const updatePayload: any = {
+      ...planValues,
+      updatedAt: new Date(),
+    };
+
+    if (existing && hadSignatures) {
+      for (const [k, label] of Object.entries(TRACKED_MV_PLAN_FIELDS)) {
+        const oldVal = (existing as any)[k];
+        const newVal = (planValues as any)[k];
+        if (newVal !== undefined && JSON.stringify(oldVal ?? null) !== JSON.stringify(newVal ?? null)) {
+          changedFields.push(label);
+        }
+      }
+
+      if (changedFields.length > 0 || (mappingFiturList && mappingFiturList.length > 0) || (resourcesList && resourcesList.length > 0) || (metrikList && metrikList.length > 0)) {
+        signatureRevoked = true;
+        updatePayload.ttdDisusun = null;
+        updatePayload.ttdDiperiksa = null;
+        updatePayload.ttdDisetujui = null;
+      }
+    }
+
     if (existing) {
       await db
         .update(marketValidationPlan)
-        .set({
-          ...planValues,
-          updatedAt: new Date(),
-        })
+        .set(updatePayload)
         .where(eq(marketValidationPlan.id, existing.id));
     } else {
       const [inserted] = await db
@@ -303,23 +337,43 @@ export async function saveMarketValidationPlanFullAction(
       await db.insert(rencanaValidasiMetrik).values(validMetrik);
     }
 
-    await logAudit({
-      userId: user.id,
-      userName: user.nama,
-      action: "MARKET_VAL_PLAN_SAVE_FULL",
-      entity: "market_validation_plan",
-      entityId: planId,
-      details: {
-        timId,
-        mvpVersion: planValues.mvpVersion,
-        totalFitur: mappingFiturList.length,
-        totalResources: resourcesList.length,
-        totalMetrik: metrikList.length,
-      },
-    });
+    if (signatureRevoked) {
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: "MV_PLAN_EDITED_AFTER_SIGN",
+        entity: "market_validation_plan",
+        entityId: planId,
+        details: {
+          timId,
+          changedFields: changedFields.length > 0 ? changedFields : ['Pembaruan Fitur/Resource/Metrik'],
+          revokedSignatures: [
+            existing?.ttdDisusun ? 'Project Owner' : null,
+            existing?.ttdDiperiksa ? 'Coach' : null,
+            existing?.ttdDisetujui ? 'Promotor' : null,
+          ].filter(Boolean),
+          note: 'Tanda tangan dibatalkan otomatis karena rencana diubah setelah penandatanganan.',
+        },
+      });
+    } else {
+      await logAudit({
+        userId: user.id,
+        userName: user.nama,
+        action: "MARKET_VAL_PLAN_SAVE_FULL",
+        entity: "market_validation_plan",
+        entityId: planId,
+        details: {
+          timId,
+          mvpVersion: planValues.mvpVersion,
+          totalFitur: mappingFiturList.length,
+          totalResources: resourcesList.length,
+          totalMetrik: metrikList.length,
+        },
+      });
+    }
 
     revalidatePath(`/tim/${timId}/market-validation`);
-    return { success: true, planId };
+    return { success: true, planId, signatureRevoked };
   } catch (error: any) {
     return {
       success: false,
@@ -996,14 +1050,6 @@ export async function generateMvBacklogAction(timId: string) {
     const allowed = await hasPermission(user, "market_val.edit", timId);
     if (!allowed) return { success: false, error: "Forbidden: Anda tidak memiliki izin mengedit tim ini." };
 
-    const isMvUnlocked = await isMarketValidationUnlockedForUser(user, timId);
-    if (!isMvUnlocked) {
-      return {
-        success: false,
-        error: "Forbidden: Gerbang fase Market Validation belum terbuka untuk generate rekomendasi backlog.",
-      };
-    }
-
     const [plan] = await db
       .select()
       .from(marketValidationPlan)
@@ -1248,3 +1294,41 @@ export async function generateMvBacklogAction(timId: string) {
     };
   }
 }
+
+/**
+ * Mengambil riwayat perubahan Market Validation Plan yang tercatat di audit_logs,
+ * khususnya yang memicu pembatalan tanda tangan otomatis maupun penyimpanan data.
+ */
+export async function getMvPlanAuditHistoryAction(timId: string) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Unauthorized: Harap login terlebih dahulu." };
+
+    const logs = await db
+      .select({
+        id: auditLogs.id,
+        userId: auditLogs.userId,
+        userName: auditLogs.userName,
+        action: auditLogs.action,
+        entity: auditLogs.entity,
+        entityId: auditLogs.entityId,
+        details: auditLogs.details,
+        createdAt: auditLogs.createdAt,
+      })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.entity, "market_validation_plan"),
+          sql`${auditLogs.details}->>'timId' = ${timId}`
+        )
+      )
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(50);
+
+    return { success: true, logs };
+  } catch (error: any) {
+    console.error("[getMvPlanAuditHistoryAction] Error:", error);
+    return { success: false, error: error.message || "Gagal mengambil riwayat perubahan." };
+  }
+}
+

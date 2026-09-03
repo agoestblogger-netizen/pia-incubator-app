@@ -244,15 +244,35 @@ export async function getTimDashboardDataAction(
     const phaseGateStatus = await getTeamPhaseGateStatus(timId);
 
     const [charterRow] = await db
-      .select()
+      .select({
+        ttdDisusun: charter.ttdDisusun,
+        ttdDiperiksa: charter.ttdDiperiksa,
+        ttdDisetujui: charter.ttdDisetujui,
+      })
       .from(charter)
       .where(eq(charter.timInovatorId, timId))
       .limit(1);
 
-    const charterApproval = charterRow?.ttdDisetujui as any;
-    const isCharterApproved = Boolean(
-      charterApproval && (charterApproval.disetujui === true || charterApproval.status === "approved")
+    const isPoSigned = Boolean(
+      charterRow?.ttdDisusun &&
+        ((charterRow.ttdDisusun as any).disetujui === true ||
+          (charterRow.ttdDisusun as any).status === "approved" ||
+          (charterRow.ttdDisusun as any).status === "signed")
     );
+    const isCoachSigned = Boolean(
+      charterRow?.ttdDiperiksa &&
+        ((charterRow.ttdDiperiksa as any).disetujui === true ||
+          (charterRow.ttdDiperiksa as any).status === "approved" ||
+          (charterRow.ttdDiperiksa as any).status === "signed")
+    );
+    const isPromotorSigned = Boolean(
+      charterRow?.ttdDisetujui &&
+        ((charterRow.ttdDisetujui as any).disetujui === true ||
+          (charterRow.ttdDisetujui as any).status === "approved" ||
+          (charterRow.ttdDisetujui as any).status === "signed")
+    );
+
+    const isCharterSigned = isPoSigned || isCoachSigned || isPromotorSigned;
 
     const [cvPlan] = await db
       .select()
@@ -262,7 +282,7 @@ export async function getTimDashboardDataAction(
 
     let cvStatusText = "Belum Terbuka";
     let cvVariant: TeamDashboardPhaseGateBadge["variant"] = "neutral";
-    let cvDesc = "Menunggu persetujuan Innovation Charter";
+    let cvDesc = "Menunggu tanda tangan PO atau Coach pada Innovation Charter";
 
     if (phaseGateStatus.gates.customerValidation.unlocked) {
       if (cvPlan) {
@@ -364,15 +384,17 @@ export async function getTimDashboardDataAction(
       {
         phaseKey: "innovation_setup",
         phaseName: "Innovation Setup",
-        statusText: isCharterApproved
+        statusText: isCharterSigned
           ? "Disetujui"
           : phaseGateStatus.gates.innovationSetup.isFilled
-          ? "Menunggu Persetujuan"
+          ? "Menunggu TTD PO/Coach"
           : "Draft",
-        variant: isCharterApproved ? "success" : "warning",
-        description: isCharterApproved
-          ? "Charter telah ditandatangani Promotor"
-          : "Charter dalam penyusunan / menunggu TTD Promotor",
+        variant: isCharterSigned ? "success" : "warning",
+        description: isCharterSigned
+          ? isPromotorSigned
+            ? "Charter telah ditandatangani Promotor"
+            : "Charter telah ditandatangani PO atau Coach"
+          : "Charter dalam penyusunan / menunggu tanda tangan PO atau Coach",
       },
       {
         phaseKey: "customer_validation",

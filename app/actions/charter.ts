@@ -1145,7 +1145,7 @@ export async function revokeCharterApprovalAction(timId: string) {
   }
 }
 
-// ── Charter PO Signature (Disusun Oleh — dokumentasi, tidak mempengaruhi gerbang fase) ──────────
+// ── Charter PO Signature (Disusun Oleh — salah satu syarat pembuka gerbang Customer Validation) ──────────
 export async function signCharterAsPoAction(timId: string, signatureImage?: string | null) {
   try {
     const user = await getCurrentUser();
@@ -1187,7 +1187,11 @@ export async function signCharterAsPoAction(timId: string, signatureImage?: stri
     } else {
       await db.insert(charter).values({ timInovatorId: timId, ttdDisusun: ttdData });
     }
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/charter`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/dashboard`);
+    revalidatePath(`/tim/${timId}/overview`);
     return { success: true, ttdDisusun: ttdData };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal menandatangani Charter sebagai Project Owner." };
@@ -1216,14 +1220,18 @@ export async function revokeCharterPoSignAction(timId: string) {
       }
     }
     await db.update(charter).set({ ttdDisusun: null, updatedAt: new Date() }).where(eq(charter.timInovatorId, timId));
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/charter`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/dashboard`);
+    revalidatePath(`/tim/${timId}/overview`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal membatalkan tanda tangan PO." };
   }
 }
 
-// ── Charter Coach Signature (Diperiksa Oleh — dokumentasi, tidak mempengaruhi gerbang fase) ─────
+// ── Charter Coach Signature (Diperiksa Oleh — salah satu syarat pembuka gerbang Customer Validation) ─────
 export async function signCharterAsCoachAction(timId: string, signatureImage?: string | null) {
   try {
     const user = await getCurrentUser();
@@ -1265,7 +1273,11 @@ export async function signCharterAsCoachAction(timId: string, signatureImage?: s
     } else {
       await db.insert(charter).values({ timInovatorId: timId, ttdDiperiksa: ttdData });
     }
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/charter`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/dashboard`);
+    revalidatePath(`/tim/${timId}/overview`);
     return { success: true, ttdDiperiksa: ttdData };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal menandatangani Charter sebagai Innovation Coach." };
@@ -1294,7 +1306,11 @@ export async function revokeCharterCoachSignAction(timId: string) {
       }
     }
     await db.update(charter).set({ ttdDiperiksa: null, updatedAt: new Date() }).where(eq(charter.timInovatorId, timId));
+    revalidatePath(`/tim/${timId}`);
     revalidatePath(`/tim/${timId}/charter`);
+    revalidatePath(`/tim/${timId}/customer-validation`);
+    revalidatePath(`/tim/${timId}/dashboard`);
+    revalidatePath(`/tim/${timId}/overview`);
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal membatalkan tanda tangan Coach." };
