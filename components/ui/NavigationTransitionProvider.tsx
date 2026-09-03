@@ -38,34 +38,65 @@ export function NavigationTransitionProvider({
   const [isPending, startTransition] = useTransition();
   const [showLoader, setShowLoader] = useState(false);
 
-  // Ref untuk melacak URL target navigasi yang sedang berlangsung
+  // Ref untuk melacak status navigasi & jaring pengaman 2 lapis
   const pendingTargetRef = useRef<string | null>(null);
   const lastAttemptedHrefRef = useRef<string | null>(null);
-  const failSafeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hardFailSafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevIsPendingRef = useRef<boolean>(false);
+  const isRecoveringRef = useRef<boolean>(false);
   const hasShownPendingToastRef = useRef<boolean>(false);
 
-  // Bersihkan fail-safe timer
-  const clearFailSafe = useCallback(() => {
-    if (failSafeTimerRef.current) {
-      clearTimeout(failSafeTimerRef.current);
-      failSafeTimerRef.current = null;
+  // Bersihkan hard fail-safe timer (Lapis 2)
+  const clearHardFailSafe = useCallback(() => {
+    if (hardFailSafeTimerRef.current) {
+      clearTimeout(hardFailSafeTimerRef.current);
+      hardFailSafeTimerRef.current = null;
     }
   }, []);
 
-  // Ketika pathname berubah (navigasi berhasil selesai), bersihkan semua state
+  // Eksekutor pemulihan otomatis terkoordinasi (mencegah eksekusi ganda antar lapis)
+  const triggerRecovery = useCallback(
+    (targetHref: string | null) => {
+      if (isRecoveringRef.current) return;
+      isRecoveringRef.current = true;
+      clearHardFailSafe();
+      setShowLoader(false);
+
+      toast.error(
+        "Navigasi terhenti, memuat ulang halaman...",
+        "Gagal Berpindah Halaman"
+      );
+
+      if (targetHref) {
+        window.location.assign(targetHref);
+      } else {
+        window.location.reload();
+      }
+    },
+    [clearHardFailSafe]
+  );
+
+  // Ketika pathname berubah (navigasi berhasil selesai), bersihkan semua state & timer
   useEffect(() => {
-    clearFailSafe();
+    clearHardFailSafe();
     pendingTargetRef.current = null;
     lastAttemptedHrefRef.current = null;
+    isRecoveringRef.current = false;
     hasShownPendingToastRef.current = false;
     setShowLoader(false);
-  }, [pathname, clearFailSafe]);
+  }, [pathname, clearHardFailSafe]);
+
+  // Cleanup timer saat unmount
+  useEffect(() => {
+    return () => {
+      clearHardFailSafe();
+    };
+  }, [clearHardFailSafe]);
 
   // Eksekutor navigasi terkelola
   const executeNavigation = useCallback(
     (href: string) => {
-      // 0. Simpan target terakhir yang dicoba (kebal reset, sebelum guard apa pun)
+      // 0. Simpan target terakhir yang dicoba (sebelum guard apa pun)
       lastAttemptedHrefRef.current = href;
 
       // 1. Abaikan jika sudah berada di rute ini
@@ -85,36 +116,33 @@ export function NavigationTransitionProvider({
         return;
       }
 
-      // 3. Jika target BERBEDA: batalkan timer lama dan pasang target baru
-      clearFailSafe();
+      // 3. Target BARU (berbeda dari yang sedang dimuat):
       hasShownPendingToastRef.current = false;
       pendingTargetRef.current = href;
+      isRecoveringRef.current = false;
 
-      // 4. Fail-safe timeout 3 detik: jika transisi belum selesai dalam 3 detik, tangani kegagalan
-      failSafeTimerRef.current = setTimeout(() => {
-        if (pendingTargetRef.current === href) {
-          const failedTarget = href;
-          pendingTargetRef.current = null;
-          hasShownPendingToastRef.current = false;
-          setShowLoader(false);
+      // LAPIS 2: Pasang Hard Fail-Safe Timer 4 detik (HANYA SEKALI per target baru, kebal klik berulang)
+      clearHardFailSafe();
+      hardFailSafeTimerRef.current = setTimeout(() => {
+        const currentPath =
+          typeof window !== "undefined" ? window.location.pathname : pathname;
+        const isArrived =
+          currentPath === href ||
+          currentPath === href.split("?")[0] ||
+          pathname === href ||
+          pathname === href.split("?")[0];
 
-          // Tampilkan pesan error jelas kepada user
-          toast.error(
-            "Navigasi lambat atau terhenti. Mengalihkan halaman secara otomatis...",
-            "Koneksi Lambat"
-          );
-
-          // Retry otomatis via direct browser navigation agar user tidak terdampar di halaman asal
-          window.location.assign(failedTarget);
+        if (!isArrived) {
+          triggerRecovery(href);
         }
-      }, 3000);
+      }, 4000);
 
-      // 5. Jalankan transisi navigasi Next.js
+      // 4. Jalankan transisi navigasi Next.js
       startTransition(() => {
         router.push(href);
       });
     },
-    [pathname, router, clearFailSafe]
+    [pathname, router, clearHardFailSafe, triggerRecovery]
   );
 
   const navigate = useCallback(
@@ -124,9 +152,9 @@ export function NavigationTransitionProvider({
     [executeNavigation]
   );
 
+  // Tangkap seluruh klik link internal
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      // Cari elemen <a> terdekat
       const target = e.target as HTMLElement | null;
       const anchor = target?.closest("a") as HTMLAnchorElement | null;
       if (!anchor) return;
@@ -135,7 +163,6 @@ export function NavigationTransitionProvider({
       const targetAttr = anchor.getAttribute("target");
       const download = anchor.getAttribute("download");
 
-      // Hanya tangani link internal same-origin relatif tanpa modifier key
       if (
         href &&
         href.startsWith("/") &&
@@ -150,13 +177,11 @@ export function NavigationTransitionProvider({
         !e.altKey &&
         e.button === 0
       ) {
-        // Abaikan jika klik rute yang sama persis
         if (pathname === href || pathname === href.split("?")[0]) {
           e.preventDefault();
           return;
         }
 
-        // Guard klik-duplikat: abaikan jika target yang sama sedang dimuat
         if (pendingTargetRef.current === href) {
           e.preventDefault();
           if (!hasShownPendingToastRef.current) {
@@ -177,9 +202,8 @@ export function NavigationTransitionProvider({
     document.addEventListener("click", handleClick, true);
     return () => {
       document.removeEventListener("click", handleClick, true);
-      clearFailSafe();
     };
-  }, [pathname, executeNavigation, clearFailSafe]);
+  }, [pathname, executeNavigation]);
 
   // Efek kontrol loader visual (muncul setelah 150ms agar transisi instan tidak flicker)
   useEffect(() => {
@@ -196,37 +220,29 @@ export function NavigationTransitionProvider({
     };
   }, [isPending]);
 
-  // Watchdog independen: kebal terhadap klik berulang, hanya bergantung pada isPending
+  // LAPIS 1: Recovery Instan saat Transisi Dibatalkan (isPending: true -> false tanpa perubahan pathname)
   useEffect(() => {
-    if (isPending) {
-      if (!watchdogTimerRef.current) {
-        watchdogTimerRef.current = setTimeout(() => {
-          toast.error(
-            "Navigasi terhambat terlalu lama. Memuat ulang halaman...",
-            "Koneksi Bermasalah"
-          );
-          const target = lastAttemptedHrefRef.current;
-          if (target) {
-            window.location.assign(target);
-          } else {
-            window.location.reload();
-          }
-        }, 5000); // 5 detik, lebih lama dari fail-safe per-klik (3 detik) supaya tidak tabrakan
-      }
-    } else {
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
+    const wasPending = prevIsPendingRef.current;
+    prevIsPendingRef.current = isPending;
+
+    if (wasPending && !isPending) {
+      const target = lastAttemptedHrefRef.current;
+      if (target) {
+        const currentPath =
+          typeof window !== "undefined" ? window.location.pathname : pathname;
+        const isArrived =
+          currentPath === target ||
+          currentPath === target.split("?")[0] ||
+          pathname === target ||
+          pathname === target.split("?")[0];
+
+        if (!isArrived) {
+          // BUKTI DEFINITIF: React membatalkan transisi (misal error #412), isPending drop ke false
+          triggerRecovery(target);
+        }
       }
     }
-
-    return () => {
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
-      }
-    };
-  }, [isPending]);
+  }, [isPending, pathname, triggerRecovery]);
 
   const contextValue = useMemo(
     () => ({ navigate, isPending }),
