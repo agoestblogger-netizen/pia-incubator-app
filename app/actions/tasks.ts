@@ -73,11 +73,22 @@ export async function dismissTaskAction(taskType: string, entityId: string) {
       })
       .onConflictDoNothing();
 
+    invalidateMyTasksCache(user.id);
     revalidatePath("/tugas");
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Gagal menyembunyikan tugas." };
+  }
+}
+
+const tasksCache = new Map<string, { data: MyTasksSummary; expiresAt: number }>();
+
+export async function invalidateMyTasksCache(userId?: string) {
+  if (userId) {
+    tasksCache.delete(userId);
+  } else {
+    tasksCache.clear();
   }
 }
 
@@ -97,6 +108,11 @@ export async function getMyTasks(currentUser?: UserProfile | null): Promise<MyTa
   };
 
   if (!user) return emptySummary;
+
+  const cached = tasksCache.get(user.id);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
 
   const now = new Date();
   const tasksByCategory: MyTasksSummary["tasksByCategory"] = {
@@ -455,9 +471,16 @@ export async function getMyTasks(currentUser?: UserProfile | null): Promise<MyTa
     ...tasksByCategory.kanban,
   ];
 
-  return {
+  const summary: MyTasksSummary = {
     totalCount: allTasks.length,
     tasksByCategory,
     allTasks,
   };
+
+  tasksCache.set(user.id, {
+    data: summary,
+    expiresAt: Date.now() + 30_000,
+  });
+
+  return summary;
 }
