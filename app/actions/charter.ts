@@ -433,9 +433,9 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
   };
 }
 
-export async function getCharterRolesData(timId: string) {
+export async function getCharterRolesData(timId: string, passedAnggota?: any[]) {
   try {
-    const [allRoles, existingAssignmentsRaw, existingAnggota] = await Promise.all([
+    const [allRoles, existingAssignmentsRaw, existingAnggotaRaw] = await Promise.all([
       db.select().from(roles),
       db
         .select({
@@ -451,11 +451,15 @@ export async function getCharterRolesData(timId: string) {
         .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
         .innerJoin(users, eq(userRoleTim.userId, users.id))
         .where(eq(userRoleTim.timInovatorId, timId)),
-      db
-        .select()
-        .from(anggotaTim)
-        .where(eq(anggotaTim.timInovatorId, timId)),
+      passedAnggota && passedAnggota.length >= 0
+        ? Promise.resolve(passedAnggota)
+        : db
+            .select()
+            .from(anggotaTim)
+            .where(eq(anggotaTim.timInovatorId, timId)),
     ]);
+
+    const existingAnggota: any[] = [...(existingAnggotaRaw || [])];
 
     const existingAssignments: Array<{
       id: string;

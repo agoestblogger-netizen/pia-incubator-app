@@ -165,7 +165,8 @@ export async function isMarketValidationUnlockedForUser(
 export async function getTeamPhaseGateStatus(
   timId: string,
   existingTim?: any,
-  existingUser?: any
+  existingUser?: any,
+  existingCvPlan?: any
 ): Promise<PhaseGateStatus> {
   // Batch 1: Query tim, sprint, charter, user, cvPlan secara paralel
   const [
@@ -189,11 +190,13 @@ export async function getTeamPhaseGateStatus(
       .where(eq(charter.timInovatorId, timId))
       .limit(1),
     existingUser !== undefined ? Promise.resolve(existingUser) : getCurrentUser(),
-    db
-      .select()
-      .from(customerValidationPlan)
-      .where(eq(customerValidationPlan.timInovatorId, timId))
-      .limit(1),
+    existingCvPlan !== undefined
+      ? Promise.resolve([existingCvPlan])
+      : db
+          .select()
+          .from(customerValidationPlan)
+          .where(eq(customerValidationPlan.timInovatorId, timId))
+          .limit(1),
   ]);
 
   const tim = timRes[0];
