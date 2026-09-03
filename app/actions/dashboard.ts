@@ -83,15 +83,28 @@ export async function getDashboardData(currentUser?: UserProfile | null): Promis
   const teamIds = rawTeams.map((t) => t.id);
   const now = new Date();
 
-  // 1. Fetch all cards for these teams
+  // 1. Fetch all cards for these teams (hanya kolom yang dipakai untuk kalkulasi dashboard)
   const allCards = await db
-    .select()
+    .select({
+      id: kanbanCard.id,
+      timInovatorId: kanbanCard.timInovatorId,
+      sprintNumber: kanbanCard.sprintNumber,
+      statusKolom: kanbanCard.statusKolom,
+      tanggalSelesai: kanbanCard.tanggalSelesai,
+      updatedAt: kanbanCard.updatedAt,
+    })
     .from(kanbanCard)
     .where(inArray(kanbanCard.timInovatorId, teamIds));
 
-  // 2. Fetch all sprints for these teams
+  // 2. Fetch all sprints for these teams (hanya kolom yang dipakai untuk metrik sprint dashboard)
   const allSprints = await db
-    .select()
+    .select({
+      id: sprint.id,
+      timInovatorId: sprint.timInovatorId,
+      nomorSprint: sprint.nomorSprint,
+      tujuan: sprint.tujuan,
+      status: sprint.status,
+    })
     .from(sprint)
     .where(inArray(sprint.timInovatorId, teamIds));
 
