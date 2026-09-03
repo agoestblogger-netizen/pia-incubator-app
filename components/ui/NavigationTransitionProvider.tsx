@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { CenteredPageLoader } from "./CenteredPageLoader";
@@ -40,6 +41,7 @@ export function NavigationTransitionProvider({
   // Ref untuk melacak URL target navigasi yang sedang berlangsung
   const pendingTargetRef = useRef<string | null>(null);
   const failSafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasShownPendingToastRef = useRef<boolean>(false);
 
   // Bersihkan fail-safe timer
   const clearFailSafe = useCallback(() => {
@@ -53,6 +55,7 @@ export function NavigationTransitionProvider({
   useEffect(() => {
     clearFailSafe();
     pendingTargetRef.current = null;
+    hasShownPendingToastRef.current = false;
     setShowLoader(false);
   }, [pathname, clearFailSafe]);
 
@@ -66,11 +69,19 @@ export function NavigationTransitionProvider({
 
       // 2. Guard klik-duplikat: jika target SAMA dengan yang sedang dimuat, abaikan (cegah request kembar)
       if (pendingTargetRef.current === href) {
+        if (!hasShownPendingToastRef.current) {
+          hasShownPendingToastRef.current = true;
+          toast.info(
+            "Masih memuat halaman sebelumnya, mohon tunggu...",
+            "Sedang Proses"
+          );
+        }
         return;
       }
 
       // 3. Jika target BERBEDA: batalkan timer lama dan pasang target baru
       clearFailSafe();
+      hasShownPendingToastRef.current = false;
       pendingTargetRef.current = href;
 
       // 4. Fail-safe timeout 3 detik: jika transisi belum selesai dalam 3 detik, tangani kegagalan
@@ -78,6 +89,7 @@ export function NavigationTransitionProvider({
         if (pendingTargetRef.current === href) {
           const failedTarget = href;
           pendingTargetRef.current = null;
+          hasShownPendingToastRef.current = false;
           setShowLoader(false);
 
           // Tampilkan pesan error jelas kepada user
@@ -141,6 +153,13 @@ export function NavigationTransitionProvider({
         // Guard klik-duplikat: abaikan jika target yang sama sedang dimuat
         if (pendingTargetRef.current === href) {
           e.preventDefault();
+          if (!hasShownPendingToastRef.current) {
+            hasShownPendingToastRef.current = true;
+            toast.info(
+              "Masih memuat halaman sebelumnya, mohon tunggu...",
+              "Sedang Proses"
+            );
+          }
           return;
         }
 
@@ -171,8 +190,13 @@ export function NavigationTransitionProvider({
     };
   }, [isPending]);
 
+  const contextValue = useMemo(
+    () => ({ navigate, isPending }),
+    [navigate, isPending]
+  );
+
   return (
-    <NavigationContext.Provider value={{ navigate, isPending }}>
+    <NavigationContext.Provider value={contextValue}>
       {showLoader && <CenteredPageLoader text="Sedang proses....." />}
       {children}
     </NavigationContext.Provider>
