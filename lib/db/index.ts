@@ -21,9 +21,9 @@ const client =
   postgres(connectionString || '', {
     prepare: false,
     ssl: 'require',
-    max: 10,
+    max: 15,
     idle_timeout: 20,
-    connect_timeout: 10,
+    connect_timeout: 15,
   });
 
 globalForDb.conn = client;
