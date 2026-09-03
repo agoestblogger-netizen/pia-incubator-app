@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   saveMarketValidationPlanFullAction,
@@ -331,33 +331,37 @@ export function MarketValidationClient({
   const [approversList, setApproversList] = useState<any[]>(approvers || []);
   const [loadingKanbanTab, setLoadingKanbanTab] = useState(false);
   const [loadingKeuanganTab, setLoadingKeuanganTab] = useState(false);
+  const kanbanLoadedRef = useRef(Boolean(initialColumns && initialColumns.length > 0));
+  const keuanganLoadedRef = useRef(Boolean(initialKeuanganList && initialKeuanganList.length > 0));
 
   useEffect(() => {
-    if (activeTab === "backlog" && columns.length === 0 && !loadingKanbanTab) {
+    if (activeTab === "backlog" && !kanbanLoadedRef.current) {
+      kanbanLoadedRef.current = true;
       setLoadingKanbanTab(true);
       Promise.all([getKanbanData(timId), getSprintsByTimId(timId)])
         .then(([kData, sData]) => {
-          setColumns(kData.columns);
-          setCards(kData.cards);
-          setSprints(sData);
+          setColumns(kData.columns || []);
+          setCards(kData.cards || []);
+          setSprints(sData || []);
         })
         .catch((err) => console.error("Error loading kanban tab:", err))
         .finally(() => setLoadingKanbanTab(false));
     }
-  }, [activeTab, timId, columns.length, loadingKanbanTab]);
+  }, [activeTab, timId]);
 
   useEffect(() => {
-    if (activeTab === "keuangan" && keuanganList.length === 0 && !loadingKeuanganTab) {
+    if (activeTab === "keuangan" && !keuanganLoadedRef.current) {
+      keuanganLoadedRef.current = true;
       setLoadingKeuanganTab(true);
       Promise.all([getKeuanganData(timId), getAnggaranApprovers()])
         .then(([kList, aList]) => {
-          setKeuanganList(kList);
-          setApproversList(aList);
+          setKeuanganList(kList || []);
+          setApproversList(aList || []);
         })
         .catch((err) => console.error("Error loading keuangan tab:", err))
         .finally(() => setLoadingKeuanganTab(false));
     }
-  }, [activeTab, timId, keuanganList.length, loadingKeuanganTab]);
+  }, [activeTab, timId]);
   
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
