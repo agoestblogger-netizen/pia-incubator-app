@@ -73,6 +73,8 @@ export default async function CharterPage({
         canEditRoles={canEditRoles}
         canManageSprintCount={canManageSprintCount}
         currentUser={user}
+        kategoriPia={tim.kategoriPia}
+        klasifikasiInovasi={tim.klasifikasiInovasi}
       />
     </div>
   );

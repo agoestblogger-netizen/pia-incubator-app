@@ -156,6 +156,8 @@ export function CharterFormClient({
   canEditRoles = false,
   canManageSprintCount = false,
   currentUser,
+  kategoriPia = "",
+  klasifikasiInovasi = "",
 }: {
   timId: string;
   initialData: any;
@@ -171,6 +173,8 @@ export function CharterFormClient({
   canEditRoles?: boolean;
   canManageSprintCount?: boolean;
   currentUser?: any;
+  kategoriPia?: string | null;
+  klasifikasiInovasi?: string | null;
 }) {
   const [formData, setFormData] = useState({
     klasifikasiStrategisInovasi: initialData?.klasifikasiStrategisInovasi || "",
@@ -191,6 +195,32 @@ export function CharterFormClient({
     kebutuhanDukungan: initialData?.kebutuhanDukungan || "",
     risikoAwal: initialData?.risikoAwal || "",
   });
+
+  // Kualifikasi Inovasi Grand Final Resmi: format <kategori> - <medali>
+  const formatKategori = (kat?: string | null): string => {
+    if (!kat) return "";
+    const upper = kat.trim().toUpperCase();
+    if (upper === "BI" || upper.includes("BREAKTHROUGH")) return "Breakthrough Innovation";
+    if (upper === "BC" || upper.includes("BUSINESS CASE")) return "Business Case";
+    if (upper === "WILAYAH") return "Wilayah";
+    if (upper === "PUSAT") return "Kantor Pusat";
+    return kat.trim();
+  };
+
+  const rawKategori = kategoriPia || initialData?.kategoriPia || "";
+  const rawMedali = klasifikasiInovasi || initialData?.klasifikasiInovasi || "";
+
+  const kategoriLabel = formatKategori(rawKategori);
+  const medaliLabel = rawMedali ? rawMedali.trim() : "";
+
+  let kualifikasiInovasiDisplay = "-";
+  if (kategoriLabel && medaliLabel) {
+    kualifikasiInovasiDisplay = `${kategoriLabel} - ${medaliLabel}`;
+  } else if (kategoriLabel) {
+    kualifikasiInovasiDisplay = `${kategoriLabel} - -`;
+  } else if (medaliLabel) {
+    kualifikasiInovasiDisplay = `- - ${medaliLabel}`;
+  }
 
   const [ttdDisusun, setTtdDisusun] = useState<any | null>(initialData?.ttdDisusun || null);
   const [ttdDiperiksa, setTtdDiperiksa] = useState<any | null>(initialData?.ttdDiperiksa || null);
@@ -955,32 +985,24 @@ export function CharterFormClient({
 
         {expandedSections.problem && (
           <CardContent className="space-y-4 p-5 pt-4 border-t border-gray-100 animate-in fade-in duration-150">
-            {/* ── Dropdown Klasifikasi Inovasi (Juklak Template 1) ── */}
+            {/* ── Kualifikasi Inovasi (Read-Only: Kategori - Medali Grand Final) ── */}
             <div className="space-y-1.5 p-3 rounded-xl bg-purple-50/60 border border-purple-200/80">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-sm font-bold text-purple-950 flex items-center gap-1.5">
-                  <span>Klasifikasi Inovasi (Juklak)</span>
+                  <span>Kualifikasi Inovasi</span>
                   <span className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200 font-semibold">
-                    Template 1 Juklak
+                    Grand Final Resmi
                   </span>
                 </label>
                 <span className="text-xs text-purple-700 font-medium">
-                  BREAKTHROUGH / IMPROVEMENT / BEST PRACTICE
+                  Read-only
                 </span>
               </div>
-              <select
-                disabled={isReadOnly}
-                value={formData.klasifikasiStrategisInovasi || ""}
-                onChange={(e) => handleChange("klasifikasiStrategisInovasi", e.target.value)}
-                className="w-full h-9 rounded-xl border border-purple-200 bg-white px-3 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 disabled:bg-gray-50 cursor-pointer"
-              >
-                <option value="">-- Pilih Klasifikasi Inovasi Resmi Juklak --</option>
-                <option value="BREAKTHROUGH">BREAKTHROUGH — Terobosan radikal, model bisnis baru atau penciptaan nilai baru</option>
-                <option value="IMPROVEMENT">IMPROVEMENT — Penyempurnaan proses bisnis, sistem eksisting, atau efisiensi operasional</option>
-                <option value="BEST PRACTICE">BEST PRACTICE — Replikasi atau standardisasi praktik unggulan di unit kerja</option>
-              </select>
+              <div className="w-full h-9 rounded-xl border border-purple-200 bg-white/90 px-3 flex items-center text-sm font-semibold text-gray-800 select-none">
+                {kualifikasiInovasiDisplay}
+              </div>
               <p className="text-xs text-purple-800/80 leading-relaxed">
-                Klasifikasi strategis solusi sesuai Petunjuk Pelaksanaan Inovasi (berbeda dari taksonomi Medali Penjurian Grand Final).
+                Kualifikasi resmi inovasi berdasarkan integrasi Kategori dan Medali Grand Final yang telah ditetapkan.
               </p>
             </div>
 

@@ -180,10 +180,14 @@ export async function GET(
       };
     }
 
+    const katName = tim.kategoriPia === 'BI' ? 'Breakthrough Innovation' : tim.kategoriPia === 'BC' ? 'Business Case' : (tim.kategoriPia || '-');
+    const medName = tim.klasifikasiInovasi || '-';
+    const kualifikasiText = `${katName} - ${medName}`;
+
     const pdfData: CharterPdfData = {
       namaProyekInovasi: tim.namaProyekInovasi || 'Proyek Inovasi',
-      kategoriPia: tim.kategoriPia || tim.seasonAsli || 'Season 12',
-      klasifikasiInovasi: c.klasifikasiStrategisInovasi || 'BREAKTHROUGH',
+      kategoriPia: tim.kategoriPia === 'BI' ? 'Breakthrough Innovation (BI)' : tim.kategoriPia === 'BC' ? 'Business Case (BC)' : (tim.kategoriPia || tim.seasonAsli || 'Season 12'),
+      klasifikasiInovasi: kualifikasiText,
       projectMission: c.projectMission,
       customerEarlyAdopters: c.customerEarlyAdopters,
       contextAreaBantuan: c.contextAreaBantuan,

@@ -342,7 +342,7 @@ export function CharterPdfDocument({ data }: { data: CharterPdfData }) {
           </View>
 
           <View style={styles.tableRow} wrap={false}>
-            <Text style={styles.tableCellLabel}>Klasifikasi Inovasi</Text>
+            <Text style={styles.tableCellLabel}>Kualifikasi Inovasi</Text>
             <Text style={styles.tableCellValue}>
               {fmtVal(data.klasifikasiInovasi)}
             </Text>
