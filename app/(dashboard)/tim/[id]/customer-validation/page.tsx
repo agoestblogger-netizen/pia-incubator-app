@@ -17,11 +17,11 @@ export default async function CustomerValidationPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const tim = await getTimInovatorById(resolvedParams.id);
-  if (!tim) return notFound();
-
+  const timId = resolvedParams.id;
   const user = await getCurrentUser();
+
   const [
+    tim,
     data,
     phaseGateStatus,
     kanbanData,
@@ -36,20 +36,23 @@ export default async function CustomerValidationPage({
     canSignCvReportCoach,
     canSignCvReportPo,
   ] = await Promise.all([
-    getCustomerValidationData(tim.id),
-    getTeamPhaseGateStatus(tim.id),
-    getKanbanData(tim.id),
-    getSprintsByTimId(tim.id),
-    getCharterRolesData(tim.id),
-    user ? hasPermission(user, 'cust_val.edit', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'cv_plan.sign_inisiator', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'cv_plan.sign_coach', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'cv_plan.sign_po', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'cv_report.sign_inisiator', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'cv_report.sign_coach', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'cv_report.sign_po', tim.id) : Promise.resolve(false),
+    getTimInovatorById(timId),
+    getCustomerValidationData(timId),
+    getTeamPhaseGateStatus(timId, undefined, user),
+    getKanbanData(timId),
+    getSprintsByTimId(timId),
+    getCharterRolesData(timId),
+    user ? hasPermission(user, 'cust_val.edit', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'kanban.edit', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'cv_plan.sign_inisiator', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'cv_plan.sign_coach', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'cv_plan.sign_po', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'cv_report.sign_inisiator', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'cv_report.sign_coach', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'cv_report.sign_po', timId) : Promise.resolve(false),
   ]);
+
+  if (!tim) return notFound();
 
   const signPermissions = {
     plan: {

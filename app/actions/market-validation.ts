@@ -20,6 +20,8 @@ import {
   hasilValidasiMetrik,
   dossierPiaArchive,
   auditLogs,
+  lpj,
+  anggaranPengajuan,
 } from "@/lib/db/schema";
 import { eq, and, ne, inArray, desc, asc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -76,61 +78,89 @@ function isCanonicalMvMetricMatch(m1: string, m2: string): boolean {
   return false;
 }
 
-export async function getMarketValidationData(timId: string, existingTim?: any) {
-  // Batch 1: Query tim, plan, cvPlan, sprintReview, allTeamCards, teamMembers, dan dossier secara paralel
+export async function getMarketValidationData(timId: string, existingTim?: any, preloadedCards?: any[]) {
+  // Batch 1: Query plan+report, cvPlan+cvReport, sprintReview, mvCards, dan dossier secara paralel
   const [
     timRes,
-    planRes,
-    cvPlanRes,
+    planWithReportRows,
+    cvPlanWithReportRows,
     sprintReviewsRes,
-    allTeamCards,
+    mvCardsRes,
     teamMembersRes,
     dossierRes,
+    approvedLpjRows,
   ] = await Promise.all([
     existingTim ? Promise.resolve([existingTim]) : db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1),
-    db.select().from(marketValidationPlan).where(eq(marketValidationPlan.timInovatorId, timId)).limit(1),
-    db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1),
+    db
+      .select({
+        plan: marketValidationPlan,
+        report: marketValidationReport,
+      })
+      .from(marketValidationPlan)
+      .leftJoin(marketValidationReport, eq(marketValidationReport.planId, marketValidationPlan.id))
+      .where(eq(marketValidationPlan.timInovatorId, timId))
+      .limit(1),
+    db
+      .select({
+        cvPlan: customerValidationPlan,
+        cvReport: customerValidationReport,
+      })
+      .from(customerValidationPlan)
+      .leftJoin(customerValidationReport, eq(customerValidationReport.planId, customerValidationPlan.id))
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1),
     db.select().from(sprintReview).where(eq(sprintReview.timInovatorId, timId)).orderBy(asc(sprintReview.sprintNumber)),
-    db.select().from(kanbanCard).where(eq(kanbanCard.timInovatorId, timId)).orderBy(asc(kanbanCard.urutan)),
+    db
+      .select({
+        id: kanbanCard.id,
+        judul: kanbanCard.judul,
+        sprintNumber: kanbanCard.sprintNumber,
+        statusKolom: kanbanCard.statusKolom,
+        acceptanceCriteria: kanbanCard.acceptanceCriteria,
+        ownerAnggotaId: kanbanCard.ownerAnggotaId,
+        label: kanbanCard.label,
+        tahap: kanbanCard.tahap,
+      })
+      .from(kanbanCard)
+      .where(and(eq(kanbanCard.timInovatorId, timId), eq(kanbanCard.tahap, "market_validation"))),
     existingTim?.anggota ? Promise.resolve(existingTim.anggota) : db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, timId)),
     db.select({ snapshotData: dossierPiaArchive.snapshotData }).from(dossierPiaArchive).where(eq(dossierPiaArchive.timInovatorId, timId)).limit(1),
+    db
+      .select({ id: lpj.id })
+      .from(lpj)
+      .innerJoin(anggaranPengajuan, eq(lpj.anggaranPengajuanId, anggaranPengajuan.id))
+      .where(and(eq(anggaranPengajuan.timInovatorId, timId), eq(lpj.status, "disetujui")))
+      .limit(1),
   ]);
 
   const tim = timRes[0] || null;
-  const plan = planRes[0] || null;
-  const cvPlan = cvPlanRes[0] || null;
+  const plan = planWithReportRows[0]?.plan || null;
+  const report = planWithReportRows[0]?.report || null;
+  const cvReportRaw = cvPlanWithReportRows[0]?.cvReport || null;
   const teamMembers = teamMembersRes || [];
+  const approvedLpjRes = approvedLpjRows || [];
 
-  // Hitung mvSprintNumbers langsung dari allTeamCards tanpa query ulang ke kanbanCard
-  const mvCards = allTeamCards.filter((c) => c.tahap === "market_validation");
+  const mvCards = preloadedCards && preloadedCards.length > 0 ? preloadedCards.filter((c: any) => c.tahap === "market_validation") : mvCardsRes;
   const mvSprintNumbers = Array.from(
-    new Set(mvCards.map((c) => c.sprintNumber).filter((s): s is number => s !== null && s !== undefined))
+    new Set(mvCards.map((c: any) => c.sprintNumber).filter((s): s is number => s !== null && s !== undefined))
   );
+
   const filteredSprintReviews =
     mvSprintNumbers.length > 0
       ? sprintReviewsRes.filter((sr) => mvSprintNumbers.includes(sr.sprintNumber))
       : sprintReviewsRes;
 
-  // Batch 2: Query CV report & data terkait plan secara paralel
+  // Batch 2: Query data relasi plan & report secara paralel
   const [
-    foundCvReportRes,
-    reportRes,
     fiturMapping,
     resources,
     metrikRencana,
+    releaseLogs,
+    dfv,
+    hasilMetrik,
   ] = await Promise.all([
-    cvPlan
-      ? db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, cvPlan.id)).limit(1)
-      : Promise.resolve([]),
-    plan
-      ? db.select().from(marketValidationReport).where(eq(marketValidationReport.planId, plan.id)).limit(1)
-      : Promise.resolve([]),
-    plan
-      ? db.select().from(mvpMappingFitur).where(eq(mvpMappingFitur.planId, plan.id))
-      : Promise.resolve([]),
-    plan
-      ? db.select().from(mvpResourcesNeeded).where(eq(mvpResourcesNeeded.planId, plan.id))
-      : Promise.resolve([]),
+    plan ? db.select().from(mvpMappingFitur).where(eq(mvpMappingFitur.planId, plan.id)) : Promise.resolve([]),
+    plan ? db.select().from(mvpResourcesNeeded).where(eq(mvpResourcesNeeded.planId, plan.id)) : Promise.resolve([]),
     plan
       ? db
           .select()
@@ -142,16 +172,30 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
             )
           )
       : Promise.resolve([]),
+    report
+      ? db.select().from(mvReleaseLog).where(eq(mvReleaseLog.reportId, report.id)).orderBy(asc(mvReleaseLog.tanggal))
+      : Promise.resolve([]),
+    report ? db.select().from(dfvRekapitulasi).where(eq(dfvRekapitulasi.reportId, report.id)) : Promise.resolve([]),
+    report
+      ? db
+          .select()
+          .from(hasilValidasiMetrik)
+          .where(
+            and(
+              eq(hasilValidasiMetrik.reportId, report.id),
+              eq(hasilValidasiMetrik.fase, "market_validation")
+            )
+          )
+      : Promise.resolve([]),
   ]);
 
   // Bangun cvReport
   let cvReport: any = null;
-  const foundCvReport = foundCvReportRes[0];
-  if (foundCvReport) {
+  if (cvReportRaw) {
     cvReport = {
-      validatedSolution: foundCvReport.validatedSolution || "",
-      kesimpulan: foundCvReport.kesimpulan || "",
-      valueProposition: foundCvReport.valueProposition || "",
+      validatedSolution: cvReportRaw.validatedSolution || "",
+      kesimpulan: cvReportRaw.kesimpulan || "",
+      valueProposition: cvReportRaw.valueProposition || "",
     };
   } else if (dossierRes[0]) {
     const snap = (dossierRes[0].snapshotData as any) || {};
@@ -164,32 +208,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
         isFallbackFromDossier: true,
       };
     }
-  }
-
-  const report = reportRes[0] || null;
-
-  // Batch 3: Query releaseLogs, dfv, hasilMetrik secara paralel jika report ada
-  let releaseLogs: any[] = [];
-  let dfv: any[] = [];
-  let hasilMetrik: any[] = [];
-
-  if (report) {
-    const [rlRes, dfvRes, hmRes] = await Promise.all([
-      db.select().from(mvReleaseLog).where(eq(mvReleaseLog.reportId, report.id)).orderBy(asc(mvReleaseLog.tanggal)),
-      db.select().from(dfvRekapitulasi).where(eq(dfvRekapitulasi.reportId, report.id)),
-      db
-        .select()
-        .from(hasilValidasiMetrik)
-        .where(
-          and(
-            eq(hasilValidasiMetrik.reportId, report.id),
-            eq(hasilValidasiMetrik.fase, "market_validation")
-          )
-        ),
-    ]);
-    releaseLogs = rlRes;
-    dfv = dfvRes;
-    hasilMetrik = hmRes;
   }
 
   return {
@@ -205,7 +223,9 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
     dfv,
     hasilMetrik,
     sprintReviews: filteredSprintReviews,
-    allTeamCards,
+    allTeamCards: mvCards,
+    hasApprovedLpj: Boolean(approvedLpjRes[0]),
+    hasMvRecCards: mvCards.some((c: any) => c.label === "Rekomendasi MV"),
   };
 }
 

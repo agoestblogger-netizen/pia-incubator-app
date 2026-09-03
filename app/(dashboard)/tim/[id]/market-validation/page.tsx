@@ -1,8 +1,6 @@
 import { getTimInovatorById } from "@/app/actions/tim";
 import { getMarketValidationData } from "@/app/actions/market-validation";
-import { getKanbanData } from "@/app/actions/kanban";
-import { getSprintsByTimId } from "@/app/actions/sprint";
-import { getKeuanganData, getUserTeamUnitKerja, getAnggaranApprovers } from "@/app/actions/keuangan";
+import { getUserTeamUnitKerja } from "@/app/actions/keuangan";
 import { getTeamPhaseGateStatus } from "@/app/actions/phase-gate";
 import { getCharterRolesData } from "@/app/actions/charter";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
@@ -18,20 +16,13 @@ export default async function MarketValidationPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const [tim, user, approvers] = await Promise.all([
-    getTimInovatorById(resolvedParams.id),
-    getCurrentUser(),
-    getAnggaranApprovers(),
-  ]);
-
-  if (!tim) return notFound();
+  const timId = resolvedParams.id;
+  const user = await getCurrentUser();
 
   const [
+    tim,
     data,
     phaseGateStatus,
-    kanbanData,
-    sprints,
-    keuanganList,
     rolesData,
     canEdit,
     canApprove,
@@ -46,25 +37,25 @@ export default async function MarketValidationPage({
     canSignMvReportCoach,
     canSignMvReportPromotor,
   ] = await Promise.all([
-    getMarketValidationData(tim.id, tim),
-    getTeamPhaseGateStatus(tim.id),
-    getKanbanData(tim.id),
-    getSprintsByTimId(tim.id),
-    getKeuanganData(tim.id),
-    getCharterRolesData(tim.id),
-    user ? hasPermission(user, 'market_val.edit', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'market_val.approve', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'anggaran.submit', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
-    user ? getUserTeamUnitKerja(user.id, tim.id) : Promise.resolve(""),
-    user ? hasPermission(user, 'mv_plan.sign_po', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'mv_plan.sign_coach', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'mv_plan.sign_promotor', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'mv_report.sign_po', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'mv_report.sign_coach', tim.id) : Promise.resolve(false),
-    user ? hasPermission(user, 'mv_report.sign_promotor', tim.id) : Promise.resolve(false),
+    getTimInovatorById(timId),
+    getMarketValidationData(timId),
+    getTeamPhaseGateStatus(timId, undefined, user),
+    getCharterRolesData(timId),
+    user ? hasPermission(user, 'market_val.edit', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'market_val.approve', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'kanban.edit', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'anggaran.submit', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'anggaran.manage', timId) : Promise.resolve(false),
+    user ? getUserTeamUnitKerja(user.id, timId) : Promise.resolve(""),
+    user ? hasPermission(user, 'mv_plan.sign_po', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_plan.sign_coach', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_plan.sign_promotor', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_report.sign_po', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_report.sign_coach', timId) : Promise.resolve(false),
+    user ? hasPermission(user, 'mv_report.sign_promotor', timId) : Promise.resolve(false),
   ]);
+
+  if (!tim) return notFound();
 
   const signPermissions = {
     plan: {
@@ -97,10 +88,6 @@ export default async function MarketValidationPage({
         }}
         roleAssignments={rolesData?.assignments || []}
         initialData={data}
-        initialColumns={kanbanData.columns}
-        initialCards={kanbanData.cards}
-        initialSprints={sprints}
-        initialKeuanganList={keuanganList}
         anggotaTim={tim.anggota}
         canEdit={canEdit}
         canApprove={canApprove || canSignMvReportPromotor}
@@ -108,7 +95,6 @@ export default async function MarketValidationPage({
         canSubmitAnggaran={canSubmitAnggaran}
         canManageAnggaran={canManageAnggaran}
         canApproveAnggaran={canApproveAnggaran}
-        approvers={approvers}
         currentUser={user ? { ...user, unitKerja: userUnitKerja } : null}
         phaseGateStatus={phaseGateStatus}
         signPermissions={signPermissions}

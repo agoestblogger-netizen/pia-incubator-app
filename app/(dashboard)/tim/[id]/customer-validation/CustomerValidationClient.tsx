@@ -25,7 +25,7 @@ import {
   Save, CheckCircle2, FileCheck, ClipboardList, Upload, X, ExternalLink,
   Paperclip, FileText, ImageIcon, Table2, BarChart3, Sparkles, KanbanSquare, RefreshCw, Wand2,
   Download, Stamp, CheckCircle, RotateCcw, AlertCircle, Building2, Briefcase, UserCheck, Lock, ShieldCheck,
-  Plus, Trash2, AlertTriangle, History
+  Plus, Trash2, AlertTriangle, History, ChevronDown, ChevronRight
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
 import {
@@ -284,6 +284,22 @@ export function CustomerValidationClient({
   );
 
   const hasCvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi CV");
+
+  // ── Accordion state untuk Tab 1 Perencanaan (Default: Hanya Section A yang terbuka) ──
+  const [openCvSections, setOpenCvSections] = useState<Record<string, boolean>>({
+    a: true,
+    b: false,
+    c: false,
+    d: false,
+    e: false,
+  });
+
+  const toggleCvSection = (sectionKey: string, forceOpen?: boolean) => {
+    setOpenCvSections((prev) => ({
+      ...prev,
+      [sectionKey]: forceOpen !== undefined ? forceOpen : !prev[sectionKey],
+    }));
+  };
 
   // ── Plan state ─────────────────────────────────────────────────────────────
   const [planForm, setPlanForm] = useState({
@@ -748,7 +764,20 @@ export function CustomerValidationClient({
       // Do NOT auto-navigate — user stays on current tab after save
       router.refresh();
     } else {
-      toast.error((res as any).error || "Gagal menyimpan.", "Gagal Menyimpan");
+      const errMsg = (res as any).error || "Gagal menyimpan.";
+      toast.error(errMsg, "Gagal Menyimpan");
+      const errLower = errMsg.toLowerCase();
+      if (errLower.includes("metrik")) {
+        toggleCvSection("e", true);
+      } else if (errLower.includes("dimensi") || errLower.includes("instrumen")) {
+        toggleCvSection("b", true);
+      } else if (errLower.includes("responden") || errLower.includes("rekrutmen")) {
+        toggleCvSection("c", true);
+      } else if (errLower.includes("skenario") || errLower.includes("lapangan")) {
+        toggleCvSection("d", true);
+      } else {
+        toggleCvSection("a", true);
+      }
     }
     setSaving(false);
   };
@@ -846,6 +875,8 @@ export function CustomerValidationClient({
             6000
           );
         }
+        // Expand all sections after autofill so user can review the generated content
+        setOpenCvSections({ a: true, b: true, c: true, d: true, e: true });
       } else {
         toast.error(res.error || "Gagal mengambil data draf otomatis.", "Auto-Fill Gagal", 6000);
       }
@@ -1183,134 +1214,143 @@ export function CustomerValidationClient({
             )}
 
             {/* ── BAGIAN 1: Konteks & Hipotesis ────────────────────────────── */}
-            <Card>
-              <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <span>A. Konteks Inovasi &amp; Hipotesis</span>
-                      <SectionInfo
-                        title="Template 2.1 — Bagian A: Konteks Inovasi & Hipotesis"
-                        text="Perumusan 5 elemen fondasi validasi: Project Mission (rumusan aspiratif, kuantitatif, dan time-bound), Customer & Context (customer prioritas dan area bantuan/job-to-be-done), Problem Hypothesis (asumsi masalah beserta bukti awal), How Might We (pertanyaan peluang customer, problem, outcome), dan Solution Hypothesis (asumsi solusi/prototype beserta manfaat utamanya)."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-0.5">
-                      Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
-                    </CardDescription>
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleCvSection("a", true)}>
+              <CardHeader
+                onClick={() => toggleCvSection("a")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openCvSections.a ? "pb-3 border-b border-gray-100" : ""}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openCvSections.a ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <span>A. Konteks Inovasi &amp; Hipotesis</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 2.1 — Bagian A: Konteks Inovasi & Hipotesis"
+                            text="Perumusan 5 elemen fondasi validasi: Project Mission (rumusan aspiratif, kuantitatif, dan time-bound), Customer & Context (customer prioritas dan area bantuan/job-to-be-done), Problem Hypothesis (asumsi masalah beserta bukti awal), How Might We (pertanyaan peluang customer, problem, outcome), dan Solution Hypothesis (asumsi solusi/prototype beserta manfaat utamanya)."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-0.5">
+                        Rumusan problem-solution fit yang akan divalidasi kepada pelanggan
+                      </CardDescription>
+                    </div>
                   </div>
                   {canEditCv && !isSectionAbcLocked && (!isCvPlanFilled || isAdminOrCoach) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAutoFillFull}
-                      disabled={autoFillingFromCharter}
-                      className="h-8 text-xs font-semibold gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-900 rounded-xl shadow-2xs shrink-0 cursor-pointer"
-                    >
-                      {autoFillingFromCharter ? (
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Wand2 className="h-3.5 w-3.5 text-amber-500" />
-                      )}
-                      <span>
-                        {autoFillingFromCharter
-                          ? "Mengisi otomatis..."
-                          : isCvPlanFilled
-                          ? "✨ Isi Ulang Otomatis (Charter + AI)"
-                          : "✨ Isi Otomatis (Charter + AI)"}
-                      </span>
-                    </Button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAutoFillFull}
+                        disabled={autoFillingFromCharter}
+                        className="h-8 text-xs font-semibold gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50 hover:text-purple-900 rounded-xl shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        {autoFillingFromCharter ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-3.5 w-3.5 text-amber-500" />
+                        )}
+                        <span>
+                          {autoFillingFromCharter
+                            ? "Menyusun Draf AI..."
+                            : isCvPlanFilled
+                            ? "✨ Isi Ulang Otomatis (Charter + AI)"
+                            : "✨ Isi Otomatis (Charter + AI)"}
+                        </span>
+                      </Button>
+                    </div>
                   )}
                 </div>
-                {autoFillSource === 'grand_final' && (
-                  <div className="mt-2.5 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/90 border border-amber-200/80 text-xs font-medium text-amber-800 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                    <span>
-                      Diisi dari data Grand Final (Innovation Charter belum tersimpan). Disarankan untuk tetap membuka dan menyimpan Charter untuk konsistensi data jangka panjang.
-                    </span>
-                  </div>
-                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">
-                    Project Mission
-                  </label>
-                  {isSectionAbcLocked ? (
-                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
-                      {planForm.projectMission || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
-                    </div>
-                  ) : (
-                    <Textarea
-                      rows={2}
-                      placeholder="Rumusan aspiratif, kuantitatif, dan time-bound dari proyek inovasi ini..."
-                      value={planForm.projectMission}
-                      disabled={!canEditCv}
-                      onChange={(e) => setPlanForm({ ...planForm, projectMission: e.target.value })}
-                      className="text-sm"
-                    />
-                  )}
-                </div>
+              {openCvSections.a && (
+                <CardContent className="space-y-4 pt-4">
+                  {/* Mission */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">
+                      1. Project Mission
+                    </label>
+                    {isSectionAbcLocked ? (
+                      <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                        {planForm.projectMission || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                      </div>
+                    ) : (
+                      <Textarea
+                        rows={2}
+                        placeholder="Rumusan aspiratif, kuantitatif, dan time-bound dari proyek inovasi ini..."
+                        value={planForm.projectMission}
+                        disabled={!canEditCv}
+                        onChange={(e) => setPlanForm({ ...planForm, projectMission: e.target.value })}
+                        className="text-sm"
+                      />
+                    )}
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">
-                    Customer &amp; Context
-                  </label>
-                  {isSectionAbcLocked ? (
-                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
-                      {planForm.customerDanContext || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
-                    </div>
-                  ) : (
-                    <Textarea
-                      rows={2}
-                      placeholder="Customer prioritas dan area bantuan (job-to-be-done) yang diuji..."
-                      value={planForm.customerDanContext}
-                      disabled={!canEditCv}
-                      onChange={(e) => setPlanForm({ ...planForm, customerDanContext: e.target.value })}
-                      className="text-sm"
-                    />
-                  )}
-                </div>
+                  {/* Customer & Context */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">
+                      2. Customer &amp; Context
+                    </label>
+                    {isSectionAbcLocked ? (
+                      <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                        {planForm.customerDanContext || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                      </div>
+                    ) : (
+                      <Textarea
+                        rows={2}
+                        placeholder="Customer prioritas dan area bantuan (job-to-be-done) yang diuji..."
+                        value={planForm.customerDanContext}
+                        disabled={!canEditCv}
+                        onChange={(e) => setPlanForm({ ...planForm, customerDanContext: e.target.value })}
+                        className="text-sm"
+                      />
+                    )}
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">
-                    Problem Hypothesis
-                  </label>
-                  {isSectionAbcLocked ? (
-                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
-                      {planForm.problemHypothesis || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
-                    </div>
-                  ) : (
-                    <Textarea
-                      rows={2}
-                      placeholder="Asumsi masalah yang akan divalidasi, termasuk bukti awal yang mendukung hipotesis ini..."
-                      value={planForm.problemHypothesis}
-                      disabled={!canEditCv}
-                      onChange={(e) => setPlanForm({ ...planForm, problemHypothesis: e.target.value })}
-                      className="text-sm"
-                    />
-                  )}
-                </div>
+                  {/* Problem Hypothesis */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">
+                      3. Problem Hypothesis
+                    </label>
+                    {isSectionAbcLocked ? (
+                      <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                        {planForm.problemHypothesis || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                      </div>
+                    ) : (
+                      <Textarea
+                        rows={2}
+                        placeholder="Asumsi masalah yang akan divalidasi, termasuk bukti awal yang mendukung hipotesis ini..."
+                        value={planForm.problemHypothesis}
+                        disabled={!canEditCv}
+                        onChange={(e) => setPlanForm({ ...planForm, problemHypothesis: e.target.value })}
+                        className="text-sm"
+                      />
+                    )}
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">
-                    How Might We (HMW)
-                  </label>
-                  {isSectionAbcLocked ? (
-                    <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
-                      {planForm.hmw || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
-                    </div>
-                  ) : (
-                    <Textarea
-                      rows={2}
-                      placeholder="Pertanyaan peluang yang menghubungkan customer, problem, dan outcome yang diinginkan..."
-                      value={planForm.hmw}
-                      disabled={!canEditCv}
-                      onChange={(e) => setPlanForm({ ...planForm, hmw: e.target.value })}
-                      className="text-sm"
-                    />
-                  )}
-                </div>
+                  {/* How Might We */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">
+                      4. How Might We (HMW)
+                    </label>
+                    {isSectionAbcLocked ? (
+                      <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200 text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                        {planForm.hmw || <span className="text-slate-400 italic font-normal">Belum diisi</span>}
+                      </div>
+                    ) : (
+                      <Textarea
+                        rows={2}
+                        placeholder="Pertanyaan peluang yang menghubungkan customer, problem, dan outcome yang diinginkan..."
+                        value={planForm.hmw}
+                        disabled={!canEditCv}
+                        onChange={(e) => setPlanForm({ ...planForm, hmw: e.target.value })}
+                        className="text-sm"
+                      />
+                    )}
+                  </div>
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-gray-700">
@@ -1332,23 +1372,39 @@ export function CustomerValidationClient({
                   )}
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ── BAGIAN 2: Instrumen Testing ───────────────────────────────── */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <span>B. Instrumen &amp; Skenario Pengujian</span>
-                  <SectionInfo
-                    title="Template 2.1 — Bagian B: Instrumen & Skenario Pengujian"
-                    text="Spesifikasi instrumen uji: Tipe Prototype (Figma/Clickable Prototype, Wireframe, dll.), Fitur/Alur yang Diuji (alur verifikasi, kalkulasi otomatis, dll.), Skenario User Testing (instruksi tugas yang diberikan kepada responden), Instrumen Validasi (daftar pertanyaan, survey, form observasi, panduan wawancara), dan Data Dukung/Lampiran."
-                  />
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Prototype, skenario tugas, dan alat ukur yang digunakan saat user testing
-                </CardDescription>
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleCvSection("b", true)}>
+              <CardHeader
+                onClick={() => toggleCvSection("b")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openCvSections.b ? "pb-3 border-b border-gray-100" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openCvSections.b ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <span>B. Instrumen &amp; Skenario Pengujian</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 2.1 — Bagian B: Instrumen & Skenario Pengujian"
+                            text="Spesifikasi instrumen uji: Tipe Prototype (Figma/Clickable Prototype, Wireframe, dll.), Fitur/Alur yang Diuji (alur verifikasi, kalkulasi otomatis, dll.), Skenario User Testing (instruksi tugas yang diberikan kepada responden), Instrumen Validasi (daftar pertanyaan, survey, form observasi, panduan wawancara), dan Data Dukung/Lampiran."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Prototype, skenario tugas, dan alat ukur yang digunakan saat user testing
+                      </CardDescription>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              {openCvSections.b && (
+                <CardContent className="space-y-4 pt-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-gray-700">
                     Tipe Prototype yang Diuji
@@ -1496,23 +1552,39 @@ export function CustomerValidationClient({
                   )}
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ── BAGIAN 3: Early Adopters & Rekrutmen ─────────────────────── */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <span>C. Early Adopters &amp; Rekrutmen</span>
-                  <SectionInfo
-                    title="Template 2.1 — Bagian C: Early Adopters & Rekrutmen"
-                    text="Perencanaan rekrutmen responden: Target Early Adopters (profil pengguna sasaran awal berskala kecil), Kriteria Seleksi (inklusi dan eksklusi: segmen, lokasi, perilaku), Jumlah Target Responden (ditentukan sendiri oleh tim), Lokasi/Channel Testing (cabang/outlet percontohan atau daring), Metode Rekrutmen, dan Etika & Persetujuan Data (kerahasiaan dan perlindungan responden)."
-                  />
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Siapa yang diuji, di mana, dan bagaimana cara mendapatkan mereka
-                </CardDescription>
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleCvSection("c", true)}>
+              <CardHeader
+                onClick={() => toggleCvSection("c")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openCvSections.c ? "pb-3 border-b border-gray-100" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openCvSections.c ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <span>C. Early Adopters &amp; Rekrutmen</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 2.1 — Bagian C: Early Adopters & Rekrutmen"
+                            text="Perencanaan rekrutmen responden: Target Early Adopters (profil pengguna sasaran awal berskala kecil), Kriteria Seleksi (inklusi dan eksklusi: segmen, lokasi, perilaku), Jumlah Target Responden (ditentukan sendiri oleh tim), Lokasi/Channel Testing (cabang/outlet percontohan atau daring), Metode Rekrutmen, dan Etika & Persetujuan Data (kerahasiaan dan perlindungan responden)."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        Siapa yang diuji, di mana, dan bagaimana cara mendapatkan mereka
+                      </CardDescription>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              {openCvSections.c && (
+                <CardContent className="space-y-4 pt-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-gray-700">
                     1. Target Early Adopters
@@ -1635,28 +1707,39 @@ export function CustomerValidationClient({
                   )}
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ── TABEL: Dimensi Customer Testing Feedback ──────────────────── */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Table2 className="h-5 w-5 text-[#0F5132]" />
-                  <div>
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <span>D. Dimensi Customer Testing Feedback</span>
-                      <SectionInfo
-                        title="Template 2.1 — Bagian D: Dimensi Customer Testing Feedback"
-                        text="Tabel pengujian feedback 5 dimensi baku: Usability (Kemudahan, kejelasan, dan interaksi prototype), Functionality (Kesesuaian fungsi/fitur dengan kebutuhan), Solvability (Kemampuan menyelesaikan problem worth solving), Payability (Kesediaan membayar, menggunakan, atau menanggung effort/perubahan perilaku), dan Others (Masukan tambahan, risiko, dan ide baru). Kolom tabel: Dimensi, Fokus Validasi, Contoh Pertanyaan/Observasi, Evidence yang Dikumpulkan."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-0.5">
-                      5 dimensi baku Juklak — isi kolom &quot;Evidence yang Dikumpulkan&quot; setelah testing
-                    </CardDescription>
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleCvSection("d", true)}>
+              <CardHeader
+                onClick={() => toggleCvSection("d")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openCvSections.d ? "pb-3 border-b border-gray-100" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openCvSections.d ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <span>D. Dimensi Customer Testing Feedback</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 2.1 — Bagian D: Dimensi Customer Testing Feedback"
+                            text="Tabel pengujian feedback 5 dimensi baku: Usability (Kemudahan, kejelasan, dan interaksi prototype), Functionality (Kesesuaian fungsi/fitur dengan kebutuhan), Solvability (Kemampuan menyelesaikan problem worth solving), Payability (Kesediaan membayar, menggunakan, atau menanggung effort/perubahan perilaku), dan Others (Masukan tambahan, risiko, dan ide baru). Kolom tabel: Dimensi, Fokus Validasi, Contoh Pertanyaan/Observasi, Evidence yang Dikumpulkan."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-0.5">
+                        5 dimensi baku Juklak — isi kolom &quot;Evidence yang Dikumpulkan&quot; setelah testing
+                      </CardDescription>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
+              {openCvSections.d && (
+                <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1778,28 +1861,39 @@ export function CustomerValidationClient({
                   </table>
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ── TABEL: Metrik dan Kriteria Kesuksesan ─────────────────────── */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-[#0F5132]" />
-                  <div>
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <span>E. Metrik dan Kriteria Kesuksesan Customer Validation</span>
-                      <SectionInfo
-                        title="Template 2.1 — Bagian E: Metrik & Kriteria Kesuksesan CV"
-                        text="Tabel 7 metrik baku pengukuran Problem-Solution Fit (PSF): Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan dan Kemudahan Penggunaan, Kesediaan Membayar / Menggunakan), Feasibility On Paper (Kelayakan teknis/operasional awal), dan Viability On Paper (Potensi dampak bisnis/ekonomi awal). Kolom tabel: Validasi, Metrik, Unit Ukur, Kriteria Kesuksesan, Cara Pengukuran, Catatan Tim. Catatan: Unit ukur, kriteria kesuksesan, dan cara pengukuran ditentukan sendiri oleh tim sesuai konteks inovasi."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-0.5">
-                      7 metrik baku Juklak — isi kolom &quot;Catatan&quot; sesuai kondisi tim
-                    </CardDescription>
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleCvSection("e", true)}>
+              <CardHeader
+                onClick={() => toggleCvSection("e")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openCvSections.e ? "pb-3 border-b border-gray-100" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openCvSections.e ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <span>E. Metrik dan Kriteria Kesuksesan Customer Validation</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 2.1 — Bagian E: Metrik & Kriteria Kesuksesan CV"
+                            text="Tabel 7 metrik baku pengukuran Problem-Solution Fit (PSF): Desirability (Kepuasan Pengguna, Ketertarikan Penggunaan Berulang, Rekomendasi kepada Orang Lain, Kejelasan dan Kemudahan Penggunaan, Kesediaan Membayar / Menggunakan), Feasibility On Paper (Kelayakan teknis/operasional awal), dan Viability On Paper (Potensi dampak bisnis/ekonomi awal). Kolom tabel: Validasi, Metrik, Unit Ukur, Kriteria Kesuksesan, Cara Pengukuran, Catatan Tim. Catatan: Unit ukur, kriteria kesuksesan, dan cara pengukuran ditentukan sendiri oleh tim sesuai konteks inovasi."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-0.5">
+                        7 metrik baku Juklak — isi kolom &quot;Catatan&quot; sesuai kondisi tim
+                      </CardDescription>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
+              {openCvSections.e && (
+                <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1996,6 +2090,7 @@ export function CustomerValidationClient({
                   </div>
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ── ACTION BUTTONS: Simpan Plan & Admin Re-generate ────────────── */}

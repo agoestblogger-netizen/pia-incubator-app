@@ -38,10 +38,12 @@ export async function getTimInovatorById(id: string) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   if (!isUuid) return null;
 
-  const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, id)).limit(1);
+  const [[tim], anggota] = await Promise.all([
+    db.select().from(timInovator).where(eq(timInovator.id, id)).limit(1),
+    db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, id)),
+  ]);
   if (!tim) return null;
 
-  const anggota = await db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, id));
   return { ...tim, anggota };
 }
 

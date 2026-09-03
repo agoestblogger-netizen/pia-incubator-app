@@ -235,6 +235,7 @@ export function TimPhaseGateNav({
               <Link
                 key={item.id}
                 href={item.href}
+                prefetch={true}
                 style={{ background: token.solidGradientCss }}
                 className={`relative p-5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[130px] group border border-white/20 ${
                   isActive

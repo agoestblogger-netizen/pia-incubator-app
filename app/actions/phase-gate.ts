@@ -67,7 +67,8 @@ export type PhaseGateStatus = {
  */
 export async function isCustomerValidationUnlockedForUser(
   user: any | null,
-  timId: string
+  timId: string,
+  existingCharterRow?: any
 ): Promise<boolean> {
   if (!user) return false;
 
@@ -78,15 +79,19 @@ export async function isCustomerValidationUnlockedForUser(
   if (isAdmin) return true;
 
   // 2. Cek apakah Innovation Charter tim ini sudah ditandatangani PO atau Coach (salah satu cukup)
-  const [charterRow] = await db
-    .select({
-      ttdDisusun: charter.ttdDisusun,
-      ttdDiperiksa: charter.ttdDiperiksa,
-      ttdDisetujui: charter.ttdDisetujui,
-    })
-    .from(charter)
-    .where(eq(charter.timInovatorId, timId))
-    .limit(1);
+  let charterRow = existingCharterRow;
+  if (charterRow === undefined) {
+    const [row] = await db
+      .select({
+        ttdDisusun: charter.ttdDisusun,
+        ttdDiperiksa: charter.ttdDiperiksa,
+        ttdDisetujui: charter.ttdDisetujui,
+      })
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1);
+    charterRow = row;
+  }
 
   if (!charterRow) return false;
 
@@ -120,7 +125,8 @@ export async function isCustomerValidationUnlockedForUser(
  */
 export async function isMarketValidationUnlockedForUser(
   user: any | null,
-  timId: string
+  timId: string,
+  existingCvPlan?: any
 ): Promise<boolean> {
   if (!user) return false;
 
@@ -129,11 +135,15 @@ export async function isMarketValidationUnlockedForUser(
   if (canBypass) return true;
 
   // 2. Cek apakah CV Report tim ini memiliki keputusan 'lanjut'
-  const [cvPlan] = await db
-    .select()
-    .from(customerValidationPlan)
-    .where(eq(customerValidationPlan.timInovatorId, timId))
-    .limit(1);
+  let cvPlan = existingCvPlan;
+  if (cvPlan === undefined) {
+    const [row] = await db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1);
+    cvPlan = row;
+  }
 
   if (cvPlan) {
     const [cvReport] = await db
@@ -154,61 +164,72 @@ export async function isMarketValidationUnlockedForUser(
   return false;
 }
 
-export async function getTeamPhaseGateStatus(timId: string): Promise<PhaseGateStatus> {
-  const [tim] = await db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1);
+export async function getTeamPhaseGateStatus(
+  timId: string,
+  existingTim?: any,
+  existingUser?: any
+): Promise<PhaseGateStatus> {
+  // Batch 1: Query tim, sprint, charter, user, mvPlan, cvPlan secara paralel
+  const [
+    timRes,
+    [activeSprintRow],
+    [charterRow],
+    currentUser,
+    [mvPlan],
+    [cvPlan],
+  ] = await Promise.all([
+    existingTim
+      ? Promise.resolve([existingTim])
+      : db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1),
+    db
+      .select()
+      .from(sprint)
+      .where(and(eq(sprint.timInovatorId, timId), eq(sprint.status, "aktif")))
+      .limit(1),
+    db
+      .select()
+      .from(charter)
+      .where(eq(charter.timInovatorId, timId))
+      .limit(1),
+    existingUser !== undefined ? Promise.resolve(existingUser) : getCurrentUser(),
+    db
+      .select()
+      .from(marketValidationPlan)
+      .where(eq(marketValidationPlan.timInovatorId, timId))
+      .limit(1),
+    db
+      .select()
+      .from(customerValidationPlan)
+      .where(eq(customerValidationPlan.timInovatorId, timId))
+      .limit(1),
+  ]);
 
-  // 1. Check Active Sprint
-  const [activeSprintRow] = await db
-    .select()
-    .from(sprint)
-    .where(and(eq(sprint.timInovatorId, timId), eq(sprint.status, "aktif")))
-    .limit(1);
-
-  // 2. Check Innovation Setup / Charter
-  const [charterRow] = await db
-    .select()
-    .from(charter)
-    .where(eq(charter.timInovatorId, timId))
-    .limit(1);
+  const tim = timRes[0];
 
   const isCharterFilled = Boolean(
     charterRow && (charterRow.projectMission || charterRow.problemWorthSolving || charterRow.ttdDisetujui)
   );
 
-  const currentUser = await getCurrentUser();
-
-  // 3. Check Customer Validation gate:
-  // Condition: Innovation Charter sudah disetujui Promotor (ttdDisetujui tidak null/falsy) ATAU Admin
-  const isCustomerValidationUnlocked = await isCustomerValidationUnlockedForUser(currentUser, timId);
-
-  // 4. Check Market Validation gate:
-  // Condition: customer_validation_report.keputusan === 'Lanjut ke Market Validation' or 'lanjut'
-  // ATAU role user saat ini memiliki izin bypass gerbang fase di phase_gate_bypass_role_config
-  const isMarketValidationUnlocked = await isMarketValidationUnlockedForUser(currentUser, timId);
-
-  // 5. Check FMI & Governance gate:
-  // Condition: market_validation_report.keputusan_go_nogo === 'Go ke FMI' or 'go_ke_fmi'
-  const [mvPlan] = await db
-    .select()
-    .from(marketValidationPlan)
-    .where(eq(marketValidationPlan.timInovatorId, timId))
-    .limit(1);
+  // Batch 2: Cek gerbang Customer Validation, Market Validation, dan MV Report secara paralel
+  const [isCustomerValidationUnlocked, isMarketValidationUnlocked, [mvReport]] = await Promise.all([
+    isCustomerValidationUnlockedForUser(currentUser, timId, charterRow),
+    isMarketValidationUnlockedForUser(currentUser, timId, cvPlan),
+    mvPlan
+      ? db
+          .select()
+          .from(marketValidationReport)
+          .where(eq(marketValidationReport.planId, mvPlan.id))
+          .limit(1)
+      : Promise.resolve([]),
+  ]);
 
   let isGovernanceUnlocked = false;
-  if (mvPlan) {
-    const [mvReport] = await db
-      .select()
-      .from(marketValidationReport)
-      .where(eq(marketValidationReport.planId, mvPlan.id))
-      .limit(1);
-
-    if (
-      mvReport &&
-      mvReport.keputusanGoNogo &&
-      (mvReport.keputusanGoNogo.toLowerCase().includes("go") || mvReport.keputusanGoNogo === "go_ke_fmi")
-    ) {
-      isGovernanceUnlocked = true;
-    }
+  if (
+    mvReport &&
+    mvReport.keputusanGoNogo &&
+    (mvReport.keputusanGoNogo.toLowerCase().includes("go") || mvReport.keputusanGoNogo === "go_ke_fmi")
+  ) {
+    isGovernanceUnlocked = true;
   }
 
   return {

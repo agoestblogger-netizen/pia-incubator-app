@@ -12,7 +12,7 @@ import {
   users,
   anggotaTim,
 } from "@/lib/db/schema";
-import { eq, desc, and, sql, or } from "drizzle-orm";
+import { eq, desc, and, sql, or, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -126,14 +126,25 @@ export async function getKeuanganData(timId: string) {
     .where(eq(anggaranPengajuan.timInovatorId, timId))
     .orderBy(desc(anggaranPengajuan.createdAt));
 
-  const result = await Promise.all(
-    pengajuanList.map(async (p) => {
-      const [lpjData] = await db.select().from(lpj).where(eq(lpj.anggaranPengajuanId, p.id)).limit(1);
-      return { ...p, lpj: lpjData || null };
-    })
-  );
+  if (pengajuanList.length === 0) return [];
 
-  return result;
+  const ids = pengajuanList.map((p) => p.id);
+  const lpjRows = await db
+    .select()
+    .from(lpj)
+    .where(inArray(lpj.anggaranPengajuanId, ids));
+
+  const lpjMap = new Map<string, typeof lpj.$inferSelect>();
+  for (const item of lpjRows) {
+    if (item.anggaranPengajuanId) {
+      lpjMap.set(item.anggaranPengajuanId, item);
+    }
+  }
+
+  return pengajuanList.map((p) => ({
+    ...p,
+    lpj: lpjMap.get(p.id) || null,
+  }));
 }
 
 export async function submitAnggaranAction(timId: string, data: {
@@ -523,14 +534,6 @@ export async function submitLpjAction(
 
 export async function getAnggaranApprovers(): Promise<Array<{ id: string; nama: string; email: string }>> {
   try {
-    const [role] = await db
-      .select()
-      .from(roles)
-      .where(eq(roles.kodeRole, 'approve_anggaran'))
-      .limit(1);
-
-    if (!role) return [];
-
     const assigned = await db
       .select({
         id: users.id,
@@ -538,8 +541,9 @@ export async function getAnggaranApprovers(): Promise<Array<{ id: string; nama: 
         email: users.email,
       })
       .from(userRoleTim)
+      .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
       .innerJoin(users, eq(userRoleTim.userId, users.id))
-      .where(eq(userRoleTim.roleId, role.id));
+      .where(eq(roles.kodeRole, 'approve_anggaran'));
 
     return assigned;
   } catch (err) {

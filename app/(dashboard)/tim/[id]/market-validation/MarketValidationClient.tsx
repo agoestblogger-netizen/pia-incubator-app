@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import {
   saveMarketValidationPlanFullAction,
   generateMvBacklogAction,
@@ -11,6 +12,9 @@ import {
   revokeMvReportSignatureAction,
   getMvPlanAuditHistoryAction,
 } from "@/app/actions/market-validation";
+import { getKanbanData } from "@/app/actions/kanban";
+import { getSprintsByTimId } from "@/app/actions/sprint";
+import { getKeuanganData, getAnggaranApprovers } from "@/app/actions/keuangan";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,12 +61,38 @@ import {
   ArrowUpRight,
   Lock,
   AlertTriangle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "@/components/ui/ToastProvider";
-import { SignaturePadModal } from "@/components/ui/SignaturePad";
-import { KanbanClient } from "../kanban/KanbanClient";
-import { KeuanganClient } from "../keuangan/KeuanganClient";
 import { SectionInfo } from "@/components/ui/SectionInfo";
+import { SignaturePadModal } from "@/components/ui/SignaturePad";
+
+const KanbanClient = dynamic(
+  () => import("../kanban/KanbanClient").then((mod) => mod.KanbanClient),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-200 gap-3">
+        <Loader2 className="h-7 w-7 animate-spin text-[#0F5132]" />
+        <span className="text-xs font-semibold text-gray-600">Memuat Backlog & Sprint...</span>
+      </div>
+    ),
+  }
+);
+
+const KeuanganClient = dynamic(
+  () => import("../keuangan/KeuanganClient").then((mod) => mod.KeuanganClient),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-200 gap-3">
+        <Loader2 className="h-7 w-7 animate-spin text-[#0F5132]" />
+        <span className="text-xs font-semibold text-gray-600">Memuat Data Keuangan & RAB...</span>
+      </div>
+    ),
+  }
+);
 
 // ── 5 Baris Tetap Resources Needed (Bagian D) ─────────────────────────────────
 const RESOURCES_NEEDED_ROWS = [
@@ -288,7 +318,46 @@ export function MarketValidationClient({
     currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
   );
   const isAdminOrCoach = isAdmin || isCoach;
-  const hasMvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
+  const hasMvRecCards =
+    initialData?.hasMvRecCards !== undefined
+      ? initialData.hasMvRecCards
+      : (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
+
+  // ── On-demand state untuk Tab 2 (Kanban) dan Tab 4 (Keuangan) ───────────────
+  const [columns, setColumns] = useState<any[]>(initialColumns || []);
+  const [cards, setCards] = useState<any[]>(initialCards || []);
+  const [sprints, setSprints] = useState<any[]>(initialSprints || []);
+  const [keuanganList, setKeuanganList] = useState<any[]>(initialKeuanganList || []);
+  const [approversList, setApproversList] = useState<any[]>(approvers || []);
+  const [loadingKanbanTab, setLoadingKanbanTab] = useState(false);
+  const [loadingKeuanganTab, setLoadingKeuanganTab] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "backlog" && columns.length === 0 && !loadingKanbanTab) {
+      setLoadingKanbanTab(true);
+      Promise.all([getKanbanData(timId), getSprintsByTimId(timId)])
+        .then(([kData, sData]) => {
+          setColumns(kData.columns);
+          setCards(kData.cards);
+          setSprints(sData);
+        })
+        .catch((err) => console.error("Error loading kanban tab:", err))
+        .finally(() => setLoadingKanbanTab(false));
+    }
+  }, [activeTab, timId, columns.length, loadingKanbanTab]);
+
+  useEffect(() => {
+    if (activeTab === "keuangan" && keuanganList.length === 0 && !loadingKeuanganTab) {
+      setLoadingKeuanganTab(true);
+      Promise.all([getKeuanganData(timId), getAnggaranApprovers()])
+        .then(([kList, aList]) => {
+          setKeuanganList(kList);
+          setApproversList(aList);
+        })
+        .catch((err) => console.error("Error loading keuangan tab:", err))
+        .finally(() => setLoadingKeuanganTab(false));
+    }
+  }, [activeTab, timId, keuanganList.length, loadingKeuanganTab]);
   
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
@@ -305,6 +374,22 @@ export function MarketValidationClient({
           .filter(Boolean)
           .join("\n\n")
       : "");
+
+  // ── Accordion state untuk Tab 1 Perencanaan (Default: Hanya Section B yang terbuka) ──
+  const [openMvSections, setOpenMvSections] = useState<Record<string, boolean>>({
+    b: true,
+    c: false,
+    d: false,
+    e: false,
+    f: false,
+  });
+
+  const toggleMvSection = (sectionKey: string, forceOpen?: boolean) => {
+    setOpenMvSections((prev) => ({
+      ...prev,
+      [sectionKey]: forceOpen !== undefined ? forceOpen : !prev[sectionKey],
+    }));
+  };
 
   // ── Plan Form State ────────────────────────────────────────────────────────
   const [planForm, setPlanForm] = useState({
@@ -815,7 +900,18 @@ export function MarketValidationClient({
         toast.success("MVP Release Plan berhasil disimpan lengkap!", "Plan Tersimpan");
       }
     } else {
-      toast.error(res.error || "Gagal menyimpan MVP Plan.", "Gagal Menyimpan");
+      const errMsg = res.error || "Gagal menyimpan MVP Plan.";
+      toast.error(errMsg, "Gagal Menyimpan");
+      const errLower = errMsg.toLowerCase();
+      if (errLower.includes("metrik")) {
+        toggleMvSection("e", true);
+      } else if (errLower.includes("resource") || errLower.includes("sumber daya")) {
+        toggleMvSection("d", true);
+      } else if (errLower.includes("fitur") || errLower.includes("mapping")) {
+        toggleMvSection("c", true);
+      } else {
+        toggleMvSection("b", true);
+      }
     }
     setSaving(false);
   };
@@ -992,13 +1088,15 @@ export function MarketValidationClient({
   const allTeamCards = initialData?.allTeamCards || [];
 
   const hasApprovedLpj =
-    Array.isArray(initialKeuanganList) &&
-    initialKeuanganList.some(
-      (item: any) =>
-        item.statusLpj === "disetujui" ||
-        item.status === "lpj_approved" ||
-        item.statusLpj === "approved"
-    );
+    initialData?.hasApprovedLpj !== undefined
+      ? initialData.hasApprovedLpj
+      : (Array.isArray(keuanganList) &&
+         keuanganList.some(
+           (item: any) =>
+             item.statusLpj === "disetujui" ||
+             item.status === "lpj_approved" ||
+             item.statusLpj === "approved"
+         ));
 
   return (
     <div className="space-y-5">
@@ -1156,28 +1254,39 @@ export function MarketValidationClient({
             )}
 
             {/* ══ BAGIAN B: Field Ringkasan MVP ══ */}
-            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
-              <CardHeader className="pb-3 border-b border-gray-100">
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleMvSection("b", true)}>
+              <CardHeader
+                onClick={() => toggleMvSection("b")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openMvSections.b ? "pb-3 border-b border-gray-100" : ""}`}
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-[#3E9463]" />
-                      <span>B. Ringkasan Rencana Rilis MVP Pilot</span>
-                      <SectionInfo
-                        title="Template 3.1 — Bagian B: Ringkasan Rencana Rilis MVP"
-                        text="Spesifikasi rilis percontohan: Ringkasan Hasil Customer Validation, Versi MVP (misal v1.0-pilot), Lingkungan Rilis (Internal Web App, Outlet Pilot, Mobile APK Staging), Periode Release (tanggal mulai s.d. selesai), Target Jumlah Pengguna/Adopsi, Target Lokasi/Cabang Pilot, Profil Target Early Adopters, dan Scope MVP (In Scope vs Out of Scope)."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm text-gray-500 mt-0.5">
-                      Definisi lingkup MVP, channel, periode release, dan profil target early adopters.
-                    </CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openMvSections.b ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-[#3E9463]" />
+                        <span>B. Ringkasan Rencana Rilis MVP Pilot</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 3.1 — Bagian B: Ringkasan Rencana Rilis MVP"
+                            text="Spesifikasi rilis percontohan: Ringkasan Hasil Customer Validation, Versi MVP (misal v1.0-pilot), Lingkungan Rilis (Internal Web App, Outlet Pilot, Mobile APK Staging), Periode Release (tanggal mulai s.d. selesai), Target Jumlah Pengguna/Adopsi, Target Lokasi/Cabang Pilot, Profil Target Early Adopters, dan Scope MVP (In Scope vs Out of Scope)."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm text-gray-500 mt-0.5">
+                        Definisi lingkup MVP, channel, periode release, dan profil target early adopters.
+                      </CardDescription>
+                    </div>
                   </div>
                   <Badge variant="outline" className="text-xs font-bold text-gray-600 bg-gray-50">
                     Template 3.1
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-4">
+              {openMvSections.b && (
+                <CardContent className="space-y-4 pt-4">
                 {/* 1. Hasil Customer Validation */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -1491,40 +1600,54 @@ export function MarketValidationClient({
                   )}
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ══ BAGIAN C: Tabel Dinamis Mapping Solusi & Fitur MVP ══ */}
-            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
-              <CardHeader className="pb-3 border-b border-gray-100">
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleMvSection("c", true)}>
+              <CardHeader
+                onClick={() => toggleMvSection("c")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openMvSections.c ? "pb-3 border-b border-gray-100" : ""}`}
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
-                      <Table2 className="h-4 w-4 text-[#3E9463]" />
-                      <span>C. Mapping Solusi, Fitur, Benefit, dan Fitur MVP</span>
-                      <SectionInfo
-                        title="Template 3.1 — Bagian C: Mapping Solusi & Fitur MVP"
-                        text="Tabel pemetaan modul solusi: Solusi Tervalidasi di CV, Fitur Solusi, Benefit bagi User/Bisnis, Keputusan Masuk MVP (Rilis di MVP Pilot / Ditunda ke Fase Skala Penuh), dan Kriteria Penerimaan / Acceptance Criteria. Kolom: Solusi Terkait, Fitur Solusi, Benefit bagi User/Bisnis, Masuk MVP?, Kriteria Penerimaan / Bukti."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm text-gray-500 mt-0.5">
-                      Pemetaan detail antara solusi yang tervalidasi di CV dengan fitur MVP yang dirilis atau ditunda.
-                    </CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openMvSections.c ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                        <Table2 className="h-4 w-4 text-[#3E9463]" />
+                        <span>C. Mapping Solusi, Fitur, Benefit, dan Fitur MVP</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 3.1 — Bagian C: Mapping Solusi & Fitur MVP"
+                            text="Tabel pemetaan modul solusi: Solusi Tervalidasi di CV, Fitur Solusi, Benefit bagi User/Bisnis, Keputusan Masuk MVP (Rilis di MVP Pilot / Ditunda ke Fase Skala Penuh), dan Kriteria Penerimaan / Acceptance Criteria. Kolom: Solusi Terkait, Fitur Solusi, Benefit bagi User/Bisnis, Masuk MVP?, Kriteria Penerimaan / Bukti."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm text-gray-500 mt-0.5">
+                        Pemetaan detail antara solusi yang tervalidasi di CV dengan fitur MVP yang dirilis atau ditunda.
+                      </CardDescription>
+                    </div>
                   </div>
                   {canEdit && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddFiturRow}
-                      className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-sm font-bold rounded-xl gap-1.5 h-9"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>Tambah Baris Fitur</span>
-                    </Button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddFiturRow}
+                        className="border-[#3E9463] text-[#0B3D2E] hover:bg-[#EBF5EE] text-sm font-bold rounded-xl gap-1.5 h-9"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Tambah Baris Fitur</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="pt-4">
+              {openMvSections.c && (
+                <CardContent className="pt-4">
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
@@ -1628,31 +1751,43 @@ export function MarketValidationClient({
                   </table>
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ══ BAGIAN D: Tabel Resources Needed (5 Baris Tetap) ══ */}
-            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
-              <CardHeader className="pb-3 border-b border-gray-100">
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleMvSection("d", true)}>
+              <CardHeader
+                onClick={() => toggleMvSection("d")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openMvSections.d ? "pb-3 border-b border-gray-100" : ""}`}
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
-                      <Users className="h-4 w-4 text-[#3E9463]" />
-                      <span>D. Resources Needed (5 Kebutuhan Sumber Daya)</span>
-                      <SectionInfo
-                        title="Template 3.1 — Bagian D: Resources Needed"
-                        text="Tabel 5 kategori sumber daya: 1. People/SME (Keahlian dan jumlah personel), 2. System/Technology (Aplikasi, environment, device, integration), 3. Data/Access (Dataset, akses, consent, security), 4. Budget/Procurement (RAB, vendor, lisensi, material), dan 5. Operational Support (Lokasi pilot, SOP, channel, early adopter). Kolom tabel: Kategori Sumber Daya, Kebutuhan Spesifik, Owner / Sumber, Status Ketersediaan, Gap dan Tindak Lanjut."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm text-gray-500 mt-0.5">
-                      5 kategori sumber daya baku sesuai Template 3.1 untuk mendukung kesiapan eksekusi MVP.
-                    </CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openMvSections.d ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                        <Users className="h-4 w-4 text-[#3E9463]" />
+                        <span>D. Resources Needed (5 Kebutuhan Sumber Daya)</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 3.1 — Bagian D: Resources Needed"
+                            text="Tabel 5 kategori sumber daya: 1. People/SME (Keahlian dan jumlah personel), 2. System/Technology (Aplikasi, environment, device, integration), 3. Data/Access (Dataset, akses, consent, security), 4. Budget/Procurement (RAB, vendor, lisensi, material), dan 5. Operational Support (Lokasi pilot, SOP, channel, early adopter). Kolom tabel: Kategori Sumber Daya, Kebutuhan Spesifik, Owner / Sumber, Status Ketersediaan, Gap dan Tindak Lanjut."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm text-gray-500 mt-0.5">
+                        5 kategori sumber daya baku sesuai Template 3.1 untuk mendukung kesiapan eksekusi MVP.
+                      </CardDescription>
+                    </div>
                   </div>
                   <Badge variant="outline" className="text-xs font-bold text-[#0B3D2E] bg-emerald-50">
                     5 Kategori Baku
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pt-4">
+              {openMvSections.d && (
+                <CardContent className="pt-4">
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-[#EBF5EE] text-[#0B3D2E] font-bold border-b border-gray-200">
@@ -1734,31 +1869,43 @@ export function MarketValidationClient({
                   </table>
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* ══ BAGIAN E: Tabel Metrik DFV (9 Baris Tetap) ══ */}
-            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
-              <CardHeader className="pb-3 border-b border-gray-100">
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleMvSection("e", true)}>
+              <CardHeader
+                onClick={() => toggleMvSection("e")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openMvSections.e ? "pb-3 border-b border-gray-100" : ""}`}
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-[#3E9463]" />
-                      <span>E. Metrik, Threshold, dan Cara Pengukuran DFV (9 Parameter)</span>
-                      <SectionInfo
-                        title="Template 3.1 — Bagian E: Metrik, Threshold & Pengukuran DFV"
-                        text="Tabel 9 parameter baku DFV: Desirability (Kepuasan Pengguna MVP, Adopsi / Penggunaan Berulang, Rekomendasi / Referral / Komitmen Lanjut), Feasibility (Ketersediaan Sistem / Proses, Waktu Proses / Response Time, Error / Issue Rate), dan Viability (Revenue / Potensi Pendapatan, Efisiensi Biaya / Produktivitas, ROI / Cost-Benefit Awal). Kolom tabel: Kategori Validasi, Metrik Pengukuran, Satuan / Unit, Baseline, Target Pilot, Threshold (70%), Cara Pengukuran, PIC Pengukur, Evidence. Catatan: Baseline, Target, dan Threshold ditentukan sendiri oleh tim; gunakan 70% sebagai threshold default bila belum ada kesepakatan khusus."
-                      />
-                    </CardTitle>
-                    <CardDescription className="text-sm text-gray-500 mt-0.5">
-                      Target terukur Desirability, Feasibility, dan Viability untuk validasi Product-Market Fit.
-                    </CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openMvSections.e ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-[#3E9463]" />
+                        <span>E. Metrik, Threshold, dan Cara Pengukuran DFV (9 Parameter)</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 3.1 — Bagian E: Metrik, Threshold & Pengukuran DFV"
+                            text="Tabel 9 parameter baku DFV: Desirability (Kepuasan Pengguna MVP, Adopsi / Penggunaan Berulang, Rekomendasi / Referral / Komitmen Lanjut), Feasibility (Ketersediaan Sistem / Proses, Waktu Proses / Response Time, Error / Issue Rate), dan Viability (Revenue / Potensi Pendapatan, Efisiensi Biaya / Produktivitas, ROI / Cost-Benefit Awal). Kolom tabel: Kategori Validasi, Metrik Pengukuran, Satuan / Unit, Baseline, Target Pilot, Threshold (70%), Cara Pengukuran, PIC Pengukur, Evidence. Catatan: Baseline, Target, dan Threshold ditentukan sendiri oleh tim; gunakan 70% sebagai threshold default bila belum ada kesepakatan khusus."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm text-gray-500 mt-0.5">
+                        Target terukur Desirability, Feasibility, dan Viability untuk validasi Product-Market Fit.
+                      </CardDescription>
+                    </div>
                   </div>
                   <Badge variant="outline" className="text-xs font-bold text-[#0B3D2E] bg-emerald-50">
                     9 Parameter Baku
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pt-4">
+              {openMvSections.e && (
+                <CardContent className="pt-4">
                 <div className="rounded-xl border border-gray-200 overflow-hidden">
                   <table className="w-full text-xs text-left table-fixed">
                     <colgroup>
@@ -1994,24 +2141,40 @@ export function MarketValidationClient({
                   </div>
                 )}
               </CardContent>
+              )}
             </Card>
 
             {/* ══ BAGIAN F: Lembar Pengesahan 3 Pihak (PO, Coach, Promotor) ══ */}
-            <Card className="rounded-2xl border-gray-200/80 shadow-2xs">
-              <CardHeader className="pb-3 border-b border-gray-100">
-                <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
-                  <Stamp className="h-4 w-4 text-[#3E9463]" />
-                  <span>F. Lembar Pengesahan MVP Release Plan</span>
-                  <SectionInfo
-                    title="Template 3.1 — Lembar Pengesahan MVP Release Plan"
-                    text="Tanda tangan digital 3 pihak: Disusun Oleh Project Owner, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Promotor Inovasi."
-                  />
-                </CardTitle>
-                <CardDescription className="text-sm text-gray-500 mt-0.5">
-                  Tanda tangan digital 3 pihak: Disusun oleh Project Owner, diperiksa oleh Coach, dan disetujui oleh Promotor Inovasi.
-                </CardDescription>
+            <Card className="rounded-2xl border-gray-200/80 shadow-2xs overflow-hidden transition-all" onInvalidCapture={() => toggleMvSection("f", true)}>
+              <CardHeader
+                onClick={() => toggleMvSection("f")}
+                className={`cursor-pointer select-none transition-colors hover:bg-gray-50/70 ${openMvSections.f ? "pb-3 border-b border-gray-100" : ""}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0F5132] border border-emerald-200/60 shrink-0">
+                      {openMvSections.f ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-extrabold text-[#0B3D2E] flex items-center gap-2">
+                        <Stamp className="h-4 w-4 text-[#3E9463]" />
+                        <span>F. Lembar Pengesahan MVP Release Plan</span>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SectionInfo
+                            title="Template 3.1 — Lembar Pengesahan MVP Release Plan"
+                            text="Tanda tangan digital 3 pihak: Disusun Oleh Project Owner, Diperiksa Oleh Innovation Coach, dan Disetujui Oleh Promotor Inovasi."
+                          />
+                        </span>
+                      </CardTitle>
+                      <CardDescription className="text-sm text-gray-500 mt-0.5">
+                        Tanda tangan digital 3 pihak: Disusun oleh Project Owner, diperiksa oleh Coach, dan disetujui oleh Promotor Inovasi.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="pt-4">
+              {openMvSections.f && (
+                <CardContent className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 1. Project Owner */}
                   <div className="p-4 rounded-2xl border border-gray-200 bg-white/70 shadow-2xs space-y-3">
@@ -2335,6 +2498,7 @@ export function MarketValidationClient({
                   </div>
                 </div>
               </CardContent>
+              )}
             </Card>
 
             {/* Tombol Simpan MVP Plan */}
@@ -2401,17 +2565,24 @@ export function MarketValidationClient({
             )}
           </div>
 
-          <KanbanClient
-            timId={timId}
-            initialColumns={initialColumns}
-            initialCards={initialCards}
-            initialSprints={initialSprints}
-            anggotaTim={teamMembers}
-            canEdit={canEditKanban && isMvGateUnlocked}
-            currentUser={currentUser}
-            phaseGateStatus={phaseGateStatus}
-            tahapScope="market_validation"
-          />
+          {loadingKanbanTab ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-200 gap-3">
+              <Loader2 className="h-7 w-7 animate-spin text-[#0F5132]" />
+              <span className="text-xs font-semibold text-gray-600">Memuat Backlog & Sprint...</span>
+            </div>
+          ) : (
+            <KanbanClient
+              timId={timId}
+              initialColumns={columns}
+              initialCards={cards}
+              initialSprints={sprints}
+              anggotaTim={teamMembers}
+              canEdit={canEditKanban && isMvGateUnlocked}
+              currentUser={currentUser}
+              phaseGateStatus={phaseGateStatus}
+              tahapScope="market_validation"
+            />
+          )}
         </TabsContent>
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
@@ -3565,17 +3736,24 @@ export function MarketValidationClient({
             </div>
           </div>
 
-          <KeuanganClient
-            timId={timId}
-            initialList={initialKeuanganList}
-            canSubmit={canSubmitAnggaran}
-            canManage={canManageAnggaran}
-            canApproveAnggaran={canApproveAnggaran}
-            approvers={approvers}
-            timInfo={timInfo}
-            currentUser={currentUser}
-            anggotaTim={anggotaTim}
-          />
+          {loadingKeuanganTab ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-200 gap-3">
+              <Loader2 className="h-7 w-7 animate-spin text-[#0F5132]" />
+              <span className="text-xs font-semibold text-gray-600">Memuat Data Keuangan & RAB...</span>
+            </div>
+          ) : (
+            <KeuanganClient
+              timId={timId}
+              initialList={keuanganList}
+              canSubmit={canSubmitAnggaran}
+              canManage={canManageAnggaran}
+              canApproveAnggaran={canApproveAnggaran}
+              approvers={approversList}
+              timInfo={timInfo}
+              currentUser={currentUser}
+              anggotaTim={anggotaTim}
+            />
+          )}
         </TabsContent>
       </Tabs>
 

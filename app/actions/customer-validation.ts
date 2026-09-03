@@ -50,41 +50,58 @@ const TRACKED_CV_PLAN_FIELDS: Record<string, string> = {
 };
 
 export async function getCustomerValidationData(timId: string) {
-  const [plan] = await db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
-  let report = null;
+  // Batch 1: Query plan & cvAdoptedCards secara paralel
+  const [planRes, cvAdoptedCards] = await Promise.all([
+    db.select().from(customerValidationPlan).where(eq(customerValidationPlan.timInovatorId, timId)).limit(1),
+    db
+      .select({ id: kanbanCard.id, statusKolom: kanbanCard.statusKolom })
+      .from(kanbanCard)
+      .where(
+        and(
+          eq(kanbanCard.timInovatorId, timId),
+          eq(kanbanCard.tahap, 'customer_validation'),
+          eq(kanbanCard.reviewStatus, 'adopted')
+        )
+      ),
+  ]);
+
+  const plan = planRes[0] || null;
+
+  // Batch 2: Jika plan ada, query report, metrikRencana, dan dimensiFeedback secara paralel
+  let report: any = null;
   let metrikRencana: any[] = [];
-  let metrikHasil: any[] = [];
   let dimensiFeedback: any[] = [];
+
+  if (plan) {
+    const [reportRes, metrikRes, dimensiRes] = await Promise.all([
+      db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, plan.id)).limit(1),
+      db
+        .select()
+        .from(rencanaValidasiMetrik)
+        .where(eq(rencanaValidasiMetrik.planId, plan.id))
+        .orderBy(asc(rencanaValidasiMetrik.createdAt)),
+      db.select().from(customerValidationDimensiFeedback).where(eq(customerValidationDimensiFeedback.planId, plan.id)),
+    ]);
+    report = reportRes[0] || null;
+    metrikRencana = metrikRes;
+    dimensiFeedback = dimensiRes;
+  }
+
+  // Batch 3: Jika report ada, query metrikHasil, temuanKualitatif, dan feedbackResponden secara paralel
+  let metrikHasil: any[] = [];
   let temuanKualitatif: any[] = [];
   let feedbackResponden: any[] = [];
 
-  if (plan) {
-    [report] = await db.select().from(customerValidationReport).where(eq(customerValidationReport.planId, plan.id)).limit(1);
-    metrikRencana = await db
-      .select()
-      .from(rencanaValidasiMetrik)
-      .where(eq(rencanaValidasiMetrik.planId, plan.id))
-      .orderBy(asc(rencanaValidasiMetrik.createdAt));
-    dimensiFeedback = await db.select().from(customerValidationDimensiFeedback).where(eq(customerValidationDimensiFeedback.planId, plan.id));
-  }
-
   if (report) {
-    metrikHasil = await db.select().from(hasilValidasiMetrik).where(eq(hasilValidasiMetrik.reportId, report.id));
-    temuanKualitatif = await db.select().from(customerValidationTemuanKualitatif).where(eq(customerValidationTemuanKualitatif.reportId, report.id));
-    feedbackResponden = await db.select().from(customerTestingFeedbackResponden).where(eq(customerTestingFeedbackResponden.reportId, report.id));
+    const [hasilRes, temuanRes, feedbackRes] = await Promise.all([
+      db.select().from(hasilValidasiMetrik).where(eq(hasilValidasiMetrik.reportId, report.id)),
+      db.select().from(customerValidationTemuanKualitatif).where(eq(customerValidationTemuanKualitatif.reportId, report.id)),
+      db.select().from(customerTestingFeedbackResponden).where(eq(customerTestingFeedbackResponden.reportId, report.id)),
+    ]);
+    metrikHasil = hasilRes;
+    temuanKualitatif = temuanRes;
+    feedbackResponden = feedbackRes;
   }
-
-  // Cek kondisi: SEMUA kartu backlog CV (review_status = 'adopted') sudah berstatus 'Done'
-  const cvAdoptedCards = await db
-    .select({ id: kanbanCard.id, statusKolom: kanbanCard.statusKolom })
-    .from(kanbanCard)
-    .where(
-      and(
-        eq(kanbanCard.timInovatorId, timId),
-        eq(kanbanCard.tahap, 'customer_validation'),
-        eq(kanbanCard.reviewStatus, 'adopted')
-      )
-    );
 
   const allCvBacklogDone =
     cvAdoptedCards.length > 0 && cvAdoptedCards.every((c) => c.statusKolom === 'Done');

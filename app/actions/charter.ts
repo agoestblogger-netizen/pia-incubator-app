@@ -14,7 +14,7 @@ import {
   timInovator,
   sprint,
 } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, hasPermission } from "@/lib/auth/rbac";
 import { logAudit } from "@/lib/db/audit";
@@ -435,7 +435,33 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
 
 export async function getCharterRolesData(timId: string) {
   try {
-    const allRoles = await db.select().from(roles);
+    const [allRoles, existingAssignmentsRaw, existingAnggota, teamDossierRes] = await Promise.all([
+      db.select().from(roles),
+      db
+        .select({
+          id: userRoleTim.id,
+          roleId: userRoleTim.roleId,
+          roleCode: roles.kodeRole,
+          roleName: roles.namaRole,
+          userId: userRoleTim.userId,
+          userName: users.nama,
+          userEmail: users.email,
+        })
+        .from(userRoleTim)
+        .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
+        .innerJoin(users, eq(userRoleTim.userId, users.id))
+        .where(eq(userRoleTim.timInovatorId, timId)),
+      db
+        .select()
+        .from(anggotaTim)
+        .where(eq(anggotaTim.timInovatorId, timId)),
+      db
+        .select()
+        .from(dossierPiaArchive)
+        .where(eq(dossierPiaArchive.timInovatorId, timId))
+        .limit(1),
+    ]);
+
     const existingAssignments: Array<{
       id: string;
       roleId: string;
@@ -444,32 +470,9 @@ export async function getCharterRolesData(timId: string) {
       userId: string | null;
       userName: string;
       userEmail: string;
-    }> = (await db
-      .select({
-        id: userRoleTim.id,
-        roleId: userRoleTim.roleId,
-        roleCode: roles.kodeRole,
-        roleName: roles.namaRole,
-        userId: userRoleTim.userId,
-        userName: users.nama,
-        userEmail: users.email,
-      })
-      .from(userRoleTim)
-      .innerJoin(roles, eq(userRoleTim.roleId, roles.id))
-      .innerJoin(users, eq(userRoleTim.userId, users.id))
-      .where(eq(userRoleTim.timInovatorId, timId))) as any;
+    }> = existingAssignmentsRaw as any;
 
-    const existingAnggota = await db
-      .select()
-      .from(anggotaTim)
-      .where(eq(anggotaTim.timInovatorId, timId));
-
-    // Check if team has dossier with proposal members to pre-populate Inisiator & Co-creators if not assigned
-    const [teamDossier] = await db
-      .select()
-      .from(dossierPiaArchive)
-      .where(eq(dossierPiaArchive.timInovatorId, timId))
-      .limit(1);
+    const teamDossier = teamDossierRes[0];
 
     if (teamDossier && teamDossier.snapshotData) {
       const snap = teamDossier.snapshotData as any;
@@ -488,8 +491,45 @@ export async function getCharterRolesData(timId: string) {
         const pengusulJabatan = cleanText(submisi.pengusul?.jabatan || "Inisiator");
         const pengusulUnit = cleanText(submisi.pengusul?.unit_kerja || "PT Pegadaian (Persero)");
 
+        // Kumpulkan semua calon anggota dan email terlebih dahulu
+        const memberCandidates: Array<{ nama: string; email: string; jabatan: string; unit: string; index: number }> = [];
+        const rawMembers = submisi.team_members || snap.team_members || submisi.anggota_tim || [];
+        if (Array.isArray(rawMembers)) {
+          for (let i = 0; i < rawMembers.length; i++) {
+            const m = rawMembers[i];
+            let mNama = "";
+            let mEmail = "";
+            let mJabatan = "Anggota Tim";
+            let mUnit = "PT Pegadaian (Persero)";
+
+            if (typeof m === "string") {
+              mNama = cleanText(m);
+              mEmail = formatPegadaianEmail(mNama);
+            } else if (typeof m === "object" && m !== null) {
+              mNama = cleanText(m.nama || m.name);
+              mEmail = (m.email && m.email.includes("@")) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : "");
+              mJabatan = cleanText(m.jabatan || "Anggota Tim");
+              mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian (Persero)");
+            }
+
+            if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
+              continue;
+            }
+
+            if (mNama && mEmail) {
+              memberCandidates.push({ nama: mNama, email: mEmail, jabatan: mJabatan, unit: mUnit, index: i });
+            }
+          }
+        }
+
+        const candidateEmails = [pengusulEmail, ...memberCandidates.map((c) => c.email)].filter((e): e is string => Boolean(e));
+        const foundUsers = candidateEmails.length > 0
+          ? await db.select().from(users).where(inArray(users.email, candidateEmails))
+          : [];
+        const userByEmail = new Map(foundUsers.map((u) => [u.email.toLowerCase(), u]));
+
         if (pengusulNama && pengusulEmail) {
-          const [foundUser] = await db.select().from(users).where(eq(users.email, pengusulEmail)).limit(1);
+          const foundUser = userByEmail.get(pengusulEmail.toLowerCase());
           existingAssignments.push({
             id: `suggested-inisiator-${foundUser?.id || "new"}`,
             roleId: inisiatorRole.id,
@@ -515,56 +555,30 @@ export async function getCharterRolesData(timId: string) {
           }
         }
 
-        // Anggota tim lainnya juga dimasukkan ke Inisiator (multi-orang)
-        const rawMembers = submisi.team_members || snap.team_members || submisi.anggota_tim || [];
-        if (Array.isArray(rawMembers)) {
-          for (let i = 0; i < rawMembers.length; i++) {
-            const m = rawMembers[i];
-            let mNama = "";
-            let mEmail = "";
-            let mJabatan = "Anggota Tim";
-            let mUnit = "PT Pegadaian (Persero)";
+        for (const cand of memberCandidates) {
+          const foundMemberUser = userByEmail.get(cand.email.toLowerCase());
+          existingAssignments.push({
+            id: `suggested-inisiator-${cand.index}-${foundMemberUser?.id || "new"}`,
+            roleId: inisiatorRole.id,
+            roleCode: "inisiator",
+            roleName: inisiatorRole.namaRole,
+            userId: foundMemberUser?.id || null,
+            userName: cand.nama,
+            userEmail: cand.email,
+          });
 
-            if (typeof m === "string") {
-              mNama = cleanText(m);
-              mEmail = formatPegadaianEmail(mNama);
-            } else if (typeof m === "object" && m !== null) {
-              mNama = cleanText(m.nama || m.name);
-              mEmail = (m.email && m.email.includes("@")) ? m.email.trim().toLowerCase() : (mNama ? formatPegadaianEmail(mNama) : "");
-              mJabatan = cleanText(m.jabatan || "Anggota Tim");
-              mUnit = cleanText(m.unit_kerja || m.unitKerja || "PT Pegadaian (Persero)");
-            }
-
-            if (pengusulNama && mNama.toLowerCase() === pengusulNama.toLowerCase()) {
-              continue;
-            }
-
-            if (mNama && mEmail) {
-              const [foundMemberUser] = await db.select().from(users).where(eq(users.email, mEmail)).limit(1);
-              existingAssignments.push({
-                id: `suggested-inisiator-${i}-${foundMemberUser?.id || "new"}`,
-                roleId: inisiatorRole.id,
-                roleCode: "inisiator",
-                roleName: inisiatorRole.namaRole,
-                userId: foundMemberUser?.id || null,
-                userName: mNama,
-                userEmail: mEmail,
-              });
-
-              if (!existingAnggota.some((a) => a.nama.toLowerCase() === mNama.toLowerCase())) {
-                existingAnggota.push({
-                  id: `suggested-ang-inisiator-${i}`,
-                  timInovatorId: timId,
-                  userId: foundMemberUser?.id || null,
-                  nama: mNama,
-                  jabatan: mJabatan,
-                  unitKerja: mUnit,
-                  komitmenDukungan: `Role: Inovator`,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                });
-              }
-            }
+          if (!existingAnggota.some((a) => a.nama.toLowerCase() === cand.nama.toLowerCase())) {
+            existingAnggota.push({
+              id: `suggested-ang-inisiator-${cand.index}`,
+              timInovatorId: timId,
+              userId: foundMemberUser?.id || null,
+              nama: cand.nama,
+              jabatan: cand.jabatan,
+              unitKerja: cand.unit,
+              komitmenDukungan: `Role: Inovator`,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
           }
         }
       }

@@ -77,9 +77,23 @@ export function NavigationTransitionProvider({
     };
   }, [pathname, router]);
 
+  const [showLoader, setShowLoader] = React.useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isPending) {
+      timer = setTimeout(() => {
+        setShowLoader(true);
+      }, 150);
+    } else {
+      setShowLoader(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isPending]);
+
   return (
     <NavigationContext.Provider value={{ navigate, isPending }}>
-      {isPending && <CenteredPageLoader text="Sedang proses....." />}
+      {showLoader && <CenteredPageLoader text="Sedang proses....." />}
       {children}
     </NavigationContext.Provider>
   );

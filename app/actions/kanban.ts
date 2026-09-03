@@ -48,56 +48,56 @@ export async function logKanbanActivity(params: {
 }
 
 export async function getKanbanData(timId: string) {
-  const columns = await db
-    .select()
-    .from(kanbanColumn)
-    .where(eq(kanbanColumn.timInovatorId, timId))
-    .orderBy(asc(kanbanColumn.urutan));
-
-  const rawCards = await db
-    .select({
-      id: kanbanCard.id,
-      timInovatorId: kanbanCard.timInovatorId,
-      judul: kanbanCard.judul,
-      deskripsi: kanbanCard.deskripsi,
-      sprintNumber: kanbanCard.sprintNumber,
-      tahap: kanbanCard.tahap,
-      statusKolom: kanbanCard.statusKolom,
-      ownerAnggotaId: kanbanCard.ownerAnggotaId,
-      tanggalMulai: kanbanCard.tanggalMulai,
-      tanggalSelesai: kanbanCard.tanggalSelesai,
-      acceptanceCriteria: kanbanCard.acceptanceCriteria,
-      dependencyRisiko: kanbanCard.dependencyRisiko,
-      urutan: kanbanCard.urutan,
-      label: kanbanCard.label,
-      reviewStatus: kanbanCard.reviewStatus,
-      estimasiJam: kanbanCard.estimasiJam,
-      storyPoint: kanbanCard.storyPoint,
-      suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
-      customDocumentData: kanbanCard.customDocumentData,
-      createdAt: kanbanCard.createdAt,
-      updatedAt: kanbanCard.updatedAt,
-      attachmentsCount: sql<number>`cast(count(distinct ${taskAttachment.id}) as int)`,
-      linksCount: sql<number>`cast(count(distinct ${taskLink.id}) as int)`,
-    })
-    .from(kanbanCard)
-    .leftJoin(taskAttachment, eq(taskAttachment.taskId, kanbanCard.id))
-    .leftJoin(taskLink, eq(taskLink.taskId, kanbanCard.id))
-    .where(eq(kanbanCard.timInovatorId, timId))
-    .groupBy(kanbanCard.id)
-    .orderBy(asc(kanbanCard.urutan));
-
-  // Query subtask totals for all cards in this team (Paket 24a)
-  const subtaskRows = await db
-    .select({
-      taskId: kanbanSubtask.taskId,
-      subtasksCount: sql<number>`cast(count(${kanbanSubtask.id}) as int)`,
-      totalSubtaskHours: sql<number>`cast(coalesce(sum(${kanbanSubtask.estimatedHours}), 0) as int)`,
-    })
-    .from(kanbanSubtask)
-    .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
-    .where(eq(kanbanCard.timInovatorId, timId))
-    .groupBy(kanbanSubtask.taskId);
+  const [columns, rawCards, subtaskRows] = await Promise.all([
+    db
+      .select()
+      .from(kanbanColumn)
+      .where(eq(kanbanColumn.timInovatorId, timId))
+      .orderBy(asc(kanbanColumn.urutan)),
+    db
+      .select({
+        id: kanbanCard.id,
+        timInovatorId: kanbanCard.timInovatorId,
+        judul: kanbanCard.judul,
+        deskripsi: kanbanCard.deskripsi,
+        sprintNumber: kanbanCard.sprintNumber,
+        tahap: kanbanCard.tahap,
+        statusKolom: kanbanCard.statusKolom,
+        ownerAnggotaId: kanbanCard.ownerAnggotaId,
+        tanggalMulai: kanbanCard.tanggalMulai,
+        tanggalSelesai: kanbanCard.tanggalSelesai,
+        acceptanceCriteria: kanbanCard.acceptanceCriteria,
+        dependencyRisiko: kanbanCard.dependencyRisiko,
+        urutan: kanbanCard.urutan,
+        label: kanbanCard.label,
+        reviewStatus: kanbanCard.reviewStatus,
+        estimasiJam: kanbanCard.estimasiJam,
+        storyPoint: kanbanCard.storyPoint,
+        suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
+        customDocumentData: kanbanCard.customDocumentData,
+        createdAt: kanbanCard.createdAt,
+        updatedAt: kanbanCard.updatedAt,
+        attachmentsCount: sql<number>`cast(count(distinct ${taskAttachment.id}) as int)`,
+        linksCount: sql<number>`cast(count(distinct ${taskLink.id}) as int)`,
+      })
+      .from(kanbanCard)
+      .leftJoin(taskAttachment, eq(taskAttachment.taskId, kanbanCard.id))
+      .leftJoin(taskLink, eq(taskLink.taskId, kanbanCard.id))
+      .where(eq(kanbanCard.timInovatorId, timId))
+      .groupBy(kanbanCard.id)
+      .orderBy(asc(kanbanCard.urutan)),
+    // Query subtask totals for all cards in this team (Paket 24a)
+    db
+      .select({
+        taskId: kanbanSubtask.taskId,
+        subtasksCount: sql<number>`cast(count(${kanbanSubtask.id}) as int)`,
+        totalSubtaskHours: sql<number>`cast(coalesce(sum(${kanbanSubtask.estimatedHours}), 0) as int)`,
+      })
+      .from(kanbanSubtask)
+      .innerJoin(kanbanCard, eq(kanbanSubtask.taskId, kanbanCard.id))
+      .where(eq(kanbanCard.timInovatorId, timId))
+      .groupBy(kanbanSubtask.taskId),
+  ]);
 
   const subtaskMap = new Map<string, { subtasksCount: number; totalSubtaskHours: number }>();
   for (const st of subtaskRows) {
