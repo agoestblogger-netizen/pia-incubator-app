@@ -5,8 +5,6 @@ import {
   charter,
   customerValidationPlan,
   customerValidationReport,
-  marketValidationPlan,
-  marketValidationReport,
   sprint,
   timInovator,
 } from "@/lib/db/schema";
@@ -169,13 +167,12 @@ export async function getTeamPhaseGateStatus(
   existingTim?: any,
   existingUser?: any
 ): Promise<PhaseGateStatus> {
-  // Batch 1: Query tim, sprint, charter, user, mvPlan, cvPlan secara paralel
+  // Batch 1: Query tim, sprint, charter, user, cvPlan secara paralel
   const [
     timRes,
     [activeSprintRow],
     [charterRow],
     currentUser,
-    [mvPlan],
     [cvPlan],
   ] = await Promise.all([
     existingTim
@@ -194,11 +191,6 @@ export async function getTeamPhaseGateStatus(
     existingUser !== undefined ? Promise.resolve(existingUser) : getCurrentUser(),
     db
       .select()
-      .from(marketValidationPlan)
-      .where(eq(marketValidationPlan.timInovatorId, timId))
-      .limit(1),
-    db
-      .select()
       .from(customerValidationPlan)
       .where(eq(customerValidationPlan.timInovatorId, timId))
       .limit(1),
@@ -210,27 +202,11 @@ export async function getTeamPhaseGateStatus(
     charterRow && (charterRow.projectMission || charterRow.problemWorthSolving || charterRow.ttdDisetujui)
   );
 
-  // Batch 2: Cek gerbang Customer Validation, Market Validation, dan MV Report secara paralel
-  const [isCustomerValidationUnlocked, isMarketValidationUnlocked, [mvReport]] = await Promise.all([
+  // Batch 2: Cek gerbang Customer Validation dan Market Validation secara paralel
+  const [isCustomerValidationUnlocked, isMarketValidationUnlocked] = await Promise.all([
     isCustomerValidationUnlockedForUser(currentUser, timId, charterRow),
     isMarketValidationUnlockedForUser(currentUser, timId, cvPlan),
-    mvPlan
-      ? db
-          .select()
-          .from(marketValidationReport)
-          .where(eq(marketValidationReport.planId, mvPlan.id))
-          .limit(1)
-      : Promise.resolve([]),
   ]);
-
-  let isGovernanceUnlocked = false;
-  if (
-    mvReport &&
-    mvReport.keputusanGoNogo &&
-    (mvReport.keputusanGoNogo.toLowerCase().includes("go") || mvReport.keputusanGoNogo === "go_ke_fmi")
-  ) {
-    isGovernanceUnlocked = true;
-  }
 
   return {
     timId,
@@ -272,11 +248,9 @@ export async function getTeamPhaseGateStatus(
         href: `/tim/${timId}/keuangan`,
       },
       governance: {
-        unlocked: isGovernanceUnlocked,
+        unlocked: true,
         href: `/tim/${timId}/governance`,
-        reason: isGovernanceUnlocked
-          ? undefined
-          : "Menunggu keputusan 'Go ke FMI' pada Laporan Market Validation.",
+        reason: undefined,
       },
     },
   };
