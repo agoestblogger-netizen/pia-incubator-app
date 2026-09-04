@@ -433,7 +433,14 @@ export async function getCharterByTimId(timId: string): Promise<CharterWithAutoF
   };
 }
 
-export async function getCharterRolesData(timId: string) {
+export async function getCharterRolesData(
+  timId: string,
+  skipDossierOrAnggota?: boolean | any[],
+  maybeSkipDossier: boolean = false
+) {
+  const skipDossier = typeof skipDossierOrAnggota === 'boolean' 
+    ? skipDossierOrAnggota 
+    : maybeSkipDossier;
   try {
     const allRoles = await db.select().from(roles);
     const existingAssignments: Array<{
@@ -465,11 +472,15 @@ export async function getCharterRolesData(timId: string) {
       .where(eq(anggotaTim.timInovatorId, timId));
 
     // Check if team has dossier with proposal members to pre-populate Inisiator & Co-creators if not assigned
-    const [teamDossier] = await db
-      .select()
-      .from(dossierPiaArchive)
-      .where(eq(dossierPiaArchive.timInovatorId, timId))
-      .limit(1);
+    let teamDossier: any = null;
+    if (!skipDossier) {
+      const [foundDossier] = await db
+        .select()
+        .from(dossierPiaArchive)
+        .where(eq(dossierPiaArchive.timInovatorId, timId))
+        .limit(1);
+      teamDossier = foundDossier;
+    }
 
     if (teamDossier && teamDossier.snapshotData) {
       const snap = teamDossier.snapshotData as any;

@@ -77,7 +77,7 @@ function isCanonicalMvMetricMatch(m1: string, m2: string): boolean {
 }
 
 export async function getMarketValidationData(timId: string, existingTim?: any) {
-  // Batch 1: Query tim, plan, cvPlan, sprintReview, allTeamCards, teamMembers, dan dossier secara paralel
+  // Batch 1: Query tim, plan, cvPlan, sprintReview, allTeamCards, dan teamMembers secara paralel (query dossier berat dihapus total dari initial load)
   const [
     timRes,
     planRes,
@@ -85,7 +85,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
     sprintReviewsRes,
     allTeamCards,
     teamMembersRes,
-    dossierRes,
   ] = await Promise.all([
     existingTim ? Promise.resolve([existingTim]) : db.select().from(timInovator).where(eq(timInovator.id, timId)).limit(1),
     db.select().from(marketValidationPlan).where(eq(marketValidationPlan.timInovatorId, timId)).limit(1),
@@ -93,7 +92,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
     db.select().from(sprintReview).where(eq(sprintReview.timInovatorId, timId)).orderBy(asc(sprintReview.sprintNumber)),
     db.select().from(kanbanCard).where(eq(kanbanCard.timInovatorId, timId)).orderBy(asc(kanbanCard.urutan)),
     existingTim?.anggota ? Promise.resolve(existingTim.anggota) : db.select().from(anggotaTim).where(eq(anggotaTim.timInovatorId, timId)),
-    db.select({ snapshotData: dossierPiaArchive.snapshotData }).from(dossierPiaArchive).where(eq(dossierPiaArchive.timInovatorId, timId)).limit(1),
   ]);
 
   const tim = timRes[0] || null;
@@ -144,7 +142,7 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
       : Promise.resolve([]),
   ]);
 
-  // Bangun cvReport
+  // Bangun cvReport (HANYA dari customer_validation_report resmi, query dossier berat dihapus total dari initial load)
   let cvReport: any = null;
   const foundCvReport = foundCvReportRes[0];
   if (foundCvReport) {
@@ -153,17 +151,6 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
       kesimpulan: foundCvReport.kesimpulan || "",
       valueProposition: foundCvReport.valueProposition || "",
     };
-  } else if (dossierRes[0]) {
-    const snap = (dossierRes[0].snapshotData as any) || {};
-    const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
-    if (gf) {
-      cvReport = {
-        validatedSolution: gf.solution || "",
-        kesimpulan: gf.validasi ? `${gf.validasi.ringkasan_validasi || ''}\n${gf.validasi.pembelajaran_validasi || ''}`.trim() : "",
-        valueProposition: gf.business_impact || "",
-        isFallbackFromDossier: true,
-      };
-    }
   }
 
   const report = reportRes[0] || null;
@@ -207,6 +194,44 @@ export async function getMarketValidationData(timId: string, existingTim?: any) 
     sprintReviews: filteredSprintReviews,
     allTeamCards,
   };
+}
+
+/**
+ * Server Action on-demand untuk mengambil data auto-fill dari arsip dossier Grand Final (bila dibutuhkan manual oleh user)
+ * TIDAK PERNAH dijalankan di initial load untuk mencegah connection pool starvation.
+ */
+export async function getDossierAutoFillForMarketValidation(timId: string) {
+  try {
+    const dossierRes = await db
+      .select({ snapshotData: dossierPiaArchive.snapshotData })
+      .from(dossierPiaArchive)
+      .where(eq(dossierPiaArchive.timInovatorId, timId))
+      .limit(1);
+
+    if (!dossierRes[0]?.snapshotData) {
+      return { success: false, error: "Data arsip dossier tidak ditemukan" };
+    }
+
+    const snap = (dossierRes[0].snapshotData as any) || {};
+    const gf = snap.hasil_grand_final || snap.data_submisi?.hasil_grand_final;
+    if (!gf) {
+      return { success: false, error: "Data Grand Final tidak ditemukan di arsip" };
+    }
+
+    return {
+      success: true,
+      data: {
+        validatedSolution: gf.solution || "",
+        kesimpulan: gf.validasi
+          ? `${gf.validasi.ringkasan_validasi || ""}\n${gf.validasi.pembelajaran_validasi || ""}`.trim()
+          : "",
+        valueProposition: gf.business_impact || "",
+      },
+    };
+  } catch (err: any) {
+    console.error("Error fetching dossier auto-fill:", err);
+    return { success: false, error: err.message || "Gagal mengambil data dossier" };
+  }
 }
 
 export async function saveMarketValidationPlanFullAction(

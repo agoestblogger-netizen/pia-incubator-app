@@ -40,7 +40,7 @@ export default async function CustomerValidationPage({
     getTeamPhaseGateStatus(tim.id),
     getKanbanData(tim.id),
     getSprintsByTimId(tim.id),
-    getCharterRolesData(tim.id),
+    getCharterRolesData(tim.id, true),
     user ? hasPermission(user, 'cust_val.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'cv_plan.sign_inisiator', tim.id) : Promise.resolve(false),

@@ -51,7 +51,7 @@ export default async function MarketValidationPage({
     getKanbanData(tim.id),
     getSprintsByTimId(tim.id),
     getKeuanganData(tim.id),
-    getCharterRolesData(tim.id),
+    getCharterRolesData(tim.id, true),
     user ? hasPermission(user, 'market_val.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'market_val.approve', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
