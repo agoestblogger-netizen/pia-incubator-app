@@ -77,7 +77,11 @@ export async function isCustomerValidationUnlockedForUser(
   );
   if (isAdmin) return true;
 
-  // 2. Cek apakah Innovation Charter tim ini sudah ditandatangani PO atau Coach (salah satu cukup)
+  // 2. Cek izin bypass (role terdaftar di phase_gate_bypass_role_config)
+  const canBypass = await canUserBypassMarketValidationGate(user, timId);
+  if (canBypass) return true;
+
+  // 3. Cek apakah Innovation Charter tim ini sudah ditandatangani PO atau Coach (salah satu cukup)
   const [charterRow] = await db
     .select({
       ttdDisusun: charter.ttdDisusun,
