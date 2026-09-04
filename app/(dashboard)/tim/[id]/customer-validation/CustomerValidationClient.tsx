@@ -2425,6 +2425,7 @@ export function CustomerValidationClient({
             {canEditCv && initialData?.plan?.id && (!hasCvRecCards || isAdminOrCoach) && (
               <Button
                 type="button"
+                onClick={handleGenerateBacklog}
                 size="sm"
                 disabled={generatingBacklog}
                 className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 h-8 text-xs rounded-lg shadow-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
