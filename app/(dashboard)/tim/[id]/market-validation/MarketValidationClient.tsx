@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   saveMarketValidationPlanFullAction,
   generateMvBacklogAction,
@@ -267,6 +268,8 @@ export function MarketValidationClient({
     report?: { po?: boolean; coach?: boolean; promotor?: boolean };
   };
 }) {
+  const router = useRouter();
+
   // Land on 'backlog' by default if all 3 MVP Release Plan signatures are complete
   const allMvPlanSignedOnLoad = Boolean(
     initialData?.plan?.ttdDisusun?.status === "signed" &&
@@ -296,7 +299,14 @@ export function MarketValidationClient({
     (initialData?.teamMembers || anggotaTim || [])?.some((a: any) => (a.role === 'inisiator' || a.jabatan?.toLowerCase().includes('inisiator')) && (a.userId === currentUser?.id || (currentUser?.name && a.nama === currentUser.name)))
   );
   const canManageBakuMv = isAdmin || isCoach || isInisiator;
-  const hasMvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
+  const [hasGeneratedBacklog, setHasGeneratedBacklog] = useState(false);
+  const hasMvRecCards =
+    hasGeneratedBacklog ||
+    (initialCards || []).some(
+      (c: any) =>
+        c.label === "Rekomendasi MV" ||
+        (c.tahap === "market_validation" && (c.label || "").toLowerCase().includes("rekomendasi"))
+    );
   
   // Auto-fill dari CV Report jika ada
   const defaultHasilCv =
@@ -836,10 +846,12 @@ export function MarketValidationClient({
     try {
       const res = await generateMvBacklogAction(timId);
       if (res.success) {
+        setHasGeneratedBacklog(true);
         toast.success(
           res.message || `Berhasil menghasilkan rekomendasi backlog Market Validation!`,
           "Rekomendasi Terbuat"
         );
+        router.refresh();
       } else {
         toast.error(res.error || "Gagal menghasilkan backlog.", "Gagal");
       }
