@@ -957,7 +957,41 @@ export async function getMandatorySubtaskDataAction(
           };
         });
 
-        data = { psfMeasurementRows: rows };
+        const isCanonicalStandard = (name: string): boolean => {
+          const n = (name || "").toLowerCase().trim();
+          return METRIK_ROWS.some((mr) => {
+            const m = mr.metrik.toLowerCase().trim();
+            return n === m || (m.startsWith("kesediaan membayar") && n.startsWith("kesediaan membayar"));
+          });
+        };
+
+        const normalizeValidasi = (val: string): string => {
+          if (!val) return "Desirability";
+          const v = val.toLowerCase().trim();
+          if (v.includes("desir")) return "Desirability";
+          if (v.includes("feas")) return "Feasibility";
+          if (v.includes("viab")) return "Viability";
+          return val;
+        };
+
+        const customRencana = planMetrikRows.filter((r) => !isCanonicalStandard(r.metrik));
+        const customRows = customRencana.map((r) => {
+          const found = existingResults.find(
+            (m) => (m.metrik || "").toLowerCase().trim() === (r.metrik || "").toLowerCase().trim()
+          );
+          return {
+            validasi: normalizeValidasi(r.validasi),
+            metrik: r.metrik,
+            target: r.kriteriaKesuksesan || "-",
+            hasilAktual: found?.hasilAktual || "",
+            interpretasi: found?.interpretasi || "",
+            learning: found?.learning || "",
+            enhancement: found?.enhancement || "",
+            isExcluded: false,
+          };
+        });
+
+        data = { psfMeasurementRows: [...rows, ...customRows] };
         break;
       }
       case "validated_solution_psf":
