@@ -474,11 +474,15 @@ export async function getCharterRolesData(
     // Check if team has dossier with proposal members to pre-populate Inisiator & Co-creators if not assigned
     let teamDossier: any = null;
     if (!skipDossier) {
-      const [foundDossier] = await db
-        .select()
-        .from(dossierPiaArchive)
-        .where(eq(dossierPiaArchive.timInovatorId, timId))
-        .limit(1);
+      const foundDossier = await Promise.race([
+        db
+          .select()
+          .from(dossierPiaArchive)
+          .where(eq(dossierPiaArchive.timInovatorId, timId))
+          .limit(1)
+          .then((r) => r[0]),
+        new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 3000)),
+      ]);
       teamDossier = foundDossier;
     }
 
