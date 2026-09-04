@@ -120,19 +120,50 @@ export async function GET(
       },
     ];
 
-    const mappedMetrikHasil = METRIK_OFFICIAL.map((m) => {
-      const rencana = metrikRencanaRows.find((r) => r.metrik === m.metrik);
-      const found = metrikHasilList.find((h) => h.metrik === m.metrik);
-      return {
-        validasi: m.validasi,
-        metrik: m.metrik,
-        target: rencana?.kriteriaKesuksesan || found?.target || m.kriteria,
-        hasilAktual: found?.hasilAktual || '',
-        interpretasi: found?.interpretasi || '',
-        learning: found?.learning || '',
-        enhancement: found?.enhancement || '',
-      };
-    });
+    const normalizeValidasi = (val: string): string => {
+      if (!val) return 'Desirability';
+      const v = val.toLowerCase().trim();
+      if (v.includes('desir')) return 'Desirability';
+      if (v.includes('feas')) return 'Feasibility On Paper';
+      if (v.includes('viab')) return 'Viability On Paper';
+      return val;
+    };
+
+    let mappedMetrikHasil: any[] = [];
+    if (metrikRencanaRows && metrikRencanaRows.length > 0) {
+      mappedMetrikHasil = metrikRencanaRows.map((r) => {
+        const found = metrikHasilList.find((h) => {
+          const hMetrik = (h.metrik || '').toLowerCase().trim();
+          const rMetrik = (r.metrik || '').toLowerCase().trim();
+          return (
+            hMetrik === rMetrik ||
+            (rMetrik.startsWith('kesediaan membayar') && hMetrik.startsWith('kesediaan membayar'))
+          );
+        });
+        return {
+          validasi: normalizeValidasi(r.validasi),
+          metrik: r.metrik,
+          target: r.kriteriaKesuksesan || found?.target || '-',
+          hasilAktual: found?.hasilAktual || '',
+          interpretasi: found?.interpretasi || '',
+          learning: found?.learning || '',
+          enhancement: found?.enhancement || '',
+        };
+      });
+    } else {
+      mappedMetrikHasil = METRIK_OFFICIAL.map((m) => {
+        const found = metrikHasilList.find((h) => h.metrik === m.metrik);
+        return {
+          validasi: m.validasi,
+          metrik: m.metrik,
+          target: found?.target || m.kriteria,
+          hasilAktual: found?.hasilAktual || '',
+          interpretasi: found?.interpretasi || '',
+          learning: found?.learning || '',
+          enhancement: found?.enhancement || '',
+        };
+      });
+    }
 
     // Role charter names fallback
     const members = await db
