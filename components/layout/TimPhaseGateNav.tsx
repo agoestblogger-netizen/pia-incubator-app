@@ -233,21 +233,12 @@ export function TimPhaseGateNav({
             }
 
             return (
-              <div
+              <Link
                 key={item.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  window.location.assign(item.href);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    window.location.assign(item.href);
-                  }
-                }}
+                href={item.href}
+                prefetch={false}
                 style={{ background: token.solidGradientCss }}
-                className={`relative p-5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[130px] group border border-white/20 cursor-pointer select-none ${
+                className={`relative p-5 rounded-2xl text-white shadow-sm hover:shadow-lg transition-all flex flex-col justify-between min-h-[130px] group border border-white/20 ${
                   isActive
                     ? "ring-3 ring-white ring-offset-2 ring-offset-slate-100 scale-[1.02] shadow-md"
                     : "opacity-95 hover:opacity-100 hover:scale-[1.01]"
@@ -289,7 +280,7 @@ export function TimPhaseGateNav({
                     {item.description}
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
