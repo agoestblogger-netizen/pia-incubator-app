@@ -147,6 +147,7 @@ export function TimPhaseGateNav({
           {/* Tombol Dashboard Tim (Aktif) */}
           <Link
             href={`/tim/${timId}/dashboard`}
+            prefetch={false}
             style={{
               boxShadow: isDashboardActive
                 ? "0 0 0 2px #FEE388, 0 4px 12px rgba(0, 0, 0, 0.4)"
@@ -304,6 +305,7 @@ export function TimPhaseGateNav({
             return (
               <Link
                 href={`/tim/${timId}/diskusi`}
+                prefetch={false}
                 style={{
                   background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)",
                 }}
@@ -349,6 +351,7 @@ export function TimPhaseGateNav({
             return (
               <Link
                 href={`/tim/${timId}/keuangan`}
+                prefetch={false}
                 style={{
                   background: PHASE_TOKENS.phase4?.solidGradientCss || "linear-gradient(135deg, #1F98A8 0%, #0E6E7A 100%)",
                 }}

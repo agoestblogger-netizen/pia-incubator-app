@@ -57,7 +57,7 @@ export function Navbar({
           {/* Hamburger Drawer Trigger */}
           <SidebarDrawer user={user} taskCount={taskCount} adminPermissions={adminPermissions} />
 
-          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <Link href="/dashboard" prefetch={false} className="flex items-center gap-2.5 group">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white border border-white/20 shadow-inner group-hover:bg-white/20 transition-all">
               <Sparkles className="h-5 w-5 text-[#E6CA65]" />
             </div>
@@ -82,7 +82,7 @@ export function Navbar({
           {user ? (
             <div className="flex items-center gap-3">
               {/* Notification Task Bell */}
-              <Link href="/tugas" className="relative">
+              <Link href="/tugas" prefetch={false} className="relative">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -129,6 +129,7 @@ export function Navbar({
                     {/* Ganti Password */}
                     <Link
                       href="/ganti-password"
+                      prefetch={false}
                       onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-[#F0F7F1] hover:text-[#0F5132] transition-colors"
                     >
@@ -152,7 +153,7 @@ export function Navbar({
               </div>
             </div>
           ) : (
-            <Link href="/login">
+            <Link href="/login" prefetch={false}>
               <Button
                 variant="outline"
                 size="sm"

@@ -127,7 +127,7 @@ export function SidebarDrawer({
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-[#0F5132] text-white">
-          <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <Link href="/dashboard" prefetch={false} className="flex items-center gap-2.5 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white border border-white/20">
               <Sparkles className="h-4.5 w-4.5 text-[#E6CA65]" />
             </div>
@@ -162,6 +162,7 @@ export function SidebarDrawer({
 
             <Link
               href="/dashboard"
+              prefetch={false}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                 isActive('/dashboard') && !pathname.includes('/tim-baru')
                   ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
@@ -174,6 +175,7 @@ export function SidebarDrawer({
 
             <Link
               href="/tugas"
+              prefetch={false}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                 isActive('/tugas')
                   ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
@@ -193,6 +195,7 @@ export function SidebarDrawer({
 
             <Link
               href="/dossier"
+              prefetch={false}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                 isActive('/dossier')
                   ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
@@ -216,6 +219,7 @@ export function SidebarDrawer({
               {canCreateTeam && (
                 <Link
                   href="/dashboard/tim-baru"
+                  prefetch={false}
                   className="text-[10px] text-[#0F5132] hover:underline font-semibold flex items-center gap-0.5"
                 >
                   <PlusCircle className="h-3 w-3" />
@@ -236,6 +240,7 @@ export function SidebarDrawer({
                     <Link
                       key={idx}
                       href={`/tim/${tr.timId}`}
+                      prefetch={false}
                       className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors ${
                         isTeamActive
                           ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100'
@@ -277,6 +282,7 @@ export function SidebarDrawer({
                 {canImport && (
                   <Link
                     href="/admin/import"
+                    prefetch={false}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                       isActive('/admin/import')
                         ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
@@ -291,6 +297,7 @@ export function SidebarDrawer({
                 {canAccessUserRoles && (
                   <Link
                     href="/admin/roles"
+                    prefetch={false}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                       isActive('/admin/roles')
                         ? 'bg-emerald-50 text-[#0F5132] font-bold border border-emerald-100 shadow-xs'
@@ -305,6 +312,7 @@ export function SidebarDrawer({
                 {canReset && (
                   <Link
                     href="/admin/reset"
+                    prefetch={false}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                       isActive('/admin/reset')
                         ? 'bg-red-50 text-red-700 font-bold border border-red-200 shadow-xs'
@@ -327,6 +335,7 @@ export function SidebarDrawer({
               {taskCount > 0 && (
                 <Link
                   href="/tugas"
+                  prefetch={false}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-semibold hover:bg-amber-100/90 transition-all shadow-2xs group"
                 >
                   <div className="flex items-center gap-2">
@@ -340,7 +349,7 @@ export function SidebarDrawer({
               )}
 
               <div className="flex items-center justify-between gap-3">
-                <Link href="/tugas" className="flex items-center gap-2.5 overflow-hidden group flex-1">
+                <Link href="/tugas" prefetch={false} className="flex items-center gap-2.5 overflow-hidden group flex-1">
                   <div className="relative">
                     <div className="h-9 w-9 rounded-full bg-[#0F5132] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs group-hover:opacity-90">
                       {user.nama.charAt(0).toUpperCase()}
@@ -368,7 +377,7 @@ export function SidebarDrawer({
               </div>
             </>
           ) : (
-            <Link href="/login" className="block">
+            <Link href="/login" prefetch={false} className="block">
               <Button className="w-full bg-[#0F5132] hover:bg-[#1B7A4D] text-white text-xs h-9 font-semibold">
                 Masuk ke Portal
               </Button>

@@ -68,6 +68,7 @@ export function TimNavTabs({ timId }: { timId: string }) {
             <Link
               key={tab.name}
               href={tab.href}
+              prefetch={false}
               className={cn(
                 "flex items-center gap-2 whitespace-nowrap px-3.5 py-2 text-xs font-semibold rounded-lg transition-all",
                 isActive

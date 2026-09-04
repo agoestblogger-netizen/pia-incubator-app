@@ -13,6 +13,7 @@ export function InnovationSetupSubNav({ timId, activeTab }: InnovationSetupSubNa
     <div className="flex items-center gap-2 p-1.5 bg-gray-100/90 rounded-2xl w-full sm:w-fit border border-gray-200 shadow-2xs">
       <Link
         href={`/tim/${timId}/charter`}
+        prefetch={false}
         className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
           activeTab === "charter"
             ? "bg-white text-gray-900 shadow-xs border border-gray-200/80"
@@ -25,6 +26,7 @@ export function InnovationSetupSubNav({ timId, activeTab }: InnovationSetupSubNa
 
       <Link
         href={`/tim/${timId}/kanban`}
+        prefetch={false}
         className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
           activeTab === "kanban"
             ? "bg-white text-gray-900 shadow-xs border border-gray-200/80"

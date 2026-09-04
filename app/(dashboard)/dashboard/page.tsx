@@ -71,7 +71,7 @@ export default async function DashboardPage() {
         </div>
 
         {canCreateTeam && (
-          <Link href="/dashboard/tim-baru">
+          <Link href="/dashboard/tim-baru" prefetch={false}>
             <Button
               className="flex items-center gap-2 font-bold shadow-lg bg-[#0F5132] hover:bg-[#1B7A4D] text-white border border-white/20"
               size="lg"
@@ -185,7 +185,7 @@ export default async function DashboardPage() {
                   Mulai program inkubasi dengan mendaftarkan tim finalis PIA Season 12.
                 </p>
                 {canCreateTeam && (
-                  <Link href="/dashboard/tim-baru">
+                  <Link href="/dashboard/tim-baru" prefetch={false}>
                     <Button variant="default" size="sm">
                       Daftarkan Tim Pertama
                     </Button>
@@ -344,7 +344,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <Link href={`/tim/${tim.id}/overview`} className="block">
+                  <Link href={`/tim/${tim.id}/overview`} prefetch={false} className="block">
                     <Button
                       variant="outline"
                       className="w-full justify-between text-xs font-semibold hover:bg-[#0F5132] hover:text-white group-hover:border-[#0F5132] transition-all"
