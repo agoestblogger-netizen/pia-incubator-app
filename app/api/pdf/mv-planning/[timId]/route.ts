@@ -118,22 +118,21 @@ export async function GET(
           )
         );
 
-      metrikList = DEFAULT_MV_METRICS.map((def) => {
-        const found = dbMetrics.find(
-          (m) => (m.metrik || '').toLowerCase().trim() === def.metrik.toLowerCase().trim()
-        );
-        return {
-          validasi: def.validasi,
-          metrik: def.metrik,
-          unitUkuran: found?.unitUkuran || def.unitUkuran,
-          baseline: found?.baseline || def.baseline,
-          target: found?.target || def.target,
-          threshold: found?.threshold || def.threshold,
-          caraPengukuran: found?.caraPengukuran || def.caraPengukuran,
-          pic: found?.pic || def.pic,
-          evidence: found?.evidence || def.evidence,
-        };
-      });
+      if (dbMetrics.length > 0) {
+        metrikList = dbMetrics.map((m) => ({
+          validasi: m.validasi || 'Desirability',
+          metrik: m.metrik,
+          unitUkuran: m.unitUkuran || '-',
+          baseline: m.baseline || '-',
+          target: m.target || '-',
+          threshold: m.threshold || '70%',
+          caraPengukuran: m.caraPengukuran || '-',
+          pic: m.pic || '-',
+          evidence: m.evidence || '-',
+        }));
+      } else {
+        metrikList = DEFAULT_MV_METRICS;
+      }
     } else {
       resourcesList = DEFAULT_RESOURCES.map((def) => ({
         jenisResource: def.jenisResource,

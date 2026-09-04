@@ -285,6 +285,19 @@ export function MvPlanningPdfDocument({ data }: { data: MvPlanningPdfData }) {
       ? data.dataDukungMvp.map((u, i) => `${i + 1}. ${u.split('/').pop()}`).join('\n')
       : '-';
 
+  const totalMetrics = data.metrikList?.length || 0;
+  const splitIndex = Math.ceil(totalMetrics / 2);
+  const firstHalf = data.metrikList?.slice(0, splitIndex) || [];
+  const secondHalf = data.metrikList?.slice(splitIndex) || [];
+
+  const getValidasiColor = (validasi?: string) => {
+    const v = (validasi || '').toLowerCase();
+    if (v.includes('desir')) return '#0f766e';
+    if (v.includes('feas')) return '#b45309';
+    if (v.includes('viab')) return '#15803d';
+    return '#1e293b';
+  };
+
   return (
     <Document title={`Perencanaan-MarketValidation-${data.namaProyekInovasi || 'PIA'}`}>
       {/* ── HALAMAN 1: IDENTITAS, MAPPING FITUR & EARLY ADOPTERS ── */}
@@ -541,15 +554,15 @@ export function MvPlanningPdfDocument({ data }: { data: MvPlanningPdfData }) {
               Cara Pengukuran
             </Text>
           </View>
-          {data.metrikList?.slice(0, 6).map((m, i) => (
+          {firstHalf.map((m, i) => (
             <View
               key={i}
               style={[
                 styles.tableRow,
-                i === 5 ? { borderBottomWidth: 0 } : {},
+                i === firstHalf.length - 1 ? { borderBottomWidth: 0 } : {},
               ]}
             >
-              <Text style={[styles.tableDataCell, { width: '14%', fontWeight: 'bold', color: m.validasi === 'Desirability' ? '#0f766e' : '#b45309' }]}>
+              <Text style={[styles.tableDataCell, { width: '14%', fontWeight: 'bold', color: getValidasiColor(m.validasi) }]}>
                 {m.validasi}
               </Text>
               <Text style={[styles.tableDataCell, { width: '22%', fontWeight: 'bold' }]}>{m.metrik}</Text>
@@ -572,7 +585,7 @@ export function MvPlanningPdfDocument({ data }: { data: MvPlanningPdfData }) {
       {/* ── HALAMAN 3: METRIK VIABILITY & LEMBAR PENGESAHAN FORMAL ── */}
       <Page size="A4" style={styles.page}>
         <Text style={[styles.sectionTitle, { marginTop: 0 }]}>
-          5. Metrik, Threshold, dan Cara Pengukuran DFV (Lanjutan: Viability)
+          5. Metrik, Threshold, dan Cara Pengukuran DFV (Lanjutan)
         </Text>
 
         <View style={styles.table}>
@@ -587,15 +600,15 @@ export function MvPlanningPdfDocument({ data }: { data: MvPlanningPdfData }) {
               Cara Pengukuran
             </Text>
           </View>
-          {data.metrikList?.slice(6).map((m, i) => (
+          {secondHalf.map((m, i) => (
             <View
               key={i}
               style={[
                 styles.tableRow,
-                i === (data.metrikList?.slice(6).length || 0) - 1 ? { borderBottomWidth: 0 } : {},
+                i === secondHalf.length - 1 ? { borderBottomWidth: 0 } : {},
               ]}
             >
-              <Text style={[styles.tableDataCell, { width: '14%', fontWeight: 'bold', color: '#15803d' }]}>
+              <Text style={[styles.tableDataCell, { width: '14%', fontWeight: 'bold', color: getValidasiColor(m.validasi) }]}>
                 {m.validasi}
               </Text>
               <Text style={[styles.tableDataCell, { width: '22%', fontWeight: 'bold' }]}>{m.metrik}</Text>
