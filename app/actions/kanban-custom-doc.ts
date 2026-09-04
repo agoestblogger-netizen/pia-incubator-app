@@ -769,7 +769,7 @@ export async function getMandatorySubtaskDataAction(
                 );
             }
 
-            if (planMetrikRows.length >= 9) {
+            if (planMetrikRows.length > 0) {
               data = {
                 dfvMeasurementRows: planMetrikRows.map((r) => ({
                   id: r.id,

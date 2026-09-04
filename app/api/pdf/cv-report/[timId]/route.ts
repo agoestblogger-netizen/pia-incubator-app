@@ -126,7 +126,7 @@ export async function GET(
       return {
         validasi: m.validasi,
         metrik: m.metrik,
-        target: rencana?.catatan || found?.target || m.kriteria,
+        target: rencana?.kriteriaKesuksesan || found?.target || m.kriteria,
         hasilAktual: found?.hasilAktual || '',
         interpretasi: found?.interpretasi || '',
         learning: found?.learning || '',
