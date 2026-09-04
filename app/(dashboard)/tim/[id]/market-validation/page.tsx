@@ -57,7 +57,12 @@ export default async function MarketValidationPage({
     user ? hasPermission(user, 'kanban.edit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'anggaran.submit', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'anggaran.manage', tim.id) : Promise.resolve(false),
-    user ? getUserTeamUnitKerja(user.id, tim.id) : Promise.resolve(""),
+    user
+      ? Promise.race([
+          getUserTeamUnitKerja(user.id, tim.id),
+          new Promise<string>((resolve) => setTimeout(() => resolve(""), 3000)),
+        ])
+      : Promise.resolve(""),
     user ? hasPermission(user, 'mv_plan.sign_po', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'mv_plan.sign_coach', tim.id) : Promise.resolve(false),
     user ? hasPermission(user, 'mv_plan.sign_promotor', tim.id) : Promise.resolve(false),
