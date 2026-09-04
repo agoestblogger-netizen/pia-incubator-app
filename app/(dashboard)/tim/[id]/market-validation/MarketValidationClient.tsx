@@ -288,6 +288,14 @@ export function MarketValidationClient({
     currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
   );
   const isAdminOrCoach = isAdmin || isCoach;
+  const isInisiator = Boolean(
+    userRole === 'inisiator' ||
+    currentUser?.globalRoles?.some((r: string) => ['inisiator'].includes(r)) ||
+    currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && r.roleCode === 'inisiator') ||
+    roleAssignments?.some((a: any) => a.roleCode === 'inisiator' && (a.userId === currentUser?.id || (currentUser?.name && a.userName === currentUser.name))) ||
+    (initialData?.teamMembers || anggotaTim || [])?.some((a: any) => (a.role === 'inisiator' || a.jabatan?.toLowerCase().includes('inisiator')) && (a.userId === currentUser?.id || (currentUser?.name && a.nama === currentUser.name)))
+  );
+  const canManageBakuMv = isAdmin || isCoach || isInisiator;
   const hasMvRecCards = (initialCards || []).some((c: any) => c.label === "Rekomendasi MV");
   
   // Auto-fill dari CV Report jika ada
@@ -1797,11 +1805,11 @@ export function MarketValidationClient({
                             <td className="p-1.5 align-top bg-gray-50/50">
                               <select
                                 value={m.validasi}
-                                disabled={!canEdit || (m.isStandard && !isAdminOrCoach)}
-                                title={m.isStandard && !isAdminOrCoach ? "Kategori validasi metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
+                                disabled={!canEdit || (m.isStandard && !canManageBakuMv)}
+                                title={m.isStandard && !canManageBakuMv ? "Kategori validasi metrik baku dikunci (hanya Inisiator/Coach/Admin yang dapat mengubah)" : undefined}
                                 onChange={(e) => handleUpdateMetrik(idx, "validasi", e.target.value)}
                                 className={`w-full text-[11px] font-bold rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
-                                  m.isStandard && !isAdminOrCoach ? "cursor-not-allowed opacity-85" : "cursor-pointer"
+                                  m.isStandard && !canManageBakuMv ? "cursor-not-allowed opacity-85" : "cursor-pointer"
                                 }`}
                                 style={
                                   m.validasi?.trim() === "Desirability"
@@ -1936,18 +1944,18 @@ export function MarketValidationClient({
                                   <>
                                     <span
                                       className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-[#0F5132] border border-emerald-200 text-center leading-tight whitespace-nowrap"
-                                      title={isAdminOrCoach ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
+                                      title={canManageBakuMv ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Inisiator/Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
                                     >
                                       Baku
                                     </span>
-                                    {isAdminOrCoach && canEdit && (
+                                    {canManageBakuMv && canEdit && (
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
                                         className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0 cursor-pointer"
                                         onClick={() => handleDeleteMetrikRow(idx)}
-                                        title="Hapus baris metrik baku (Wewenang Coach / Admin)"
+                                        title="Hapus baris metrik baku (Wewenang Inisiator / Coach / Admin)"
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                       </Button>
@@ -1989,7 +1997,7 @@ export function MarketValidationClient({
                       Tambah Baris Metrik
                     </Button>
                     <span className="text-xs text-gray-400">
-                      * Baris Baku Juklak hanya dapat dihapus oleh Innovation Coach atau Administrator
+                      * Baris Baku Juklak hanya dapat dihapus oleh Inisiator, Innovation Coach, atau Administrator
                     </span>
                   </div>
                 )}

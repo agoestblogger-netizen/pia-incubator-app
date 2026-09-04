@@ -303,14 +303,38 @@ export async function saveCustomerValidationPlanFullAction(
       user?.globalRoles?.some((r: string) => ['coach', 'innovation_coach'].includes(r)) ||
       user?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
     );
-    const isCoachOrAdmin = isAdmin || isCoach;
+    const isInisiator = Boolean(
+      userRole === 'inisiator' ||
+      user?.globalRoles?.some((r: string) => ['inisiator'].includes(r)) ||
+      user?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && r.roleCode === 'inisiator')
+    );
+    let isTeamInisiator = isInisiator;
+    if (!isTeamInisiator && user?.id) {
+      const [anggotaMatch] = await db
+        .select({ jabatan: anggotaTim.jabatan, komitmen: anggotaTim.komitmenDukungan })
+        .from(anggotaTim)
+        .where(
+          and(
+            eq(anggotaTim.timInovatorId, timId),
+            eq(anggotaTim.userId, user.id)
+          )
+        )
+        .limit(1);
+      if (
+        anggotaMatch?.jabatan?.toLowerCase().includes('inisiator') ||
+        anggotaMatch?.komitmen?.toLowerCase().includes('inisiator')
+      ) {
+        isTeamInisiator = true;
+      }
+    }
+    const canManageBaku = isAdmin || isCoach || isTeamInisiator;
 
     const [existing] = await db.select().from(customerValidationPlan)
       .where(eq(customerValidationPlan.timInovatorId, timId)).limit(1);
     let planId = existing?.id;
 
-    // Khusus role non-Coach/Admin: dilarang menghapus atau mengubah nama/kategori validasi baris baku
-    if (!isCoachOrAdmin && planId && metrikRows) {
+    // Khusus role non-Inisiator/Coach/Admin: dilarang menghapus atau mengubah nama/kategori validasi baris baku
+    if (!canManageBaku && planId && metrikRows) {
       const existingDbMetrik = await db
         .select()
         .from(rencanaValidasiMetrik)
@@ -335,7 +359,7 @@ export async function saveCustomerValidationPlanFullAction(
         if (!incomingMatch) {
           return {
             success: false,
-            error: `Forbidden: Hanya Innovation Coach atau Administrator yang berwenang untuk menghapus parameter Metrik Baku Juklak ("${stdRow.metrik}").`,
+            error: `Forbidden: Hanya Inisiator, Innovation Coach, atau Administrator yang berwenang untuk menghapus parameter Metrik Baku Juklak ("${stdRow.metrik}").`,
           };
         }
 
@@ -355,7 +379,7 @@ export async function saveCustomerValidationPlanFullAction(
         if (stdNorm !== incNorm) {
           return {
             success: false,
-            error: `Forbidden: Hanya Innovation Coach atau Administrator yang berwenang untuk mengubah kategori validasi Metrik Baku Juklak ("${stdRow.metrik}").`,
+            error: `Forbidden: Hanya Inisiator, Innovation Coach, atau Administrator yang berwenang untuk mengubah kategori validasi Metrik Baku Juklak ("${stdRow.metrik}").`,
           };
         }
       }

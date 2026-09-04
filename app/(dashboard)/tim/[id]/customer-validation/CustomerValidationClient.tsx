@@ -268,6 +268,14 @@ export function CustomerValidationClient({
     currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && ['coach', 'innovation_coach'].includes(r.roleCode))
   );
   const isAdminOrCoach = isAdmin || isCoach;
+  const isInisiator = Boolean(
+    userRole === 'inisiator' ||
+    currentUser?.globalRoles?.some((r: string) => ['inisiator'].includes(r)) ||
+    currentUser?.timRoles?.some((r: any) => (r.timId === timId || !r.timId) && r.roleCode === 'inisiator') ||
+    roleAssignments?.some((a) => a.roleCode === 'inisiator' && (a.userId === currentUser?.id || (currentUser?.name && a.userName === currentUser.name))) ||
+    anggotaTim?.some((a: any) => (a.role === 'inisiator' || a.jabatan?.toLowerCase().includes('inisiator')) && (a.userId === currentUser?.id || (currentUser?.name && a.nama === currentUser.name)))
+  );
+  const canManageBakuCv = isAdmin || isCoach || isInisiator;
   const isGlobalUser = Boolean(
     currentUser?.hasGlobalScope ||
     (currentUser?.globalRoles && currentUser.globalRoles.length > 0)
@@ -1824,15 +1832,15 @@ export function CustomerValidationClient({
                           <td className="px-4 py-3 align-top">
                             <select
                               value={r.validasi}
-                              disabled={r.isStandard && !isAdminOrCoach}
-                              title={r.isStandard && !isAdminOrCoach ? "Kategori validasi metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
+                              disabled={r.isStandard && !canManageBakuCv}
+                              title={r.isStandard && !canManageBakuCv ? "Kategori validasi metrik baku dikunci (hanya Inisiator/Coach/Admin yang dapat mengubah)" : undefined}
                               onChange={(e) => {
                                 const newRows = [...metrikRows];
                                 newRows[index].validasi = e.target.value;
                                 setMetrikRows(newRows);
                               }}
                               className={`w-full text-xs font-bold rounded-md p-1.5 focus:outline-none focus:ring-1 focus:ring-[#0F5132] border ${
-                                r.isStandard && !isAdminOrCoach ? "cursor-not-allowed opacity-80" : "cursor-pointer"
+                                r.isStandard && !canManageBakuCv ? "cursor-not-allowed opacity-80" : "cursor-pointer"
                               }`}
                               style={
                                 r.validasi?.trim() === "Desirability"
@@ -1852,8 +1860,8 @@ export function CustomerValidationClient({
                           <td className="px-4 py-3 align-top">
                             <Textarea
                               value={r.metrik}
-                              disabled={r.isStandard && !isAdminOrCoach}
-                              title={r.isStandard && !isAdminOrCoach ? "Nama metrik baku dikunci (hanya Coach/Admin yang dapat mengubah)" : undefined}
+                              disabled={r.isStandard && !canManageBakuCv}
+                              title={r.isStandard && !canManageBakuCv ? "Nama metrik baku dikunci (hanya Inisiator/Coach/Admin yang dapat mengubah)" : undefined}
                               onChange={(e) => {
                                 e.target.style.height = 'auto';
                                 e.target.style.height = `${e.target.scrollHeight}px`;
@@ -1862,7 +1870,7 @@ export function CustomerValidationClient({
                                 setMetrikRows(newRows);
                               }}
                               className={`text-sm resize-none min-h-[38px] overflow-hidden font-semibold ${
-                                r.isStandard && !isAdminOrCoach ? "cursor-not-allowed bg-gray-50 text-gray-700" : ""
+                                r.isStandard && !canManageBakuCv ? "cursor-not-allowed bg-gray-50 text-gray-700" : ""
                               }`}
                               placeholder={defaultMeta?.metrik || "Metrik"}
                               rows={1}
@@ -1932,11 +1940,11 @@ export function CustomerValidationClient({
                                 <div className="flex items-center gap-1 mt-1 shrink-0">
                                   <span
                                     className="px-2 py-1 rounded text-xs font-semibold bg-emerald-50 text-[#0F5132] border border-emerald-200 self-start select-none whitespace-nowrap"
-                                    title={isAdminOrCoach ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
+                                    title={canManageBakuCv ? "Metrik Baku Juklak — dapat diubah atau dihapus oleh Inisiator/Coach/Admin" : "Metrik Baku Juklak — wajib ada dan tidak dapat dihapus"}
                                   >
                                     Baku Juklak
                                   </span>
-                                  {isAdminOrCoach && (
+                                  {canManageBakuCv && (
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -1945,7 +1953,7 @@ export function CustomerValidationClient({
                                       onClick={() => {
                                         setMetrikRows(metrikRows.filter((_, i) => i !== index));
                                       }}
-                                      title="Hapus baris metrik baku (Wewenang Coach / Admin)"
+                                      title="Hapus baris metrik baku (Wewenang Inisiator / Coach / Admin)"
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
