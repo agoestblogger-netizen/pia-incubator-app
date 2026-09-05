@@ -46,6 +46,13 @@ export default function RootLayout({
         <ToastProvider>
           <NavigationTransitionProvider>
             {children}
+            {process.env.NODE_ENV !== "production" && (
+              <div
+                className="fixed bottom-0 left-0 right-0 z-[9999] flex h-9 w-full items-center justify-center bg-yellow-400 border-t border-yellow-500 text-xs font-bold tracking-widest text-black shadow-md select-none pointer-events-none"
+              >
+                DEVELOPMENT
+              </div>
+            )}
           </NavigationTransitionProvider>
         </ToastProvider>
       </body>
