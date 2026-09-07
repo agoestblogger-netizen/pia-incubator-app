@@ -193,6 +193,7 @@ export const kanbanCard = pgTable('kanban_card', {
   label: text('label'), // e.g. 'Backlog Charter', 'SME Review', 'MVP Task', etc.
   reviewStatus: text('review_status').notNull().default('adopted'), // 'ai_reference' | 'adopted'
   estimasiJam: integer('estimasi_jam'), // estimasi jam kerja untuk kartu ini (deprecated/historis)
+  estimatedMinutes: integer('estimated_minutes'), // estimasi waktu dalam menit (presisi, mis. 45, 90, 480)
   storyPoint: integer('story_point'), // story point kartu skala Fibonacci: 1, 2, 3, 5, 8, 13
   suggestedSprintNumber: integer('suggested_sprint_number'), // sprint yang disarankan dari analisa proposal / heuristik
   tipeKartu: text('tipe_kartu').notNull().default('backlog'), // 'backlog' | 'issue' (Paket 24c)

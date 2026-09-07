@@ -779,6 +779,7 @@ export function DiskusiCanvasClient({
         acceptanceCriteria: compiledDraft.acceptanceCriteria,
         storyPoint: calculatedSP,
         estimasiJam: totalMinutes,
+        estimatedMinutes: totalMinutes,
         statusKolom: 'To Do',
         sprintNumber: sprintForCard,
         reviewStatus: isAssignToSprint ? 'adopted' : 'ai_reference',

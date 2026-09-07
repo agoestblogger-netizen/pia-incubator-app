@@ -40,6 +40,7 @@ import { BacklogReferenceDropdown } from "./BacklogReferenceDropdown";
 export interface PlanningCardAssignment {
   cardId: string;
   storyPoint: number | null;
+  estimatedMinutes: number | null;
   ownerAnggotaId: string | null;
 }
 
@@ -230,6 +231,7 @@ export function SprintPlanningSection({
       initial[c.id] = {
         cardId: c.id,
         storyPoint: c.storyPoint ?? 3,
+        estimatedMinutes: c.estimatedMinutes ?? Math.round((c.storyPoint ?? 3) * 60),
         ownerAnggotaId: c.ownerAnggotaId ?? null,
       };
     });
@@ -245,6 +247,7 @@ export function SprintPlanningSection({
           next[c.id] = {
             cardId: c.id,
             storyPoint: c.storyPoint ?? 3,
+            estimatedMinutes: c.estimatedMinutes ?? Math.round((c.storyPoint ?? 3) * 60),
             ownerAnggotaId: c.ownerAnggotaId ?? null,
           };
         }
@@ -292,8 +295,9 @@ export function SprintPlanningSection({
     setAssignments((prev) => ({
       ...prev,
       [cardId]: {
-        ...(prev[cardId] || { cardId, ownerAnggotaId: null }),
+        ...(prev[cardId] || { cardId, storyPoint: 3, estimatedMinutes: null, ownerAnggotaId: null }),
         storyPoint: storyPoint,
+        estimatedMinutes: minutes,
       },
     }));
   };
@@ -303,7 +307,7 @@ export function SprintPlanningSection({
     setAssignments((prev) => ({
       ...prev,
       [cardId]: {
-        ...(prev[cardId] || { cardId, storyPoint: 3 }),
+        ...(prev[cardId] || { cardId, storyPoint: 3, estimatedMinutes: Math.round(3 * 60), ownerAnggotaId: null }),
         ownerAnggotaId: newOwnerId === "" ? null : newOwnerId,
       },
     }));
@@ -344,6 +348,7 @@ export function SprintPlanningSection({
       .map((asg) => ({
         cardId: asg.cardId,
         storyPoint: asg.storyPoint,
+        estimatedMinutes: asg.estimatedMinutes,
         ownerAnggotaId: asg.ownerAnggotaId,
       }));
 
@@ -781,12 +786,13 @@ export function SprintPlanningSection({
                   const currentAsg = assignments[card.id] || {
                     cardId: card.id,
                     storyPoint: card.storyPoint ?? 3,
+                    estimatedMinutes: card.estimatedMinutes ?? Math.round((card.storyPoint ?? 3) * 60),
                     ownerAnggotaId: card.ownerAnggotaId ?? null,
                   };
 
                   const currentOwnerId = currentAsg.ownerAnggotaId;
                   const currentSp = currentAsg.storyPoint ?? (card.storyPoint ?? 3);
-                  const currentMinutes = Math.round(currentSp * 60);
+                  const currentMinutes = currentAsg.estimatedMinutes ?? Math.round(currentSp * 60);
                   const isBakuCv =
                     detectCvBakuCardType(card.judul, card.tahap) !== null ||
                     card.label === "Template Baku CV";

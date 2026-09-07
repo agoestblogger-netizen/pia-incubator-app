@@ -736,6 +736,7 @@ export function KanbanClient({
   const [detailStatusKolom, setDetailStatusKolom] = useState("To Do");
   const [detailOwnerAnggotaId, setDetailOwnerAnggotaId] = useState<string | null>(null);
   const [detailEstimasiJam, setDetailEstimasiJam] = useState<number | null>(null);
+  const [detailEstimatedMinutes, setDetailEstimatedMinutes] = useState<number | null>(null);
   const [detailStoryPoint, setDetailStoryPoint] = useState<number | null>(3);
   const [detailLabel, setDetailLabel] = useState("");
   const [detailTanggalMulai, setDetailTanggalMulai] = useState("");
@@ -1506,6 +1507,11 @@ export function KanbanClient({
     setDetailStatusKolom(card.statusKolom || "To Do");
     setDetailOwnerAnggotaId(card.ownerAnggotaId || null);
     setDetailEstimasiJam(card.estimasiJam !== undefined ? card.estimasiJam : null);
+    setDetailEstimatedMinutes(
+      card.estimatedMinutes !== undefined && card.estimatedMinutes !== null
+        ? Math.max(1, Math.round(Number(card.estimatedMinutes) || 0))
+        : null
+    );
     setDetailStoryPoint(card.storyPoint !== undefined && card.storyPoint !== null ? card.storyPoint : 3);
     setDetailLabel(card.label || "");
     setDetailTanggalMulai(
@@ -1596,10 +1602,11 @@ export function KanbanClient({
       (sum, st) => sum + (st.estimatedHours || 0),
       0
     );
-    const effectiveStoryPoint =
+    const effectiveMinutes =
       subtasks.length > 0
-        ? Math.max(1, Math.round(totalSubtaskMinutes / 60))
-        : Math.max(1, Math.round(detailStoryPoint ?? 3));
+        ? totalSubtaskMinutes
+        : Math.max(1, Math.round(detailEstimatedMinutes ?? (detailStoryPoint ?? 3) * 60));
+    const effectiveStoryPoint = Math.max(1, Math.round(effectiveMinutes / 60));
     const effectiveEstimasiJam = effectiveStoryPoint;
 
     // Case 1: Created from "+ Tambah Backlog"
@@ -1614,8 +1621,7 @@ export function KanbanClient({
             judul: detailJudul,
             deskripsi: detailDeskripsi,
             acceptanceCriteria: detailAcceptanceCriteria,
-            estimasiJam: effectiveEstimasiJam,
-            storyPoint: effectiveStoryPoint,
+            estimatedMinutes: effectiveMinutes,
             ownerAnggotaId: detailOwnerAnggotaId,
           }
         );
@@ -1643,6 +1649,7 @@ export function KanbanClient({
           statusKolom: detailStatusKolom || "To Do",
           ownerAnggotaId: detailOwnerAnggotaId,
           estimasiJam: effectiveEstimasiJam,
+          estimatedMinutes: effectiveMinutes,
           storyPoint: effectiveStoryPoint,
           label: detailLabel,
           tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
@@ -1674,8 +1681,7 @@ export function KanbanClient({
         sprintNumber: detailSprintNumber,
         statusKolom: detailStatusKolom,
         ownerAnggotaId: detailOwnerAnggotaId,
-        estimasiJam: effectiveEstimasiJam,
-        storyPoint: effectiveStoryPoint,
+        estimatedMinutes: effectiveMinutes,
         label: detailLabel,
         tanggalMulai: detailTanggalMulai ? new Date(detailTanggalMulai) : null,
         tanggalSelesai: detailTanggalSelesai ? new Date(detailTanggalSelesai) : null,
@@ -1760,8 +1766,7 @@ export function KanbanClient({
         judul: detailJudul,
         deskripsi: detailDeskripsi,
         acceptanceCriteria: detailAcceptanceCriteria,
-        estimasiJam: detailEstimasiJam !== null && detailEstimasiJam !== undefined ? Math.max(0, Math.round(Number(detailEstimasiJam))) : null,
-        storyPoint: Math.max(1, Math.round(detailStoryPoint ?? 3)),
+        estimatedMinutes: detailEstimatedMinutes !== null && detailEstimatedMinutes !== undefined ? Math.max(1, Math.round(Number(detailEstimatedMinutes))) : null,
         ownerAnggotaId: detailOwnerAnggotaId,
       }
     );
@@ -1813,6 +1818,7 @@ export function KanbanClient({
     assignments: Array<{
       cardId: string;
       storyPoint?: number | null;
+      estimatedMinutes?: number | null;
       estimasiJam?: number | null;
       ownerAnggotaId?: string | null;
     }>
@@ -1838,6 +1844,12 @@ export function KanbanClient({
               ...c,
               sprintNumber: selectedSprintNum,
               storyPoint: asg.storyPoint !== undefined ? asg.storyPoint : c.storyPoint,
+              estimatedMinutes:
+                asg.estimatedMinutes !== undefined
+                  ? asg.estimatedMinutes
+                  : asg.storyPoint !== undefined && asg.storyPoint !== null
+                  ? Math.round(asg.storyPoint * 60)
+                  : c.estimatedMinutes,
               estimasiJam: asg.estimasiJam !== undefined ? asg.estimasiJam : c.estimasiJam,
               ownerAnggotaId: asg.ownerAnggotaId !== undefined ? asg.ownerAnggotaId : c.ownerAnggotaId,
             };
@@ -1974,6 +1986,7 @@ export function KanbanClient({
         ownerAnggotaId: issueOwnerAnggotaId || null,
         storyPoint: effectiveStoryPoint,
         estimasiJam: effectiveEstimasiJam,
+        estimatedMinutes: effectiveMenit,
         tipeKartu: "issue",
         label: "Issue",
       });
@@ -3968,7 +3981,7 @@ export function KanbanClient({
                           const subtaskTotalMinutes = subtasks.reduce((sum, st) => sum + (st.estimatedHours || 0), 0);
                           const currentMinutes = hasSubtasks
                             ? subtaskTotalMinutes
-                            : Math.round((detailStoryPoint ?? 3) * 60);
+                            : (detailEstimatedMinutes ?? Math.round((detailStoryPoint ?? 3) * 60));
                           const safeMinutes = Number.isFinite(currentMinutes) ? Math.max(1, Math.round(currentMinutes)) : 60;
 
                           const hoursVal = safeMinutes / 60;
@@ -3993,8 +4006,10 @@ export function KanbanClient({
                                 value={safeMinutes}
                                 onChange={(e) => {
                                   if (hasSubtasks) return;
-                                  const min = Math.max(1, parseInt(e.target.value, 10) || 60);
-                                  setDetailStoryPoint(Math.max(1, Math.round(min / 60)));
+                                  const parsed = parseInt(e.target.value, 10);
+                                  setDetailEstimatedMinutes(
+                                    e.target.value === "" ? null : (isNaN(parsed) ? 1 : Math.max(1, parsed))
+                                  );
                                 }}
                                 className={`w-full text-xs bg-white border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg p-2 text-[#8A6300] font-extrabold focus:border-[#B8860B] focus:ring-1 focus:ring-[#D4AF37] ${
                                   hasSubtasks ? "opacity-80 bg-gray-50 cursor-not-allowed" : ""

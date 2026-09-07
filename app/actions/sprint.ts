@@ -275,6 +275,7 @@ export async function startSprintAction(
   cardAssignments?: Array<{
     cardId: string;
     storyPoint?: number | null;
+    estimatedMinutes?: number | null;
     estimasiJam?: number | null;
     ownerAnggotaId?: string | null;
   }>
@@ -336,6 +337,12 @@ export async function startSprintAction(
         };
         if (item.storyPoint !== undefined) {
           updateData.storyPoint = item.storyPoint !== null ? Math.max(1, Math.round(Number(item.storyPoint))) : null;
+        }
+        if (item.estimatedMinutes !== undefined && item.estimatedMinutes !== null) {
+          const mins = Math.max(1, Math.round(Number(item.estimatedMinutes)));
+          updateData.estimatedMinutes = mins;
+          updateData.storyPoint = Math.max(1, Math.round(mins / 60));
+          updateData.estimasiJam = updateData.storyPoint;
         }
         if (item.estimasiJam !== undefined) {
           updateData.estimasiJam = item.estimasiJam !== null ? Math.max(0, Math.round(Number(item.estimasiJam))) : null;

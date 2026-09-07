@@ -72,6 +72,7 @@ export async function getKanbanData(timId: string) {
       label: kanbanCard.label,
       reviewStatus: kanbanCard.reviewStatus,
       estimasiJam: kanbanCard.estimasiJam,
+      estimatedMinutes: kanbanCard.estimatedMinutes,
       storyPoint: kanbanCard.storyPoint,
       suggestedSprintNumber: kanbanCard.suggestedSprintNumber,
       customDocumentData: kanbanCard.customDocumentData,
@@ -201,6 +202,9 @@ export async function createKanbanCardAction(
         // Falls back to 'adopted' for normal manual cards
         reviewStatus: cardData.reviewStatus ?? 'adopted',
         estimasiJam: cardData.estimasiJam ?? null,
+        estimatedMinutes: cardData.estimatedMinutes !== undefined && cardData.estimatedMinutes !== null
+          ? Math.max(1, Math.round(Number(cardData.estimatedMinutes)))
+          : null,
         storyPoint: cardData.storyPoint !== undefined && cardData.storyPoint !== null
           ? Math.max(1, Math.round(Number(cardData.storyPoint)))
           : 3,
@@ -482,6 +486,14 @@ export async function updateKanbanCardFullAction(
     if (cardData.estimasiJam !== undefined) {
       updatePayload.estimasiJam = cardData.estimasiJam !== null ? Math.max(0, Math.round(Number(cardData.estimasiJam))) : null;
     }
+    if (cardData.estimatedMinutes !== undefined) {
+      const mins = cardData.estimatedMinutes !== null ? Math.max(1, Math.round(Number(cardData.estimatedMinutes))) : null;
+      updatePayload.estimatedMinutes = mins;
+      if (mins !== null) {
+        updatePayload.storyPoint = Math.max(1, Math.round(mins / 60));
+        updatePayload.estimasiJam = updatePayload.storyPoint;
+      }
+    }
     if (cardData.storyPoint !== undefined) {
       updatePayload.storyPoint = cardData.storyPoint !== null ? Math.max(1, Math.round(Number(cardData.storyPoint))) : null;
     }
@@ -516,7 +528,7 @@ export async function updateKanbanCardFullAction(
           newValue: cardData.sprintNumber !== null && cardData.sprintNumber !== undefined ? `Sprint ${cardData.sprintNumber}` : "Backlog",
         });
       }
-      if (cardData.storyPoint !== undefined && oldCard.storyPoint !== cardData.storyPoint) {
+      if (cardData.storyPoint !== undefined && oldCard.storyPoint !== cardData.storyPoint && cardData.estimatedMinutes === undefined) {
         await logKanbanActivity({
           taskId: cardId,
           userId: user.id,
@@ -526,7 +538,7 @@ export async function updateKanbanCardFullAction(
           newValue: cardData.storyPoint !== null && cardData.storyPoint !== undefined ? `${cardData.storyPoint} SP` : "Belum diisi",
         });
       }
-      if (cardData.estimasiJam !== undefined && oldCard.estimasiJam !== cardData.estimasiJam) {
+      if (cardData.estimasiJam !== undefined && oldCard.estimasiJam !== cardData.estimasiJam && cardData.estimatedMinutes === undefined) {
         await logKanbanActivity({
           taskId: cardId,
           userId: user.id,
@@ -534,6 +546,17 @@ export async function updateKanbanCardFullAction(
           fieldName: "Estimasi Jam",
           oldValue: oldCard.estimasiJam !== null && oldCard.estimasiJam !== undefined ? `${oldCard.estimasiJam} jam` : "0 jam",
           newValue: cardData.estimasiJam !== null && cardData.estimasiJam !== undefined ? `${cardData.estimasiJam} jam` : "0 jam",
+        });
+      }
+      if (cardData.estimatedMinutes !== undefined && oldCard.estimatedMinutes !== cardData.estimatedMinutes) {
+        const newMins = cardData.estimatedMinutes !== null ? Math.max(1, Math.round(Number(cardData.estimatedMinutes))) : null;
+        await logKanbanActivity({
+          taskId: cardId,
+          userId: user.id,
+          actionType: "estimate_change",
+          fieldName: "Estimasi Waktu",
+          oldValue: oldCard.estimatedMinutes !== null && oldCard.estimatedMinutes !== undefined ? `${oldCard.estimatedMinutes} menit` : "Belum diisi",
+          newValue: newMins !== null ? `${newMins} menit` : "Belum diisi",
         });
       }
       if (cardData.ownerAnggotaId !== undefined && oldCard.ownerAnggotaId !== cardData.ownerAnggotaId) {
@@ -586,6 +609,7 @@ export async function adoptAiCardAction(
     deskripsi?: string;
     acceptanceCriteria?: string;
     estimasiJam?: number | null;
+    estimatedMinutes?: number | null;
     storyPoint?: number | null;
     ownerAnggotaId?: string | null;
   }
@@ -641,6 +665,12 @@ export async function adoptAiCardAction(
     if (cardOverrides?.judul) updatePayload.judul = cardOverrides.judul;
     if (cardOverrides?.deskripsi !== undefined) updatePayload.deskripsi = cardOverrides.deskripsi;
     if (cardOverrides?.acceptanceCriteria !== undefined) updatePayload.acceptanceCriteria = cardOverrides.acceptanceCriteria;
+    if (cardOverrides?.estimatedMinutes !== undefined && cardOverrides?.estimatedMinutes !== null) {
+      const mins = Math.max(1, Math.round(Number(cardOverrides.estimatedMinutes)));
+      updatePayload.estimatedMinutes = mins;
+      updatePayload.storyPoint = Math.max(1, Math.round(mins / 60));
+      updatePayload.estimasiJam = updatePayload.storyPoint;
+    }
     if (cardOverrides?.estimasiJam !== undefined) {
       updatePayload.estimasiJam = cardOverrides.estimasiJam !== null ? Math.max(0, Math.round(Number(cardOverrides.estimasiJam))) : null;
     }
