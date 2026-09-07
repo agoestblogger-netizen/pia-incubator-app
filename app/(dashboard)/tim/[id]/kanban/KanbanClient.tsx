@@ -379,6 +379,19 @@ function SortableCard({
           </p>
         )}
 
+        {/* PIC / Owner Badge */}
+        {card.ownerNama && (
+          <div className="flex items-center gap-1.5 pt-1">
+            <span
+              className="inline-flex items-center gap-1 bg-[#0F5132]/10 border border-[#0F5132]/30 text-[#0F5132] px-1.5 py-0.5 rounded-md text-[10px] font-bold shadow-2xs"
+              title={`PIC: ${card.ownerNama}`}
+            >
+              <User className="h-3 w-3 text-[#0F5132]" />
+              <span className="max-w-[120px] truncate">{card.ownerNama}</span>
+            </span>
+          </div>
+        )}
+
         {/* Attachment & Link Count Badges */}
         {(Boolean(card.attachmentsCount) || Boolean(card.linksCount)) && (
           <div className="flex items-center gap-1.5 pt-1 text-[10px] text-gray-600 font-medium">
@@ -481,6 +494,12 @@ function DraggingCardOverlay({ card }: { card: any }) {
         <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
           {card.deskripsi}
         </p>
+      )}
+      {card.ownerNama && (
+        <span className="inline-flex items-center gap-1 bg-[#0F5132]/10 border border-[#0F5132]/30 text-[#0F5132] px-1.5 py-0.5 rounded-md text-[10px] font-bold">
+          <User className="h-3 w-3 text-[#0F5132]" />
+          {card.ownerNama}
+        </span>
       )}
       {(Boolean(card.attachmentsCount) || Boolean(card.linksCount)) && (
         <div className="flex items-center gap-1.5 pt-1 text-[10px] text-gray-600 font-medium">

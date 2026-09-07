@@ -108,6 +108,13 @@ export async function getKanbanData(timId: string) {
     });
   }
 
+  // Map owner anggota -> nama untuk menampilkan PIC pada kartu board
+  const memberRows = await db
+    .select({ id: anggotaTim.id, nama: anggotaTim.nama })
+    .from(anggotaTim)
+    .where(eq(anggotaTim.timInovatorId, timId));
+  const memberNameMap = new Map<string, string>(memberRows.map((m) => [m.id, m.nama]));
+
   const cards = rawCards.map((c) => {
     const stInfo = subtaskMap.get(c.id);
     const rawSubtaskEst = stInfo?.totalSubtaskHours || 0;
@@ -120,6 +127,7 @@ export async function getKanbanData(timId: string) {
       ...c,
       subtasksCount: stInfo?.subtasksCount || 0,
       totalSubtaskHours: calculatedHours || c.estimasiJam || 0,
+      ownerNama: c.ownerAnggotaId ? (memberNameMap.get(c.ownerAnggotaId) ?? null) : null,
     };
   });
 
