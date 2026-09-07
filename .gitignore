@@ -43,3 +43,7 @@ next-env.d.ts
 # scratch scripts
 scratch/
 
+# database backups (sensitive user data)
+backups/
+
+.github/workflows/

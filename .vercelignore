@@ -1,0 +1,12 @@
+node_modules
+.next
+backups
+.git
+.gitignore
+.env
+.env.local
+.env.production
+.env.*
+playwright
+tests
+*.sql
