@@ -272,6 +272,19 @@ export function SprintPlanningSection({
     return backlogCards.reduce((sum, c) => sum + (c.totalSubtaskHours || 0), 0);
   }, [backlogCards]);
 
+  // Akumulasi Total Estimated Menit per anggota dari kartu board (Paket 24c)
+  const taskMinutesPerMember = useMemo(() => {
+    const map = new Map<string, number>();
+    includedMembers.forEach(member => {
+      let total = 0;
+      backlogCards.filter((c) => c.ownerAnggotaId === member.anggotaTimId).forEach((c) => {
+        total += c.estimatedMinutes ?? 0;
+      });
+      map.set(member.anggotaTimId, total);
+    });
+    return map;
+  }, [includedMembers, backlogCards]);
+
   const totalTeamPct = totalTeamMaxHours > 0 ? Math.round((totalSubtaskHours / totalTeamMaxHours) * 100) : 0;
 
   // Check if planning has at least 1 valid card (SP > 0 and owner selected)
@@ -566,6 +579,7 @@ export function SprintPlanningSection({
                   const maxSubtask = member.kapasitasSubtask;
                   const subtaskCount = member.subtasksCount ?? 0;
                   const isEditing = editingCapacityId === member.anggotaTimId;
+                  const totalTaskMin = taskMinutesPerMember.get(member.anggotaTimId) ?? 0;
 
                   // Progress calculation if subtask cap is set
                   const hasSubtaskCap = maxSubtask !== null && maxSubtask !== undefined && maxSubtask > 0;
@@ -595,6 +609,13 @@ export function SprintPlanningSection({
                             <span className="text-[10px] font-semibold text-[#0B3D2E] bg-emerald-50 border border-[#C9E4D0] px-1.5 py-0.2 rounded">
                               {member.roleName || member.jabatan || "Anggota"}
                             </span>
+<div className="text-[10px] text-gray-500 ml-2">
+                              const totalTaskMin = taskMinutesPerMember.get(member.anggotaTimId) ?? 0;
+                              Task: {totalTaskMin !== 0 ? 
+                                Math.floor(totalTaskMin / 60) + " jam " + 
+                                (totalTaskMin % 60) + " menit" 
+                                : "-"}
+                            </div>
                           </div>
                         </div>
 
