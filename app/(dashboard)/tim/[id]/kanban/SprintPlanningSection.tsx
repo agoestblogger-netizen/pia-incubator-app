@@ -843,9 +843,9 @@ export function SprintPlanningSection({
                           <Input
                             type="number"
                             min={1}
-                            step={15}
+                            step={1}
                             disabled={!canEdit}
-                            value={currentMinutes}
+                            value={Number.isFinite(currentMinutes) ? Math.max(1, Math.round(currentMinutes)) : 60}
                             onChange={(e) => handleMinutesChange(card.id, e.target.value)}
                             className="h-8 text-xs bg-[#FBF3DD] border-2 border-[#D4AF37] hover:border-[#B8860B] rounded-lg px-2 text-[#8A6300] font-extrabold focus:ring-2 focus:ring-[#D4AF37] transition-colors"
                             placeholder="Contoh: 120"

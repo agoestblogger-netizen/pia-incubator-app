@@ -959,7 +959,7 @@ export function KanbanClient({
   const handleStartEditHours = (st: any) => {
     setEditingSubtaskId(st.id);
     setEditingSubtaskField('hours');
-    setEditHoursDraft(st.estimatedHours ?? "");
+    setEditHoursDraft(st.estimatedHours === null || st.estimatedHours === undefined ? "" : Math.max(0, Math.round(Number(st.estimatedHours) || 0)));
   };
 
   const handleCancelEdit = () => {
@@ -3969,8 +3969,9 @@ export function KanbanClient({
                           const currentMinutes = hasSubtasks
                             ? subtaskTotalMinutes
                             : Math.round((detailStoryPoint ?? 3) * 60);
+                          const safeMinutes = Number.isFinite(currentMinutes) ? Math.max(1, Math.round(currentMinutes)) : 60;
 
-                          const hoursVal = currentMinutes / 60;
+                          const hoursVal = safeMinutes / 60;
                           const hoursDisplay = Number.isInteger(hoursVal) ? `${hoursVal} jam` : `${hoursVal.toFixed(1)} jam`;
 
                           return (
@@ -3981,15 +3982,15 @@ export function KanbanClient({
                                   <span>Estimasi Waktu (menit)</span>
                                 </label>
                                 <span className="text-[11px] font-black text-[#8A6300] bg-[#FBF3DD] px-2 py-0.5 rounded-md border border-[#D4AF37] shadow-2xs">
-                                  {currentMinutes} menit ({hoursDisplay})
+                                  {safeMinutes} menit ({hoursDisplay})
                                 </span>
                               </div>
                               <Input
                                 type="number"
                                 min={1}
-                                step={15}
+                                step={1}
                                 disabled={!canEdit || hasSubtasks}
-                                value={currentMinutes}
+                                value={safeMinutes}
                                 onChange={(e) => {
                                   if (hasSubtasks) return;
                                   const min = Math.max(1, parseInt(e.target.value, 10) || 60);
@@ -4395,11 +4396,11 @@ export function KanbanClient({
                 <Input
                   type="number"
                   min={1}
-                  step={15}
+                  step={1}
                   placeholder="Contoh: 180"
                   value={issueMenit === "" ? "" : issueMenit}
                   onChange={(e) => {
-                    const val = e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0);
+                    const val = e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value) || 1);
                     setIssueMenit(val);
                   }}
                   className="text-xs font-semibold"
