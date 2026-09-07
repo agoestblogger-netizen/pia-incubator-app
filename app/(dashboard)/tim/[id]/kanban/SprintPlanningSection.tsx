@@ -609,9 +609,6 @@ export function SprintPlanningSection({
                             <span className="text-[10px] font-semibold text-[#0B3D2E] bg-emerald-50 border border-[#C9E4D0] px-1.5 py-0.2 rounded">
                               {member.roleName || member.jabatan || "Anggota"}
                             </span>
-                            <span className="text-[10px] text-gray-500 ml-2">
-                              Task: {formatHoursDuration(totalTaskMin / 60)}
-                            </span>
                           </div>
                         </div>
 
@@ -705,6 +702,14 @@ export function SprintPlanningSection({
                             <span className="text-gray-600 font-medium">Kapasitas Jam:</span>
                             <span className="font-extrabold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] shadow-2xs">
                               {maxJam} Jam
+                            </span>
+                          </div>
+
+                          {/* Task Capacity */}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-600 font-medium">Task:</span>
+                            <span className="font-bold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] text-[11px]">
+                              {formatHoursDuration(totalTaskMin / 60)}
                             </span>
                           </div>
 
