@@ -609,13 +609,9 @@ export function SprintPlanningSection({
                             <span className="text-[10px] font-semibold text-[#0B3D2E] bg-emerald-50 border border-[#C9E4D0] px-1.5 py-0.2 rounded">
                               {member.roleName || member.jabatan || "Anggota"}
                             </span>
-<div className="text-[10px] text-gray-500 ml-2">
-                              const totalTaskMin = taskMinutesPerMember.get(member.anggotaTimId) ?? 0;
-                              Task: {totalTaskMin !== 0 ? 
-                                Math.floor(totalTaskMin / 60) + " jam " + 
-                                (totalTaskMin % 60) + " menit" 
-                                : "-"}
-                            </div>
+                            <span className="text-[10px] text-gray-500 ml-2">
+                              Task: {formatHoursDuration(totalTaskMin / 60)}
+                            </span>
                           </div>
                         </div>
 
