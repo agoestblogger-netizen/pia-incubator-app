@@ -46,4 +46,3 @@ scratch/
 # database backups (sensitive user data)
 backups/
 
-.github/workflows/
