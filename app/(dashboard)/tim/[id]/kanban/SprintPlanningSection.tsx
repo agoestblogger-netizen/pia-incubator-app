@@ -285,6 +285,15 @@ export function SprintPlanningSection({
     return map;
   }, [includedMembers, backlogCards]);
 
+  // Jumlah kartu task per anggota dari board
+  const taskCountPerMember = useMemo(() => {
+    const map = new Map<string, number>();
+    includedMembers.forEach(member => {
+      map.set(member.anggotaTimId, backlogCards.filter((c) => c.ownerAnggotaId === member.anggotaTimId).length);
+    });
+    return map;
+  }, [includedMembers, backlogCards]);
+
   const totalTeamPct = totalTeamMaxHours > 0 ? Math.round((totalSubtaskHours / totalTeamMaxHours) * 100) : 0;
 
   // Check if planning has at least 1 valid card (SP > 0 and owner selected)
@@ -580,6 +589,7 @@ export function SprintPlanningSection({
                   const subtaskCount = member.subtasksCount ?? 0;
                   const isEditing = editingCapacityId === member.anggotaTimId;
                   const totalTaskMin = taskMinutesPerMember.get(member.anggotaTimId) ?? 0;
+                  const taskCount = taskCountPerMember.get(member.anggotaTimId) ?? 0;
 
                   // Progress calculation if subtask cap is set
                   const hasSubtaskCap = maxSubtask !== null && maxSubtask !== undefined && maxSubtask > 0;
@@ -707,7 +717,7 @@ export function SprintPlanningSection({
 
                           {/* Task Capacity */}
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-600 font-medium">Task:</span>
+                            <span className="text-gray-600 font-medium">Task ({taskCount} task):</span>
                             <span className="font-bold text-[#0B3D2E] bg-white px-2 py-0.5 rounded-md border border-[#C9E4D0] text-[11px]">
                               {formatHoursDuration(totalTaskMin / 60)}
                             </span>
