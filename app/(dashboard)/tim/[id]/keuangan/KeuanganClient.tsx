@@ -464,8 +464,8 @@ export function KeuanganClient({
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Total RAB kalkulasi otomatis
-  const totalRabSubmit = rabItems.reduce((sum, item) => sum + (Number(item.jumlah) || 0), 0);
-  const totalRabEdit = editModal.rabItems.reduce((sum, item) => sum + (Number(item.jumlah) || 0), 0);
+  const totalRabSubmit = Math.round(rabItems.reduce((sum, item) => sum + (Number(item.jumlah) || 0), 0));
+  const totalRabEdit = Math.round(editModal.rabItems.reduce((sum, item) => sum + (Number(item.jumlah) || 0), 0));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // HANDLERS UNTUK TABEL DINAMIS RAB
@@ -523,7 +523,7 @@ export function KeuanganClient({
         if (field === "kuantitas" || field === "hargaSatuan") {
           const qty = field === "kuantitas" ? Number(value) || 0 : row.kuantitas;
           const price = field === "hargaSatuan" ? Number(value) || 0 : row.hargaSatuan;
-          updatedRow.jumlah = qty * price;
+          updatedRow.jumlah = Math.round(qty * price);
         }
         return updatedRow;
       });
@@ -1885,8 +1885,18 @@ export function KeuanganClient({
                             className="h-8 text-xs font-mono"
                           />
                         </td>
-                        <td className="p-2 font-mono font-bold text-gray-800 text-xs whitespace-nowrap bg-gray-50/50">
-                          {formatRupiah(item.jumlah || 0)}
+                        <td className="p-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            required
+                            placeholder="0"
+                            value={item.jumlah || ""}
+                            onChange={(e) =>
+                              handleUpdateRabRow(item.id, "jumlah", Number(e.target.value))
+                            }
+                            className="h-8 text-xs font-mono font-bold text-gray-800"
+                          />
                         </td>
                         <td className="p-2">
                           <Input
@@ -2331,8 +2341,16 @@ export function KeuanganClient({
                             className="h-7 text-xs"
                           />
                         </td>
-                        <td className="p-1.5 font-mono text-xs font-bold text-gray-800 bg-gray-50">
-                          {formatRupiah(item.jumlah || 0)}
+                        <td className="p-1.5">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={item.jumlah || ""}
+                            onChange={(e) =>
+                              handleUpdateRabRow(item.id, "jumlah", Number(e.target.value), true)
+                            }
+                            className="h-7 text-xs font-mono font-bold text-gray-800"
+                          />
                         </td>
                         <td className="p-1.5 text-center">
                           <Button
