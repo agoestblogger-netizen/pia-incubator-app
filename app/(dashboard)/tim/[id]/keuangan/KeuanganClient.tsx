@@ -1756,9 +1756,11 @@ export function KeuanganClient({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        setNominalDiajukan(totalRabSubmit);
+                        const clamped = Math.min(totalRabSubmit, 20000000);
+                        const nextNominal = totalRabSubmit > 0 ? clamped : nominalDiajukan;
+                        setNominalDiajukan(nextNominal);
                         toast.success(
-                          `Estimasi Total Dana disinkronkan ke Total RAB: ${formatRupiah(totalRabSubmit)}`,
+                          `Estimasi Total Dana mengikuti pengajuan: ${formatRupiah(nextNominal)}`,
                           "Sinkronisasi Berhasil"
                         );
                       }}
@@ -2406,9 +2408,11 @@ export function KeuanganClient({
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      setEditModal((prev) => ({ ...prev, nominalDiajukan: totalRabEdit }));
+                      const clamped = Math.min(totalRabEdit, 20000000);
+                      const nextNominal = totalRabEdit > 0 ? clamped : editModal.nominalDiajukan;
+                      setEditModal((prev) => ({ ...prev, nominalDiajukan: nextNominal }));
                       toast.success(
-                        `Estimasi Total Dana disinkronkan ke Total RAB: ${formatRupiah(totalRabEdit)}`,
+                        `Estimasi Total Dana mengikuti pengajuan: ${formatRupiah(nextNominal)}`,
                         "Sinkronisasi Berhasil"
                       );
                     }}
