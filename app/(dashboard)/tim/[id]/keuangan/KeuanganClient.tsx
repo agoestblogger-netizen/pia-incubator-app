@@ -1755,7 +1755,13 @@ export function KeuanganClient({
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => setNominalDiajukan(totalRabSubmit)}
+                      onClick={() => {
+                        setNominalDiajukan(totalRabSubmit);
+                        toast.success(
+                          `Estimasi Total Dana disinkronkan ke Total RAB: ${formatRupiah(totalRabSubmit)}`,
+                          "Sinkronisasi Berhasil"
+                        );
+                      }}
                       className="text-[11px] h-7 text-[#0F5132] border-[#0F5132] hover:bg-emerald-100 font-semibold cursor-pointer gap-1"
                     >
                       <RotateCcw className="h-3 w-3" />
@@ -2399,9 +2405,13 @@ export function KeuanganClient({
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      setEditModal((prev) => ({ ...prev, nominalDiajukan: totalRabEdit }))
-                    }
+                    onClick={() => {
+                      setEditModal((prev) => ({ ...prev, nominalDiajukan: totalRabEdit }));
+                      toast.success(
+                        `Estimasi Total Dana disinkronkan ke Total RAB: ${formatRupiah(totalRabEdit)}`,
+                        "Sinkronisasi Berhasil"
+                      );
+                    }}
                     className="text-[10px] h-7 text-[#0F5132]"
                   >
                     Sinkronkan
